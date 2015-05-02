@@ -26,6 +26,7 @@
 
 set -o pipefail
 set -e
+set -x
 
 # Figure out where the Spark framework is installed
 SPARK_HOME="$(cd "`dirname "$0"`"; pwd)"
@@ -126,7 +127,7 @@ if [ ! $(command -v "$MVN") ] ; then
     exit -1;
 fi
 
-VERSION=$("$MVN" help:evaluate -Dexpression=project.version 2>/dev/null | grep -v "INFO" | tail -n 1)
+VERSION=$("$MVN" help:evaluate -Dexpression=project.version $@ 2>/dev/null | grep -v "INFO" | tail -n 1)
 SPARK_HADOOP_VERSION=$("$MVN" help:evaluate -Dexpression=hadoop.version $@ 2>/dev/null\
     | grep -v "INFO"\
     | tail -n 1)

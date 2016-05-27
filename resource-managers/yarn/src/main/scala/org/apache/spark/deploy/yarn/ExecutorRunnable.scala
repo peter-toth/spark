@@ -37,6 +37,7 @@ import org.apache.hadoop.yarn.ipc.YarnRPC
 import org.apache.hadoop.yarn.util.Records
 
 import org.apache.spark.{SecurityManager, SparkConf, SparkException}
+import org.apache.spark.deploy.yarn.config._
 import org.apache.spark.internal.Logging
 import org.apache.spark.internal.config._
 import org.apache.spark.network.util.JavaUtils
@@ -115,7 +116,8 @@ private[yarn] class ExecutorRunnable(
           // Authentication is not enabled, so just provide dummy metadata
           ByteBuffer.allocate(0)
         }
-      ctx.setServiceData(Collections.singletonMap("spark_shuffle", secretBytes))
+      ctx.setServiceData(Collections.singletonMap(
+        sparkConf.get(SPARK_SHUFFLE_SERVICE_NAME), secretBytes))
     }
 
     // Send the start request to the ContainerManager

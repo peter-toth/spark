@@ -48,21 +48,17 @@
   "dependencyExtensions" : [
     {
      "extensionId" : "yarnAuxService",
-     "name" : "spark_shuffle",
+     "name" : "spark3_shuffle",
      "className" : "org.apache.spark.network.yarn.YarnShuffleService",
      "type" : "classAndConfigs",
      "configs" : [
        {
-         "key" : "spark.shuffle.service.port",
+         "key" : "spark3.shuffle.service.port",
          "value" : "${spark_shuffle_service_port}"
        },
        {
-         "key" : "spark.authenticate",
-         "value" : "${spark_authenticate}"
-       },
-       {
-         "key" : "spark.network.crypto.enabled",
-         "value" : "${spark_shuffle_aes_enabled}"
+         "key" : "yarn.nodemanager.aux-services.spark3_shuffle.classpath",
+         "value" : "${spark3_parcel_dir}/lib/spark3/yarn/spark-yarn-shuffle.jar"
        }
      ]
     }
@@ -97,6 +93,16 @@
   },
   "parameters" : [
     {
+      "name" : "spark3_parcel_dir",
+      "label" : "Spark3 Parcel Location",
+      "description" : "The location of Spark3 parcel. This should be kept synch with `parcel_dir` and set to the value '${parcel_dir}/SPARK3'.",
+      "configName" : "spark3.parcel.dir",
+      "default" : "/opt/cloudera/parcels/SPARK3",
+      "type" : "path",
+      "pathType" : "serviceSpecific",
+      "required" : "true"
+    },
+    {
       "name" : "spark_history_log_dir",
       "label" : "Spark History Location (HDFS)",
       "description" : "The location of Spark application history logs in HDFS. Changing this value will not move existing logs to the new location.",
@@ -109,9 +115,9 @@
     {
       "name" : "spark_shuffle_service_port",
       "label" : "Spark Shuffle Service Port",
-      "description" : "The port the Spark Shuffle Service listens for fetch requests. If using SPARK_ON_YARN service (i.e. Spark 1 based service), ensure that value of this property is the same in both services.",
+      "description" : "The port the Spark Shuffle Service listens for fetch requests. If using SPARK_ON_YARN service (i.e. Spark 2 based service), ensure a unique port is given here.",
       "configName" : "spark.shuffle.service.port",
-      "default" : 7337,
+      "default" : 7447,
       "type" : "port",
       "required" : "true"
     },

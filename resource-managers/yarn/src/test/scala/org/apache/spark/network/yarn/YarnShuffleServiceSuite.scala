@@ -49,8 +49,8 @@ class YarnShuffleServiceSuite extends SparkFunSuite with Matchers with BeforeAnd
   override def beforeEach(): Unit = {
     super.beforeEach()
     yarnConfig = new YarnConfiguration()
-    yarnConfig.set(YarnConfiguration.NM_AUX_SERVICES, "spark_shuffle")
-    yarnConfig.set(YarnConfiguration.NM_AUX_SERVICE_FMT.format("spark_shuffle"),
+    yarnConfig.set(YarnConfiguration.NM_AUX_SERVICES, "spark3_shuffle")
+    yarnConfig.set(YarnConfiguration.NM_AUX_SERVICE_FMT.format("spark3_shuffle"),
       classOf[YarnShuffleService].getCanonicalName)
     yarnConfig.setInt(SHUFFLE_SERVICE_PORT.key, 0)
     yarnConfig.setBoolean(YarnShuffleService.STOP_ON_FAILURE_KEY, true)

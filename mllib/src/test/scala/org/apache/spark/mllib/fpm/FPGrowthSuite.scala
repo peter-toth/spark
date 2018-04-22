@@ -24,6 +24,20 @@ import org.apache.spark.util.Utils
 
 class FPGrowthSuite extends SparkFunSuite with MLlibTestSparkContext {
 
+  test("FP-Growth T40I10D100K") {
+    val transactions = spark.read.textFile("/Users/ptoth/git2/fim/data/T40I10D100K.dat").rdd
+      .map(_.split(" "))
+    val rdd = transactions
+
+    val fpg = new FPGrowth()
+
+    val model6 = fpg
+      .setMinSupport(0.01)
+      .setNumPartitions(1)
+      .run(rdd)
+
+    assert(model6.freqItemsets.count() === 65236)
+  }
 
   test("FP-Growth using String type") {
     val transactions = Seq(

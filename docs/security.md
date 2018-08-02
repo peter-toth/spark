@@ -100,8 +100,12 @@ the shuffle service.
 
 ## Configuring Ports for Network Security
 
-Spark makes heavy use of the network, and some environments have strict requirements for using tight
-firewall settings.  Below are the primary ports that Spark uses for its communication and how to
+Generally speaking, a Spark cluster and its services are not deployed on the public internet.
+They are generally private services, and should only be accessible within the network of the
+organization that deploys Spark. Access to the hosts and ports used by Spark services should
+be limited to origin hosts that need to access the services.
+
+Below are the primary ports that Spark uses for its communication and how to
 configure those ports.
 
 ### Standalone mode only
@@ -134,6 +138,14 @@ configure those ports.
     <td>Submit job to cluster /<br> Join cluster</td>
     <td><code>SPARK_MASTER_PORT</code></td>
     <td>Set to "0" to choose a port randomly. Standalone mode only.</td>
+  </tr>
+  <tr>
+    <td>External Service</td>
+    <td>Standalone Master</td>
+    <td>6066</td>
+    <td>Submit job to cluster via REST API</td>
+    <td><code>spark.master.rest.port</code></td>
+    <td>Use <code>spark.master.rest.enabled</code> to enable/disable this service. Standalone mode only.</td>
   </tr>
   <tr>
     <td>Standalone Master</td>

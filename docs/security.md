@@ -7,7 +7,10 @@ title: Security
 Spark currently supports authentication via a shared secret. Authentication can be configured to be on via the `spark.authenticate` configuration parameter. This parameter controls whether the Spark communication protocols do authentication using the shared secret. This authentication is a basic handshake to make sure both sides have the same shared secret and are allowed to communicate. If the shared secret is not identical they will not be allowed to communicate. The shared secret is created as follows:
 
 * For Spark on [YARN](running-on-yarn.html) deployments, configuring `spark.authenticate` to `true` will automatically handle generating and distributing the shared secret. Each application will use a unique shared secret.
-* For other types of Spark deployments, the Spark parameter `spark.authenticate.secret` should be configured on each of the nodes. This secret will be used by all the Master/Workers and applications.
+* For other resource managers, `spark.authenticate.secret` must be configured on each of the nodes. This secret will be shared by all the daemons and applications, so this deployment configuration is
+not as secure as the above, especially when considering multi-tenant clusters.  In this configuration, a user with the secret can effectively impersonate any other user. The Rest Submission Server and the MesosClusterDispatcher do not support authentication.  You should ensure that all network access to the REST API & MesosClusterDispatcher (port 6066 and 7077 respectively by default) are restricted to hosts that are trusted to submit jobs.
+
+
 
 ## Web UI
 

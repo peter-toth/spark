@@ -77,6 +77,7 @@ BUG FIXES
     SPARK-27620 Upgrade jetty to 9.4.18.v20190429
     SPARK-27757 Bump Jackson to 2.9.9
     [MINOR][DOCS] Add note about Spark network security
+    SPARK-25088 Update Rest Server docs & defaults.
 
     (Jira in Apache Spark is IN PROGRESS)
     SPARK-23977 Add commit protocol binding to Hadoop 3.1 PathOutputCommitter mechanism

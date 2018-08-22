@@ -79,6 +79,8 @@ BUG FIXES
     SPARK-27757 Bump Jackson to 2.9.9
     [MINOR][DOCS] Add note about Spark network security
     SPARK-25088 Update Rest Server docs & defaults.
+    SPARK-24418 Upgrade Scala to 2.11.12 and 2.12.6
+    SPARK-24785 Making sure REPL prints Spark UI info and then Welcome message
 
     (Jira in Apache Spark is IN PROGRESS)
     SPARK-23977 Add commit protocol binding to Hadoop 3.1 PathOutputCommitter mechanism

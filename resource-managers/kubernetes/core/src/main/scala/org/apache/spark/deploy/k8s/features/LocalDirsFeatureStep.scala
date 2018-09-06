@@ -37,6 +37,7 @@ private[spark] class LocalDirsFeatureStep(
     .orElse(conf.getOption("spark.local.dir"))
     .getOrElse(defaultLocalDir)
     .split(",")
+  private val useLocalDirTmpFs = conf.get(KUBERNETES_LOCAL_DIRS_TMPFS)
 
   override def configurePod(pod: SparkPod): SparkPod = {
     val localDirVolumes = resolvedLocalDirs
@@ -45,6 +46,7 @@ private[spark] class LocalDirsFeatureStep(
         new VolumeBuilder()
           .withName(s"spark-local-dir-${index + 1}")
           .withNewEmptyDir()
+            .withMedium(if (useLocalDirTmpFs) "Memory" else null)
           .endEmptyDir()
           .build()
       }

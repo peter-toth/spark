@@ -19,8 +19,8 @@ package org.apache.spark.deploy.k8s.features
 import io.fabric8.kubernetes.api.model.{EnvVarBuilder, VolumeBuilder, VolumeMountBuilder}
 
 import org.apache.spark.{SparkConf, SparkFunSuite}
-import org.apache.spark.deploy.k8s.{KubernetesTestConf, SparkPod}
-import org.apache.spark.deploy.k8s.submit.JavaMainAppResource
+import org.apache.spark.deploy.k8s._
+import org.apache.spark.deploy.k8s.Config._
 import org.apache.spark.util.SparkConfWithEnv
 
 class LocalDirsFeatureStepSuite extends SparkFunSuite {
@@ -86,6 +86,33 @@ class LocalDirsFeatureStepSuite extends SparkFunSuite {
       new EnvVarBuilder()
         .withName("SPARK_LOCAL_DIRS")
         .withValue("/var/data/my-local-dir-1,/var/data/my-local-dir-2")
+        .build())
+  }
+
+  test("Use tmpfs to back default local dir") {
+    val sparkConf = new SparkConf(false).set(KUBERNETES_LOCAL_DIRS_TMPFS, true)
+    val kubernetesConf = KubernetesTestConf.createDriverConf(sparkConf = sparkConf)
+    val stepUnderTest = new LocalDirsFeatureStep(kubernetesConf, defaultLocalDir)
+    val configuredPod = stepUnderTest.configurePod(SparkPod.initialPod())
+    assert(configuredPod.pod.getSpec.getVolumes.size === 1)
+    assert(configuredPod.pod.getSpec.getVolumes.get(0) ===
+      new VolumeBuilder()
+        .withName(s"spark-local-dir-1")
+        .withNewEmptyDir()
+          .withMedium("Memory")
+        .endEmptyDir()
+        .build())
+    assert(configuredPod.container.getVolumeMounts.size === 1)
+    assert(configuredPod.container.getVolumeMounts.get(0) ===
+      new VolumeMountBuilder()
+        .withName(s"spark-local-dir-1")
+        .withMountPath(defaultLocalDir)
+        .build())
+    assert(configuredPod.container.getEnv.size === 1)
+    assert(configuredPod.container.getEnv.get(0) ===
+      new EnvVarBuilder()
+        .withName("SPARK_LOCAL_DIRS")
+        .withValue(defaultLocalDir)
         .build())
   }
 }

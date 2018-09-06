@@ -244,6 +244,15 @@ private[spark] object Config extends Logging {
       .checkValues(Set(APP_RESOURCE_TYPE_JAVA, APP_RESOURCE_TYPE_PYTHON, APP_RESOURCE_TYPE_R))
       .createOptional
 
+  val KUBERNETES_LOCAL_DIRS_TMPFS =
+    ConfigBuilder("spark.kubernetes.local.dirs.tmpfs")
+      .doc("If set to true then emptyDir volumes created to back SPARK_LOCAL_DIRS will have " +
+        "their medium set to Memory so that they will be created as tmpfs (i.e. RAM) backed " +
+        "volumes. This may improve performance but scratch space usage will count towards " +
+        "your pods memory limit so you may wish to request more memory.")
+      .booleanConf
+      .createWithDefault(false)
+
   val KUBERNETES_DRIVER_PODTEMPLATE_FILE =
     ConfigBuilder("spark.kubernetes.driver.podTemplateFile")
       .doc("File containing a template pod spec for the driver")

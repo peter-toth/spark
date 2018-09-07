@@ -25,7 +25,7 @@ import scala.collection.JavaConverters._
 import scala.collection.mutable.HashMap
 
 import org.apache.spark._
-import org.apache.spark.executor.TaskMetrics
+import org.apache.spark.executor.{ExecutorMetrics, TaskMetrics}
 import org.apache.spark.internal.Logging
 import org.apache.spark.scheduler._
 import org.apache.spark.status.api.v1
@@ -72,6 +72,7 @@ private[spark] class AppStatusListener(
   private val liveStages = new ConcurrentHashMap[(Int, Int), LiveStage]()
   private val liveJobs = new HashMap[Int, LiveJob]()
   private val liveExecutors = new HashMap[String, LiveExecutor]()
+  private val deadExecutors = new HashMap[String, LiveExecutor]()
   private val liveTasks = new HashMap[Long, LiveTask]()
   private val liveRDDs = new HashMap[Int, LiveRDD]()
   private val pools = new HashMap[String, SchedulerPool]()
@@ -214,6 +215,19 @@ private[spark] class AppStatusListener(
           update(rdd, now)
         }
       }
+      if (isExecutorActiveForLiveStages(exec)) {
+        // the executor was running for a currently active stage, so save it for now in
+        // deadExecutors, and remove when there are no active stages overlapping with the
+        // executor.
+        deadExecutors.put(event.executorId, exec)
+      }
+    }
+  }
+
+  /** Was the specified executor active for any currently live stages? */
+  private def isExecutorActiveForLiveStages(exec: LiveExecutor): Boolean = {
+    liveStages.values.asScala.exists { stage =>
+      stage.info.submissionTime.getOrElse(0L) < exec.removeTime.getTime
     }
   }
 
@@ -680,6 +694,9 @@ private[spark] class AppStatusListener(
         kvstore.write(appSummary)
       }
     }
+
+    // remove any dead executors that were not running for any currently active stages
+    deadExecutors.retain((execId, exec) => isExecutorActiveForLiveStages(exec))
   }
 
   private def removeBlackListedStageFrom(exec: LiveExecutor, stageId: Int, now: Long) = {
@@ -760,6 +777,16 @@ private[spark] class AppStatusListener(
       }
     }
 
+    // check if there is a new peak value for any of the executor level memory metrics
+    // for the live UI. SparkListenerExecutorMetricsUpdate events are only processed
+    // for the live UI.
+    event.executorUpdates.foreach { updates =>
+      liveExecutors.get(event.execId).foreach { exec =>
+        if (exec.peakExecutorMetrics.compareAndUpdatePeakValues(updates)) {
+          maybeUpdate(exec, now)
+        }
+      }
+    }
     // Flush updates if necessary. Executor heartbeat is an event that happens periodically. Flush
     // here to ensure the staleness of Spark UI doesn't last more than
     // `max(heartbeat interval, liveUpdateMinFlushPeriod)`.
@@ -767,6 +794,20 @@ private[spark] class AppStatusListener(
       flush(maybeUpdate(_, now))
       // Re-get the current system time because `flush` may be slow and `now` is stale.
       lastFlushTimeNs = System.nanoTime()
+    }
+  }
+
+  override def onStageExecutorMetrics(executorMetrics: SparkListenerStageExecutorMetrics): Unit = {
+    val now = System.nanoTime()
+
+    // check if there is a new peak value for any of the executor level memory metrics,
+    // while reading from the log. SparkListenerStageExecutorMetrics are only processed
+    // when reading logs.
+    liveExecutors.get(executorMetrics.execId)
+      .orElse(deadExecutors.get(executorMetrics.execId)).map { exec =>
+      if (exec.peakExecutorMetrics.compareAndUpdatePeakValues(executorMetrics.executorMetrics)) {
+        update(exec, now)
+      }
     }
   }
 

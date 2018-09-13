@@ -179,6 +179,26 @@ object SQLConf {
       .intConf
       .createWithDefault(10)
 
+  val OPTIMIZER_PLAN_CHANGE_LOG_LEVEL = buildConf("spark.sql.optimizer.planChangeLog.level")
+    .internal()
+    .doc("Configures the log level for logging the change from the original plan to the new " +
+      "plan after a rule is applied. The value can be 'trace', 'debug', 'info', 'warn', or " +
+      "'error'. The default log level is 'trace'.")
+    .stringConf
+    .checkValue(
+      str => Set("TRACE", "DEBUG", "INFO", "WARN", "ERROR").contains(str.toUpperCase),
+      "Invalid value for 'spark.sql.optimizer.planChangeLog.level'. Valid values are " +
+        "'trace', 'debug', 'info', 'warn' and 'error'.")
+    .createWithDefault("trace")
+
+  val OPTIMIZER_PLAN_CHANGE_LOG_RULES = buildConf("spark.sql.optimizer.planChangeLog.rules")
+    .internal()
+    .doc("If this configuration is set, the optimizer will only log plan changes caused by " +
+      "applying the rules specified in this configuration. The value can be a list of rule " +
+      "names separated by comma.")
+    .stringConf
+    .createOptional
+
   val DYNAMIC_PARTITION_PRUNING_ENABLED =
     buildConf("spark.sql.optimizer.dynamicPartitionPruning.enabled")
       .doc("When true, we will generate predicate for partition column when it's used as join key")
@@ -1695,6 +1715,10 @@ class SQLConf extends Serializable with Logging {
   def optimizerMaxIterations: Int = getConf(OPTIMIZER_MAX_ITERATIONS)
 
   def optimizerInSetConversionThreshold: Int = getConf(OPTIMIZER_INSET_CONVERSION_THRESHOLD)
+
+  def optimizerPlanChangeLogLevel: String = getConf(OPTIMIZER_PLAN_CHANGE_LOG_LEVEL)
+
+  def optimizerPlanChangeRules: Option[String] = getConf(OPTIMIZER_PLAN_CHANGE_LOG_RULES)
 
 
   def dynamicPartitionPruningEnabled: Boolean = getConf(DYNAMIC_PARTITION_PRUNING_ENABLED)

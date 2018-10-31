@@ -59,7 +59,7 @@ object EliminateView extends Rule[LogicalPlan] with CastSupport {
   override def apply(plan: LogicalPlan): LogicalPlan = plan transformUp {
     // The child has the different output attributes with the View operator. Adds a Project over
     // the child of the view.
-    case v @ View(desc, output, child) if child.resolved && output != child.output =>
+    case v @ View(desc, output, child) if child.resolved && !v.sameOutput(child) =>
       val resolver = conf.resolver
       val queryColumnNames = desc.viewQueryColumnNames
       val queryOutput = if (queryColumnNames.nonEmpty) {

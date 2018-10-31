@@ -62,7 +62,7 @@ object EliminateView extends Rule[LogicalPlan] with CastSupport {
   override def apply(plan: LogicalPlan): LogicalPlan = plan transformUp {
     // The child has the different output attributes with the View operator. Adds a Project over
     // the child of the view.
-    case v @ View(desc, output, child) if child.resolved && output != child.output =>
+    case v @ View(desc, output, child) if child.resolved && !v.sameOutput(child) =>
       // Use the stored view query output column names to find the matching attributes. The column
       // names may have duplication, e.g. `CREATE VIEW v(x, y) AS SELECT 1 col, 2 col`. We need to
       // make sure the that matching attributes have the same number of duplications, and pick the

@@ -26,6 +26,7 @@ IMAGE_TAG="N/A"
 SPARK_MASTER=
 NAMESPACE=
 SERVICE_ACCOUNT=
+CONTEXT=
 INCLUDE_TAGS="k8s"
 EXCLUDE_TAGS=
 MVN="$TEST_ROOT_DIR/build/mvn"
@@ -66,6 +67,10 @@ while (( "$#" )); do
       SERVICE_ACCOUNT="$2"
       shift
       ;;
+    --context)
+      CONTEXT="$2"
+      shift
+      ;;
     --include-tags)
       INCLUDE_TAGS="k8s,$2"
       shift
@@ -97,6 +102,11 @@ fi
 if [ -n $SERVICE_ACCOUNT ];
 then
   properties=( ${properties[@]} -Dspark.kubernetes.test.serviceAccountName=$SERVICE_ACCOUNT )
+fi
+
+if [ -n $CONTEXT ];
+then
+  properties=( ${properties[@]} -Dspark.kubernetes.test.kubeConfigContext=$CONTEXT )
 fi
 
 if [ -n $SPARK_MASTER ];

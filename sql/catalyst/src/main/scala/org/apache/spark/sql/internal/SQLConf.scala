@@ -1551,6 +1551,13 @@ object SQLConf {
       .booleanConf
       .createWithDefault(false)
 
+  val MAX_TO_STRING_FIELDS = buildConf("spark.sql.debug.maxToStringFields")
+    .doc("Maximum number of fields of sequence-like entries can be converted to strings " +
+      "in debug output. Any elements beyond the limit will be dropped and replaced by a" +
+      """ "... N more fields" placeholder.""")
+    .intConf
+    .createWithDefault(25)
+
   // CDPD-454: Turn on and off the analyzer rules that consult with the Hive translation layer
   val CHECK_TRANSLATION_LAYER =
     buildConf("spark.sql.htl.check")
@@ -1966,6 +1973,8 @@ class SQLConf extends Serializable with Logging {
   def setOpsPrecedenceEnforced: Boolean = getConf(SQLConf.LEGACY_SETOPS_PRECEDENCE_ENABLED)
 
   def checkTranslationLayer: Boolean = getConf(SQLConf.CHECK_TRANSLATION_LAYER)
+
+  def maxToStringFields: Int = getConf(SQLConf.MAX_TO_STRING_FIELDS)
 
   /** ********************** SQLConf functionality methods ************ */
 

@@ -34,7 +34,6 @@ private[csv] class UnivocityGenerator(
   private val writerSettings = options.asWriterSettings
   writerSettings.setHeaders(schema.fieldNames: _*)
   private val gen = new CsvWriter(writer, writerSettings)
-  private var printHeader = options.headerFlag
 
   // A `ValueConverter` is responsible for converting a value of an `InternalRow` to `String`.
   // When the value is null, this converter should not be called.
@@ -75,15 +74,15 @@ private[csv] class UnivocityGenerator(
     values
   }
 
+  def writeHeaders(): Unit = {
+    gen.writeHeaders()
+  }
+
   /**
    * Writes a single InternalRow to CSV using Univocity.
    */
   def write(row: InternalRow): Unit = {
-    if (printHeader) {
-      gen.writeHeaders()
-    }
     gen.writeRow(convertRow(row): _*)
-    printHeader = false
   }
 
   def close(): Unit = gen.close()

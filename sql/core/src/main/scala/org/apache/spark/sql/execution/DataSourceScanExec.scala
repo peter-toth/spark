@@ -186,14 +186,14 @@ case class FileSourceScanExec(
       partitionSchema = relation.partitionSchema,
       relation.sparkSession.sessionState.conf)
 
-  private var metadataTime = 0L
+  private var fileListingTime = 0L
 
   @transient private lazy val selectedPartitions: Array[PartitionDirectory] = {
     val optimizerMetadataTimeNs = relation.location.metadataOpsTimeNs.getOrElse(0L)
     val startTime = System.nanoTime()
     val ret = relation.location.listFiles(partitionFilters, dataFilters)
     val timeTakenMs = ((System.nanoTime() - startTime) + optimizerMetadataTimeNs) / 1000 / 1000
-    metadataTime = timeTakenMs
+    fileListingTime = timeTakenMs
     ret
   }.toArray
 
@@ -331,7 +331,7 @@ case class FileSourceScanExec(
   override lazy val metrics =
     Map("numOutputRows" -> SQLMetrics.createMetric(sparkContext, "number of output rows"),
       "numFiles" -> SQLMetrics.createMetric(sparkContext, "number of files"),
-      "metadataTime" -> SQLMetrics.createMetric(sparkContext, "metadata time (ms)"),
+      "fileListingTime" -> SQLMetrics.createMetric(sparkContext, "file listing time (ms)"),
       "scanTime" -> SQLMetrics.createTimingMetric(sparkContext, "scan time"))
 
   protected override def doExecute(): RDD[InternalRow] = {
@@ -528,11 +528,11 @@ case class FileSourceScanExec(
    */
   private def updateDriverMetrics() = {
     metrics("numFiles").add(selectedPartitions.map(_.files.size.toLong).sum)
-    metrics("metadataTime").add(metadataTime)
+    metrics("fileListingTime").add(fileListingTime)
 
     val executionId = sparkContext.getLocalProperty(SQLExecution.EXECUTION_ID_KEY)
     SQLMetrics.postDriverMetricUpdates(sparkContext, executionId,
-      metrics("numFiles") :: metrics("metadataTime") :: Nil)
+      metrics("numFiles") :: metrics("fileListingTime") :: Nil)
   }
 
   override def doCanonicalize(): FileSourceScanExec = {

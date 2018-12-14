@@ -225,6 +225,54 @@ case class FilterExec(condition: Expression, child: SparkPlan)
   override def outputPartitioning: Partitioning = child.outputPartitioning
 }
 
+/** Physical plan for RecursiveTable. */
+case class RecursiveTableExec(name: String, child: SparkPlan) extends UnaryExecNode {
+  override def output: Seq[Attribute] = child.output
+
+  override protected def doExecute(): RDD[InternalRow] = child.execute()
+}
+
+/** Physical plan for RecursiveReference. */
+case class RecursiveReferenceExec(
+    name: String,
+    output: Seq[Attribute],
+    recursionLimit: Int,
+    level: Int) extends LeafExecNode {
+
+  var recursiveTable: RecursiveTableExec = _
+
+  override protected def doExecute(): RDD[InternalRow] = {
+    if (level < recursionLimit) {
+      val plan = recursiveTable.transform {
+        case rr: RecursiveReferenceExec if rr.name == name => rr.copy(level = rr.level + 1)
+        // TODO: do we need this to copy the whole tree?
+        case sp: LeafExecNode => sp.makeCopy(
+          sp.productIterator.collect { case ar: AnyRef => ar }.toArray)
+      }
+
+      val recursiveTables = plan.collect {
+        case rt @ RecursiveTableExec(name, _) => name -> rt
+      }.toMap
+
+      plan.foreach {
+        case rr @ RecursiveReferenceExec(name, _, _, _) => rr.recursiveTable = recursiveTables(name)
+        case _ =>
+      }
+
+      val newResult = plan.execute()
+//        .persist()
+//      oldResult.map(_.unpersist())
+
+      newResult
+    } else {
+      sparkContext.emptyRDD[InternalRow]
+    }
+  }
+
+  override def simpleString: String = super.simpleString +
+    s" (referredId: ${System.identityHashCode(recursiveTable)})"
+}
+
 /**
  * Physical plan for sampling the dataset.
  *

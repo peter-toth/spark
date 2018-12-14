@@ -216,7 +216,7 @@ abstract class Optimizer(sessionCatalog: SessionCatalog)
     private def removeTopLevelSort(plan: LogicalPlan): LogicalPlan = {
       plan match {
         case Sort(_, _, child) => child
-        case Project(fields, child) => Project(fields, removeTopLevelSort(child))
+        case Project(fields, child, _) => Project(fields, removeTopLevelSort(child))
         case other => other
       }
     }
@@ -235,6 +235,9 @@ abstract class Optimizer(sessionCatalog: SessionCatalog)
    */
   def extendedOperatorOptimizationRules: Seq[Rule[LogicalPlan]] = Nil
 
+  private def fixRecursions(batches: Seq[Batch]) =
+    batches.map(b => Batch(b.name, b.strategy, b.rules.map(FixRecursiveReferences(_)): _*))
+
   /**
    * Returns (defaultBatches - (excludedRules - nonExcludableRules)), the rule batches that
    * eventually run in the Optimizer.
@@ -242,7 +245,7 @@ abstract class Optimizer(sessionCatalog: SessionCatalog)
    * Implementations of this class should override [[defaultBatches]], and [[nonExcludableRules]]
    * if necessary, instead of this method.
    */
-  final override def batches: Seq[Batch] = {
+  final override def batches: Seq[Batch] = fixRecursions {
     val excludedRulesConf =
       SQLConf.get.optimizerExcludedRules.toSeq.flatMap(Utils.stringToSeq)
     val excludedRules = excludedRulesConf.filter { ruleName =>
@@ -406,7 +409,7 @@ object RemoveRedundantAliases extends Rule[LogicalPlan] {
  */
 object RemoveRedundantProject extends Rule[LogicalPlan] {
   def apply(plan: LogicalPlan): LogicalPlan = plan transform {
-    case p @ Project(_, child) if p.output == child.output => child
+    case p @ Project(_, child, _) if p.output == child.output => child
   }
 }
 
@@ -505,7 +508,7 @@ object PushProjectionThroughUnion extends Rule[LogicalPlan] with PredicateHelper
   def apply(plan: LogicalPlan): LogicalPlan = plan transform {
 
     // Push down deterministic projection through UNION ALL
-    case p @ Project(projectList, Union(children)) =>
+    case p @ Project(projectList, Union(children), _) =>
       assert(children.nonEmpty)
       if (projectList.forall(_.deterministic)) {
         val newFirstChild = Project(projectList, children.head)
@@ -534,12 +537,12 @@ object ColumnPruning extends Rule[LogicalPlan] {
 
   def apply(plan: LogicalPlan): LogicalPlan = removeProjectBeforeFilter(plan transform {
     // Prunes the unused columns from project list of Project/Aggregate/Expand
-    case p @ Project(_, p2: Project) if !p2.outputSet.subsetOf(p.references) =>
+    case p @ Project(_, p2: Project, _) if !p2.outputSet.subsetOf(p.references) =>
       p.copy(child = p2.copy(projectList = p2.projectList.filter(p.references.contains)))
-    case p @ Project(_, a: Aggregate) if !a.outputSet.subsetOf(p.references) =>
+    case p @ Project(_, a: Aggregate, _) if !a.outputSet.subsetOf(p.references) =>
       p.copy(
         child = a.copy(aggregateExpressions = a.aggregateExpressions.filter(p.references.contains)))
-    case a @ Project(_, e @ Expand(_, _, grandChild)) if !e.outputSet.subsetOf(a.references) =>
+    case a @ Project(_, e @ Expand(_, _, grandChild), _) if !e.outputSet.subsetOf(a.references) =>
       val newOutput = e.output.filter(a.references.contains(_))
       val newProjects = e.projections.map { proj =>
         proj.zip(e.output).filter { case (_, a) =>
@@ -564,7 +567,7 @@ object ColumnPruning extends Rule[LogicalPlan] {
       s.copy(child = prunedChild(child, s.references))
 
     // prune unrequired references
-    case p @ Project(_, g: Generate) if p.references != g.outputSet =>
+    case p @ Project(_, g: Generate, _) if p.references != g.outputSet =>
       val requiredAttrs = p.references -- g.producedAttributes ++ g.generator.references
       val newChild = prunedChild(g.child, requiredAttrs)
       val unrequired = g.generator.references -- p.references
@@ -577,10 +580,10 @@ object ColumnPruning extends Rule[LogicalPlan] {
       j.copy(right = prunedChild(right, j.references))
 
     // all the columns will be used to compare, so we can't prune them
-    case p @ Project(_, _: SetOperation) => p
-    case p @ Project(_, _: Distinct) => p
+    case p @ Project(_, _: SetOperation, _) => p
+    case p @ Project(_, _: Distinct, _) => p
     // Eliminate unneeded attributes from children of Union.
-    case p @ Project(_, u: Union) =>
+    case p @ Project(_, u: Union, _) =>
       if (!u.outputSet.subsetOf(p.references)) {
         val firstChild = u.children.head
         val newOutput = prunedChild(firstChild, p.references).output
@@ -597,7 +600,7 @@ object ColumnPruning extends Rule[LogicalPlan] {
       }
 
     // Prune unnecessary window expressions
-    case p @ Project(_, w: Window) if !w.windowOutputSet.subsetOf(p.references) =>
+    case p @ Project(_, w: Window, _) if !w.windowOutputSet.subsetOf(p.references) =>
       p.copy(child = w.copy(
         windowExpressions = w.windowExpressions.filter(p.references.contains)))
 
@@ -605,13 +608,13 @@ object ColumnPruning extends Rule[LogicalPlan] {
     case w: Window if w.windowExpressions.isEmpty => w.child
 
     // Eliminate no-op Projects
-    case p @ Project(_, child) if child.sameOutput(p) => child
+    case p @ Project(_, child, _) if child.sameOutput(p) => child
 
     // Can't prune the columns on LeafNode
-    case p @ Project(_, _: LeafNode) => p
+    case p @ Project(_, _: LeafNode, _) => p
 
     // for all other logical plans that inherits the output from it's children
-    case p @ Project(_, child) =>
+    case p @ Project(_, child, _) =>
       val required = child.references ++ p.references
       if (!child.inputSet.subsetOf(required)) {
         val newChildren = child.children.map(c => prunedChild(c, required))
@@ -635,7 +638,7 @@ object ColumnPruning extends Rule[LogicalPlan] {
    * order, otherwise lower Projects can be missed.
    */
   private def removeProjectBeforeFilter(plan: LogicalPlan): LogicalPlan = plan transformUp {
-    case p1 @ Project(_, f @ Filter(_, p2 @ Project(_, child)))
+    case p1 @ Project(_, f @ Filter(_, p2 @ Project(_, child, _)), _)
       if p2.outputSet.subsetOf(child.outputSet) =>
       p1.copy(child = f.copy(child = child))
   }
@@ -648,13 +651,13 @@ object ColumnPruning extends Rule[LogicalPlan] {
 object CollapseProject extends Rule[LogicalPlan] {
 
   def apply(plan: LogicalPlan): LogicalPlan = plan transformUp {
-    case p1 @ Project(_, p2: Project) =>
+    case p1 @ Project(_, p2: Project, _) =>
       if (haveCommonNonDeterministicOutput(p1.projectList, p2.projectList)) {
         p1
       } else {
         p2.copy(projectList = buildCleanedProjectList(p1.projectList, p2.projectList))
       }
-    case p @ Project(_, agg: Aggregate) =>
+    case p @ Project(_, agg: Aggregate, _) =>
       if (haveCommonNonDeterministicOutput(p.projectList, agg.aggregateExpressions)) {
         p
       } else {
@@ -973,7 +976,7 @@ object PushDownPredicate extends Rule[LogicalPlan] with PredicateHelper {
     // state and all the input rows processed before. In another word, the order of input rows
     // matters for non-deterministic expressions, while pushing down predicates changes the order.
     // This also applies to Aggregate.
-    case Filter(condition, project @ Project(fields, grandChild))
+    case Filter(condition, project @ Project(fields, grandChild, _))
       if fields.forall(_.deterministic) && canPushThroughCondition(grandChild, condition) =>
 
       // Create a map of Aliases to their values from the child projection.
@@ -1377,7 +1380,7 @@ object DecimalAggregates extends Rule[LogicalPlan] {
  */
 object ConvertToLocalRelation extends Rule[LogicalPlan] {
   def apply(plan: LogicalPlan): LogicalPlan = plan transform {
-    case Project(projectList, LocalRelation(output, data, isStreaming))
+    case Project(projectList, LocalRelation(output, data, isStreaming), _)
         if !projectList.exists(hasUnevaluableExpr) =>
       val projection = new InterpretedProjection(projectList, output)
       projection.initialize(0)

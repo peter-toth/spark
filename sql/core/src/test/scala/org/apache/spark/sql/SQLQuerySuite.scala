@@ -24,6 +24,7 @@ import java.util.concurrent.atomic.AtomicBoolean
 
 import org.apache.spark.{AccumulatorSuite, SparkException}
 import org.apache.spark.scheduler.{SparkListener, SparkListenerJobStart}
+import org.apache.spark.sql.catalyst.rules.RuleExecutor
 import org.apache.spark.sql.catalyst.util.StringUtils
 import org.apache.spark.sql.execution.aggregate
 import org.apache.spark.sql.execution.aggregate.{HashAggregateExec, SortAggregateExec}
@@ -2896,6 +2897,97 @@ class SQLQuerySuite extends QueryTest with SharedSQLContext {
             |SELECT * FROM TMP x JOIN TMP y
             |ON x.tdate = y.tdate
           """.stripMargin).queryExecution.executedPlan
+      }
+    }
+  }
+
+  test("SPARK-24497: recursive query") {
+    withSQLConf(SQLConf.WHOLESTAGE_CODEGEN_ENABLED.key -> "false") {
+      withTempView("department") {
+        val df = Seq(
+          (0, None, "ROOT"),
+          (1, Some(0), "A"),
+          (2, Some(1), "B"),
+          (3, Some(2), "C"),
+          (4, Some(2), "D"),
+          (5, Some(0), "E"),
+          (6, Some(4), "F"),
+          (7, Some(5), "G")
+        ).toDF("id", "parent_department_id", "name")
+
+        df.show();
+
+        df.createTempView("department")
+
+//        RuleExecutor.debug = true
+
+        val query1 = sql(s"""WITH subdepartment AS (
+               |  SELECT * FROM department WHERE name = 'A'
+               |  UNION ALL
+               |  SELECT * FROM subdepartment
+               |)
+               |SELECT id, parent_department_id, name FROM subdepartment ORDER BY id
+             """.stripMargin)
+
+        query1.show()
+
+        val query2 = sql(s"""WITH MAXIMUM 1 LEVEL RECURSION subdepartment AS (
+               |  SELECT * FROM department WHERE name = 'A'
+               |  UNION ALL
+               |  SELECT * FROM subdepartment
+               |)
+               |SELECT id, parent_department_id, name FROM subdepartment ORDER BY id
+             """.stripMargin)
+
+        query2.show()
+
+        val query3 = sql(s"""WITH subdepartment AS (
+               |  SELECT * FROM subdepartment
+               |  UNION ALL
+               |  SELECT * FROM department WHERE name = 'A'
+               |)
+               |SELECT id, parent_department_id, name FROM subdepartment ORDER BY id
+             """.stripMargin)
+
+        query3.show()
+
+        val query4 = sql(s"""WITH subdepartment AS (
+               |  SELECT * FROM department WHERE name = 'A'
+               |  UNION ALL
+               |  SELECT d.*
+               |  FROM department AS d
+               |  JOIN subdepartment AS sd ON (sd.id = d.parent_department_id)
+               |)
+               |SELECT id, parent_department_id, name FROM subdepartment ORDER BY id
+             """.stripMargin)
+
+        query4.show()
+
+        val query5 = sql(s"""WITH subdepartment AS (
+               |  SELECT * FROM department WHERE name = 'A'
+               |  UNION ALL
+               |  SELECT d.*
+               |  FROM department AS d
+               |  JOIN subdepartment AS sd ON (sd.parent_department_id = d.id)
+               |)
+               |SELECT id, parent_department_id, name FROM subdepartment ORDER BY id
+             """.stripMargin)
+
+        query5.show()
+
+        val query6 = sql(s"""WITH subdepartment AS (
+               |  SELECT DISTINCT * FROM (
+               |    SELECT * FROM department WHERE name = 'A'
+               |    UNION ALL
+               |    SELECT * FROM subdepartment
+               |  )
+               |)
+               |SELECT id, parent_department_id, name FROM subdepartment ORDER BY id
+             """.stripMargin)
+
+        query6.show()
+
+        RuleExecutor.debug = false
       }
     }
   }

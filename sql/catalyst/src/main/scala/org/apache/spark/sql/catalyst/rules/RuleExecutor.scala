@@ -26,6 +26,10 @@ import org.apache.spark.sql.internal.SQLConf
 import org.apache.spark.util.Utils
 
 object RuleExecutor {
+  var debug: Boolean = false
+  var level: Int = 0
+  def indent: String = "    " * level
+
   protected val queryExecutionMeter = QueryExecutionMetering()
 
   /** Dump statistics about time spent running specific rules. */
@@ -83,12 +87,22 @@ abstract class RuleExecutor[TreeType <: TreeNode[_]] extends Logging {
    * using the defined execution strategy. Within each batch, rules are also executed serially.
    */
   def execute(plan: TreeType): TreeType = {
+    RuleExecutor.level += 1
+
+    if (RuleExecutor.debug) {
+      logError(s"${RuleExecutor.indent}Rule executor start plan:\n${plan.treeString}")
+    }
+
     var curPlan = plan
     val queryExecutionMetrics = RuleExecutor.queryExecutionMeter
     val planChangeLogger = new PlanChangeLogger()
     val tracker: Option[QueryPlanningTracker] = QueryPlanningTracker.get
 
     batches.foreach { batch =>
+      if (RuleExecutor.debug) {
+        logError(s"${RuleExecutor.indent}Batch ${batch.name} started")
+      }
+
       val batchStartPlan = curPlan
       var iteration = 1
       var lastPlan = curPlan
@@ -96,6 +110,10 @@ abstract class RuleExecutor[TreeType <: TreeNode[_]] extends Logging {
 
       // Run until fix point (or the max number of iterations as specified in the strategy.
       while (continue) {
+        if (RuleExecutor.debug) {
+          logError(s"${RuleExecutor.indent}Batch ${batch.name} Iteration: ${iteration} started")
+        }
+
         curPlan = batch.rules.foldLeft(curPlan) {
           case (plan, rule) =>
             val startTime = System.nanoTime()
@@ -121,8 +139,23 @@ abstract class RuleExecutor[TreeType <: TreeNode[_]] extends Logging {
               throw new TreeNodeException(result, message, null)
             }
 
+            if (RuleExecutor.debug) {
+              if (RuleExecutor.debug && plan.treeString != result.treeString) {
+                logError(s"${RuleExecutor.indent}Batch: ${batch.name} Iteration: ${iteration} " +
+                  s"Rule: ${rule.ruleName} changed:\n${result.treeString}")
+              } else {
+                logError(s"${RuleExecutor.indent}Batch: ${batch.name} Iteration: ${iteration} " +
+                  s"Rule: ${rule.ruleName}")
+              }
+            }
+
             result
         }
+
+        if (RuleExecutor.debug) {
+          logError(s"${RuleExecutor.indent}Batch ${batch.name} Iteration: ${iteration} ready")
+        }
+
         iteration += 1
         if (iteration > batch.strategy.maxIterations) {
           // Only log if this is a rule that is supposed to run more than once.
@@ -130,6 +163,7 @@ abstract class RuleExecutor[TreeType <: TreeNode[_]] extends Logging {
             val message = s"Max iterations (${iteration - 1}) reached for batch ${batch.name}"
             if (Utils.isTesting) {
               throw new TreeNodeException(curPlan, message, null)
+              // TODO: shoudln't we throw exception if partial resolution doesn't finish?
             } else {
               logWarning(message)
             }
@@ -145,6 +179,10 @@ abstract class RuleExecutor[TreeType <: TreeNode[_]] extends Logging {
         lastPlan = curPlan
       }
 
+      if (RuleExecutor.debug) {
+        logError(s"${RuleExecutor.indent}Batch ${batch.name} ready")
+      }
+
       if (!batchStartPlan.fastEquals(curPlan)) {
         logDebug(
           s"""
@@ -155,6 +193,12 @@ abstract class RuleExecutor[TreeType <: TreeNode[_]] extends Logging {
         logTrace(s"Batch ${batch.name} has no effect.")
       }
     }
+
+    if (RuleExecutor.debug) {
+      logError(s"${RuleExecutor.indent}Rule executor end plan:\n${curPlan.treeString}")
+    }
+
+    RuleExecutor.level -= 1
 
     curPlan
   }

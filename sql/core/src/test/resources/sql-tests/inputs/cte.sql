@@ -5,7 +5,7 @@ create temporary view t2 as select * from values 0, 1 as t(id);
 WITH s AS (SELECT 1 FROM s) SELECT * FROM s;
 
 -- WITH clause should reference the base table
-WITH t AS (SELECT 1 FROM t) SELECT * FROM t;
+WITH t2 AS (SELECT 1 FROM t) SELECT * FROM t2;
 
 -- WITH clause should not allow cross reference
 WITH s1 AS (SELECT 1 FROM s2), s2 AS (SELECT 1 FROM s1) SELECT * FROM s1, s2;

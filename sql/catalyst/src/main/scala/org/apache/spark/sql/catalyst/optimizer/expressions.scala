@@ -577,7 +577,7 @@ object NullPropagation extends Rule[LogicalPlan] {
 object FoldablePropagation extends Rule[LogicalPlan] {
   def apply(plan: LogicalPlan): LogicalPlan = {
     var foldableMap = AttributeMap(plan.flatMap {
-      case Project(projectList, _) => projectList.collect {
+      case Project(projectList, _, _) => projectList.collect {
         case a: Alias if a.child.foldable => (a.toAttribute, a)
       }
       case _ => Nil

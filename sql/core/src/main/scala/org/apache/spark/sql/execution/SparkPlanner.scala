@@ -107,4 +107,18 @@ class SparkPlanner(
       ProjectExec(projectList, filterCondition.map(FilterExec(_, scan)).getOrElse(scan))
     }
   }
+
+  override def planAndFix(plan: LogicalPlan): Iterator[SparkPlan] =
+    this.plan(plan).map { plan =>
+      val recursiveTables = plan.collect {
+        case rt @ RecursiveTableExec(name, _) => name -> rt
+      }.toMap
+
+      plan.foreach {
+        case rr @ RecursiveReferenceExec(name, _, _, _) => rr.recursiveTable = recursiveTables(name)
+        case _ =>
+      }
+
+      plan
+    }
 }

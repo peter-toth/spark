@@ -35,6 +35,7 @@ import org.apache.spark.sql.catalyst.expressions._
 import org.apache.spark.sql.catalyst.expressions.codegen.{Predicate => GenPredicate, _}
 import org.apache.spark.sql.catalyst.plans.QueryPlan
 import org.apache.spark.sql.catalyst.plans.physical._
+import org.apache.spark.sql.catalyst.rules.RuleExecutor
 import org.apache.spark.sql.execution.metric.SQLMetric
 import org.apache.spark.sql.types.DataType
 import org.apache.spark.util.ThreadUtils
@@ -125,6 +126,11 @@ abstract class SparkPlan extends QueryPlan[SparkPlan] with Logging with Serializ
    * Concrete implementations of SparkPlan should override `doExecute`.
    */
   final def execute(): RDD[InternalRow] = executeQuery {
+    if (RuleExecutor.debug) {
+      logError(s"execute of class: ${this.getClass} " +
+        s"of object with id: ${System.identityHashCode(this)} " +
+        s"on thread: ${Thread.currentThread.getName}")
+    }
     if (isCanonicalizedPlan) {
       throw new IllegalStateException("A canonicalized plan is not supposed to be executed.")
     }
@@ -138,6 +144,11 @@ abstract class SparkPlan extends QueryPlan[SparkPlan] with Logging with Serializ
    * Concrete implementations of SparkPlan should override `doExecuteBroadcast`.
    */
   final def executeBroadcast[T](): broadcast.Broadcast[T] = executeQuery {
+    if (RuleExecutor.debug) {
+      logError(s"executeBroadcast of class: ${this.getClass} " +
+        s"of object with id: ${System.identityHashCode(this)} " +
+        s"on thread: ${Thread.currentThread.getName}")
+    }
     if (isCanonicalizedPlan) {
       throw new IllegalStateException("A canonicalized plan is not supposed to be executed.")
     }
@@ -196,6 +207,13 @@ abstract class SparkPlan extends QueryPlan[SparkPlan] with Logging with Serializ
    * Prepares this SparkPlan for execution. It's idempotent.
    */
   final def prepare(): Unit = {
+    if (RuleExecutor.debug) {
+      if (!prepared) {
+        logError(s"prepare of class: ${this.getClass} " +
+          s"of object with id: ${System.identityHashCode(this)} " +
+          s"on thread: ${Thread.currentThread.getName}")
+      }
+    }
     // doPrepare() may depend on it's children, we should call prepare() on all the children first.
     children.foreach(_.prepare())
     synchronized {

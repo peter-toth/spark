@@ -44,7 +44,7 @@ object CostBasedJoinReorder extends Rule[LogicalPlan] with PredicateHelper {
         // Start reordering with a joinable item, which is an InnerLike join with conditions.
         case j @ Join(_, _, _: InnerLike, Some(cond)) =>
           reorder(j, j.output)
-        case p @ Project(projectList, Join(_, _, _: InnerLike, Some(cond)))
+        case p @ Project(projectList, Join(_, _, _: InnerLike, Some(cond)), _)
           if projectList.forall(_.isInstanceOf[Attribute]) =>
           reorder(p, p.output)
       }
@@ -81,7 +81,7 @@ object CostBasedJoinReorder extends Rule[LogicalPlan] with PredicateHelper {
         val (rightPlans, rightConditions) = extractInnerJoins(right)
         (leftPlans ++ rightPlans, splitConjunctivePredicates(cond).toSet ++
           leftConditions ++ rightConditions)
-      case Project(projectList, j @ Join(_, _, _: InnerLike, Some(cond)))
+      case Project(projectList, j @ Join(_, _, _: InnerLike, Some(cond)), _)
         if projectList.forall(_.isInstanceOf[Attribute]) =>
         extractInnerJoins(j)
       case _ =>
@@ -94,7 +94,7 @@ object CostBasedJoinReorder extends Rule[LogicalPlan] with PredicateHelper {
       val replacedLeft = replaceWithOrderedJoin(left)
       val replacedRight = replaceWithOrderedJoin(right)
       OrderedJoin(replacedLeft, replacedRight, jt, Some(cond))
-    case p @ Project(projectList, j @ Join(_, _, _: InnerLike, Some(cond))) =>
+    case p @ Project(projectList, j @ Join(_, _, _: InnerLike, Some(cond)), _) =>
       p.copy(child = replaceWithOrderedJoin(j))
     case _ =>
       plan
@@ -171,7 +171,7 @@ object JoinReorderDP extends PredicateHelper with Logging {
     // The last level must have one and only one plan, because all items are joinable.
     assert(foundPlans.size == items.length && foundPlans.last.size == 1)
     foundPlans.last.head._2.plan match {
-      case p @ Project(projectList, j: Join) if projectList != output =>
+      case p @ Project(projectList, j: Join, _) if projectList != output =>
         assert(topOutputSet == p.outputSet)
         // Keep the same order of final output attributes.
         p.copy(projectList = output)

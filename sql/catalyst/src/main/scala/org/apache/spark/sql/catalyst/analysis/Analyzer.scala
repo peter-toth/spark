@@ -21,7 +21,7 @@ import java.util.Locale
 
 import scala.collection.mutable
 import scala.collection.mutable.ArrayBuffer
-import scala.util.Random
+import scala.util.{Random, Try}
 
 import org.apache.spark.sql.AnalysisException
 import org.apache.spark.sql.catalyst._
@@ -144,7 +144,43 @@ class Analyzer(
    */
   val postHocResolutionRules: Seq[Rule[LogicalPlan]] = Nil
 
-  lazy val batches: Seq[Batch] = Seq(
+  private def fixRecursions(batches: Seq[Batch]) =
+    batches.map(b => Batch(b.name, b.strategy, b.rules.map(FixRecursiveReferences(_)): _*))
+
+  lazy val resolutionRules: Seq[Rule[LogicalPlan]] = Seq(
+    ResolveTableValuedFunctions,
+    ResolveRelations,
+    ResolveReferences,
+    ResolveCreateNamedStruct,
+    ResolveDeserializer,
+    ResolveNewInstance,
+    ResolveUpCast,
+    ResolveGroupingAnalytics,
+    ResolvePivot,
+    ResolveOrdinalInOrderByAndGroupBy,
+    ResolveAggAliasInGroupBy,
+    ResolveMissingReferences,
+    ExtractGenerator,
+    ResolveGenerate,
+    ResolveFunctions,
+    ResolveAliases,
+    ResolveSubquery,
+    ResolveSubqueryColumnAliases,
+    ResolveWindowOrder,
+    ResolveWindowFrame,
+    ResolveNaturalAndUsingJoin,
+    ResolveOutputRelation,
+    ExtractWindowExpressions,
+    GlobalAggregates,
+    ResolveAggregateFunctions,
+    TimeWindowing,
+    ResolveInlineTables(conf),
+    ResolveHigherOrderFunctions(catalog),
+    ResolveLambdaVariables(conf),
+    ResolveTimeZone(conf),
+    ResolveRandomSeed) ++ TypeCoercion.typeCoercionRules(conf) ++ extendedResolutionRules
+
+  lazy val batches: Seq[Batch] = fixRecursions(Seq(
     Batch("Hints", fixedPoint,
       new ResolveHints.ResolveBroadcastHints(conf),
       ResolveHints.ResolveCoalesceHints,
@@ -156,40 +192,9 @@ class Analyzer(
       WindowsSubstitution,
       EliminateUnions,
       new SubstituteUnresolvedOrdinals(conf)),
-    Batch("Resolution", fixedPoint,
-      ResolveTableValuedFunctions ::
-      ResolveRelations ::
-      ResolveReferences ::
-      ResolveCreateNamedStruct ::
-      ResolveDeserializer ::
-      ResolveNewInstance ::
-      ResolveUpCast ::
-      ResolveGroupingAnalytics ::
-      ResolvePivot ::
-      ResolveOrdinalInOrderByAndGroupBy ::
-      ResolveAggAliasInGroupBy ::
-      ResolveMissingReferences ::
-      ExtractGenerator ::
-      ResolveGenerate ::
-      ResolveFunctions ::
-      ResolveAliases ::
-      ResolveSubquery ::
-      ResolveSubqueryColumnAliases ::
-      ResolveWindowOrder ::
-      ResolveWindowFrame ::
-      ResolveNaturalAndUsingJoin ::
-      ResolveOutputRelation ::
-      ExtractWindowExpressions ::
-      GlobalAggregates ::
-      ResolveAggregateFunctions ::
-      TimeWindowing ::
-      ResolveInlineTables(conf) ::
-      ResolveHigherOrderFunctions(catalog) ::
-      ResolveLambdaVariables(conf) ::
-      ResolveTimeZone(conf) ::
-      ResolveRandomSeed ::
-      TypeCoercion.typeCoercionRules(conf) ++
-      extendedResolutionRules : _*),
+    Batch("Partial Resolution", fixedPoint, resolutionRules: _*),
+    Batch("Resolve Recursive References", Once, ResolveRecursiveReferneces),
+    Batch("Resolution", fixedPoint, resolutionRules: _*),
     Batch("Post-Hoc Resolution", Once, postHocResolutionRules: _*),
     Batch("View", Once,
       AliasViewChild(conf)),
@@ -203,32 +208,74 @@ class Analyzer(
       UpdateOuterReferences),
     Batch("Cleanup", fixedPoint,
       CleanupAliases)
-  )
+  ))
+
+  object ResolveRecursiveReferneces extends Rule[LogicalPlan] {
+    def apply(plan: LogicalPlan): LogicalPlan = plan.resolveOperatorsUp {
+      case urr: UnresolvedRecursiveReference =>
+        val rr = RecursiveReference(urr.name, urr.recursionLimit, urr.attributeMap)
+        rr.recursiveTable = urr.recursiveTable
+        rr
+      case other => other
+    }
+  }
 
   /**
    * Analyze cte definitions and substitute child plan with analyzed cte definitions.
    */
   object CTESubstitution extends Rule[LogicalPlan] {
     def apply(plan: LogicalPlan): LogicalPlan = plan.resolveOperatorsUp {
-      case With(child, relations) =>
+      case With(child, relations, recursionLimit) =>
         substituteCTE(child, relations.foldLeft(Seq.empty[(String, LogicalPlan)]) {
           case (resolved, (name, relation)) =>
-            resolved :+ name -> executeSameContext(substituteCTE(relation, resolved))
-        })
+            resolved :+name -> executeSameContext(
+              substituteCTE(relation, resolved, Some(name), recursionLimit))
+        }, None, recursionLimit)
       case other => other
     }
 
-    def substituteCTE(plan: LogicalPlan, cteRelations: Seq[(String, LogicalPlan)]): LogicalPlan = {
-      plan resolveOperatorsDown {
+    def substituteCTE(
+        plan: LogicalPlan,
+        cteRelations: Seq[(String, LogicalPlan)],
+        recursiveTableName: Option[String],
+        recursionLimit: Int): LogicalPlan = {
+
+      val recursiveReferences = mutable.Set.empty[UnresolvedRecursiveReference]
+
+      def newRecursiveReference(recursiveTableName: String, recursionLimit: Int) = {
+        val recursiveReference = UnresolvedRecursiveReference(recursiveTableName, recursionLimit)
+        recursiveReferences += recursiveReference
+
+        recursiveReference
+      }
+
+      val newPlan = plan resolveOperatorsDown {
         case u: UnresolvedRelation =>
-          cteRelations.find(x => resolver(x._1, u.tableIdentifier.table))
-            .map(_._2).getOrElse(u)
+          val table = u.tableIdentifier.table
+          cteRelations.find(x => resolver(x._1, table))
+            .map(_._2)
+            .orElse(recursiveTableName.filter(resolver(_, table))
+              .map(newRecursiveReference(_, recursionLimit)))
+            .getOrElse(u)
+//        TODO: any chance to bump into this?
+//        case r @ RecursiveReference(t) if t == recursiveTable =>
+//          recursiveReferences += r
+//          r
         case other =>
           // This cannot be done in ResolveSubquery because ResolveSubquery does not know the CTE.
           other transformExpressions {
             case e: SubqueryExpression =>
-              e.withNewPlan(substituteCTE(e.plan, cteRelations))
+              e.withNewPlan(substituteCTE(e.plan, cteRelations, recursiveTableName, recursionLimit))
           }
+      }
+
+      if (recursiveReferences.isEmpty) {
+        newPlan
+      } else {
+        val recursiveTable = RecursiveTable(recursiveTableName.get, newPlan)
+        recursiveReferences.foreach(_.recursiveTable = recursiveTable)
+
+        recursiveTable
       }
     }
   }
@@ -285,7 +332,7 @@ class Analyzer(
         if child.resolved && groupByOpt.isDefined && hasUnresolvedAlias(groupByOpt.get) =>
         Pivot(Some(assignAliases(groupByOpt.get)), pivotColumn, pivotValues, aggregates, child)
 
-      case Project(projectList, child) if child.resolved && hasUnresolvedAlias(projectList) =>
+      case Project(projectList, child, _) if child.resolved && hasUnresolvedAlias(projectList) =>
         Project(assignAliases(projectList), child)
     }
   }
@@ -779,7 +826,7 @@ class Analyzer(
           (oldVersion, oldVersion.copy(serializer = oldVersion.serializer.map(_.newInstance())))
 
         // Handle projects that create conflicting aliases.
-        case oldVersion @ Project(projectList, _)
+        case oldVersion @ Project(projectList, _, _)
             if findAliases(projectList).intersect(conflictingAttributes).nonEmpty =>
           (oldVersion, oldVersion.copy(projectList = newAliases(projectList)))
 
@@ -800,6 +847,14 @@ class Analyzer(
             if AttributeSet(windowExpressions.map(_.toAttribute)).intersect(conflictingAttributes)
               .nonEmpty =>
           (oldVersion, oldVersion.copy(windowExpressions = newAliases(windowExpressions)))
+
+        case oldVersion @ RecursiveReference(_, _, _)
+            if oldVersion.outputSet.intersect(conflictingAttributes).nonEmpty =>
+          val newVersion = oldVersion.copy(
+            attributeMap = AttributeMap.apply(
+              conflictingAttributes.map(a => a -> a.newInstance()).toSeq))
+          newVersion.recursiveTable = oldVersion.recursiveTable
+          (oldVersion, newVersion)
       }
         // Only handle first case, others will be fixed on the next pass.
         .headOption match {
@@ -901,11 +956,19 @@ class Analyzer(
     }
 
     def apply(plan: LogicalPlan): LogicalPlan = plan.resolveOperatorsUp {
-      case p: LogicalPlan if !p.childrenResolved => p
-
       // If the projection list contains Stars, expand it.
       case p: Project if containsStar(p.projectList) =>
-        p.copy(projectList = buildExpandedProjectList(p.projectList, p.child))
+        if (p.childrenResolved) {
+          p.copy(
+            projectList = buildExpandedProjectList(p.projectList, p.child),
+            temporaryExpandedProjectList = None)
+        } else {
+          p.copy(temporaryExpandedProjectList =
+            Some(Try(buildExpandedProjectList(p.projectList, p.child)).getOrElse(Nil)))
+        }
+
+      case p: LogicalPlan if !p.childrenResolved => p
+
       // If the aggregate function argument contains Stars, expand it.
       case a: Aggregate if containsStar(a.aggregateExpressions) =>
         if (a.groupingExpressions.exists(_.isInstanceOf[UnresolvedOrdinal])) {
@@ -1047,7 +1110,7 @@ class Analyzer(
     if (nameParts.length != 1) return None
     val isNamedExpression = plan match {
       case Aggregate(_, aggregateExpressions, _) => aggregateExpressions.contains(attribute)
-      case Project(projectList, _) => projectList.contains(attribute)
+      case Project(projectList, _, _) => projectList.contains(attribute)
       case Window(windowExpressions, _, _, _) => windowExpressions.contains(attribute)
       case _ => false
     }
@@ -1494,7 +1557,7 @@ class Analyzer(
    */
   object GlobalAggregates extends Rule[LogicalPlan] {
     def apply(plan: LogicalPlan): LogicalPlan = plan.resolveOperators {
-      case Project(projectList, child) if containsAggregates(projectList) =>
+      case Project(projectList, child, _) if containsAggregates(projectList) =>
         Aggregate(Nil, projectList, child)
     }
 
@@ -1697,17 +1760,17 @@ class Analyzer(
     }
 
     def apply(plan: LogicalPlan): LogicalPlan = plan.resolveOperatorsUp {
-      case Project(projectList, _) if projectList.exists(hasNestedGenerator) =>
+      case Project(projectList, _, _) if projectList.exists(hasNestedGenerator) =>
         val nestedGenerator = projectList.find(hasNestedGenerator).get
         throw new AnalysisException("Generators are not supported when it's nested in " +
           "expressions, but got: " + toPrettySQL(trimAlias(nestedGenerator)))
 
-      case Project(projectList, _) if projectList.count(hasGenerator) > 1 =>
+      case Project(projectList, _, _) if projectList.count(hasGenerator) > 1 =>
         val generators = projectList.filter(hasGenerator).map(trimAlias)
         throw new AnalysisException("Only one generator allowed per select clause but found " +
           generators.size + ": " + generators.map(toPrettySQL).mkString(", "))
 
-      case p @ Project(projectList, child) =>
+      case p @ Project(projectList, child, _) =>
         // Holds the resolved generator, if one exists in the project list.
         var resolvedGenerator: Generate = null
 
@@ -2061,7 +2124,7 @@ class Analyzer(
 
       // We only extract Window Expressions after all expressions of the Project
       // have been resolved.
-      case p @ Project(projectList, child)
+      case p @ Project(projectList, child, _)
         if hasWindowFunction(projectList) && !p.expressions.exists(!_.resolved) =>
         val (windowExpressions, regularExpressions) = extract(projectList)
         // We add a project to get all needed expressions for window expressions from the child
@@ -2520,6 +2583,27 @@ class Analyzer(
   }
 }
 
+case class FixRecursiveReferences[T <: QueryPlan[_]](rule: Rule[T]) extends Rule[T] {
+
+  override val ruleName: String = rule.ruleName
+
+  def apply(plan: T): T = {
+    val newPlan = rule(plan)
+
+    val recursiveTables = newPlan.collect {
+      case rt @ RecursiveTable(name, _) => name -> rt
+    }.toMap
+
+    newPlan.foreach {
+      case urr @ UnresolvedRecursiveReference(name, _, _) =>
+        urr.recursiveTable = recursiveTables(name)
+      case _ =>
+    }
+
+    newPlan
+  }
+}
+
 /**
  * Removes [[SubqueryAlias]] operators from the plan. Subqueries are only required to provide
  * scoping information for attributes and can be removed once analysis is complete.
@@ -2570,10 +2654,10 @@ object CleanupAliases extends Rule[LogicalPlan] {
   }
 
   override def apply(plan: LogicalPlan): LogicalPlan = plan.resolveOperatorsUp {
-    case Project(projectList, child) =>
+    case Project(projectList, child, temporaryExpandedProjectList) =>
       val cleanedProjectList =
         projectList.map(trimNonTopLevelAliases(_).asInstanceOf[NamedExpression])
-      Project(cleanedProjectList, child)
+      Project(cleanedProjectList, child, temporaryExpandedProjectList)
 
     case Aggregate(grouping, aggs, child) =>
       val cleanedAggs = aggs.map(trimNonTopLevelAliases(_).asInstanceOf[NamedExpression])

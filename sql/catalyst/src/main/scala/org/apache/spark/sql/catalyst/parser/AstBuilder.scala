@@ -111,9 +111,11 @@ class AstBuilder(conf: SQLConf) extends SqlBaseBaseVisitor[AnyRef] with Logging 
         val namedQuery = visitNamedQuery(nCtx)
         (namedQuery.alias, namedQuery)
       }
+      val recursionLimit = Option(ctx.ctes.recursionLimit).map(_.getText.toInt).getOrElse(10)
+
       // Check for duplicate names.
       checkDuplicateKeys(ctes, ctx)
-      With(query, ctes)
+      With(query, ctes, recursionLimit)
     }
   }
 

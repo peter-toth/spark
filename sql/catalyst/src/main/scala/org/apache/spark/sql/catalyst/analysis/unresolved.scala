@@ -23,7 +23,7 @@ import org.apache.spark.sql.catalyst.errors.TreeNodeException
 import org.apache.spark.sql.catalyst.expressions._
 import org.apache.spark.sql.catalyst.expressions.codegen.{CodegenContext, ExprCode}
 import org.apache.spark.sql.catalyst.parser.ParserUtils
-import org.apache.spark.sql.catalyst.plans.logical.{LeafNode, LogicalPlan, UnaryNode}
+import org.apache.spark.sql.catalyst.plans.logical.{LeafNode, LogicalPlan, RecursiveTable, UnaryNode}
 import org.apache.spark.sql.catalyst.trees.TreeNode
 import org.apache.spark.sql.catalyst.util.quoteIdentifier
 import org.apache.spark.sql.types.{DataType, Metadata, StructType}
@@ -512,4 +512,38 @@ case class UnresolvedOrdinal(ordinal: Int)
   override def foldable: Boolean = throw new UnresolvedException(this, "foldable")
   override def nullable: Boolean = throw new UnresolvedException(this, "nullable")
   override lazy val resolved = false
+}
+
+case class UnresolvedRecursiveReference(
+    name: String,
+    recursionLimit: Int,
+    attributeMap: AttributeMap[Attribute] = AttributeMap(Nil)) extends LeafNode {
+
+  var recursiveTable: RecursiveTable = _
+
+  private val inOutput: ThreadLocal[Int] = new ThreadLocal[Int] {
+    override def initialValue(): Int = 0
+  }
+
+  def markInOutput[T](f: => T): T = {
+    inOutput.set(inOutput.get + 1)
+    try f finally {
+      inOutput.set(inOutput.get - 1)
+    }
+  }
+
+  override def output: Seq[Attribute] =
+    if (inOutput.get() > 0) {
+      Seq.empty // TODO: can we end up here?
+    } else {
+      markInOutput {
+        recursiveTable.output.map(a => attributeMap.getOrElse(a, a))
+      }
+    }
+
+  override lazy val resolved = false
+
+  override def simpleString: String =
+    super.simpleString +
+      s" (referredId: ${System.identityHashCode(recursiveTable)})"
 }

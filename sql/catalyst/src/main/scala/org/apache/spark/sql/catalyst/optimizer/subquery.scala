@@ -201,7 +201,7 @@ object PullupCorrelatedPredicates extends Rule[LogicalPlan] with PredicateHelper
             predicateMap += child -> xs
             child
         }
-      case p @ Project(expressions, child) =>
+      case p @ Project(expressions, child, _) =>
         val referencesToAdd = missingReferences(p)
         if (referencesToAdd.nonEmpty) {
           Project(expressions ++ referencesToAdd, child)
@@ -346,7 +346,7 @@ object RewriteCorrelatedScalarSubquery extends Rule[LogicalPlan] {
           if (exprResult) bindings else Map.empty
         }
 
-      case Project(projectList, child) =>
+      case Project(projectList, child, _) =>
         val bindings = evalPlan(child)
         if (bindings.isEmpty) {
           bindings
@@ -391,7 +391,7 @@ object RewriteCorrelatedScalarSubquery extends Rule[LogicalPlan] {
           // No HAVING clause
           return (topPart, None, aggPart)
 
-        case p @ Project(_, child) =>
+        case p @ Project(_, child, _) =>
           topPart += p
           bottomPart = child
 
@@ -464,7 +464,7 @@ object RewriteCorrelatedScalarSubquery extends Rule[LogicalPlan] {
             val havingInputs: Seq[NamedExpression] = aggNode.output
 
             topPart.reverse.foreach {
-              case Project(projList, _) =>
+              case Project(projList, _, _) =>
                 subqueryRoot = Project(projList ++ havingInputs, subqueryRoot)
               case s @ SubqueryAlias(alias, _) =>
                 subqueryRoot = SubqueryAlias(alias, subqueryRoot)
@@ -510,7 +510,7 @@ object RewriteCorrelatedScalarSubquery extends Rule[LogicalPlan] {
       } else {
         a
       }
-    case p @ Project(expressions, child) =>
+    case p @ Project(expressions, child, _) =>
       val subqueries = ArrayBuffer.empty[ScalarSubquery]
       val newExpressions = expressions.map(extractCorrelatedScalarSubqueries(_, subqueries))
       if (subqueries.nonEmpty) {

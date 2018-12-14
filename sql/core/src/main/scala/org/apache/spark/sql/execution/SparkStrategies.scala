@@ -71,7 +71,7 @@ abstract class SparkStrategies extends QueryPlanner[SparkPlan] {
         case Limit(IntegerLiteral(limit), Sort(order, true, child))
             if limit < conf.topKSortFallbackThreshold =>
           TakeOrderedAndProjectExec(limit, order, child.output, planLater(child)) :: Nil
-        case Limit(IntegerLiteral(limit), Project(projectList, Sort(order, true, child)))
+        case Limit(IntegerLiteral(limit), Project(projectList, Sort(order, true, child), _))
             if limit < conf.topKSortFallbackThreshold =>
           TakeOrderedAndProjectExec(limit, order, projectList, planLater(child)) :: Nil
         case Limit(IntegerLiteral(limit), child) =>
@@ -81,7 +81,7 @@ abstract class SparkStrategies extends QueryPlanner[SparkPlan] {
       case Limit(IntegerLiteral(limit), Sort(order, true, child))
           if limit < conf.topKSortFallbackThreshold =>
         TakeOrderedAndProjectExec(limit, order, child.output, planLater(child)) :: Nil
-      case Limit(IntegerLiteral(limit), Project(projectList, Sort(order, true, child)))
+      case Limit(IntegerLiteral(limit), Project(projectList, Sort(order, true, child), _))
           if limit < conf.topKSortFallbackThreshold =>
         TakeOrderedAndProjectExec(limit, order, projectList, planLater(child)) :: Nil
       case _ => Nil
@@ -601,10 +601,14 @@ abstract class SparkStrategies extends QueryPlanner[SparkPlan] {
         }
       case logical.Sort(sortExprs, global, child) =>
         execution.SortExec(sortExprs, global, planLater(child)) :: Nil
-      case logical.Project(projectList, child) =>
+      case logical.Project(projectList, child, _) =>
         execution.ProjectExec(projectList, planLater(child)) :: Nil
       case logical.Filter(condition, child) =>
         execution.FilterExec(condition, planLater(child)) :: Nil
+      case logical.RecursiveTable(name, child) =>
+        execution.RecursiveTableExec(name, planLater(child)) :: Nil
+      case rr @ logical.RecursiveReference(name, recursionLimit, _) =>
+        execution.RecursiveReferenceExec(name, rr.output, recursionLimit, 0) :: Nil
       case f: logical.TypedFilter =>
         execution.FilterExec(f.typedCondition(f.deserializer), planLater(f.child)) :: Nil
       case e @ logical.Expand(_, _, child) =>

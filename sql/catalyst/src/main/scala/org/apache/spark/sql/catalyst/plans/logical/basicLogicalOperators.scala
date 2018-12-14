@@ -17,13 +17,16 @@
 
 package org.apache.spark.sql.catalyst.plans.logical
 
+import scala.util.Try
+
 import org.apache.spark.sql.catalyst.AliasIdentifier
-import org.apache.spark.sql.catalyst.analysis.{MultiInstanceRelation, NamedRelation}
+import org.apache.spark.sql.catalyst.analysis.{MultiInstanceRelation, NamedRelation, Star}
 import org.apache.spark.sql.catalyst.catalog.{CatalogStorageFormat, CatalogTable}
 import org.apache.spark.sql.catalyst.expressions._
 import org.apache.spark.sql.catalyst.expressions.aggregate.{AggregateExpression, AggregateFunction}
 import org.apache.spark.sql.catalyst.plans._
 import org.apache.spark.sql.catalyst.plans.physical.{HashPartitioning, Partitioning, RangePartitioning, RoundRobinPartitioning}
+import org.apache.spark.sql.catalyst.rules.RuleExecutor
 import org.apache.spark.sql.catalyst.util.truncatedString
 import org.apache.spark.sql.types._
 import org.apache.spark.util.random.RandomSampler
@@ -47,9 +50,57 @@ case class Subquery(child: LogicalPlan) extends OrderPreservingUnaryNode {
   override def output: Seq[Attribute] = child.output
 }
 
-case class Project(projectList: Seq[NamedExpression], child: LogicalPlan)
-    extends OrderPreservingUnaryNode {
-  override def output: Seq[Attribute] = projectList.map(_.toAttribute)
+case class RecursiveTable(name: String, child: LogicalPlan) extends OrderPreservingUnaryNode {
+  override def output: Seq[Attribute] = child.output
+}
+
+case class RecursiveReference(
+    name: String,
+    recursionLimit: Int,
+    attributeMap: AttributeMap[Attribute] = AttributeMap(Nil)) extends LeafNode {
+
+  var recursiveTable: RecursiveTable = _
+
+//  private val inOutput: ThreadLocal[Int] = new ThreadLocal[Int] {
+//    override def initialValue(): Int = 0
+//  }
+
+//  def markInOutput[T](f: => T): T = {
+//    inOutput.set(inOutput.get + 1)
+//    try f finally {
+//      inOutput.set(inOutput.get - 1)
+//    }
+//  }
+
+  override def output: Seq[Attribute] =
+//    if (inOutput.get() > 0) {
+//      Seq.empty // TODO: can we end up here?
+//    } else {
+//      markInOutput {
+        recursiveTable.output.map(a => attributeMap.getOrElse(a, a))
+//      }
+//    }
+
+  override lazy val resolved = true
+
+  override def computeStats(): Statistics = Statistics(0)
+
+  override def simpleString: String = super.simpleString +
+    (if (RuleExecutor.debug) {
+      s" (referredId: ${System.identityHashCode(recursiveTable)})"
+    } else "")
+}
+
+case class Project(
+    projectList: Seq[NamedExpression],
+    child: LogicalPlan,
+    temporaryExpandedProjectList: Option[Seq[NamedExpression]] = None)
+  extends OrderPreservingUnaryNode {
+
+  override def output: Seq[Attribute] =
+    temporaryExpandedProjectList.map(_.map(_.toAttribute))
+      .getOrElse(projectList.flatMap(ne => Try(ne.toAttribute).toOption))
+
   override def maxRows: Option[Long] = child.maxRows
 
   override lazy val resolved: Boolean = {
@@ -231,7 +282,7 @@ case class Union(children: Seq[LogicalPlan]) extends LogicalPlan {
 
   // updating nullability to make all the children consistent
   override def output: Seq[Attribute] =
-    children.map(_.output).transpose.map(attrs =>
+    children.map(_.output).filter(!_.isEmpty).transpose.map(attrs =>
       attrs.head.withNullability(attrs.exists(_.nullable)))
 
   override lazy val resolved: Boolean = {
@@ -481,7 +532,10 @@ case class View(
  * @param cteRelations A sequence of pair (alias, the CTE definition) that this CTE defined
  *                     Each CTE can see the base tables and the previously defined CTEs only.
  */
-case class With(child: LogicalPlan, cteRelations: Seq[(String, SubqueryAlias)]) extends UnaryNode {
+case class With(
+    child: LogicalPlan,
+    cteRelations: Seq[(String, SubqueryAlias)],
+    recursionLimit: Int = 10) extends UnaryNode {
   override def output: Seq[Attribute] = child.output
 
   override def simpleString: String = {
@@ -756,7 +810,7 @@ case class Pivot(
     aggregates: Seq[Expression],
     child: LogicalPlan) extends UnaryNode {
   override lazy val resolved = false // Pivot will be replaced after being resolved.
-  override def output: Seq[Attribute] = {
+  override lazy val output: Seq[Attribute] = {
     val pivotAgg = aggregates match {
       case agg :: Nil =>
         pivotValues.map(value => AttributeReference(value.toString, agg.dataType)())

@@ -325,7 +325,7 @@ trait CheckAnalysis extends PredicateHelper {
 
             failAnalysis(msg)
 
-          case p @ Project(exprs, _) if containsMultipleGenerators(exprs) =>
+          case p @ Project(exprs, _, _) if containsMultipleGenerators(exprs) =>
             failAnalysis(
               s"""Only a single table generating function is allowed in a SELECT clause, found:
                  | ${exprs.map(_.sql).mkString(",")}""".stripMargin)

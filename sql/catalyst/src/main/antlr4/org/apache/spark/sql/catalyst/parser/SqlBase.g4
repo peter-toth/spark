@@ -281,7 +281,7 @@ describeColName
     ;
 
 ctes
-    : WITH namedQuery (',' namedQuery)*
+    : WITH (MAXIMUM recursionLimit=INTEGER_VALUE LEVEL RECURSION)? namedQuery (',' namedQuery)*
     ;
 
 namedQuery
@@ -777,6 +777,7 @@ nonReserved
     | DATABASE | SELECT | FROM | WHERE | HAVING | TO | TABLE | WITH | NOT
     | DIRECTORY
     | BOTH | LEADING | TRAILING
+    | MAXIMUM | LEVEL | RECURSION
     ;
 
 SELECT: 'SELECT';
@@ -1013,6 +1014,9 @@ OPTION: 'OPTION';
 ANTI: 'ANTI';
 LOCAL: 'LOCAL';
 INPATH: 'INPATH';
+MAXIMUM: 'MAXIMUM';
+LEVEL: 'LEVEL';
+RECURSION: 'RECURSION';
 
 STRING
     : '\'' ( ~('\''|'\\') | ('\\' .) )* '\''

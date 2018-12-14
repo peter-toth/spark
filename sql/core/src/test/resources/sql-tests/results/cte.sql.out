@@ -21,14 +21,13 @@ struct<>
 -- !query 2
 WITH s AS (SELECT 1 FROM s) SELECT * FROM s
 -- !query 2 schema
-struct<>
+struct<1:int>
 -- !query 2 output
-org.apache.spark.sql.AnalysisException
-Table or view not found: s; line 1 pos 25
+
 
 
 -- !query 3
-WITH t AS (SELECT 1 FROM t) SELECT * FROM t
+WITH t2 AS (SELECT 1 FROM t) SELECT * FROM t2
 -- !query 3 schema
 struct<1:int>
 -- !query 3 output

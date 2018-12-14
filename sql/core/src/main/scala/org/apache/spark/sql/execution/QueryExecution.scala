@@ -24,12 +24,13 @@ import java.sql.{Date, Timestamp}
 import org.apache.commons.io.output.StringBuilderWriter
 import org.apache.hadoop.fs.Path
 
+import org.apache.spark.internal.Logging
 import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.{AnalysisException, Row, SparkSession}
 import org.apache.spark.sql.catalyst.{InternalRow, QueryPlanningTracker}
 import org.apache.spark.sql.catalyst.analysis.UnsupportedOperationChecker
 import org.apache.spark.sql.catalyst.plans.logical.{LogicalPlan, ReturnAnswer}
-import org.apache.spark.sql.catalyst.rules.Rule
+import org.apache.spark.sql.catalyst.rules.{Rule, RuleExecutor}
 import org.apache.spark.sql.catalyst.util.DateTimeUtils
 import org.apache.spark.sql.catalyst.util.truncatedString
 import org.apache.spark.sql.execution.command.{DescribeTableCommand, ExecutedCommandExec, ShowTablesCommand}
@@ -47,7 +48,7 @@ import org.apache.spark.util.Utils
 class QueryExecution(
     val sparkSession: SparkSession,
     val logical: LogicalPlan,
-    val tracker: QueryPlanningTracker = new QueryPlanningTracker) {
+    val tracker: QueryPlanningTracker = new QueryPlanningTracker) extends Logging {
 
   // TODO: Move the planner an optimizer into here from SessionState.
   protected def planner = sparkSession.sessionState.planner
@@ -79,7 +80,7 @@ class QueryExecution(
     SparkSession.setActiveSession(sparkSession)
     // TODO: We use next(), i.e. take the first plan returned by the planner, here for now,
     //       but we will implement to choose the best plan.
-    planner.plan(ReturnAnswer(optimizedPlan)).next()
+    planner.planAndFix(ReturnAnswer(optimizedPlan)).next()
   }
 
   // executedPlan should not be used to initialize any SparkPlan. It should be
@@ -96,7 +97,39 @@ class QueryExecution(
    * row format conversions as needed.
    */
   protected def prepareForExecution(plan: SparkPlan): SparkPlan = {
-    preparations.foldLeft(plan) { case (sp, rule) => rule.apply(sp) }
+    if (RuleExecutor.debug) {
+      logError(s"sparkPlan: $plan")
+    }
+
+    val newPlan = preparations.foldLeft(plan) {
+      case (sp, rule) => rule.apply(sp)
+    }
+
+    if (RuleExecutor.debug) {
+      logError(s"newSparkPlan:\n$newPlan")
+    }
+
+    newPlan
+  }
+
+  case class FixRecursiveReferenceExecs(rule: Rule[SparkPlan]) extends Rule[SparkPlan] {
+
+    override val ruleName: String = rule.ruleName
+
+    def apply(plan: SparkPlan): SparkPlan = {
+      val newPlan = rule(plan)
+
+      val recursiveTables = newPlan.collect {
+        case rt @ RecursiveTableExec(name, _) => name -> rt
+      }.toMap
+
+      newPlan.foreach {
+        case rr @ RecursiveReferenceExec(name, _, _, _) => rr.recursiveTable = recursiveTables(name)
+        case _ =>
+      }
+
+      newPlan
+    }
   }
 
   /** A sequence of rules that will be applied in order to the physical plan before execution. */
@@ -105,7 +138,7 @@ class QueryExecution(
     EnsureRequirements(sparkSession.sessionState.conf),
     CollapseCodegenStages(sparkSession.sessionState.conf),
     ReuseExchange(sparkSession.sessionState.conf),
-    ReuseSubquery(sparkSession.sessionState.conf))
+    ReuseSubquery(sparkSession.sessionState.conf)).map(FixRecursiveReferenceExecs(_))
 
   protected def stringOrError[A](f: => A): String =
     try f.toString catch { case e: AnalysisException => e.toString }

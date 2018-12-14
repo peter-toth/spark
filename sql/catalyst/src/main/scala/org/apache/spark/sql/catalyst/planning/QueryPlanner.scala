@@ -102,4 +102,6 @@ abstract class QueryPlanner[PhysicalPlan <: TreeNode[PhysicalPlan]] {
 
   /** Prunes bad plans to prevent combinatorial explosion. */
   protected def prunePlans(plans: Iterator[PhysicalPlan]): Iterator[PhysicalPlan]
+
+  def planAndFix(plan: LogicalPlan): Iterator[PhysicalPlan] = this.plan(plan)
 }

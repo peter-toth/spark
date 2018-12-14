@@ -32,7 +32,7 @@ class OptimizerStructuralIntegrityCheckerSuite extends PlanTest {
 
   object OptimizeRuleBreakSI extends Rule[LogicalPlan] {
     def apply(plan: LogicalPlan): LogicalPlan = plan transform {
-      case Project(projectList, child) =>
+      case Project(projectList, child, _) =>
         val newAttr = UnresolvedAttribute("unresolvedAttr")
         Project(projectList ++ Seq(newAttr), child)
     }

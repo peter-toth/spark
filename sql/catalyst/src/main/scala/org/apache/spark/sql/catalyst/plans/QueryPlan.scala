@@ -17,7 +17,10 @@
 
 package org.apache.spark.sql.catalyst.plans
 
+import scala.util.Try
+
 import org.apache.spark.sql.catalyst.expressions._
+import org.apache.spark.sql.catalyst.rules.RuleExecutor
 import org.apache.spark.sql.catalyst.trees.{CurrentOrigin, TreeNode}
 import org.apache.spark.sql.internal.SQLConf
 import org.apache.spark.sql.types.{DataType, StructType}
@@ -172,7 +175,11 @@ abstract class QueryPlan[PlanType <: QueryPlan[PlanType]] extends TreeNode[PlanT
    */
   protected def statePrefix = if (missingInput.nonEmpty && children.nonEmpty) "!" else ""
 
-  override def simpleString: String = statePrefix + super.simpleString
+  override def simpleString: String = statePrefix + super.simpleString +
+    (if (RuleExecutor.debug) {
+      s" (id: ${System.identityHashCode(this)})" +
+      s" (output: ${Try(output.toString).getOrElse("")})"
+    } else "")
 
   override def verboseString: String = simpleString
 

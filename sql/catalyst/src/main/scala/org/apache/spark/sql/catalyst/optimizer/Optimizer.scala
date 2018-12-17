@@ -72,6 +72,7 @@ abstract class Optimizer(sessionCatalog: SessionCatalog)
         CombineLimits,
         CombineUnions,
         // Constant folding and strength reduction
+        TransposeWindow,
         NullPropagation,
         ConstantPropagation,
         FoldablePropagation,

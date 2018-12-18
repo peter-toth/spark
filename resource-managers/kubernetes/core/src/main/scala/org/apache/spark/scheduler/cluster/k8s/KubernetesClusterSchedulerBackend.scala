@@ -25,6 +25,7 @@ import io.fabric8.kubernetes.client.KubernetesClient
 import org.apache.spark.SparkContext
 import org.apache.spark.deploy.k8s.Config._
 import org.apache.spark.deploy.k8s.Constants._
+import org.apache.spark.deploy.security.HadoopDelegationTokenManager
 import org.apache.spark.rpc.{RpcAddress, RpcEnv}
 import org.apache.spark.scheduler.{ExecutorLossReason, TaskSchedulerImpl}
 import org.apache.spark.scheduler.cluster.{CoarseGrainedSchedulerBackend, SchedulerBackendUtils}
@@ -144,6 +145,10 @@ private[spark] class KubernetesClusterSchedulerBackend(
 
   override def createDriverEndpoint(): DriverEndpoint = {
     new KubernetesDriverEndpoint(rpcEnv)
+  }
+
+  override protected def createTokenManager(): Option[HadoopDelegationTokenManager] = {
+    Some(new HadoopDelegationTokenManager(conf, sc.hadoopConfiguration))
   }
 
   private class KubernetesDriverEndpoint(rpcEnv: RpcEnv)

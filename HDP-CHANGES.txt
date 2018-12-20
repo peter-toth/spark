@@ -71,6 +71,7 @@ BUG FIXES
     SPARK-23679 Setting RM_HA_URLS for AmIpFilter to avoid redirect failure in YARN mode
     SPARK-25306 Avoid skewed filter trees to speed up `createFilter` in ORC
     SPARK-25183 Spark HiveServer2 to use Spark ShutdownHookManager
+    SPARK-25271 Hive ctas commands should use data source if it is convertible
     SPARK-26307 Fix CTAS when INSERT a partitioned table using Hive serde
     SPARK-27160 Fix DecimalType when building orc filters
     SPARK-27358 Update jquery to 1.12.x to pick up security fixes

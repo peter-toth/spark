@@ -2919,73 +2919,89 @@ class SQLQuerySuite extends QueryTest with SharedSQLContext {
 
         df.createTempView("department")
 
-//        RuleExecutor.debug = true
+        RuleExecutor.debug = true
 
-        val query1 = sql(s"""WITH subdepartment AS (
-               |  SELECT * FROM department WHERE name = 'A'
-               |  UNION ALL
-               |  SELECT * FROM subdepartment
-               |)
-               |SELECT id, parent_department_id, name FROM subdepartment ORDER BY id
-             """.stripMargin)
+//        val query1 = sql(s"""WITH subdepartment AS (
+//               |  SELECT * FROM department WHERE name = 'A'
+//               |  UNION ALL
+//               |  SELECT * FROM subdepartment
+//               |)
+//               |SELECT id, parent_department_id, name FROM subdepartment ORDER BY id
+//             """.stripMargin)
+//
+//        query1.show()
+//
+//        val query2 = sql(s"""WITH MAXIMUM 1 LEVEL RECURSION subdepartment AS (
+//               |  SELECT * FROM department WHERE name = 'A'
+//               |  UNION ALL
+//               |  SELECT * FROM subdepartment
+//               |)
+//               |SELECT id, parent_department_id, name FROM subdepartment ORDER BY id
+//             """.stripMargin)
+//
+//        query2.show()
+//
+//        val query3 = sql(s"""WITH subdepartment AS (
+//               |  SELECT * FROM subdepartment
+//               |  UNION ALL
+//               |  SELECT * FROM department WHERE name = 'A'
+//               |)
+//               |SELECT id, parent_department_id, name FROM subdepartment ORDER BY id
+//             """.stripMargin)
+//
+//        query3.show()
+//
+//        val query4 = sql(s"""WITH subdepartment AS (
+//               |  SELECT * FROM department WHERE name = 'A'
+//               |  UNION ALL
+//               |  SELECT d.*
+//               |  FROM department AS d
+//               |  JOIN subdepartment AS sd ON (sd.id = d.parent_department_id)
+//               |)
+//               |SELECT id, parent_department_id, name FROM subdepartment ORDER BY id
+//             """.stripMargin)
+//
+//        query4.show()
+//
+//        val query5 = sql(s"""WITH subdepartment AS (
+//               |  SELECT * FROM department WHERE name = 'A'
+//               |  UNION ALL
+//               |  SELECT d.*
+//               |  FROM department AS d
+//               |  JOIN subdepartment AS sd ON (sd.parent_department_id = d.id)
+//               |)
+//               |SELECT id, parent_department_id, name FROM subdepartment ORDER BY id
+//             """.stripMargin)
+//
+//        query5.show()
+//
+//        val query6 = sql(s"""WITH subdepartment AS (
+//               |  SELECT DISTINCT * FROM (
+//               |    SELECT * FROM department WHERE name = 'A'
+//               |    UNION ALL
+//               |    SELECT * FROM subdepartment
+//               |  )
+//               |)
+//               |SELECT id, parent_department_id, name FROM subdepartment ORDER BY id
+//             """.stripMargin)
+//
+//        query6.show()
 
-        query1.show()
-
-        val query2 = sql(s"""WITH MAXIMUM 1 LEVEL RECURSION subdepartment AS (
-               |  SELECT * FROM department WHERE name = 'A'
-               |  UNION ALL
-               |  SELECT * FROM subdepartment
-               |)
-               |SELECT id, parent_department_id, name FROM subdepartment ORDER BY id
-             """.stripMargin)
-
-        query2.show()
-
-        val query3 = sql(s"""WITH subdepartment AS (
-               |  SELECT * FROM subdepartment
-               |  UNION ALL
-               |  SELECT * FROM department WHERE name = 'A'
-               |)
-               |SELECT id, parent_department_id, name FROM subdepartment ORDER BY id
-             """.stripMargin)
-
-        query3.show()
-
-        val query4 = sql(s"""WITH subdepartment AS (
-               |  SELECT * FROM department WHERE name = 'A'
-               |  UNION ALL
-               |  SELECT d.*
-               |  FROM department AS d
-               |  JOIN subdepartment AS sd ON (sd.id = d.parent_department_id)
-               |)
-               |SELECT id, parent_department_id, name FROM subdepartment ORDER BY id
-             """.stripMargin)
-
-        query4.show()
-
-        val query5 = sql(s"""WITH subdepartment AS (
-               |  SELECT * FROM department WHERE name = 'A'
-               |  UNION ALL
-               |  SELECT d.*
-               |  FROM department AS d
-               |  JOIN subdepartment AS sd ON (sd.parent_department_id = d.id)
-               |)
-               |SELECT id, parent_department_id, name FROM subdepartment ORDER BY id
-             """.stripMargin)
-
-        query5.show()
-
-        val query6 = sql(s"""WITH subdepartment AS (
+        val query7 = sql(s"""WITH subdepartment AS (
                |  SELECT DISTINCT * FROM (
                |    SELECT * FROM department WHERE name = 'A'
                |    UNION ALL
-               |    SELECT * FROM subdepartment
+               |    SELECT * FROM department WHERE name = 'A'
+               |    UNION ALL
+               |    SELECT * FROM department WHERE name = 'A'
+               |    --UNION ALL
+               |    --SELECT * FROM subdepartment
                |  )
                |)
                |SELECT id, parent_department_id, name FROM subdepartment ORDER BY id
              """.stripMargin)
 
-        query6.show()
+        query7.show()
 
         RuleExecutor.debug = false
       }

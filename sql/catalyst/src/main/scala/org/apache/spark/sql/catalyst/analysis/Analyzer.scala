@@ -265,7 +265,7 @@ class Analyzer(
           // This cannot be done in ResolveSubquery because ResolveSubquery does not know the CTE.
           other transformExpressions {
             case e: SubqueryExpression =>
-              e.withNewPlan(substituteCTE(e.plan, cteRelations, recursiveTableName, recursionLimit))
+              e.withNewPlan(substituteCTE(e.plan, cteRelations, recursiveTableName, recursionLimit)) // recursion enabled in subquery?
           }
       }
 

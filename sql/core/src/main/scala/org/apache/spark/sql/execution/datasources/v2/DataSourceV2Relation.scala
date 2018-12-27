@@ -55,9 +55,11 @@ case class DataSourceV2Relation(
     tableIdent.map(_.unquotedString).getOrElse(s"${source.name}:unknown")
   }
 
-  override def pushedFilters: Seq[Expression] = Seq.empty
+  override def simpleString(maxFields: Int): String = {
+    s"RelationV2${truncatedString(output, "[", ", ", "]", maxFields)} $name"
+  }
 
-  override def simpleString: String = "RelationV2 " + metadataString
+  override def pushedFilters: Seq[Expression] = Seq.empty
 
   def newReader(): DataSourceReader = source.createReader(options, userSpecifiedSchema)
 
@@ -91,7 +93,9 @@ case class StreamingDataSourceV2Relation(
 
   override def isStreaming: Boolean = true
 
-  override def simpleString: String = "Streaming RelationV2 " + metadataString
+  override def simpleString(maxFields: Int): String = {
+    "Streaming RelationV2 " + metadataString(maxFields)
+  }
 
   override def pushedFilters: Seq[Expression] = Nil
 

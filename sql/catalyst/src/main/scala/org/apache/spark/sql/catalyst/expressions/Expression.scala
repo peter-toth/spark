@@ -24,8 +24,8 @@ import org.apache.spark.sql.catalyst.analysis.{TypeCheckResult, TypeCoercion}
 import org.apache.spark.sql.catalyst.expressions.codegen._
 import org.apache.spark.sql.catalyst.expressions.codegen.Block._
 import org.apache.spark.sql.catalyst.trees.TreeNode
-import org.apache.spark.sql.internal.SQLConf
 import org.apache.spark.sql.catalyst.util.truncatedString
+import org.apache.spark.sql.internal.SQLConf
 import org.apache.spark.sql.types._
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -231,12 +231,12 @@ abstract class Expression extends TreeNode[Expression] {
 
   // Marks this as final, Expression.verboseString should never be called, and thus shouldn't be
   // overridden by concrete classes.
-  final override def verboseString: String = simpleString
+  final override def verboseString(maxFields: Int): String = simpleString(maxFields)
 
-  override def simpleString: String = toString
+  override def simpleString(maxFields: Int): String = toString
 
   override def toString: String = prettyName + truncatedString(
-    flatArguments.toSeq, "(", ", ", ")")
+    flatArguments.toSeq, "(", ", ", ")", SQLConf.get.maxToStringFields)
 
   /**
    * Returns SQL representation of this expression.  For expressions extending [[NonSQLExpression]],

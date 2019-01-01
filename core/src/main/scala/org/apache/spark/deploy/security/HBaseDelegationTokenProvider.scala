@@ -119,7 +119,7 @@ private[security] class HBaseDelegationTokenProvider
       confCreate.invoke(null, conf).asInstanceOf[Configuration]
     } catch {
       case NonFatal(e) =>
-        logDebug("Fail to invoke HBaseConfiguration", e)
+        logWarning("Fail to invoke HBaseConfiguration", e)
         conf
     }
   }

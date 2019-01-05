@@ -23,7 +23,7 @@ import io.fabric8.kubernetes.api.model.{Pod, PodList}
 import io.fabric8.kubernetes.client.KubernetesClient
 import org.jmock.lib.concurrent.DeterministicScheduler
 import org.mockito.{ArgumentCaptor, Mock, MockitoAnnotations}
-import org.mockito.Matchers.{any, eq => mockitoEq}
+import org.mockito.ArgumentMatchers.{any, eq => mockitoEq}
 import org.mockito.Mockito.{mock, never, spy, verify, when}
 import org.scalatest.BeforeAndAfter
 

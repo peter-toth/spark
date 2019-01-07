@@ -2867,6 +2867,10 @@ private[spark] object Utils extends Logging {
     if (str == null) 0 else str.length + fullWidthRegex.findAllIn(str).size
   }
 
+  def isClientMode(conf: SparkConf): Boolean = {
+    "client".equals(conf.get(SparkLauncher.DEPLOY_MODE, "client"))
+  }
+
   /** Returns whether the URI is a "local:" URI. */
   def isLocalUri(uri: String): Boolean = {
     uri.startsWith(s"$LOCAL_SCHEME:")

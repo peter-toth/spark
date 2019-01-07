@@ -325,16 +325,6 @@ package object config {
     .stringConf
     .createOptional
 
-  // The list of cache-related config entries. This is used by Client and the AM to clean
-  // up the environment so that these settings do not appear on the web UI.
-  private[yarn] val CACHE_CONFIGS = Seq(
-    CACHED_FILES,
-    CACHED_FILES_SIZES,
-    CACHED_FILES_TIMESTAMPS,
-    CACHED_FILES_VISIBILITIES,
-    CACHED_FILES_TYPES,
-    CACHED_CONF_ARCHIVE)
-
   private[yarn] val SPARK_SHUFFLE_SERVICE_NAME = ConfigBuilder("spark.shuffle.service.name")
     .stringConf
     .createWithDefault("spark_shuffle")

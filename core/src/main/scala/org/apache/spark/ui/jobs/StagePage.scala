@@ -80,18 +80,17 @@ private[ui] class StagePage(parent: StagesTab, store: AppStatusStore) extends We
   }
 
   def render(request: HttpServletRequest): Seq[Node] = {
-    // stripXSS is called first to remove suspicious characters used in XSS attacks
-    val parameterId = UIUtils.stripXSS(request.getParameter("id"))
+    val parameterId = request.getParameter("id")
     require(parameterId != null && parameterId.nonEmpty, "Missing id parameter")
 
-    val parameterAttempt = UIUtils.stripXSS(request.getParameter("attempt"))
+    val parameterAttempt = request.getParameter("attempt")
     require(parameterAttempt != null && parameterAttempt.nonEmpty, "Missing attempt parameter")
 
-    val parameterTaskPage = UIUtils.stripXSS(request.getParameter("task.page"))
-    val parameterTaskSortColumn = UIUtils.stripXSS(request.getParameter("task.sort"))
-    val parameterTaskSortDesc = UIUtils.stripXSS(request.getParameter("task.desc"))
-    val parameterTaskPageSize = UIUtils.stripXSS(request.getParameter("task.pageSize"))
-    val parameterTaskPrevPageSize = UIUtils.stripXSS(request.getParameter("task.prevPageSize"))
+    val parameterTaskPage = request.getParameter("task.page")
+    val parameterTaskSortColumn = request.getParameter("task.sort")
+    val parameterTaskSortDesc = request.getParameter("task.desc")
+    val parameterTaskPageSize = request.getParameter("task.pageSize")
+    val parameterTaskPrevPageSize = request.getParameter("task.prevPageSize")
 
     val taskPage = Option(parameterTaskPage).map(_.toInt).getOrElse(1)
     val taskSortColumn = Option(parameterTaskSortColumn).map { sortColumn =>

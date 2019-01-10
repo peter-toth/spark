@@ -88,12 +88,6 @@ object OrcReadBenchmark extends SQLHelper {
           spark.sql("SELECT sum(id) FROM nativeOrcTable").collect()
         }
 
-        benchmark.addCase("Native ORC Vectorized with copy") { _ =>
-          withSQLConf(SQLConf.ORC_COPY_BATCH_TO_SPARK.key -> "true") {
-            spark.sql("SELECT sum(id) FROM nativeOrcTable").collect()
-          }
-        }
-
         benchmark.addCase("Hive built-in ORC") { _ =>
           spark.sql("SELECT sum(id) FROM hiveOrcTable").collect()
         }
@@ -171,12 +165,6 @@ object OrcReadBenchmark extends SQLHelper {
           spark.sql("SELECT sum(c1), sum(length(c2)) FROM nativeOrcTable").collect()
         }
 
-        benchmark.addCase("Native ORC Vectorized with copy") { _ =>
-          withSQLConf(SQLConf.ORC_COPY_BATCH_TO_SPARK.key -> "true") {
-            spark.sql("SELECT sum(c1), sum(length(c2)) FROM nativeOrcTable").collect()
-          }
-        }
-
         benchmark.addCase("Hive built-in ORC") { _ =>
           spark.sql("SELECT sum(c1), sum(length(c2)) FROM hiveOrcTable").collect()
         }
@@ -217,12 +205,6 @@ object OrcReadBenchmark extends SQLHelper {
           spark.sql("SELECT sum(id) FROM nativeOrcTable").collect()
         }
 
-        benchmark.addCase("Data column - Native ORC Vectorized with copy") { _ =>
-          withSQLConf(SQLConf.ORC_COPY_BATCH_TO_SPARK.key -> "true") {
-            spark.sql("SELECT sum(id) FROM nativeOrcTable").collect()
-          }
-        }
-
         benchmark.addCase("Data column - Hive built-in ORC") { _ =>
           spark.sql("SELECT sum(id) FROM hiveOrcTable").collect()
         }
@@ -237,12 +219,6 @@ object OrcReadBenchmark extends SQLHelper {
           spark.sql("SELECT sum(p) FROM nativeOrcTable").collect()
         }
 
-        benchmark.addCase("Partition column - Native ORC Vectorized with copy") { _ =>
-          withSQLConf(SQLConf.ORC_COPY_BATCH_TO_SPARK.key -> "true") {
-            spark.sql("SELECT sum(p) FROM nativeOrcTable").collect()
-          }
-        }
-
         benchmark.addCase("Partition column - Hive built-in ORC") { _ =>
           spark.sql("SELECT sum(p) FROM hiveOrcTable").collect()
         }
@@ -255,12 +231,6 @@ object OrcReadBenchmark extends SQLHelper {
 
         benchmark.addCase("Both columns - Native ORC Vectorized") { _ =>
           spark.sql("SELECT sum(p), sum(id) FROM nativeOrcTable").collect()
-        }
-
-        benchmark.addCase("Both column - Native ORC Vectorized with copy") { _ =>
-          withSQLConf(SQLConf.ORC_COPY_BATCH_TO_SPARK.key -> "true") {
-            spark.sql("SELECT sum(p), sum(id) FROM nativeOrcTable").collect()
-          }
         }
 
         benchmark.addCase("Both columns - Hive built-in ORC") { _ =>
@@ -310,12 +280,6 @@ object OrcReadBenchmark extends SQLHelper {
           spark.sql("SELECT sum(length(c1)) FROM nativeOrcTable").collect()
         }
 
-        benchmark.addCase("Native ORC Vectorized with copy") { _ =>
-          withSQLConf(SQLConf.ORC_COPY_BATCH_TO_SPARK.key -> "true") {
-            spark.sql("SELECT sum(length(c1)) FROM nativeOrcTable").collect()
-          }
-        }
-
         benchmark.addCase("Hive built-in ORC") { _ =>
           spark.sql("SELECT sum(length(c1)) FROM hiveOrcTable").collect()
         }
@@ -359,13 +323,6 @@ object OrcReadBenchmark extends SQLHelper {
         benchmark.addCase("Native ORC Vectorized") { _ =>
           spark.sql("SELECT SUM(LENGTH(c2)) FROM nativeOrcTable " +
             "WHERE c1 IS NOT NULL AND c2 IS NOT NULL").collect()
-        }
-
-        benchmark.addCase("Native ORC Vectorized with copy") { _ =>
-          withSQLConf(SQLConf.ORC_COPY_BATCH_TO_SPARK.key -> "true") {
-            spark.sql("SELECT SUM(LENGTH(c2)) FROM nativeOrcTable " +
-              "WHERE c1 IS NOT NULL AND c2 IS NOT NULL").collect()
-          }
         }
 
         benchmark.addCase("Hive built-in ORC") { _ =>
@@ -424,12 +381,6 @@ object OrcReadBenchmark extends SQLHelper {
 
         benchmark.addCase("Native ORC Vectorized") { _ =>
           spark.sql(s"SELECT sum(c$middle) FROM nativeOrcTable").collect()
-        }
-
-        benchmark.addCase("Native ORC Vectorized with copy") { _ =>
-          withSQLConf(SQLConf.ORC_COPY_BATCH_TO_SPARK.key -> "true") {
-            spark.sql(s"SELECT sum(c$middle) FROM nativeOrcTable").collect()
-          }
         }
 
         benchmark.addCase("Hive built-in ORC") { _ =>

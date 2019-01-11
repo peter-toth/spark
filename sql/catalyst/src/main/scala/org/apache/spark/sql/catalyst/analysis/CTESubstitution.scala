@@ -17,8 +17,9 @@
 
 package org.apache.spark.sql.catalyst.analysis
 
+import org.apache.spark.sql.AnalysisException
 import org.apache.spark.sql.catalyst.expressions.SubqueryExpression
-import org.apache.spark.sql.catalyst.plans.logical.{LogicalPlan, With}
+import org.apache.spark.sql.catalyst.plans.logical.{Distinct, Except, LogicalPlan, RecursiveTable, SubqueryAlias, Union, With}
 import org.apache.spark.sql.catalyst.rules.Rule
 import org.apache.spark.sql.internal.SQLConf
 import org.apache.spark.sql.internal.SQLConf.LEGACY_CTE_PRECEDENCE_ENABLED
@@ -37,11 +38,13 @@ object CTESubstitution extends Rule[LogicalPlan] {
 
   private def legacyTraverseAndSubstituteCTE(plan: LogicalPlan): LogicalPlan = {
     plan.resolveOperatorsUp {
-      case With(child, relations) =>
+      case With(child, relations, allowRecursion) =>
         // substitute CTE expressions right-to-left to resolve references to previous CTEs:
         // with a as (select * from t), b as (select * from a) select * from b
         relations.foldRight(child) {
-          case ((cteName, ctePlan), currentPlan) => substituteCTE(currentPlan, cteName, ctePlan)
+          case ((cteName, ctePlan), currentPlan) =>
+            val recursionHandledPlan = handleRecursion(ctePlan, cteName, allowRecursion)
+            substituteCTE(currentPlan, cteName, recursionHandledPlan)
         }
     }
   }
@@ -91,7 +94,7 @@ object CTESubstitution extends Rule[LogicalPlan] {
    */
   private def traverseAndSubstituteCTE(plan: LogicalPlan, inTraverse: Boolean): LogicalPlan = {
     plan.resolveOperatorsUp {
-      case With(child: LogicalPlan, relations) =>
+      case With(child: LogicalPlan, relations, allowRecursion) =>
         // child might contain an inner CTE that has priority so traverse and substitute inner CTEs
         // in child first
         val traversedChild: LogicalPlan = child transformExpressions {
@@ -108,7 +111,9 @@ object CTESubstitution extends Rule[LogicalPlan] {
             // computation if it is not used and to avoid multiple recomputation if it is used
             // multiple times we use a lazy construct with call-by-name parameter passing.
             lazy val substitutedCTEPlan = traverseAndSubstituteCTE(ctePlan, true)
-            substituteCTE(currentPlan, cteName, substitutedCTEPlan)
+            lazy val recursionHandledPlan =
+              handleRecursion(substitutedCTEPlan, cteName, allowRecursion)
+            substituteCTE(currentPlan, cteName, recursionHandledPlan)
         }
 
       // CTE name collision can occur only when inTraverse is true, it helps to avoid eager CTE
@@ -117,6 +122,102 @@ object CTESubstitution extends Rule[LogicalPlan] {
         other.transformExpressions {
           case e: SubqueryExpression => e.withNewPlan(traverseAndSubstituteCTE(e.plan, true))
         }
+    }
+  }
+
+  private def handleRecursion(
+      plan: => LogicalPlan,
+      recursiveTableName: String,
+      allowRecursion: Boolean): LogicalPlan = {
+    if (allowRecursion) {
+      val (recursiveReferencesPlan, recursiveReferenceFound) =
+        insertRecursiveReferences(plan, recursiveTableName)
+      if (recursiveReferenceFound) {
+        recursiveReferencesPlan match {
+          case SubqueryAlias(_, u: Union) =>
+            insertRecursiveTable(recursiveTableName, Seq.empty, false, u)
+          case SubqueryAlias(_, Distinct(u: Union)) =>
+            insertRecursiveTable(recursiveTableName, Seq.empty, true, u)
+          case SubqueryAlias(_, UnresolvedSubqueryColumnAliases(columnNames, u: Union)) =>
+            insertRecursiveTable(recursiveTableName, columnNames, false, u)
+          case SubqueryAlias(_, UnresolvedSubqueryColumnAliases(columnNames, Distinct(u: Union))) =>
+            insertRecursiveTable(recursiveTableName, columnNames, true, u)
+          case _ =>
+            throw new AnalysisException(s"Recursive query ${recursiveTableName} should contain " +
+              s"UNION or UNION ALL statements only. This error can also be caused by ORDER BY or " +
+              s"LIMIT keywords used on result of UNION or UNION ALL.")
+        }
+      } else {
+        plan
+      }
+    } else {
+      plan
+    }
+  }
+
+  private def insertRecursiveReferences(
+      plan: LogicalPlan,
+      recursiveTableName: String): (LogicalPlan, Boolean) = {
+    var recursiveReferenceFound = false
+
+    val newPlan = plan resolveOperatorsUp {
+      case u @ UnresolvedRelation(Seq(table)) if (plan.conf.resolver(recursiveTableName, table)) =>
+        recursiveReferenceFound = true
+        UnresolvedRecursiveReference(recursiveTableName, false)
+
+      case other =>
+        other transformExpressions {
+          case e: SubqueryExpression =>
+            val (substitutedPlan, recursiveReferenceFoundInSubQuery) =
+              insertRecursiveReferences(e.plan, recursiveTableName)
+            recursiveReferenceFound |= recursiveReferenceFoundInSubQuery
+            e.withNewPlan(substitutedPlan)
+        }
+    }
+
+    (newPlan, recursiveReferenceFound)
+  }
+
+  private def insertRecursiveTable(
+      recursiveTableName: String,
+      columnNames: Seq[String],
+      distinct: Boolean,
+      union: Union): LogicalPlan = {
+    val terms = combineUnions(union, distinct)
+    val (anchorTerms, recursiveTerms) = terms.partition(!_.collectFirst {
+      case UnresolvedRecursiveReference(name, false) if name == recursiveTableName => true
+    }.isDefined)
+
+    if (anchorTerms.isEmpty) {
+      throw new AnalysisException("There should be at least one anchor term defined in the " +
+        s"recursive query ${recursiveTableName}")
+    }
+
+    val firstAnchor = SubqueryAlias(
+      recursiveTableName,
+      if (columnNames.isEmpty) {
+        anchorTerms.head
+      } else {
+        UnresolvedSubqueryColumnAliases(columnNames, anchorTerms.head)
+      })
+
+    val (distinctHandledAnchorTerms, distinctHandledRecursiveTerms) = if (distinct) {
+      (Seq(firstAnchor), (anchorTerms.tail ++ recursiveTerms).map(
+        Except(_, UnresolvedRecursiveReference(recursiveTableName, true), false)
+      ))
+    } else {
+      (firstAnchor +: anchorTerms.tail, recursiveTerms)
+    }
+
+    RecursiveTable(recursiveTableName, distinctHandledAnchorTerms, distinctHandledRecursiveTerms,
+      None)
+  }
+
+  private def combineUnions(union: Union, distinct: Boolean): Seq[LogicalPlan] = {
+    union.children.flatMap {
+      case Distinct(u: Union) if distinct => combineUnions(u, true)
+      case u: Union if !distinct => combineUnions(u, false)
+      case o => Seq(o)
     }
   }
 

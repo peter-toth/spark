@@ -19,18 +19,24 @@ package org.apache.spark.sql.execution
 
 import java.util.concurrent.TimeUnit._
 
+import scala.collection.mutable.ArrayBuffer
 import scala.concurrent.{ExecutionContext, Future}
 import scala.concurrent.duration.Duration
 
-import org.apache.spark.{InterruptibleIterator, Partition, SparkContext, TaskContext}
+import org.apache.spark._
 import org.apache.spark.rdd.{EmptyRDD, PartitionwiseSampledRDD, RDD}
 import org.apache.spark.sql.catalyst.InternalRow
 import org.apache.spark.sql.catalyst.expressions._
 import org.apache.spark.sql.catalyst.expressions.BindReferences.bindReferences
 import org.apache.spark.sql.catalyst.expressions.codegen._
+import org.apache.spark.sql.catalyst.plans.QueryPlan
+import org.apache.spark.sql.catalyst.plans.logical.{Except, LogicalPlan, RecursiveReference, Statistics}
+import org.apache.spark.sql.catalyst.plans.logical.statsEstimation.EstimationUtils
 import org.apache.spark.sql.catalyst.plans.physical._
 import org.apache.spark.sql.execution.metric.SQLMetrics
+import org.apache.spark.sql.internal.SQLConf
 import org.apache.spark.sql.types.{LongType, StructType}
+import org.apache.spark.storage.StorageLevel
 import org.apache.spark.util.ThreadUtils
 import org.apache.spark.util.random.{BernoulliCellSampler, PoissonSampler}
 
@@ -226,6 +232,134 @@ case class FilterExec(condition: Expression, child: SparkPlan)
   override def outputOrdering: Seq[SortOrder] = child.outputOrdering
 
   override def outputPartitioning: Partitioning = child.outputPartitioning
+}
+
+/** Physical plan for RecursiveTable. */
+case class RecursiveTableExec(
+    name: String,
+    anchorTerms: Seq[SparkPlan],
+    @transient
+    val recursiveTerms: Seq[LogicalPlan],
+    limit: Option[Long]) extends SparkPlan {
+  override def children: Seq[SparkPlan] = anchorTerms
+
+  override def output: Seq[Attribute] = anchorTerms.head.output.map(_.withNullability(true))
+
+  override def simpleString(maxFields: Int): String =
+    s"RecursiveTable $name${limit.map(", " + _).getOrElse("")}"
+
+  override def innerChildren: Seq[QueryPlan[_]] = recursiveTerms ++ super.innerChildren
+
+  override protected def doExecute(): RDD[InternalRow] = {
+    val storageLevel = StorageLevel.fromString(conf.getConf(SQLConf.RECURSION_CACHE_STORAGE_LEVEL))
+
+    val prevIterationRDDs = ArrayBuffer.empty[RDD[InternalRow]]
+    var prevIterationCount = 0L
+
+    val anchorTermsIterator = anchorTerms.iterator
+    while (anchorTermsIterator.hasNext && limit.forall(_ > prevIterationCount)) {
+      val anchorTerm = anchorTermsIterator.next()
+
+      lazy val cumulatedResult = if (prevIterationRDDs.size > 1) {
+        sparkContext.union(prevIterationRDDs)
+      } else {
+        prevIterationRDDs.head
+      }
+
+      anchorTerm.foreach {
+        case rr: RecursiveReferenceExec if rr.name == name => rr.recursiveTable = cumulatedResult
+        case _ =>
+      }
+
+      val rdd = anchorTerm.execute().map(_.copy()).persist(storageLevel)
+      val count = rdd.count()
+      if (count > 0) {
+        prevIterationRDDs += rdd
+        prevIterationCount += count
+      }
+    }
+
+    val cumulatedRDDs = ArrayBuffer(prevIterationRDDs: _*)
+    var cumulatedCount = prevIterationCount
+    var level = 0
+    val levelLimit = conf.getConf(SQLConf.RECURSION_LEVEL_LIMIT)
+    while (prevIterationCount > 0 && limit.forall(_ > cumulatedCount)) {
+      if (level > levelLimit) {
+        throw new SparkException(s"Recursion level limit ${levelLimit} reached but query has not " +
+          s"exhausted, try increasing ${SQLConf.RECURSION_LEVEL_LIMIT.key}")
+      }
+
+      val prevIterationResult = if (prevIterationRDDs.size > 1) {
+        sparkContext.union(prevIterationRDDs)
+      } else {
+        prevIterationRDDs.head
+      }
+
+      prevIterationRDDs.clear()
+      prevIterationCount = 0
+      val recursiveTermsIterator = recursiveTerms.iterator
+      while (recursiveTermsIterator.hasNext
+        && limit.forall(_ > cumulatedCount + prevIterationCount)) {
+        val recursiveTerm = recursiveTermsIterator.next()
+
+        recursiveTerm.foreach {
+          case rr: RecursiveReference if rr.name == name && !rr.cumulated =>
+            rr.statistics = Statistics(
+              EstimationUtils.getSizePerRow(output) * prevIterationCount,
+              Some(prevIterationCount)
+            )
+          case rr: RecursiveReference if rr.name == name =>
+            rr.statistics = Statistics(
+              EstimationUtils.getSizePerRow(output) * (cumulatedCount + prevIterationCount),
+              Some(cumulatedCount + prevIterationCount)
+            )
+          case _ =>
+        }
+
+        val physicalRecursiveTerm =
+          new QueryExecution(sqlContext.sparkSession, recursiveTerm, alreadyOptimized = true)
+            .executedPlan
+
+        lazy val cumulatedResult = if (cumulatedRDDs.size + prevIterationRDDs.size > 1) {
+          sparkContext.union(cumulatedRDDs ++ prevIterationRDDs)
+        } else {
+          cumulatedRDDs.head
+        }
+
+        physicalRecursiveTerm.foreach {
+          case rr: RecursiveReferenceExec if rr.name == name && !rr.cumulated =>
+            rr.recursiveTable = prevIterationResult
+          case rr: RecursiveReferenceExec if rr.name == name => rr.recursiveTable = cumulatedResult
+          case _ =>
+        }
+
+        val rdd = physicalRecursiveTerm.execute().map(_.copy()).persist(storageLevel)
+        val count = rdd.count()
+        if (count > 0) {
+          prevIterationRDDs += rdd
+          prevIterationCount += count
+        }
+      }
+
+      cumulatedRDDs ++= prevIterationRDDs
+      cumulatedCount += prevIterationCount
+      level = level + 1
+    }
+
+    sparkContext.union(cumulatedRDDs)
+  }
+}
+
+/** Physical plan for RecursiveReference. */
+case class RecursiveReferenceExec(
+    name: String,
+    output: Seq[Attribute],
+    cumulated: Boolean) extends LeafExecNode {
+  // this will be updated in RecursiveTableExec before the actual execution
+  @transient
+  var recursiveTable: RDD[InternalRow] = _
+
+  override protected def doExecute(): RDD[InternalRow] = recursiveTable
 }
 
 /**

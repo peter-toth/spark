@@ -17,6 +17,8 @@
 
 package org.apache.spark.sql.catalyst.analysis
 
+import scala.collection.mutable.Map
+
 import org.apache.spark.api.python.PythonEvalType
 import org.apache.spark.sql.AnalysisException
 import org.apache.spark.sql.catalog.v2.TableChange.{AddColumn, DeleteColumn, RenameColumn, UpdateColumnComment, UpdateColumnType}
@@ -513,6 +515,7 @@ trait CheckAnalysis extends PredicateHelper {
           case _ => // Analysis successful!
         }
     }
+    checkRecursion(plan)
     extendedCheckRules.foreach(_(plan))
     plan.foreachUp {
       case o if !o.resolved =>
@@ -521,6 +524,64 @@ trait CheckAnalysis extends PredicateHelper {
     }
 
     plan.setAnalyzed()
+  }
+
+  /**
+   * Recursion according to SQL standard comes with several limitations due to the fact that only
+   * those operations are allowed where the new set of rows can be computed from the result of
+   * the previous iteration. This implies that a recursive reference can't be used in some kinds of
+   * joins, aggregation, distinct computation and subqueries.
+   * A further constraint is that a recursive term can contain one recursive reference only (except
+   * for using it on different sides of a UNION).
+   *
+   * This rules checks that these restrictions are not violated and returns the original plan.
+   */
+  private def checkRecursion(
+      plan: LogicalPlan,
+      allowedRecursiveReferencesAndCounts: Map[String, Int] = Map.empty): Unit = {
+    plan match {
+      case RecursiveTable(name, anchorTerms, recursiveTerms, _) =>
+        if (allowedRecursiveReferencesAndCounts.contains(name)) {
+          throw new AnalysisException(s"Recursive CTE definition $name is already in use.")
+        }
+        anchorTerms.map(checkRecursion(_, allowedRecursiveReferencesAndCounts))
+        recursiveTerms.map(checkRecursion(_, allowedRecursiveReferencesAndCounts += name -> 0))
+        allowedRecursiveReferencesAndCounts -= name
+      case RecursiveReference(name, _, false) =>
+        if (!allowedRecursiveReferencesAndCounts.contains(name)) {
+          throw new AnalysisException(s"Recursive reference $name cannot be used here. This can " +
+            s"be caused by using it on inner side of an outer join, using it with aggregate or " +
+            s"distinct, using it in a subquery or using it multiple times in a recursive term (" +
+            s"except for using it on different sides of an UNION ALL).")
+        }
+        if (allowedRecursiveReferencesAndCounts(name) > 0) {
+          throw new AnalysisException(s"Recursive reference $name cannot be used multiple times " +
+            s"in a recursive term")
+        }
+
+        allowedRecursiveReferencesAndCounts +=
+          name -> (allowedRecursiveReferencesAndCounts(name) + 1)
+      case Join(left, right, Inner, _, _) =>
+        checkRecursion(left, allowedRecursiveReferencesAndCounts)
+        checkRecursion(right, allowedRecursiveReferencesAndCounts)
+      case Join(left, right, LeftOuter, _, _) =>
+        checkRecursion(left, allowedRecursiveReferencesAndCounts)
+        checkRecursion(right, Map.empty)
+      case Join(left, right, RightOuter, _, _) =>
+        checkRecursion(left, Map.empty)
+        checkRecursion(right, allowedRecursiveReferencesAndCounts)
+      case Join(left, right, _, _, _) =>
+        checkRecursion(left, Map.empty)
+        checkRecursion(right, Map.empty)
+      case Aggregate(_, _, child) => checkRecursion(child, Map.empty)
+      case Union(children) =>
+        children.map(checkRecursion(_,
+          Map(allowedRecursiveReferencesAndCounts.keys.map(name => name -> 0).toSeq: _*)))
+      case Distinct(child) => checkRecursion(child, Map.empty)
+      case o =>
+        o.subqueries.foreach(checkRecursion(_, Map.empty))
+        o.children.map(checkRecursion(_, allowedRecursiveReferencesAndCounts))
+    }
   }
 
   /**

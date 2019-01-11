@@ -1777,6 +1777,13 @@ object SQLConf {
     .doc("When true, the upcast will be loose and allows string to atomic types.")
     .booleanConf
     .createWithDefault(false)
+
+  val RECURSION_LEVEL_LIMIT = buildConf("spark.sql.cte.recursion.level.limit")
+    .internal()
+    .doc("Maximum level of recursion that is allowed wile executing a recursive CTE definition." +
+      "If a query does not get exhausted before reaching this limit it fails.")
+    .intConf
+    .createWithDefault(100)
 }
 
 /**
@@ -2234,6 +2241,8 @@ class SQLConf extends Serializable with Logging {
   def castDatetimeToString: Boolean = getConf(SQLConf.LEGACY_CAST_DATETIME_TO_STRING)
 
   def defaultV2Catalog: Option[String] = getConf(DEFAULT_V2_CATALOG)
+
+  def recursionLevelLimit: Int = getConf(SQLConf.RECURSION_LEVEL_LIMIT)
 
   /** ********************** SQLConf functionality methods ************ */
 

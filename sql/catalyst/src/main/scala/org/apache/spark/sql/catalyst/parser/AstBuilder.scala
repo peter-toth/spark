@@ -130,7 +130,7 @@ class AstBuilder(conf: SQLConf) extends SqlBaseBaseVisitor[AnyRef] with Logging 
     }
     // Check for duplicate names.
     checkDuplicateKeys(ctes, ctx)
-    With(plan, ctes)
+    With(plan, ctes, ctx.RECURSIVE() != null)
   }
 
   override def visitQueryWithFrom(ctx: QueryWithFromContext): LogicalPlan = withOrigin(ctx) {

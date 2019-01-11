@@ -298,7 +298,7 @@ describeColName
     ;
 
 ctes
-    : WITH namedQuery (',' namedQuery)*
+    : WITH RECURSIVE? namedQuery (',' namedQuery)*
     ;
 
 namedQuery
@@ -941,6 +941,7 @@ ansiNonReserved
     | RECORDREADER
     | RECORDWRITER
     | RECOVER
+    | RECURSIVE
     | REDUCE
     | REFRESH
     | RENAME
@@ -1190,6 +1191,7 @@ nonReserved
     | RECORDREADER
     | RECORDWRITER
     | RECOVER
+    | RECURSIVE
     | REDUCE
     | REFERENCES
     | REFRESH
@@ -1442,6 +1444,7 @@ RANGE: 'RANGE';
 RECORDREADER: 'RECORDREADER';
 RECORDWRITER: 'RECORDWRITER';
 RECOVER: 'RECOVER';
+RECURSIVE: 'RECURSIVE';
 REDUCE: 'REDUCE';
 REFERENCES: 'REFERENCES';
 REFRESH: 'REFRESH';

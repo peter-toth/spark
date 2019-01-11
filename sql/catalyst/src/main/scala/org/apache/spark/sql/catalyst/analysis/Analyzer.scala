@@ -167,6 +167,7 @@ class Analyzer(
       ResolveTableValuedFunctions ::
       ResolveRelations ::
       ResolveReferences ::
+      ResolveRecursiveReferences ::
       ResolveCreateNamedStruct ::
       ResolveDeserializer ::
       ResolveNewInstance ::
@@ -212,33 +213,144 @@ class Analyzer(
       CleanupAliases)
   )
 
-  /**
-   * Analyze cte definitions and substitute child plan with analyzed cte definitions.
-   */
-  object CTESubstitution extends Rule[LogicalPlan] {
-    def apply(plan: LogicalPlan): LogicalPlan = plan.resolveOperatorsUp {
-      case With(child, relations) =>
-        substituteCTE(child, relations.foldLeft(Seq.empty[(String, LogicalPlan)]) {
-          case (resolved, (name, relation)) =>
-            resolved :+ name -> executeSameContext(substituteCTE(relation, resolved))
-        })
-      case other => other
-    }
+  object ResolveRecursiveReferences extends Rule[LogicalPlan] {
+    def apply(plan: LogicalPlan): LogicalPlan = resolve(plan)
 
-    def substituteCTE(plan: LogicalPlan, cteRelations: Seq[(String, LogicalPlan)]): LogicalPlan = {
-      plan resolveOperatorsDown {
-        case u: UnresolvedRelation =>
-          cteRelations.find(x => resolver(x._1, u.tableIdentifier.table))
-            .map(_._2).getOrElse(u)
+    private def resolve(
+        plan: LogicalPlan,
+        recursiveTables: mutable.Map[String, Seq[Attribute]] = mutable.Map.empty): LogicalPlan = {
+      plan.foreach {
+        case rt @ RecursiveTable(name, _, _, _) if rt.anchorsResolved =>
+          recursiveTables += name -> rt.output
+        case _ =>
+      }
+
+      plan.resolveOperatorsUp {
+        case UnresolvedRecursiveReference(name) if recursiveTables.contains(name) =>
+          // creating new instance of attributes here makes possible to avoid complex attribute
+          // handling in FoldablePropagation
+          RecursiveReference(name, recursiveTables(name).map(_.newInstance()))
         case other =>
-          // This cannot be done in ResolveSubquery because ResolveSubquery does not know the CTE.
           other transformExpressions {
-            case e: SubqueryExpression =>
-              e.withNewPlan(substituteCTE(e.plan, cteRelations))
+            case e: SubqueryExpression => e.withNewPlan(resolve(e.plan, recursiveTables))
           }
       }
     }
   }
+
+  /**
+   * Analyze CTE definitions and substitute child plan with analyzed CTE definitions.
+   */
+  object CTESubstitution extends Rule[LogicalPlan] {
+    def apply(plan: LogicalPlan): LogicalPlan = plan.resolveOperatorsUp {
+      case With(child, relations, false) =>
+        substituteCTE(child, relations.foldLeft(Seq.empty[(String, LogicalPlan)]) {
+          case (resolved, (name, relation)) =>
+            resolved :+ name -> executeSameContext(substituteCTE(relation, resolved))
+        })
+      case With(child, relations, true) =>
+        substituteCTE(child, relations.foldLeft(Seq.empty[(String, LogicalPlan)]) {
+          case (resolved, (name, relation)) =>
+            val (substitutedPlan, recursiveReferenceFound) = substituteCTE(relation, resolved, name)
+            val analyzedPlan = executeSameContext(substitutedPlan)
+            resolved :+ name -> (
+              if (recursiveReferenceFound) {
+                insertRecursiveTable(analyzedPlan, name)
+              } else {
+                analyzedPlan
+              })
+        })
+      case other => other
+    }
+
+    private def substituteCTE(
+        plan: LogicalPlan,
+        cteRelations: Seq[(String, LogicalPlan)]): LogicalPlan =
+      if (cteRelations.isEmpty) {
+        plan
+      } else {
+        plan resolveOperatorsDown {
+          case u: UnresolvedRelation =>
+            cteRelations.find(x => resolver(x._1, u.tableIdentifier.table)).map(_._2).getOrElse(u)
+          case other =>
+            // This cannot be done in ResolveSubquery because ResolveSubquery does not know the CTE.
+            other transformExpressions {
+              case e: SubqueryExpression => e.withNewPlan(substituteCTE(e.plan, cteRelations))
+            }
+        }
+      }
+
+    private def substituteCTE(plan: LogicalPlan,
+        cteRelations: Seq[(String, LogicalPlan)],
+        recursiveTableName: String): (LogicalPlan, Boolean) = {
+      var recursiveReferenceFound = false
+
+      val newPlan = plan resolveOperatorsDown {
+        case u: UnresolvedRelation =>
+          val table = u.tableIdentifier.table
+
+          if (resolver(recursiveTableName, table)) {
+            recursiveReferenceFound = true
+            UnresolvedRecursiveReference(recursiveTableName)
+          } else {
+            cteRelations.find(x => resolver(x._1, table)).map(_._2).getOrElse(u)
+          }
+
+        // allows using recursive references in nested CTEs
+        case w @ With(_, cteRelations, _) =>
+          w.copy(cteRelations = cteRelations.map {
+            case (name, sa @ SubqueryAlias(_, plan)) =>
+              val (substitutedPlan, recursiveReferenceFoundInCTE) =
+                substituteCTE(plan, Seq.empty, recursiveTableName)
+              recursiveReferenceFound |= recursiveReferenceFoundInCTE
+
+              (name, sa.copy(child = substitutedPlan))
+          })
+
+        case other =>
+          // This cannot be done in ResolveSubquery because ResolveSubquery does not know the CTE.
+          other transformExpressions {
+            case e: SubqueryExpression =>
+              val (substitutedPlan, recursiveReferenceFoundInSubQuery) =
+                substituteCTE(e.plan, cteRelations, recursiveTableName)
+              recursiveReferenceFound |= recursiveReferenceFoundInSubQuery
+
+              e.withNewPlan(substitutedPlan)
+          }
+      }
+
+      (newPlan, recursiveReferenceFound)
+    }
+
+    private def insertRecursiveTable(plan: LogicalPlan, recursiveTableName: String): LogicalPlan =
+      plan match {
+        case sa @ SubqueryAlias(name, u: Union) if name.identifier == recursiveTableName =>
+          def combineUnions(union: Union): Seq[LogicalPlan] = union.children.flatMap {
+            case u: Union => combineUnions(u)
+            case o => Seq(o)
+          }
+
+          val (anchorTerms, recursiveTerms) = combineUnions(u).partition(!_.collectFirst {
+            case UnresolvedRecursiveReference(name) if name == recursiveTableName => true
+          }.isDefined)
+
+          if (anchorTerms.isEmpty) {
+            throw new AnalysisException("There should be at least one anchor term defined in " +
+              s"the recursive query ${recursiveTableName}")
+          }
+
+          RecursiveTable(
+            recursiveTableName,
+            sa.copy(child = anchorTerms.head) +: anchorTerms.tail,
+            recursiveTerms,
+            None)
+
+        case _ =>
+          throw new AnalysisException(s"Recursive query ${recursiveTableName} should contain " +
+            "UNION ALL statements only. This can also be caused by ORDER BY or LIMIT keywords " +
+            "used on result of UNION ALL.")
+      }
+    }
 
   /**
    * Substitute child plan with WindowSpecDefinitions.
@@ -807,6 +919,10 @@ class Analyzer(
             if AttributeSet(windowExpressions.map(_.toAttribute)).intersect(conflictingAttributes)
               .nonEmpty =>
           (oldVersion, oldVersion.copy(windowExpressions = newAliases(windowExpressions)))
+
+        case oldVersion @ RecursiveReference(_, output)
+            if oldVersion.outputSet.intersect(conflictingAttributes).nonEmpty =>
+          (oldVersion, oldVersion.copy(output = output.map(_.newInstance())))
       }
         // Only handle first case, others will be fixed on the next pass.
         .headOption match {

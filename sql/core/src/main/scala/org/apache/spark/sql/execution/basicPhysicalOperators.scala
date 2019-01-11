@@ -19,17 +19,20 @@ package org.apache.spark.sql.execution
 
 import java.util.concurrent.TimeUnit._
 
+import scala.collection.mutable.ArrayBuffer
 import scala.concurrent.{ExecutionContext, Future}
 import scala.concurrent.duration.Duration
 
-import org.apache.spark.{InterruptibleIterator, Partition, SparkContext, TaskContext}
+import org.apache.spark._
 import org.apache.spark.rdd.{EmptyRDD, PartitionwiseSampledRDD, RDD}
 import org.apache.spark.sql.catalyst.InternalRow
 import org.apache.spark.sql.catalyst.expressions._
 import org.apache.spark.sql.catalyst.expressions.BindReferences.bindReferences
 import org.apache.spark.sql.catalyst.expressions.codegen._
+import org.apache.spark.sql.catalyst.plans.logical.LogicalPlan
 import org.apache.spark.sql.catalyst.plans.physical._
 import org.apache.spark.sql.execution.metric.SQLMetrics
+import org.apache.spark.sql.internal.SQLConf
 import org.apache.spark.sql.types.{LongType, StructType}
 import org.apache.spark.util.ThreadUtils
 import org.apache.spark.util.random.{BernoulliCellSampler, PoissonSampler}
@@ -226,6 +229,90 @@ case class FilterExec(condition: Expression, child: SparkPlan)
   override def outputOrdering: Seq[SortOrder] = child.outputOrdering
 
   override def outputPartitioning: Partitioning = child.outputPartitioning
+}
+
+/** Physical plan for RecursiveTable. */
+case class RecursiveTableExec(
+    name: String,
+    anchorTerms: Seq[SparkPlan],
+    recursiveTerms: Seq[LogicalPlan],
+    limit: Option[Long]) extends SparkPlan {
+  override def children: Seq[SparkPlan] = anchorTerms
+
+  override def output: Seq[Attribute] = anchorTerms.head.output.map(_.withNullability(true))
+
+  override def simpleString(maxFields: Int): String =
+    s"RecursiveTable $name${limit.map(", " + _).getOrElse("")}"
+
+  override def innerChildren: Seq[LogicalPlan] = recursiveTerms
+
+  override protected def doExecute(): RDD[InternalRow] = {
+    val prevIterationRDDs = ArrayBuffer.empty[RDD[InternalRow]]
+    var prevIterationCount = 0L
+    val anchorTermsIterator = anchorTerms.iterator
+    while (anchorTermsIterator.hasNext && limit.forall(_ > prevIterationCount)) {
+      val anchorTerm = anchorTermsIterator.next()
+
+      val rdd = anchorTerm.execute().map(_.copy()).cache()
+      val count = rdd.count()
+      if (count > 0) {
+        prevIterationRDDs += rdd
+        prevIterationCount += count
+      }
+    }
+
+    val allRDDs = ArrayBuffer(prevIterationRDDs: _*)
+    var allCount = prevIterationCount
+    var level = 0
+    val levelLimit = conf.recursionLevelLimit
+    while (prevIterationCount > 0 && limit.forall(_ > allCount)) {
+      if (level > levelLimit) {
+        throw new SparkException(s"Recursion level limit ${levelLimit} reached but query has not " +
+          s"exhausted, try increasing ${SQLConf.RECURSION_LEVEL_LIMIT.key}")
+      }
+
+      val prevIterationResult = sparkContext.union(prevIterationRDDs)
+
+      prevIterationRDDs.clear()
+      prevIterationCount = 0
+      val recursiveTermsIterator = recursiveTerms.iterator
+      while (recursiveTermsIterator.hasNext && limit.forall(_ > allCount + prevIterationCount)) {
+        val recursiveTerm = recursiveTermsIterator.next()
+
+        val newRecursiveTerm =
+          new QueryExecution(sqlContext.sparkSession, recursiveTerm, alreadyAnalyzed = true)
+            .executedPlan
+
+        newRecursiveTerm.foreach {
+          _ match {
+            case rr: RecursiveReferenceExec if rr.name == name =>
+              rr.recursiveTable = prevIterationResult
+            case _ =>
+          }
+        }
+
+        val rdd = newRecursiveTerm.execute().map(_.copy()).cache()
+        val count = rdd.count()
+        if (count > 0) {
+          prevIterationRDDs += rdd
+          prevIterationCount += count
+        }
+      }
+
+      allRDDs ++= prevIterationRDDs
+      allCount += prevIterationCount
+      level = level + 1
+    }
+
+    if (allRDDs.isEmpty) sparkContext.emptyRDD[InternalRow] else sparkContext.union(allRDDs)
+  }
+}
+
+/** Physical plan for RecursiveReference. */
+case class RecursiveReferenceExec(name: String, output: Seq[Attribute]) extends LeafExecNode {
+  var recursiveTable: RDD[InternalRow] = _
+
+  override protected def doExecute(): RDD[InternalRow] = recursiveTable
 }
 
 /**

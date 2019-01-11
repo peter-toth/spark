@@ -44,7 +44,8 @@ import org.apache.spark.util.Utils
 class QueryExecution(
     val sparkSession: SparkSession,
     val logical: LogicalPlan,
-    val tracker: QueryPlanningTracker = new QueryPlanningTracker) {
+    val tracker: QueryPlanningTracker = new QueryPlanningTracker,
+    val alreadyAnalyzed: Boolean = false) {
 
   // TODO: Move the planner an optimizer into here from SessionState.
   protected def planner = sparkSession.sessionState.planner
@@ -57,9 +58,13 @@ class QueryExecution(
     }
   }
 
-  lazy val analyzed: LogicalPlan = tracker.measurePhase(QueryPlanningTracker.ANALYSIS) {
-    SparkSession.setActiveSession(sparkSession)
-    sparkSession.sessionState.analyzer.executeAndCheck(logical, tracker)
+  lazy val analyzed: LogicalPlan = if (alreadyAnalyzed) {
+    logical
+  } else {
+    tracker.measurePhase(QueryPlanningTracker.ANALYSIS) {
+      SparkSession.setActiveSession(sparkSession)
+      sparkSession.sessionState.analyzer.executeAndCheck(logical, tracker)
+    }
   }
 
   lazy val withCachedData: LogicalPlan = {

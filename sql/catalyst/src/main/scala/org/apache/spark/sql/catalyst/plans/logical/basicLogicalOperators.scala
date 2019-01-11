@@ -17,6 +17,7 @@
 
 package org.apache.spark.sql.catalyst.plans.logical
 
+import org.apache.spark.sql.AnalysisException
 import org.apache.spark.sql.catalog.v2.{Identifier, TableCatalog}
 import org.apache.spark.sql.catalog.v2.expressions.Transform
 import org.apache.spark.sql.catalyst.AliasIdentifier
@@ -47,6 +48,64 @@ case class ReturnAnswer(child: LogicalPlan) extends UnaryNode {
  */
 case class Subquery(child: LogicalPlan) extends OrderPreservingUnaryNode {
   override def output: Seq[Attribute] = child.output
+}
+
+/**
+ * This node defines a table that contains one ore more [[RecursiveReference]]s as child nodes
+ * referring to this table. It can be used to define a recursive CTE query and contains an anchor
+ * and a recursive term as children. The result of the anchor and the repeatedly executed recursive
+ * term are combined to form the final result.
+ *
+ * @param name name of the table
+ * @param anchorTerms this child is used for initializing the query
+ * @param recursiveTerms this child is used for extending the set of results with new rows based on
+ *                      the results of the previous iteration (or the anchor in the first iteration)
+ */
+case class RecursiveTable(
+    name: String,
+    anchorTerms: Seq[LogicalPlan],
+    recursiveTerms: Seq[LogicalPlan],
+    limit: Option[Long]) extends LogicalPlan {
+  override def children: Seq[LogicalPlan] = anchorTerms ++ recursiveTerms
+
+  override def output: Seq[Attribute] = anchorTerms.head.output.map(_.withNullability(true))
+
+  override lazy val resolved: Boolean = {
+    val numberOfOutputMatches =
+      children.length > 1 &&
+        childrenResolved &&
+        children.head.output.length > 0 &&
+        children.map(_.output.length).toSet.size == 1
+    if (numberOfOutputMatches) {
+      children.tail.foreach { child =>
+        val outputTypeMatches = child.output.zip(children.head.output).forall {
+          case (l, r) => l.dataType.sameType(r.dataType)
+        }
+        if (!outputTypeMatches) {
+          throw new AnalysisException(s"Recursive table $name term types " +
+            s"${children.head.output.map(_.dataType)} and ${child.output.map(_.dataType)} do " +
+            "not match")
+        }
+      }
+    }
+    numberOfOutputMatches
+  }
+
+  lazy val anchorsResolved = anchorTerms.forall(_.resolved)
+}
+
+/**
+ * This node is a reference to a recursive table in CTE definitions.
+ *
+ * @param name the name of the table it references to
+ * @param output the attributes of the recursive table
+ */
+case class RecursiveReference(name: String, output: Seq[Attribute]) extends LeafNode {
+  override lazy val resolved = output.forall(_.resolved)
+
+  // Since the size of a recursive reference can grow beyond the limit that a broadcast join can
+  // have on the broadcasted side, spark.sql.defaultSizeInBytes is used for estimating the stats.
+  override def computeStats(): Statistics = Statistics(BigInt(conf.defaultSizeInBytes))
 }
 
 case class Project(projectList: Seq[NamedExpression], child: LogicalPlan)
@@ -586,12 +645,16 @@ case class View(
  * @param cteRelations A sequence of pair (alias, the CTE definition) that this CTE defined
  *                     Each CTE can see the base tables and the previously defined CTEs only.
  */
-case class With(child: LogicalPlan, cteRelations: Seq[(String, SubqueryAlias)]) extends UnaryNode {
+case class With(
+    child: LogicalPlan,
+    cteRelations: Seq[(String, SubqueryAlias)],
+    allowRecursion: Boolean = false) extends UnaryNode {
   override def output: Seq[Attribute] = child.output
 
   override def simpleString(maxFields: Int): String = {
     val cteAliases = truncatedString(cteRelations.map(_._1), "[", ", ", "]", maxFields)
-    s"CTE $cteAliases"
+    val recursive = if (allowRecursion) " recursive" else ""
+    s"CTE$recursive $cteAliases"
   }
 
   override def innerChildren: Seq[LogicalPlan] = cteRelations.map(_._2)

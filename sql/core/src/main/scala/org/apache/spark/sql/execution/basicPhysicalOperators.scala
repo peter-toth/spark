@@ -20,7 +20,7 @@ package org.apache.spark.sql.execution
 import scala.concurrent.{ExecutionContext, Future}
 import scala.concurrent.duration.Duration
 
-import org.apache.spark.{InterruptibleIterator, Partition, SparkContext, TaskContext}
+import org.apache.spark._
 import org.apache.spark.rdd.{EmptyRDD, PartitionwiseSampledRDD, RDD}
 import org.apache.spark.sql.catalyst.InternalRow
 import org.apache.spark.sql.catalyst.expressions._
@@ -28,6 +28,7 @@ import org.apache.spark.sql.catalyst.expressions.BindReferences.bindReferences
 import org.apache.spark.sql.catalyst.expressions.codegen._
 import org.apache.spark.sql.catalyst.plans.physical._
 import org.apache.spark.sql.execution.metric.SQLMetrics
+import org.apache.spark.sql.internal.SQLConf
 import org.apache.spark.sql.types.LongType
 import org.apache.spark.util.ThreadUtils
 import org.apache.spark.util.random.{BernoulliCellSampler, PoissonSampler}
@@ -224,6 +225,58 @@ case class FilterExec(condition: Expression, child: SparkPlan)
   override def outputOrdering: Seq[SortOrder] = child.outputOrdering
 
   override def outputPartitioning: Partitioning = child.outputPartitioning
+}
+
+/** Physical plan for RecursiveTable. */
+case class RecursiveTableExec(
+    name: String,
+    anchorTerm: SparkPlan,
+    recursiveTerm: SparkPlan,
+    levelLimit: Int) extends SparkPlan {
+  override def children: Seq[SparkPlan] = Seq(anchorTerm, recursiveTerm)
+
+  override def output: Seq[Attribute] = anchorTerm.output
+
+  override val doNotPrepareInAdvance: Seq[SparkPlan] = Seq(recursiveTerm)
+
+  override protected def doExecute(): RDD[InternalRow] = {
+    var temp = anchorTerm.execute().map(_.copy()).cache()
+    var tempCount = temp.count()
+    var result = temp
+    var level = 0
+    do {
+      if (level > levelLimit) {
+        throw new SparkException(s"Recursion level limit reached but query hasn't exhausted, try " +
+          s"increasing ${SQLConf.RECURSION_LEVEL_LIMIT.key}")
+      }
+
+      val newRecursiveTerm = recursiveTerm.makeDeepCopy()
+      newRecursiveTerm.foreach {
+        _ match {
+          case rr: RecursiveReferenceExec if rr.name == name => rr.recursiveTable = temp
+          case _ =>
+        }
+      }
+
+      val newTemp = newRecursiveTerm.execute().map(_.copy()).cache()
+      tempCount = newTemp.count()
+      temp.unpersist()
+      temp = newTemp
+
+      result = result.union(temp)
+
+      level = level + 1
+    } while (tempCount > 0)
+
+    result
+  }
+}
+
+/** Physical plan for RecursiveReference. */
+case class RecursiveReferenceExec(name: String, output: Seq[Attribute]) extends LeafExecNode {
+  var recursiveTable: RDD[InternalRow] = _
+
+  override protected def doExecute(): RDD[InternalRow] = recursiveTable
 }
 
 /**

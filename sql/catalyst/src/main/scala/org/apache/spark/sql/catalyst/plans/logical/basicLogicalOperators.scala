@@ -17,6 +17,7 @@
 
 package org.apache.spark.sql.catalyst.plans.logical
 
+import org.apache.spark.sql.AnalysisException
 import org.apache.spark.sql.catalyst.AliasIdentifier
 import org.apache.spark.sql.catalyst.analysis.{MultiInstanceRelation, NamedRelation}
 import org.apache.spark.sql.catalyst.catalog.{CatalogStorageFormat, CatalogTable}
@@ -45,6 +46,41 @@ case class ReturnAnswer(child: LogicalPlan) extends UnaryNode {
  */
 case class Subquery(child: LogicalPlan) extends OrderPreservingUnaryNode {
   override def output: Seq[Attribute] = child.output
+}
+
+case class RecursiveTable(
+    name: String,
+    anchorTerm: LogicalPlan,
+    recursiveTerm: LogicalPlan,
+    levelLimit: Int) extends LogicalPlan {
+  override def children: Seq[LogicalPlan] = Seq(anchorTerm, recursiveTerm)
+
+  override def output: Seq[Attribute] = anchorTerm.output.map(_.withNullability(true))
+
+  override lazy val resolved: Boolean = {
+    val numberOfOutputMatches =
+      childrenResolved &&
+      anchorTerm.output.length > 0 &&
+      anchorTerm.output.length == recursiveTerm.output.length
+    if (numberOfOutputMatches) {
+      val typeOfOutputMatches = anchorTerm.output.zip(recursiveTerm.output).forall {
+        case (l, r) => l.dataType.sameType(r.dataType)
+      }
+      if (!typeOfOutputMatches) {
+        throw new AnalysisException(s"Anchor term types ${anchorTerm.output.map(_.dataType)} " +
+          s"and recursive term types ${recursiveTerm.output.map(_.dataType)} doesn't match")
+      }
+    }
+    numberOfOutputMatches
+  }
+
+  lazy val anchorResolved = anchorTerm.resolved
+}
+
+case class RecursiveReference(name: String, output: Seq[Attribute]) extends LeafNode {
+  override lazy val resolved = true
+
+  override def computeStats(): Statistics = Statistics(0)
 }
 
 case class Project(projectList: Seq[NamedExpression], child: LogicalPlan)
@@ -493,7 +529,10 @@ case class View(
  * @param cteRelations A sequence of pair (alias, the CTE definition) that this CTE defined
  *                     Each CTE can see the base tables and the previously defined CTEs only.
  */
-case class With(child: LogicalPlan, cteRelations: Seq[(String, SubqueryAlias)]) extends UnaryNode {
+case class With(
+    child: LogicalPlan,
+    cteRelations: Seq[(String, SubqueryAlias)],
+    allowRecursion: Boolean = false) extends UnaryNode {
   override def output: Seq[Attribute] = child.output
 
   override def simpleString(maxFields: Int): String = {

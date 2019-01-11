@@ -193,11 +193,16 @@ abstract class SparkPlan extends QueryPlan[SparkPlan] with Logging with Serializ
   private var prepared = false
 
   /**
+  * Don't prepare these children when preparing parent.
+  */
+  def doNotPrepareInAdvance: Seq[SparkPlan] = Nil
+
+  /**
    * Prepares this SparkPlan for execution. It's idempotent.
    */
   final def prepare(): Unit = {
     // doPrepare() may depend on it's children, we should call prepare() on all the children first.
-    children.foreach(_.prepare())
+    children.filter(!doNotPrepareInAdvance.contains(_)).foreach(_.prepare())
     synchronized {
       if (!prepared) {
         prepareSubqueries()

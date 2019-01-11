@@ -613,6 +613,9 @@ object ColumnPruning extends Rule[LogicalPlan] {
     // Can't prune the columns on LeafNode
     case p @ Project(_, _: LeafNode) => p
 
+    // Don't prune columns of RecursiveTable
+    case p @ Project(_, _: RecursiveTable) => p
+
     // for all other logical plans that inherits the output from it's children
     // Project over project is handled by the first case, skip it here.
     case p @ Project(_, child) if !child.isInstanceOf[Project] =>

@@ -236,6 +236,11 @@ abstract class TreeNode[BaseType <: TreeNode[BaseType]] extends Product {
   }
 
   /**
+  * Returns a deep copy of the subtree from the node.
+  */
+  def makeDeepCopy(): BaseType = mapChildren(_.makeDeepCopy(), true)
+
+  /**
    * Returns a copy of this node where `rule` has been recursively applied to the tree.
    * When `rule` does not apply to a given node it is left unchanged.
    * Users should not expect a specific directionality. If a specific directionality is needed,
@@ -289,13 +294,13 @@ abstract class TreeNode[BaseType <: TreeNode[BaseType]] extends Product {
   /**
    * Returns a copy of this node where `f` has been applied to all the nodes children.
    */
-  def mapChildren(f: BaseType => BaseType): BaseType = {
-    if (children.nonEmpty) {
+  def mapChildren(f: BaseType => BaseType, forceCopy: Boolean = false): BaseType = {
+    if (forceCopy || children.nonEmpty) {
       var changed = false
       def mapChild(child: Any): Any = child match {
         case arg: TreeNode[_] if containsChild(arg) =>
           val newChild = f(arg.asInstanceOf[BaseType])
-          if (!(newChild fastEquals arg)) {
+          if (forceCopy || !(newChild fastEquals arg)) {
             changed = true
             newChild
           } else {
@@ -314,7 +319,7 @@ abstract class TreeNode[BaseType <: TreeNode[BaseType]] extends Product {
             arg2.asInstanceOf[BaseType]
           }
 
-          if (!(newChild1 fastEquals arg1) || !(newChild2 fastEquals arg2)) {
+          if (forceCopy || !(newChild1 fastEquals arg1) || !(newChild2 fastEquals arg2)) {
             changed = true
             (newChild1, newChild2)
           } else {
@@ -326,7 +331,7 @@ abstract class TreeNode[BaseType <: TreeNode[BaseType]] extends Product {
       val newArgs = mapProductIterator {
         case arg: TreeNode[_] if containsChild(arg) =>
           val newChild = f(arg.asInstanceOf[BaseType])
-          if (!(newChild fastEquals arg)) {
+          if (forceCopy || !(newChild fastEquals arg)) {
             changed = true
             newChild
           } else {
@@ -334,7 +339,7 @@ abstract class TreeNode[BaseType <: TreeNode[BaseType]] extends Product {
           }
         case Some(arg: TreeNode[_]) if containsChild(arg) =>
           val newChild = f(arg.asInstanceOf[BaseType])
-          if (!(newChild fastEquals arg)) {
+          if (forceCopy || !(newChild fastEquals arg)) {
             changed = true
             Some(newChild)
           } else {
@@ -343,7 +348,7 @@ abstract class TreeNode[BaseType <: TreeNode[BaseType]] extends Product {
         case m: Map[_, _] => m.mapValues {
           case arg: TreeNode[_] if containsChild(arg) =>
             val newChild = f(arg.asInstanceOf[BaseType])
-            if (!(newChild fastEquals arg)) {
+            if (forceCopy || !(newChild fastEquals arg)) {
               changed = true
               newChild
             } else {
@@ -357,7 +362,7 @@ abstract class TreeNode[BaseType <: TreeNode[BaseType]] extends Product {
         case nonChild: AnyRef => nonChild
         case null => null
       }
-      if (changed) makeCopy(newArgs) else this
+      if (forceCopy || changed) makeCopy(newArgs) else this
     } else {
       this
     }

@@ -282,7 +282,7 @@ describeColName
     ;
 
 ctes
-    : WITH namedQuery (',' namedQuery)*
+    : WITH recursive=RECURSIVE? namedQuery (',' namedQuery)*
     ;
 
 namedQuery
@@ -1014,6 +1014,7 @@ OPTION: 'OPTION';
 ANTI: 'ANTI';
 LOCAL: 'LOCAL';
 INPATH: 'INPATH';
+RECURSIVE: 'RECURSIVE';
 
 STRING
     : '\'' ( ~('\''|'\\') | ('\\' .) )* '\''

@@ -1625,6 +1625,11 @@ object SQLConf {
         "a SparkConf entry.")
       .booleanConf
       .createWithDefault(true)
+
+  val RECURSION_LEVEL_LIMIT = buildConf("spark.sql.recursion.level.limit")
+    .doc("Maximum level of recursion")
+    .intConf
+    .createWithDefault(100)
 }
 
 /**

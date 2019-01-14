@@ -243,9 +243,10 @@ case class RecursiveTableExec(
     var tempCount = temp.count()
     var result = temp
     var level = 0
+    val levelLimit = conf.getConf(SQLConf.RECURSION_LEVEL_LIMIT)
     do {
-      if (level > conf.getConf(SQLConf.RECURSION_LEVEL_LIMIT)) {
-        throw new SparkException(s"Recursion level limit reached but query hasn't exhausted, try " +
+      if (level > levelLimit) {
+        throw new SparkException("Recursion level limit reached but query hasn't exhausted, try " +
           s"increasing ${SQLConf.RECURSION_LEVEL_LIMIT.key}")
       }
 

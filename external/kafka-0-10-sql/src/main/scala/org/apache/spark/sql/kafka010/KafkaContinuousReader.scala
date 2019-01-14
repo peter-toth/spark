@@ -21,7 +21,7 @@ import java.{util => ju}
 import java.util.concurrent.TimeoutException
 import java.util.function.Supplier
 
-import org.apache.kafka.clients.consumer.{ConsumerRecord, OffsetOutOfRangeException}
+import org.apache.kafka.clients.consumer.{ConsumerConfig, ConsumerRecord, OffsetOutOfRangeException}
 import org.apache.kafka.common.TopicPartition
 
 import org.apache.spark.TaskContext
@@ -101,7 +101,13 @@ class KafkaContinuousReader(
 
     val deletedPartitions = oldStartPartitionOffsets.keySet.diff(currentPartitionSet)
     if (deletedPartitions.nonEmpty) {
-      reportDataLoss(s"Some partitions were deleted: $deletedPartitions")
+      val message = if (
+        offsetReader.driverKafkaParams.containsKey(ConsumerConfig.GROUP_ID_CONFIG)) {
+        s"$deletedPartitions are gone. ${KafkaSourceProvider.CUSTOM_GROUP_ID_ERROR_MESSAGE}"
+      } else {
+        s"$deletedPartitions are gone. Some data may have been missed."
+      }
+      reportDataLoss(message)
     }
 
     val startOffsets = newPartitionOffsets ++

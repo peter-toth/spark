@@ -591,8 +591,7 @@ object FoldablePropagation extends Rule[LogicalPlan] {
     } else {
       CleanupAliases(plan.transformUp {
         // We can only propagate foldables for a subset of unary nodes.
-        case u: UnaryNode if foldableMap.nonEmpty && canPropagateFoldables(u)
-          && !u.child.isInstanceOf[RecursiveReference] =>
+        case u: UnaryNode if foldableMap.nonEmpty && canPropagateFoldables(u) =>
           u.transformExpressions(replaceFoldable)
 
         // Join derives the output attributes from its child while they are actually not the
@@ -601,8 +600,7 @@ object FoldablePropagation extends Rule[LogicalPlan] {
         // propagating the foldable expressions.
         // TODO(cloud-fan): It seems more reasonable to use new attributes as the output attributes
         // of outer join.
-        case j @ Join(left, right, joinType, _, _) if foldableMap.nonEmpty
-          && j.children.forall(!_.isInstanceOf[RecursiveReference]) =>
+        case j @ Join(left, right, joinType, _, _) if foldableMap.nonEmpty =>
           val newJoin = j.transformExpressions(replaceFoldable)
           val missDerivedAttrsSet: AttributeSet = AttributeSet(joinType match {
             case _: InnerLike | LeftExistence(_) => Nil

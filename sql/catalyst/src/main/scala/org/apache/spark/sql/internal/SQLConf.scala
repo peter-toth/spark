@@ -1627,6 +1627,7 @@ object SQLConf {
       .createWithDefault(true)
 
   val RECURSION_LEVEL_LIMIT = buildConf("spark.sql.recursion.level.limit")
+    .internal()
     .doc("Maximum level of recursion")
     .intConf
     .createWithDefault(100)

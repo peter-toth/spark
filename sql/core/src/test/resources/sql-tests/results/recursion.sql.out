@@ -244,7 +244,7 @@ SELECT * FROM r
 struct<>
 -- !query 11 output
 org.apache.spark.sql.AnalysisException
-Recursive reference r can't be used at the right side of a left outer join;
+Wrong usage of recursive reference r;
 
 
 -- !query 12
@@ -260,7 +260,7 @@ SELECT * FROM r
 struct<>
 -- !query 12 output
 org.apache.spark.sql.AnalysisException
-Recursive reference r can't be used at the left side of a right outer join;
+Wrong usage of recursive reference r;
 
 
 -- !query 13
@@ -297,7 +297,7 @@ SELECT * FROM r
 struct<>
 -- !query 14 output
 org.apache.spark.sql.AnalysisException
-Recursive reference r can't be used in an aggregate;
+Wrong usage of recursive reference r;
 
 
 -- !query 15
@@ -338,7 +338,7 @@ SELECT * FROM r
 struct<>
 -- !query 17 output
 org.apache.spark.sql.AnalysisException
-Recursive reference r can't be used with distinct;
+Wrong usage of recursive reference r;
 
 
 -- !query 18

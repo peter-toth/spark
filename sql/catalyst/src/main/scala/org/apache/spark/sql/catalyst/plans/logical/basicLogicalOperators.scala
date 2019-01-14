@@ -51,8 +51,7 @@ case class Subquery(child: LogicalPlan) extends OrderPreservingUnaryNode {
 case class RecursiveTable(
     name: String,
     anchorTerm: LogicalPlan,
-    recursiveTerm: LogicalPlan,
-    levelLimit: Int) extends LogicalPlan {
+    recursiveTerm: LogicalPlan) extends LogicalPlan {
   override def children: Seq[LogicalPlan] = Seq(anchorTerm, recursiveTerm)
 
   override def output: Seq[Attribute] = anchorTerm.output.map(_.withNullability(true))
@@ -78,7 +77,7 @@ case class RecursiveTable(
 }
 
 case class RecursiveReference(name: String, output: Seq[Attribute]) extends LeafNode {
-  override lazy val resolved = true
+  override lazy val resolved = output.forall(_.resolved)
 
   override def computeStats(): Statistics = Statistics(0)
 }

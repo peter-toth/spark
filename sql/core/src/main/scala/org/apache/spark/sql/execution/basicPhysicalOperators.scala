@@ -231,8 +231,7 @@ case class FilterExec(condition: Expression, child: SparkPlan)
 case class RecursiveTableExec(
     name: String,
     anchorTerm: SparkPlan,
-    recursiveTerm: SparkPlan,
-    levelLimit: Int) extends SparkPlan {
+    recursiveTerm: SparkPlan) extends SparkPlan {
   override def children: Seq[SparkPlan] = Seq(anchorTerm, recursiveTerm)
 
   override def output: Seq[Attribute] = anchorTerm.output
@@ -245,7 +244,7 @@ case class RecursiveTableExec(
     var result = temp
     var level = 0
     do {
-      if (level > levelLimit) {
+      if (level > conf.getConf(SQLConf.RECURSION_LEVEL_LIMIT)) {
         throw new SparkException(s"Recursion level limit reached but query hasn't exhausted, try " +
           s"increasing ${SQLConf.RECURSION_LEVEL_LIMIT.key}")
       }

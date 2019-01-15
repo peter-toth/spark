@@ -27,6 +27,7 @@ import org.apache.spark.sql.catalyst.expressions._
 import org.apache.spark.sql.catalyst.expressions.BindReferences.bindReferences
 import org.apache.spark.sql.catalyst.expressions.codegen._
 import org.apache.spark.sql.catalyst.plans.physical._
+import org.apache.spark.sql.execution.exchange.ShuffleExchangeExec
 import org.apache.spark.sql.execution.metric.SQLMetrics
 import org.apache.spark.sql.internal.SQLConf
 import org.apache.spark.sql.types.LongType
@@ -243,14 +244,20 @@ case class RecursiveTableExec(
     var tempCount = temp.count()
     var result = temp
     var level = 0
-    val levelLimit = conf.getConf(SQLConf.RECURSION_LEVEL_LIMIT)
+    val levelLimit = conf.recursionLevelLimit
     do {
       if (level > levelLimit) {
         throw new SparkException("Recursion level limit reached but query hasn't exhausted, try " +
           s"increasing ${SQLConf.RECURSION_LEVEL_LIMIT.key}")
       }
 
-      val newRecursiveTerm = recursiveTerm.makeDeepCopy()
+      val newRecursiveTerm = recursiveTerm.transform {
+        case se @ ShuffleExchangeExec(_, _, co) =>
+          co.map(c => se.copy(coordinator = Some(c.copy))).getOrElse(se)
+      }
+      if (level > 0) {
+        newRecursiveTerm.reset()
+      }
       newRecursiveTerm.foreach {
         _ match {
           case rr: RecursiveReferenceExec if rr.name == name => rr.recursiveTable = temp
@@ -726,29 +733,40 @@ case class SubqueryExec(name: String, child: SparkPlan) extends UnaryExecNode {
   override def outputOrdering: Seq[SortOrder] = child.outputOrdering
 
   @transient
-  private lazy val relationFuture: Future[Array[InternalRow]] = {
-    // relationFuture is used in "doExecute". Therefore we can get the execution id correctly here.
-    val executionId = sparkContext.getLocalProperty(SQLExecution.EXECUTION_ID_KEY)
-    Future {
-      // This will run in another thread. Set the execution id so that we can connect these jobs
-      // with the correct execution.
-      SQLExecution.withExecutionId(sqlContext.sparkSession, executionId) {
-        val beforeCollect = System.nanoTime()
-        // Note that we use .executeCollect() because we don't want to convert data to Scala types
-        val rows: Array[InternalRow] = child.executeCollect()
-        val beforeBuild = System.nanoTime()
-        longMetric("collectTime") += (beforeBuild - beforeCollect) / 1000000
-        val dataSize = rows.map(_.asInstanceOf[UnsafeRow].getSizeInBytes.toLong).sum
-        longMetric("dataSize") += dataSize
+  private var relationFuture: Future[Array[InternalRow]] = _
 
-        SQLMetrics.postDriverMetricUpdates(sparkContext, executionId, metrics.values.toSeq)
-        rows
-      }
-    }(SubqueryExec.executionContext)
+  private def getRelationFuture(): Future[Array[InternalRow]] = {
+    if (relationFuture == null) {
+      // relationFuture is used in "doExecute". Therefore we can get the execution id correctly
+      // here.
+      val executionId = sparkContext.getLocalProperty(SQLExecution.EXECUTION_ID_KEY)
+      relationFuture = Future {
+        // This will run in another thread. Set the execution id so that we can connect these jobs
+        // with the correct execution.
+        SQLExecution.withExecutionId(sqlContext.sparkSession, executionId) {
+          val beforeCollect = System.nanoTime()
+          // Note that we use .executeCollect() because we don't want to convert data to Scala types
+          val rows: Array[InternalRow] = child.executeCollect()
+          val beforeBuild = System.nanoTime()
+          longMetric("collectTime") += (beforeBuild - beforeCollect) / 1000000
+          val dataSize = rows.map(_.asInstanceOf[UnsafeRow].getSizeInBytes.toLong).sum
+          longMetric("dataSize") += dataSize
+
+          SQLMetrics.postDriverMetricUpdates(sparkContext, executionId, metrics.values.toSeq)
+          rows
+        }
+      }(SubqueryExec.executionContext)
+    }
+
+    relationFuture
   }
 
   protected override def doPrepare(): Unit = {
-    relationFuture
+    getRelationFuture()
+  }
+
+  override protected def doReset(): Unit = {
+    relationFuture = null
   }
 
   protected override def doExecute(): RDD[InternalRow] = {
@@ -756,7 +774,7 @@ case class SubqueryExec(name: String, child: SparkPlan) extends UnaryExecNode {
   }
 
   override def executeCollect(): Array[InternalRow] = {
-    ThreadUtils.awaitResult(relationFuture, Duration.Inf)
+    ThreadUtils.awaitResult(getRelationFuture(), Duration.Inf)
   }
 }
 

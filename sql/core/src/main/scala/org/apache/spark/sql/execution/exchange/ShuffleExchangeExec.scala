@@ -140,6 +140,10 @@ case class ShuffleExchangeExec(
     }
     cachedShuffleRDD
   }
+
+  override protected def doReset(): Unit = {
+    cachedShuffleRDD = null
+  }
 }
 
 object ShuffleExchangeExec {

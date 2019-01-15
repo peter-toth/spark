@@ -274,4 +274,7 @@ class ExchangeCoordinator(
   override def toString: String = {
     s"coordinator[target post-shuffle partition size: $advisoryTargetPostShuffleInputSize]"
   }
+
+  def copy: ExchangeCoordinator =
+    new ExchangeCoordinator(advisoryTargetPostShuffleInputSize, minNumPostShufflePartitions)
 }

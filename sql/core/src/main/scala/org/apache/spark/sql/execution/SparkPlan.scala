@@ -212,6 +212,27 @@ abstract class SparkPlan extends QueryPlan[SparkPlan] with Logging with Serializ
     }
   }
 
+  protected def resetSubqueries(): Unit = {
+    expressions.foreach {
+      _.foreach {
+        case e: ExecSubqueryExpression => e.plan.reset()
+        case _ =>
+      }
+    }
+    runningSubqueries.clear()
+  }
+
+  final def reset(): Unit = {
+    children.foreach(_.reset())
+    synchronized {
+      if (prepared) {
+        resetSubqueries()
+        doReset()
+        prepared = false
+      }
+    }
+  }
+
   /**
    * Overridden by concrete implementations of SparkPlan. It is guaranteed to run before any
    * `execute` of SparkPlan. This is helpful if we want to set up some state before executing the
@@ -219,10 +240,10 @@ abstract class SparkPlan extends QueryPlan[SparkPlan] with Logging with Serializ
    *
    * @note `prepare` method has already walked down the tree, so the implementation doesn't have
    * to call children's `prepare` methods.
-   *
-   * This will only be called once, protected by `this`.
    */
   protected def doPrepare(): Unit = {}
+
+  protected def doReset(): Unit = {}
 
   /**
    * Produces the result of the query as an `RDD[InternalRow]`

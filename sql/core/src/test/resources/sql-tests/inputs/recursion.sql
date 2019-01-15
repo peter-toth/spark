@@ -1,3 +1,7 @@
+-- List of configuration the test suite is run against:
+--SET spark.sql.autoBroadcastJoinThreshold=10485760
+--SET spark.sql.autoBroadcastJoinThreshold=-1,spark.sql.adaptive.enabled=true
+
 -- fails due to recursion isn't allowed
 WITH r AS (
   VALUES (0, 'A') AS T(level, data)

@@ -50,7 +50,7 @@ SELECT * FROM r ORDER BY level
 struct<>
 -- !query 2 output
 org.apache.spark.SparkException
-Recursion level limit reached but query hasn't exhausted, try increasing spark.sql.recursion.level.limit
+Recursion level limit reached but query hasn't exhausted, try increasing spark.sql.cte.recursion.level.limit
 
 
 -- !query 3
@@ -184,7 +184,7 @@ SELECT * FROM r
 struct<>
 -- !query 7 output
 org.apache.spark.sql.AnalysisException
-Wrong usage of recursive reference r;
+Recursive query r should contain UNION ALL statements only;
 
 
 -- !query 8
@@ -198,7 +198,7 @@ SELECT * FROM r
 struct<>
 -- !query 8 output
 org.apache.spark.sql.AnalysisException
-There should be at least 1 anchor term defined in a recursive query `r`;
+There should be at least 1 anchor term defined in the recursive query r;
 
 
 -- !query 9
@@ -228,7 +228,7 @@ SELECT * FROM r
 struct<>
 -- !query 10 output
 org.apache.spark.sql.AnalysisException
-Recursive reference can't be used in on both side of an inner join;
+Recursive reference r cannot be used on both sides of an inner join;
 
 
 -- !query 11
@@ -244,7 +244,7 @@ SELECT * FROM r
 struct<>
 -- !query 11 output
 org.apache.spark.sql.AnalysisException
-Wrong usage of recursive reference r;
+Recursive reference r cannot be used here. This can be caused by using it in a different join than inner or left outer or right outer, using it on inner side of an outer join or using it in an aggregate or with a distinct statement;
 
 
 -- !query 12
@@ -260,7 +260,7 @@ SELECT * FROM r
 struct<>
 -- !query 12 output
 org.apache.spark.sql.AnalysisException
-Wrong usage of recursive reference r;
+Recursive reference r cannot be used here. This can be caused by using it in a different join than inner or left outer or right outer, using it on inner side of an outer join or using it in an aggregate or with a distinct statement;
 
 
 -- !query 13
@@ -297,7 +297,7 @@ SELECT * FROM r
 struct<>
 -- !query 14 output
 org.apache.spark.sql.AnalysisException
-Wrong usage of recursive reference r;
+Recursive reference r cannot be used here. This can be caused by using it in a different join than inner or left outer or right outer, using it on inner side of an outer join or using it in an aggregate or with a distinct statement;
 
 
 -- !query 15
@@ -338,7 +338,7 @@ SELECT * FROM r
 struct<>
 -- !query 17 output
 org.apache.spark.sql.AnalysisException
-Wrong usage of recursive reference r;
+Recursive reference r cannot be used here. This can be caused by using it in a different join than inner or left outer or right outer, using it on inner side of an outer join or using it in an aggregate or with a distinct statement;
 
 
 -- !query 18

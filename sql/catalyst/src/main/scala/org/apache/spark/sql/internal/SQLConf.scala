@@ -1626,9 +1626,10 @@ object SQLConf {
       .booleanConf
       .createWithDefault(true)
 
-  val RECURSION_LEVEL_LIMIT = buildConf("spark.sql.recursion.level.limit")
+  val RECURSION_LEVEL_LIMIT = buildConf("spark.sql.cte.recursion.level.limit")
     .internal()
-    .doc("Maximum level of recursion")
+    .doc("Maximum level of recursion that is allowed wile executing a recursive CTE definition." +
+      "If a query does not get exhausted before reaching this limit it fails.")
     .intConf
     .createWithDefault(100)
 }

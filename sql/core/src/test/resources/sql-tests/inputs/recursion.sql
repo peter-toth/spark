@@ -18,7 +18,7 @@ WITH RECURSIVE r AS (
 )
 SELECT * FROM r ORDER BY level;
 
--- unlimited recursion fails at spark.sql.recursion.level.limit level
+-- unlimited recursion fails at spark.sql.cte.recursion.level.limits level
 WITH RECURSIVE r AS (
   VALUES (0, 'A') AS T(level, data)
   UNION ALL

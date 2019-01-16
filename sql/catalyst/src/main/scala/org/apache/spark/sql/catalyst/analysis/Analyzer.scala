@@ -214,6 +214,8 @@ class Analyzer(
 
       plan.resolveOperatorsUp {
         case UnresolvedRecursiveReference(name) if recursiveTables.contains(name) =>
+          // creating new instance of attributes here makes possible to avoid complex attribute
+          // handling in FoldablePropagation
           RecursiveReference(name, recursiveTables(name).output.map(_.newInstance()))
         case other => other
       }
@@ -242,14 +244,7 @@ class Analyzer(
       def substitute(
           plan: LogicalPlan,
           inSubQuery: Boolean = false): (LogicalPlan, Boolean) = {
-        val references = mutable.Set.empty[UnresolvedRecursiveReference]
-
-        def newReference(recursiveTableName: String) = {
-          val recursiveReference = UnresolvedRecursiveReference(recursiveTableName)
-          references += recursiveReference
-
-          recursiveReference
-        }
+        var recursiveReferenceFound = false
 
         val newPlan = plan resolveOperatorsDown {
           case u: UnresolvedRelation =>
@@ -261,7 +256,9 @@ class Analyzer(
                   s"Recursive reference ${name} can't be used in a subquery")
               }
 
-              newReference(name)
+              recursiveReferenceFound = true
+
+              UnresolvedRecursiveReference(name)
             }
 
             recursiveReference
@@ -275,11 +272,11 @@ class Analyzer(
             }
         }
 
-        (newPlan, !references.isEmpty)
+        (newPlan, recursiveReferenceFound)
       }
 
       plan match {
-        case SubqueryAlias(name, u: Union) if recursiveTableName.isDefined =>
+        case SubqueryAlias(name, u: Union) if recursiveTableName.contains(name.identifier) =>
           def combineUnions(union: Union): Seq[LogicalPlan] = union.children.flatMap {
             case u: Union => combineUnions(u)
             case o => Seq(o)
@@ -290,8 +287,8 @@ class Analyzer(
 
           if (!recursiveTerms.isEmpty) {
             if (anchorTerms.isEmpty) {
-              throw new AnalysisException("There should be at least 1 anchor term defined in a " +
-                s"recursive query $name")
+              throw new AnalysisException("There should be at least 1 anchor term defined in the " +
+                s"recursive query ${recursiveTableName.get}")
             }
 
             val recursiveTermPlans = recursiveTerms.map(_._1)
@@ -299,17 +296,20 @@ class Analyzer(
             def traversePlanAndCheck(
                 plan: LogicalPlan,
                 isRecursiveReferenceAllowed: Boolean = true): Boolean = plan match {
-              case UnresolvedRecursiveReference(name) =>
+              case UnresolvedRecursiveReference(name) if recursiveTableName.contains(name) =>
                 if (!isRecursiveReferenceAllowed) {
-                  throw new AnalysisException(s"Wrong usage of recursive reference ${name}")
+                  throw new AnalysisException(s"Recursive reference ${recursiveTableName.get} " +
+                    "cannot be used here. This can be caused by using it in a different join " +
+                    "than inner or left outer or right outer, using it on inner side of an " +
+                    "outer join or using it in an aggregate or with a distinct statement")
                 }
                 true
               case Join(left, right, Inner, _, _) =>
                 val l = traversePlanAndCheck(left, isRecursiveReferenceAllowed)
                 val r = traversePlanAndCheck(right, isRecursiveReferenceAllowed)
                 if (l && r) {
-                  throw new AnalysisException("Recursive reference can't be used in on both " +
-                    "side of an inner join")
+                  throw new AnalysisException(s"Recursive reference ${recursiveTableName.get} " +
+                    "cannot be used on both sides of an inner join")
                 }
                 l || r
               case Join(left, right, LeftOuter, _, _) =>
@@ -318,7 +318,7 @@ class Analyzer(
               case Join(left, right, RightOuter, _, _) =>
                 traversePlanAndCheck(left, false) ||
                   traversePlanAndCheck(right, isRecursiveReferenceAllowed)
-              case Join(left, right, FullOuter, _, _) =>
+              case Join(left, right, _, _, _) =>
                 traversePlanAndCheck(left, false) || traversePlanAndCheck(right, false)
               case Aggregate(_, _, child) => traversePlanAndCheck(child, false)
               case Distinct(child) => traversePlanAndCheck(child, false)
@@ -340,8 +340,8 @@ class Analyzer(
           val (substitutedPlan, recursiveReferenceFound) = substitute(plan)
 
           if (recursiveReferenceFound) {
-            throw new AnalysisException("Wrong usage of recursive reference " +
-              s"${recursiveTableName.get}")
+            throw new AnalysisException(s"Recursive query ${recursiveTableName.get} should " +
+              "contain UNION ALL statements only")
           }
 
           substitutedPlan

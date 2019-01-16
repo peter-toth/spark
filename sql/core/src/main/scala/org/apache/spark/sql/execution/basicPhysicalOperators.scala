@@ -252,8 +252,7 @@ case class RecursiveTableExec(
       }
 
       val newRecursiveTerm = recursiveTerm.transform {
-        case se @ ShuffleExchangeExec(_, _, co) =>
-          co.map(c => se.copy(coordinator = Some(c.copy))).getOrElse(se)
+        case se @ ShuffleExchangeExec(_, _, Some(co)) => se.copy(coordinator = Some(co.copy))
       }
       if (level > 0) {
         newRecursiveTerm.reset()

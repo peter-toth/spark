@@ -26,7 +26,7 @@ import org.apache.spark.sql.catalyst.InternalRow
 import org.apache.spark.sql.catalyst.expressions.{Attribute, AttributeMap, Expression, SortOrder}
 import org.apache.spark.sql.catalyst.plans.physical.Partitioning
 import org.apache.spark.sql.catalyst.rules.Rule
-import org.apache.spark.sql.execution.{LeafExecNode, SparkPlan, UnaryExecNode}
+import org.apache.spark.sql.execution._
 import org.apache.spark.sql.internal.SQLConf
 import org.apache.spark.sql.types.StructType
 
@@ -54,6 +54,10 @@ case class ReusedExchangeExec(override val output: Seq[Attribute], child: Exchan
 
   def doExecute(): RDD[InternalRow] = {
     child.execute()
+  }
+
+  override def doReset(): Unit = {
+    child.reset()
   }
 
   override protected[sql] def doExecuteBroadcast[T](): broadcast.Broadcast[T] = {
@@ -90,11 +94,22 @@ case class ReuseExchange(conf: SQLConf) extends Rule[SparkPlan] {
       return plan
     }
     // Build a hash map using schema of exchanges to avoid O(N*N) sameResult calls.
-    val exchanges = mutable.HashMap[StructType, ArrayBuffer[Exchange]]()
+    // TODO: document recursion related changes
+    val allExchanges = mutable.Stack[mutable.HashMap[StructType, ArrayBuffer[Exchange]]]()
+    allExchanges.push(mutable.HashMap[StructType, ArrayBuffer[Exchange]]())
+    val recursiveTables = mutable.Set.empty[String]
     plan.transformUp {
+      case rr @ RecursiveReferenceExec(name, _) if !recursiveTables.contains(name) =>
+        allExchanges.push(mutable.HashMap[StructType, ArrayBuffer[Exchange]]())
+        recursiveTables += name
+        rr
+      case rt @ RecursiveTableExec(name, _, _, _) =>
+        allExchanges.pop()
+        recursiveTables -= name
+        rt
       case exchange: Exchange =>
         // the exchanges that have same results usually also have same schemas (same column names).
-        val sameSchema = exchanges.getOrElseUpdate(exchange.schema, ArrayBuffer[Exchange]())
+        val sameSchema = allExchanges.top.getOrElseUpdate(exchange.schema, ArrayBuffer[Exchange]())
         val samePlan = sameSchema.find { e =>
           exchange.sameResult(e)
         }

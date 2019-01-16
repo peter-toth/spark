@@ -62,7 +62,8 @@ case class Subquery(child: LogicalPlan) extends OrderPreservingUnaryNode {
 case class RecursiveTable(
     name: String,
     anchorTerm: LogicalPlan,
-    recursiveTerm: LogicalPlan) extends LogicalPlan {
+    recursiveTerm: LogicalPlan,
+    limit: Option[Long]) extends LogicalPlan {
   override def children: Seq[LogicalPlan] = Seq(anchorTerm, recursiveTerm)
 
   override def output: Seq[Attribute] = anchorTerm.output.map(_.withNullability(true))
@@ -553,7 +554,8 @@ case class With(
 
   override def simpleString(maxFields: Int): String = {
     val cteAliases = truncatedString(cteRelations.map(_._1), "[", ", ", "]", maxFields)
-    s"CTE $cteAliases"
+    val recursive = if (allowRecursion) " recursive" else ""
+    s"CTE$recursive $cteAliases"
   }
 
   override def innerChildren: Seq[LogicalPlan] = cteRelations.map(_._2)

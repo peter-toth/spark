@@ -27,7 +27,7 @@ import org.apache.spark.sql.catalyst.expressions._
 import org.apache.spark.sql.catalyst.expressions.BindReferences.bindReferences
 import org.apache.spark.sql.catalyst.expressions.codegen._
 import org.apache.spark.sql.catalyst.plans.physical._
-import org.apache.spark.sql.execution.exchange.{ExchangeCoordinator, ShuffleExchangeExec}
+import org.apache.spark.sql.execution.exchange.{ExchangeCoordinator, ReusedExchangeExec, ShuffleExchangeExec}
 import org.apache.spark.sql.execution.metric.SQLMetrics
 import org.apache.spark.sql.internal.SQLConf
 import org.apache.spark.sql.types.LongType
@@ -232,7 +232,8 @@ case class FilterExec(condition: Expression, child: SparkPlan)
 case class RecursiveTableExec(
     name: String,
     anchorTerm: SparkPlan,
-    recursiveTerm: SparkPlan) extends SparkPlan {
+    recursiveTerm: SparkPlan,
+    limit: Option[Long]) extends SparkPlan { // TODO: how to implement limit?
   override def children: Seq[SparkPlan] = Seq(anchorTerm, recursiveTerm)
 
   override def output: Seq[Attribute] = anchorTerm.output
@@ -243,9 +244,10 @@ case class RecursiveTableExec(
     var temp = anchorTerm.execute().map(_.copy()).cache()
     var tempCount = temp.count()
     var result = temp
+    var sumCount = tempCount
     var level = 0
     val levelLimit = conf.recursionLevelLimit
-    do {
+    while ((level == 0 || tempCount > 0) && limit.map(_ < sumCount).getOrElse(true)) {
       if (level > levelLimit) {
         throw new SparkException("Recursion level limit reached but query hasn't exhausted, try " +
           s"increasing ${SQLConf.RECURSION_LEVEL_LIMIT.key}")
@@ -261,12 +263,16 @@ case class RecursiveTableExec(
       if (level > 0) {
         newRecursiveTerm.reset()
       }
-      newRecursiveTerm.foreach {
+
+      def updateRecursiveTables(plan: SparkPlan): Unit = plan.foreach {
         _ match {
           case rr: RecursiveReferenceExec if rr.name == name => rr.recursiveTable = temp
+          case ReusedExchangeExec(_, child) => updateRecursiveTables(child)
           case _ =>
         }
       }
+
+      updateRecursiveTables(newRecursiveTerm)
 
       val newTemp = newRecursiveTerm.execute().map(_.copy()).cache()
       tempCount = newTemp.count()
@@ -276,7 +282,7 @@ case class RecursiveTableExec(
       result = result.union(temp)
 
       level = level + 1
-    } while (tempCount > 0)
+    }
 
     result
   }

@@ -44,7 +44,7 @@ SELECT n FROM t;
 
 ---- TODO: Stack overflow, should work???
 ---- using inside subquery
---SET spark.sql.cte.recursion.level.limit = 500;
+-- SET spark.sql.cte.recursion.level.limit = 500;
 --
 --WITH RECURSIVE t1 AS (
 --  SELECT 1 AS n

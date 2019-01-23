@@ -34,6 +34,8 @@ import org.apache.spark.sql.types.LongType
 import org.apache.spark.util.ThreadUtils
 import org.apache.spark.util.random.{BernoulliCellSampler, PoissonSampler}
 
+import scala.collection.mutable
+
 /** Physical plan for Project. */
 case class ProjectExec(projectList: Seq[NamedExpression], child: SparkPlan)
   extends UnaryExecNode with CodegenSupport {
@@ -247,18 +249,16 @@ case class RecursiveTableExec(
     var sumCount = tempCount
     var level = 0
     val levelLimit = conf.recursionLevelLimit
-    while ((level == 0 || tempCount > 0) && limit.map(_ < sumCount).getOrElse(true)) {
+    while ((level == 0 || tempCount > 0) && limit.map(_ > sumCount).getOrElse(true)) {
       if (level > levelLimit) {
         throw new SparkException("Recursion level limit reached but query hasn't exhausted, try " +
           s"increasing ${SQLConf.RECURSION_LEVEL_LIMIT.key}")
       }
 
-      val newCoordinators = recursiveTerm.collect {
-        case ShuffleExchangeExec(_, _, Some(co)) => co
-      }.toSet[ExchangeCoordinator].map(co => co -> co.copy).toMap
+      val newCoordinators = mutable.Map.empty[ExchangeCoordinator, Some[ExchangeCoordinator]]
       val newRecursiveTerm = recursiveTerm.transform {
         case se @ ShuffleExchangeExec(_, _, Some(co)) =>
-          se.copy(coordinator = Some(newCoordinators(co)))
+          se.copy(coordinator = newCoordinators.getOrElseUpdate(co, Some(co.copy)))
       }
       if (level > 0) {
         newRecursiveTerm.reset()
@@ -274,12 +274,17 @@ case class RecursiveTableExec(
 
       updateRecursiveTables(newRecursiveTerm)
 
-      val newTemp = newRecursiveTerm.execute().map(_.copy()).cache()
+      val limitedNewRecursiveTerm = limit
+        .map(l => GlobalLimitExec((l - sumCount).toInt, newRecursiveTerm))
+        .getOrElse(newRecursiveTerm)
+
+      val newTemp = limitedNewRecursiveTerm.execute().map(_.copy()).cache()
       tempCount = newTemp.count()
       temp.unpersist()
       temp = newTemp
 
       result = result.union(temp)
+      sumCount += tempCount
 
       level = level + 1
     }

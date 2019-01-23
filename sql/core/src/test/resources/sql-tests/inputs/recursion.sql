@@ -34,6 +34,14 @@ WITH RECURSIVE t AS (
 )
 SELECT * FROM t;
 
+-- terminate recursion with LIMIT
+WITH RECURSIVE t AS (
+  VALUES (1) AS T(n)
+  UNION ALL
+  SELECT n + 1 FROM t
+)
+SELECT * FROM t LIMIT 10;
+
 -- using string column in recursion
 WITH RECURSIVE t AS (
   SELECT 'foo' AS n

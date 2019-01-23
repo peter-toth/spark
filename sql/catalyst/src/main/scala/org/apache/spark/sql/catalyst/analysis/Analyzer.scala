@@ -269,6 +269,7 @@ class Analyzer(
               val (substitutedPlan, recursiveReferenceFoundInCTE) =
                 substituteCTE(plan, Seq.empty, recursiveTableName)
               recursiveReferenceFound |= recursiveReferenceFoundInCTE
+
               (name, sa.copy(child = substitutedPlan))
           })
         case other =>
@@ -277,8 +278,8 @@ class Analyzer(
             case e: SubqueryExpression =>
               val (substitutedPlan, recursiveReferenceFoundInSubQuery) =
                 substituteCTE(e.plan, cteRelations, recursiveTableName)
-
               recursiveReferenceFound |= recursiveReferenceFoundInSubQuery
+
               e.withNewPlan(substitutedPlan)
           }
       }
@@ -294,8 +295,7 @@ class Analyzer(
             case o => Seq(o)
           }
 
-          val combinedTerms = combineUnions(u)
-          val (anchorTerms, recursiveTerms) = combinedTerms.partition(!_.collectFirst {
+          val (anchorTerms, recursiveTerms) = combineUnions(u).partition(!_.collectFirst {
             case UnresolvedRecursiveReference(name) if name == recursiveTableName => true
           }.isDefined)
 
@@ -305,6 +305,12 @@ class Analyzer(
                 s"recursive query ${recursiveTableName}")
             }
 
+            // Recursion according to SQL standard comes with several limitations due to the fact
+            // that only those operations are allowed where the new set of rows should be computed
+            // from the result of the previous iteration only (the so far cumulated results is not
+            // required).
+            // This implies that a recursive reference can't be used in some kinds of joins,
+            // aggregation, distinct and subqueries.
             def traversePlanAndCheck(
                 plan: LogicalPlan,
                 isRecursiveReferenceAllowed: Boolean = true): Int = plan match {
@@ -355,7 +361,7 @@ class Analyzer(
               Union(recursiveTerms),
               None)
           } else {
-            SubqueryAlias(recursiveTableName, Union(combinedTerms))
+            sa
           }
 
         case _ =>

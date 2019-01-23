@@ -471,6 +471,15 @@ object LimitPushDown extends Rule[LogicalPlan] {
         case _ => join
       }
       LocalLimit(exp, newJoin)
+    case LocalLimit(
+        nl @ IntegerLiteral(newLimit),
+        rt @ RecursiveTable(_, anchorTerm, recursiveTerm, limit))
+      if limit.map(_ > newLimit).getOrElse(true) =>
+      rt.copy(
+        anchorTerm = maybePushLocalLimit(nl, anchorTerm),
+        recursiveTerm = maybePushLocalLimit(nl, recursiveTerm),
+        limit = Some(newLimit)
+      )
   }
 }
 

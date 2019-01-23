@@ -17,6 +17,7 @@
 
 package org.apache.spark.sql.execution
 
+import scala.collection.mutable
 import scala.concurrent.{ExecutionContext, Future}
 import scala.concurrent.duration.Duration
 
@@ -33,8 +34,6 @@ import org.apache.spark.sql.internal.SQLConf
 import org.apache.spark.sql.types.LongType
 import org.apache.spark.util.ThreadUtils
 import org.apache.spark.util.random.{BernoulliCellSampler, PoissonSampler}
-
-import scala.collection.mutable
 
 /** Physical plan for Project. */
 case class ProjectExec(projectList: Seq[NamedExpression], child: SparkPlan)
@@ -235,7 +234,7 @@ case class RecursiveTableExec(
     name: String,
     anchorTerm: SparkPlan,
     recursiveTerm: SparkPlan,
-    limit: Option[Long]) extends SparkPlan { // TODO: how to implement limit?
+    limit: Option[Long]) extends SparkPlan {
   override def children: Seq[SparkPlan] = Seq(anchorTerm, recursiveTerm)
 
   override def output: Seq[Attribute] = anchorTerm.output
@@ -274,11 +273,7 @@ case class RecursiveTableExec(
 
       updateRecursiveTables(newRecursiveTerm)
 
-      val limitedNewRecursiveTerm = limit
-        .map(l => GlobalLimitExec((l - sumCount).toInt, newRecursiveTerm))
-        .getOrElse(newRecursiveTerm)
-
-      val newTemp = limitedNewRecursiveTerm.execute().map(_.copy()).cache()
+      val newTemp = newRecursiveTerm.execute().map(_.copy()).cache()
       tempCount = newTemp.count()
       temp.unpersist()
       temp = newTemp

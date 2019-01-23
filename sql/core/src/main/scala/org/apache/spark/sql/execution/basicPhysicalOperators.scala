@@ -248,7 +248,7 @@ case class RecursiveTableExec(
     var sumCount = tempCount
     var level = 0
     val levelLimit = conf.recursionLevelLimit
-    while ((level == 0 || tempCount > 0) && limit.map(_ > sumCount).getOrElse(true)) {
+    while ((level == 0 || tempCount > 0) && limit.forall(_ > sumCount)) {
       if (level > levelLimit) {
         throw new SparkException("Recursion level limit reached but query hasn't exhausted, try " +
           s"increasing ${SQLConf.RECURSION_LEVEL_LIMIT.key}")

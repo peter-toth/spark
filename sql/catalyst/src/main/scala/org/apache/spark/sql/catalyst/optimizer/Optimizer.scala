@@ -474,7 +474,7 @@ object LimitPushDown extends Rule[LogicalPlan] {
     case LocalLimit(
         nl @ IntegerLiteral(newLimit),
         rt @ RecursiveTable(_, anchorTerm, recursiveTerm, limit))
-      if limit.map(_ > newLimit).getOrElse(true) =>
+      if limit.forall(_ > newLimit) =>
       rt.copy(
         anchorTerm = maybePushLocalLimit(nl, anchorTerm),
         recursiveTerm = maybePushLocalLimit(nl, recursiveTerm),

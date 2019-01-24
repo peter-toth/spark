@@ -2,9 +2,9 @@
 --SET spark.sql.autoBroadcastJoinThreshold=10485760
 --SET spark.sql.autoBroadcastJoinThreshold=-1,spark.sql.adaptive.enabled=true
 
--- fails due to recursion isn't allowed
+-- fails due to recursion isn't allowed with RECURSIVE keyword
 WITH r AS (
-  VALUES (0, 'A') AS T(level, data)
+  VALUES (0, 'A') AS t(level, data)
   UNION ALL
   SELECT level + 1, data FROM r WHERE level < 10
 )
@@ -12,7 +12,7 @@ SELECT * FROM r;
 
 -- very basic recursion
 WITH RECURSIVE r AS (
-  VALUES (0, 'A') AS T(level, data)
+  VALUES (0, 'A') AS t(level, data)
   UNION ALL
   SELECT level + 1, data FROM r WHERE level < 10
 )
@@ -20,7 +20,7 @@ SELECT * FROM r ORDER BY level;
 
 -- sum of 1..100
 WITH RECURSIVE t AS (
-  VALUES (1) AS T(n)
+  VALUES (1) AS t(n)
   UNION ALL
   SELECT n + 1 FROM t WHERE n < 100
 )
@@ -36,11 +36,27 @@ SELECT * FROM t;
 
 -- terminate recursion with LIMIT
 WITH RECURSIVE t AS (
-  VALUES (1) AS T(n)
+  VALUES (1) AS t(n)
   UNION ALL
   SELECT n + 1 FROM t
 )
 SELECT * FROM t LIMIT 10;
+
+-- terminate projected recursion with LIMIT
+WITH RECURSIVE t AS (
+  VALUES (1) AS t(n)
+  UNION ALL
+  SELECT n + 1 FROM t
+)
+SELECT n, n FROM t LIMIT 10;
+
+-- unfortunately using LIMIT to terminate recursion only works where Limit can be pushed through recursion
+WITH RECURSIVE t AS (
+  VALUES (1) AS t(n)
+  UNION ALL
+  SELECT n + 1 FROM t
+)
+SELECT SUM(n) FROM t LIMIT 10;
 
 -- using string column in recursion
 WITH RECURSIVE t AS (
@@ -50,41 +66,13 @@ WITH RECURSIVE t AS (
 )
 SELECT n FROM t;
 
----- TODO: Stack overflow, should work???
----- using inside subquery
--- SET spark.sql.cte.recursion.level.limit = 500;
---
---WITH RECURSIVE t1 AS (
---  SELECT 1 AS n
---  UNION ALL
---  SELECT n + 1 FROM t WHERE n < 500
---),
---t2 AS (
---  SELECT 1 AS n
---  UNION ALL
---  SELECT n + 1 FROM t WHERE n < 100
---)
---SELECT COUNT(*) FROM t1 WHERE n < (
---  SELECT COUNT(*) FROM (
---    SELECT * FROM t2 WHERE n < 50000
---  )
---  WHERE n < 100
---);
 
--- view based on recursion
-CREATE TEMPORARY VIEW sums_1_100 AS
-WITH RECURSIVE t AS (
-  VALUES (1) AS T(n)
-  UNION ALL
-  SELECT n + 1 FROM t WHERE n < 100
-)
-SELECT SUM(n) FROM t;
 
-SELECT * FROM sums_1_100;
+
 
 -- recursive term has sub UNION
 WITH RECURSIVE t AS (
-  VALUES (1, 2) AS T(i, j)
+  VALUES (1, 2) AS t(i, j)
   UNION ALL
   SELECT t2.i, t.j + 1
   FROM (
@@ -97,7 +85,7 @@ SELECT * FROM t;
 
 -- unlimited recursion fails at spark.sql.cte.recursion.level.limits level
 WITH RECURSIVE r AS (
-  VALUES (0, 'A') AS T(level, data)
+  VALUES (0, 'A') AS t(level, data)
   UNION ALL
   SELECT level + 1, data FROM r
 )
@@ -107,23 +95,23 @@ SELECT * FROM r ORDER BY level;
 WITH RECURSIVE r AS (
   SELECT level + 1, data FROM r WHERE level < 10
   UNION ALL
-  VALUES (0, 'A') AS T(level, data)
+  VALUES (0, 'A') AS t(level, data)
 )
 SELECT * FROM r ORDER BY level;
 
 -- multiple anchor terms are supported
 WITH RECURSIVE r AS (
-  VALUES (0, 'A') AS T(level, data)
+  VALUES (0, 'A') AS t(level, data)
   UNION ALL
   SELECT level + 1, data FROM r WHERE level < 3
   UNION ALL
-  VALUES (0, 'B') AS T(level, data)
+  VALUES (0, 'B') AS t(level, data)
 )
 SELECT * FROM r ORDER BY level;
 
 -- multiple recursive terms are supported
 WITH RECURSIVE r AS (
-  VALUES (0, 'A') AS T(level, data)
+  VALUES (0, 'A') AS t(level, data)
   UNION ALL
   SELECT level + 1, data FROM r WHERE level < 3
   UNION ALL
@@ -133,9 +121,9 @@ SELECT * FROM r ORDER BY level;
 
 -- multiple anchor and recursive terms are supported
 WITH RECURSIVE r AS (
-  VALUES (0, 'A') AS T(level, data)
+  VALUES (0, 'A') AS t(level, data)
   UNION ALL
-  VALUES (0, 'B') AS T(level, data)
+  VALUES (0, 'B') AS t(level, data)
   UNION ALL
   SELECT level + 1, data FROM r WHERE level < 3
   UNION ALL
@@ -145,7 +133,7 @@ SELECT * FROM r ORDER BY level;
 
 -- recursive query should contain UNION ALL statements only
 WITH RECURSIVE r AS (
-  VALUES (0, 'A') AS T(level, data)
+  VALUES (0, 'A') AS t(level, data)
   INTERSECT
   SELECT level + 1, data FROM r WHERE level < 10
 )
@@ -161,7 +149,7 @@ SELECT * FROM r;
 
 -- recursive reference is not allowed in a subquery
 WITH RECURSIVE r AS (
-  VALUES (0, 'A') AS T(level, data)
+  VALUES (0, 'A') AS t(level, data)
   UNION ALL
   SELECT level + 1, data FROM r WHERE (SELECT SUM(level) FROM r) < 10
 )
@@ -169,7 +157,7 @@ SELECT * FROM r;
 
 -- recursive reference is not allowed on both side of an inner join (self join)
 WITH RECURSIVE r AS (
-  VALUES (0, 'A') AS T(level, data)
+  VALUES (0, 'A') AS t(level, data)
   UNION ALL
   SELECT level + 1, r1.data
   FROM r AS r1
@@ -179,7 +167,7 @@ SELECT * FROM r;
 
 -- recursive reference is not allowed on right side of a left outer join
 WITH RECURSIVE r AS (
-  VALUES (0, 'A') AS T(level, data)
+  VALUES (0, 'A') AS t(level, data)
   UNION ALL
   SELECT level + 1, r.data
   FROM (SELECT 'B' AS data) AS o
@@ -189,7 +177,7 @@ SELECT * FROM r;
 
 -- recursive reference is not allowed on left side of a right outer join
 WITH RECURSIVE r AS (
-  VALUES (0, 'A') AS T(level, data)
+  VALUES (0, 'A') AS t(level, data)
   UNION ALL
   SELECT level + 1, r.data
   FROM r
@@ -199,7 +187,7 @@ SELECT * FROM r;
 
 -- aggregate is supported in the anchor term
 WITH RECURSIVE r AS (
-  SELECT MAX(level) AS level, SUM(data) AS data FROM VALUES (0, 1), (0, 2) AS T(level, data)
+  SELECT MAX(level) AS level, SUM(data) AS data FROM VALUES (0, 1), (0, 2) AS t(level, data)
   UNION ALL
   SELECT level + 1, data FROM r WHERE level < 10
 )
@@ -207,7 +195,7 @@ SELECT * FROM r ORDER BY level;
 
 -- recursive reference is not allowed in an aggregate in a recursive term
 WITH RECURSIVE r AS (
-  VALUES (0, 1L) AS T(group, data)
+  VALUES (0, 1L) AS t(group, data)
   UNION ALL
   SELECT 1, SUM(data) FROM r WHERE data < 10 GROUP BY group
 )
@@ -215,7 +203,7 @@ SELECT * FROM r;
 
 -- recursive reference is not allowed in an aggregate (made from project) in a recursive term
 WITH RECURSIVE r AS (
-  VALUES (1L) AS T(data)
+  VALUES (1L) AS t(data)
   UNION ALL
   SELECT SUM(data) FROM r WHERE data < 10
 )
@@ -223,7 +211,7 @@ SELECT * FROM r;
 
 -- aggregate is supported on a recursive table
 WITH RECURSIVE r AS (
-  VALUES (0, 'A') AS T(level, data)
+  VALUES (0, 'A') AS t(level, data)
   UNION ALL
   SELECT level + 1, data FROM r WHERE level < 10
 )
@@ -231,7 +219,7 @@ SELECT COUNT(*) FROM r;
 
 -- recursive reference is not allowed to use in combination with distinct
 WITH RECURSIVE r AS (
-  VALUES (0, 'A') AS T(level, data)
+  VALUES (0, 'A') AS t(level, data)
   UNION ALL
   SELECT DISTINCT level + 1, data FROM r WHERE level < 10
 )
@@ -258,7 +246,7 @@ CREATE TEMPORARY VIEW department AS SELECT * FROM VALUES
 
 -- all departments under 'A', result should be A, B, C, D and F
 WITH RECURSIVE subdepartment AS (
-	SELECT name as root_name, * FROM department WHERE name = 'A'
+	SELECT name AS root_name, * FROM department WHERE name = 'A'
 	UNION ALL
 	SELECT sd.root_name, d.*
 	FROM department AS d, subdepartment AS sd
@@ -268,7 +256,7 @@ SELECT * FROM subdepartment ORDER BY name;
 
 -- all departments under 'A' with "level" number
 WITH RECURSIVE subdepartment AS (
-	SELECT 1 as level, id, parent_department, name FROM department WHERE name = 'A'
+	SELECT 1 AS level, id, parent_department, name FROM department WHERE name = 'A'
 	UNION ALL
 	SELECT sd.level + 1, d.*
 	FROM department AS d, subdepartment AS sd
@@ -278,7 +266,7 @@ SELECT * FROM subdepartment ORDER BY name;
 
 -- all departments under 'A' with "level" number, only shows level 2 or more
 WITH RECURSIVE subdepartment AS (
-	SELECT 1 as level, id, parent_department, name FROM department WHERE name = 'A'
+	SELECT 1 AS level, id, parent_department, name FROM department WHERE name = 'A'
 	UNION ALL
 	SELECT sd.level + 1, d.*
 	FROM department AS d, subdepartment AS sd
@@ -347,7 +335,7 @@ AS (id, parent_id);
 
 -- get all paths from "second level" nodes to leaf nodes
 WITH RECURSIVE t AS (
-  VALUES(1, ARRAY_REMOVE(ARRAY(0), 0)) AS T(id, path)
+  VALUES(1, ARRAY_REMOVE(ARRAY(0), 0)) AS t(id, path)
   UNION ALL
   SELECT tree.id, t.path || ARRAY(tree.id)
   FROM tree
@@ -360,7 +348,7 @@ ORDER BY t1.id, t2.id;
 
 -- count all paths from "second level" nodes to leaf nodes
 WITH RECURSIVE t AS (
-  VALUES(1, ARRAY_REMOVE(ARRAY(0), 0)) AS T(id, path)
+  VALUES(1, ARRAY_REMOVE(ARRAY(0), 0)) AS t(id, path)
   UNION ALL
   SELECT tree.id, t.path || ARRAY(tree.id)
   FROM tree
@@ -374,7 +362,7 @@ ORDER BY t1.id;
 
 -- get all paths
 WITH RECURSIVE t AS (
-  VALUES(1, ARRAY_REMOVE(ARRAY(0), 0)) AS T(id, path)
+  VALUES(1, ARRAY_REMOVE(ARRAY(0), 0)) AS t(id, path)
   UNION ALL
   SELECT tree.id, t.path || ARRAY(tree.id)
   FROM tree
@@ -424,7 +412,7 @@ SELECT * FROM search_graph ORDER BY path;
 
 -- test multiple WITH queries
 WITH RECURSIVE y AS (
-  VALUES (1) AS T(id)
+  VALUES (1) AS t(id)
 ),
 x AS (
   SELECT * FROM y
@@ -434,24 +422,24 @@ x AS (
 SELECT * FROM x;
 
 WITH RECURSIVE x AS (
-  VALUES (1) AS T(id)
+  VALUES (1) AS t(id)
   UNION ALL
   SELECT id + 1 FROM x WHERE id < 5
 ),
 y AS (
-  VALUES (1) AS T(id)
+  VALUES (1) AS t(id)
   UNION ALL
   SELECT id + 1 FROM y WHERE id < 10
 )
 SELECT * FROM y LEFT JOIN x ON x.id = y.id;
 
 WITH RECURSIVE x AS (
-  VALUES (1) AS T(id)
+  VALUES (1) AS t(id)
   UNION ALL
   SELECT id + 1 FROM x WHERE id < 5
 ),
 y AS (
-  VALUES (1) AS T(id)
+  VALUES (1) AS t(id)
   UNION ALL
   SELECT id + 1 FROM x WHERE id < 10
 )
@@ -520,7 +508,7 @@ SELECT * FROM destinations_from_new_york;
 
 -- Fibonacci numbers
 WITH RECURSIVE fibonacci AS (
-  VALUES (0, 1) AS T(a, b)
+  VALUES (0, 1) AS t(a, b)
   UNION ALL
   SELECT b, a + b FROM fibonacci WHERE a < 10
 )
@@ -541,7 +529,7 @@ WITH RECURSIVE sudoku AS (
       0, 0, 9, 0, 7, 0, 0, 2, 0
     ),
     0
-  ) AS T(puzzle, level)
+  ) AS t(puzzle, level)
   UNION ALL
   SELECT
     CONCAT(SLICE(puzzle, 1, newPosition - 1), ARRAY(newValue), SLICE(puzzle, newPosition + 1, 9 * 9 - newPosition)),
@@ -684,7 +672,7 @@ WITH RECURSIVE x AS (
 SELECT * FROM x;
 
 WITH RECURSIVE x AS (
-  VALUES (1) AS T(id)
+  VALUES (1) AS t(id)
   UNION ALL
   SELECT (
     SELECT * FROM x
@@ -695,7 +683,7 @@ WITH RECURSIVE x AS (
 SELECT * FROM x;
 
 -- mutual recursive query is not implemented,
--- y gets resolved as a view defined before and is not treated as forward reference
+-- y gets resolved AS a view defined before and is not treated as forward reference
 WITH RECURSIVE x AS (
   SELECT 1 AS id
   UNION ALL
@@ -713,7 +701,7 @@ SELECT * FROM x;
 -- this kind of non-linear recursion is allowed
 -- PostgreSQL doesn't allow it but MSSQL does
 WITH RECURSIVE foo AS (
-  VALUES (1) AS T(i)
+  VALUES (1) AS t(i)
   UNION ALL
   SELECT i + 1 FROM foo WHERE i < 10
   UNION ALL
@@ -723,7 +711,7 @@ SELECT i, COUNT(*) FROM foo GROUP BY i ORDER BY i;
 
 -- this kind of non-linear recursion is not allowed, a recursive term can contain only one recursive reference
 WITH RECURSIVE foo AS (
-  VALUES (1) AS T(i)
+  VALUES (1) AS t(i)
   UNION ALL
   SELECT * FROM (
     SELECT i + 1
@@ -737,7 +725,7 @@ SELECT i, COUNT(*) FROM foo GROUP BY i ORDER BY i;
 
 -- this kind of non-linear recursion is not allowed, a recursive term can contain only one recursive reference
 WITH RECURSIVE foo AS (
-  VALUES (1) AS T(i)
+  VALUES (1) AS t(i)
   UNION ALL (
     SELECT i + 1 FROM foo WHERE i < 10
     EXCEPT
@@ -748,7 +736,7 @@ SELECT * FROM foo;
 
 -- this kind of non-linear recursion is not allowed, a recursive term can contain only one recursive reference
 WITH RECURSIVE foo AS (
-  VALUES (1) AS T(i)
+  VALUES (1) AS t(i)
   UNION ALL (
     SELECT i + 1 FROM foo WHERE i < 10
     INTERSECT
@@ -759,7 +747,7 @@ SELECT * FROM foo;
 
 -- Wrong type induced from non-recursive term
 WITH RECURSIVE foo AS (
-  VALUES (1), (2) AS T(i)
+  VALUES (1), (2) AS t(i)
   UNION ALL
   SELECT CAST((i + 1) AS DECIMAL(10, 0)) FROM foo WHERE i < 10
 )
@@ -767,25 +755,24 @@ SELECT * FROM foo;
 
 -- rejects different typmod, too (should we allow this?)
 WITH RECURSIVE foo AS (
-   SELECT CAST(i AS DECIMAL(3, 0)) FROM (VALUES (1), (2)) AS T(i)
+   SELECT CAST(i AS DECIMAL(3, 0)) FROM (VALUES (1), (2)) AS t(i)
    UNION ALL
    SELECT CAST((i + 1) AS DECIMAL(10, 0)) FROM foo WHERE i < 10
 )
 SELECT * FROM foo;
 
--- nested recursion
-WITH RECURSIVE t AS (
+-- recursion nested into WITH
+WITH t AS (
   WITH RECURSIVE s AS (
-    VALUES (1) AS T(i)
+    VALUES (1) AS t(i)
     UNION ALL
-    SELECT i + 1 FROM s WHERE i < 10
+    SELECT i + 1 FROM s
   )
-  SELECT i AS j FROM s
-  UNION ALL
-  SELECT j + 1 FROM t WHERE j < 10
+  SELECT i AS j FROM s LIMIT 10
 )
 SELECT * FROM t;
 
+-- WITH nested into recursion
 WITH RECURSIVE outermost AS (
   WITH innermost AS (
     SELECT * FROM outermost
@@ -795,3 +782,62 @@ WITH RECURSIVE outermost AS (
   SELECT 0 AS level
 )
 SELECT * FROM outermost;
+
+-- recursion nested into recursion
+WITH RECURSIVE t AS (
+  WITH RECURSIVE s AS (
+    VALUES (1) AS t(i)
+    UNION ALL
+    SELECT i + 1 FROM s WHERE i < 10
+  )
+  SELECT i AS j FROM s
+  UNION ALL
+  SELECT j + 1 FROM t WHERE j < 10
+)
+SELECT * FROM t;
+
+-- recursion nested into recursion 2
+WITH RECURSIVE t AS (
+  WITH RECURSIVE s AS (
+    SELECT j, 1 AS i FROM t
+    UNION ALL
+    SELECT j, i + 1 FROM s WHERE i < 3
+  )
+  VALUES (1) as t(j)
+  UNION ALL
+  SELECT j + 1 FROM s WHERE j < 3
+)
+SELECT * FROM t;
+
+-- view based on recursive query
+CREATE TEMPORARY VIEW sums_1_100 AS
+WITH RECURSIVE t AS (
+  VALUES (1) AS t(n)
+  UNION ALL
+  SELECT n + 1 FROM t WHERE n < 100
+)
+SELECT SUM(n) FROM t;
+
+SELECT * FROM sums_1_100;
+
+
+---- TODO: Stack overflow, should work???
+---- using inside subquery
+-- SET spark.sql.cte.recursion.level.limit = 500;
+--
+--WITH RECURSIVE t1 AS (
+--  SELECT 1 AS n
+--  UNION ALL
+--  SELECT n + 1 FROM t WHERE n < 500
+--),
+--t2 AS (
+--  SELECT 1 AS n
+--  UNION ALL
+--  SELECT n + 1 FROM t WHERE n < 100
+--)
+--SELECT COUNT(*) FROM t1 WHERE n < (
+--  SELECT COUNT(*) FROM (
+--    SELECT * FROM t2 WHERE n < 50000
+--  )
+--  WHERE n < 100
+--);

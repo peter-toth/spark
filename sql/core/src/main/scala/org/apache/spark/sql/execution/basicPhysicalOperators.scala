@@ -250,8 +250,8 @@ case class RecursiveTableExec(
     val levelLimit = conf.recursionLevelLimit
     while ((level == 0 || tempCount > 0) && limit.forall(_ > sumCount)) {
       if (level > levelLimit) {
-        throw new SparkException("Recursion level limit reached but query hasn't exhausted, try " +
-          s"increasing ${SQLConf.RECURSION_LEVEL_LIMIT.key}")
+        throw new SparkException(s"Recursion level limit ${levelLimit} reached but query hasn't" +
+          s"exhausted, try increasing ${SQLConf.RECURSION_LEVEL_LIMIT.key}")
       }
 
       val newCoordinators = mutable.Map.empty[ExchangeCoordinator, Some[ExchangeCoordinator]]

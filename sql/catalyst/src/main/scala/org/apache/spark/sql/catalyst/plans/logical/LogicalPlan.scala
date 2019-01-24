@@ -17,6 +17,8 @@
 
 package org.apache.spark.sql.catalyst.plans.logical
 
+import scala.collection.mutable
+
 import org.apache.spark.internal.Logging
 import org.apache.spark.sql.AnalysisException
 import org.apache.spark.sql.catalyst.analysis._
@@ -143,6 +145,21 @@ abstract class LogicalPlan
     thisOutput.length == otherOutput.length && thisOutput.zip(otherOutput).forall {
       case (a1, a2) => a1.semanticEquals(a2)
     }
+  }
+
+  /**
+   * If a plan contains a RecursiveReference without an enclosing RecursiveTable than it means an
+   * unfinished recursion and we can't be sure they provide the same result.
+   */
+  final override def sameResult(other: LogicalPlan): Boolean = super.sameResult(other) && {
+    val recursiveTables = mutable.Set.empty[String]
+    val recursiveReferences = mutable.Set.empty[String]
+    foreach {
+      case rt: RecursiveTable => recursiveTables += rt.name
+      case rr: RecursiveReference => recursiveReferences += rr.name
+      case _ =>
+    }
+    recursiveTables == recursiveReferences
   }
 }
 

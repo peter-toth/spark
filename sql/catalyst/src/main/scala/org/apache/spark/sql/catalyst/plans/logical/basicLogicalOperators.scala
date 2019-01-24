@@ -49,16 +49,16 @@ case class Subquery(child: LogicalPlan) extends OrderPreservingUnaryNode {
 }
 
 /**
-* This node defines a table that contains one ore more [[RecursiveReference]]s as child nodes
-* referring to this table. It can be used to define a recursive CTE query and contains an anchor
-* and a recursive term as children. The result of the anchor and the repeatedly executed recursive
-* term are combined to form the final result.
-*
-* @param name name of the table
-* @param anchorTerm this child is used for initializing the query
-* @param recursiveTerm this child is used for extending the set of results with new rows based on
-*                      the results of the previous iteration (or the anchor in the first iteration)
-*/
+ * This node defines a table that contains one ore more [[RecursiveReference]]s as child nodes
+ * referring to this table. It can be used to define a recursive CTE query and contains an anchor
+ * and a recursive term as children. The result of the anchor and the repeatedly executed recursive
+ * term are combined to form the final result.
+ *
+ * @param name name of the table
+ * @param anchorTerm this child is used for initializing the query
+ * @param recursiveTerm this child is used for extending the set of results with new rows based on
+ *                      the results of the previous iteration (or the anchor in the first iteration)
+ */
 case class RecursiveTable(
     name: String,
     anchorTerm: LogicalPlan,
@@ -89,11 +89,11 @@ case class RecursiveTable(
 }
 
 /**
-* A This node means a reference to a recursive table in CTE definitions.
-*
-* @param name the name of the table it references to
-* @param output the attributes of the recursive table
-*/
+ * A This node means a reference to a recursive table in CTE definitions.
+ *
+ * @param name the name of the table it references to
+ * @param output the attributes of the recursive table
+ */
 case class RecursiveReference(name: String, output: Seq[Attribute]) extends LeafNode {
   override lazy val resolved = output.forall(_.resolved)
 

@@ -256,7 +256,7 @@ abstract class QueryPlan[PlanType <: QueryPlan[PlanType]] extends TreeNode[PlanT
    * This function performs a modified version of equality that is tolerant of cosmetic
    * differences like attribute naming and or expression id differences.
    */
-  final def sameResult(other: PlanType): Boolean = this.canonicalized == other.canonicalized
+  def sameResult(other: PlanType): Boolean = this.canonicalized == other.canonicalized
 
   /**
    * Returns a `hashCode` for the calculation performed by this plan. Unlike the standard

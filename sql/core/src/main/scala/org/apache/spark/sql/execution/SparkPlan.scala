@@ -19,6 +19,7 @@ package org.apache.spark.sql.execution
 
 import java.io.{ByteArrayInputStream, ByteArrayOutputStream, DataInputStream, DataOutputStream}
 
+import scala.collection.mutable
 import scala.collection.mutable.ArrayBuffer
 import scala.concurrent.ExecutionContext
 
@@ -446,6 +447,21 @@ abstract class SparkPlan extends QueryPlan[SparkPlan] with Logging with Serializ
       case (dt, index) => SortOrder(BoundReference(index, dt, nullable = true), Ascending)
     }
     newOrdering(order, Seq.empty)
+  }
+
+  /**
+   * If a plan contains a RecursiveReferenceExec without an enclosing RecursiveTableExec than it
+   * means an unfinished recursion and we can't be sure they provide the same result.
+   */
+  final override def sameResult(other: SparkPlan): Boolean = super.sameResult(other) && {
+    val recursiveTables = mutable.Set.empty[String]
+    val recursiveReferences = mutable.Set.empty[String]
+    foreach {
+      case rt: RecursiveTableExec => recursiveTables += rt.name
+      case rr: RecursiveReferenceExec => recursiveReferences += rr.name
+      case _ =>
+    }
+    recursiveTables == recursiveReferences
   }
 }
 

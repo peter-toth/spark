@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-package org.apache.spark.deploy.security
+package org.apache.spark.sql.hive.security
 
 import java.lang.reflect.UndeclaredThrowableException
 import java.security.PrivilegedExceptionAction
@@ -32,6 +32,7 @@ import org.apache.hadoop.security.token.Token
 
 import org.apache.spark.SparkConf
 import org.apache.spark.deploy.SparkHadoopUtil
+import org.apache.spark.deploy.security.HadoopDelegationTokenProvider
 import org.apache.spark.internal.Logging
 import org.apache.spark.internal.config.KEYTAB
 import org.apache.spark.util.Utils

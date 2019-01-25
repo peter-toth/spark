@@ -36,6 +36,8 @@ object MimaExcludes {
 
   // Exclude rules for 3.0.x
   lazy val v30excludes = v24excludes ++ Seq(
+    // [SPARK-26254][CORE] Extract Hive + Kafka dependencies from Core.
+    ProblemFilters.exclude[MissingClassProblem]("org.apache.spark.deploy.security.HiveDelegationTokenProvider"),
 
     // [SPARK-26329][CORE] Faster polling of executor memory metrics.
     ProblemFilters.exclude[MissingTypesProblem]("org.apache.spark.scheduler.SparkListenerTaskEnd$"),

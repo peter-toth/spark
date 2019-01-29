@@ -56,6 +56,10 @@ case class ReusedExchangeExec(override val output: Seq[Attribute], child: Exchan
     child.execute()
   }
 
+  override def doReset(): Unit = {
+    child.reset()
+  }
+
   override protected[sql] def doExecuteBroadcast[T](): broadcast.Broadcast[T] = {
     child.executeBroadcast()
   }

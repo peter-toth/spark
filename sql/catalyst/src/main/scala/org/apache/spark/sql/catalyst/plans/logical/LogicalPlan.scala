@@ -147,11 +147,14 @@ abstract class LogicalPlan
     }
   }
 
+  final override def sameResult(other: LogicalPlan): Boolean = super.sameResult(other) &&
+    !containsUnenclosedRecursion
+
   /**
    * If a plan contains a RecursiveReference without an enclosing RecursiveTable than it means an
    * unfinished recursion and we can't be sure they provide the same result.
    */
-  final override def sameResult(other: LogicalPlan): Boolean = super.sameResult(other) && {
+  private lazy val containsUnenclosedRecursion = {
     val recursiveTables = mutable.Set.empty[String]
     val recursiveReferences = mutable.Set.empty[String]
     foreach {
@@ -159,7 +162,8 @@ abstract class LogicalPlan
       case rr: RecursiveReference => recursiveReferences += rr.name
       case _ =>
     }
-    recursiveTables == recursiveReferences
+
+    !(recursiveReferences -- recursiveTables).isEmpty
   }
 }
 

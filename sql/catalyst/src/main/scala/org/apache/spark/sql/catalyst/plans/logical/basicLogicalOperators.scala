@@ -97,7 +97,7 @@ case class RecursiveTable(
 case class RecursiveReference(name: String, output: Seq[Attribute]) extends LeafNode {
   override lazy val resolved = output.forall(_.resolved)
 
-  override def computeStats(): Statistics = Statistics(0)
+  override def computeStats(): Statistics = Statistics(BigInt(conf.defaultSizeInBytes))
 }
 
 case class Project(projectList: Seq[NamedExpression], child: LogicalPlan)

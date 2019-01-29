@@ -30,7 +30,7 @@ import org.apache.spark.{broadcast, SparkEnv}
 import org.apache.spark.internal.Logging
 import org.apache.spark.io.CompressionCodec
 import org.apache.spark.rdd.{RDD, RDDOperationScope}
-import org.apache.spark.sql.{Row, SparkSession}
+import org.apache.spark.sql.{Debugger, Row, SparkSession}
 import org.apache.spark.sql.catalyst.{CatalystTypeConverters, InternalRow}
 import org.apache.spark.sql.catalyst.expressions._
 import org.apache.spark.sql.catalyst.expressions.codegen.{Predicate => GenPredicate, _}
@@ -126,6 +126,11 @@ abstract class SparkPlan extends QueryPlan[SparkPlan] with Logging with Serializ
    * Concrete implementations of SparkPlan should override `doExecute`.
    */
   final def execute(): RDD[InternalRow] = executeQuery {
+    if (Debugger.enabled) {
+      logError(s"execute of class: ${this.getClass} " +
+        s"of object with id: ${System.identityHashCode(this)} " +
+        s"on thread: ${Thread.currentThread.getName}")
+    }
     if (isCanonicalizedPlan) {
       throw new IllegalStateException("A canonicalized plan is not supposed to be executed.")
     }
@@ -139,6 +144,11 @@ abstract class SparkPlan extends QueryPlan[SparkPlan] with Logging with Serializ
    * Concrete implementations of SparkPlan should override `doExecuteBroadcast`.
    */
   final def executeBroadcast[T](): broadcast.Broadcast[T] = executeQuery {
+    if (Debugger.enabled) {
+      logError(s"executeBroadcast of class: ${this.getClass} " +
+        s"of object with id: ${System.identityHashCode(this)} " +
+        s"on thread: ${Thread.currentThread.getName}")
+    }
     if (isCanonicalizedPlan) {
       throw new IllegalStateException("A canonicalized plan is not supposed to be executed.")
     }

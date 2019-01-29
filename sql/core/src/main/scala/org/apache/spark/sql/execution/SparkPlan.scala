@@ -449,14 +449,14 @@ abstract class SparkPlan extends QueryPlan[SparkPlan] with Logging with Serializ
     newOrdering(order, Seq.empty)
   }
 
-  final override def sameResult(other: SparkPlan): Boolean = super.sameResult(other) &&
-    !containsUnenclosedRecursion
+  final override def sameResult(other: SparkPlan): Boolean =
+    super.sameResult(other) && containsClosedRecursionsOnly
 
   /**
    * If a plan contains a RecursiveReferenceExec without an enclosing RecursiveTableExec than it
    * means an unfinished recursion and we can't be sure they provide the same result.
    */
-  private lazy val containsUnenclosedRecursion = {
+  private lazy val containsClosedRecursionsOnly = {
     val recursiveTables = mutable.Set.empty[String]
     val recursiveReferences = mutable.Set.empty[String]
     foreach {
@@ -465,7 +465,7 @@ abstract class SparkPlan extends QueryPlan[SparkPlan] with Logging with Serializ
       case _ =>
     }
 
-    !(recursiveReferences -- recursiveTables).isEmpty
+    (recursiveReferences -- recursiveTables).isEmpty
   }
 }
 

@@ -76,12 +76,12 @@ case class RecursiveTable(
         children.map(_.output.length).toSet.size == 1
     if (numberOfOutputMatches) {
       children.tail.foreach { child =>
-        val childCompatible = child.output.zip(children.head.output).forall {
+        val outputTypeMatches = child.output.zip(children.head.output).forall {
           case (l, r) => l.dataType.sameType(r.dataType)
         }
-        if (!childCompatible) {
-          throw new AnalysisException("Recursion term types " +
-            s"${children.head.output.map(_.dataType)} and ${child.output.map(_.dataType)} does " +
+        if (!outputTypeMatches) {
+          throw new AnalysisException(s"Recursive table $name term types " +
+            s"${children.head.output.map(_.dataType)} and ${child.output.map(_.dataType)} do " +
             "not match")
         }
       }

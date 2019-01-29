@@ -167,7 +167,7 @@ SELECT * FROM r;
 WITH RECURSIVE r AS (
   VALUES (0, 'A') AS t(level, data)
   UNION ALL
-  SELECT level + 1, r1.data
+  SELECT r1.level + 1, r1.data
   FROM r AS r1
   JOIN r AS r2 ON r2.data = r1.data
 )
@@ -360,7 +360,7 @@ CREATE TEMPORARY VIEW data AS SELECT EXPLODE(SEQUENCE(1, 10)) AS a;
 WITH RECURSIVE x AS (
   SELECT a AS n FROM data WHERE a = 1
   UNION ALL
-  SELECT x.n + 1 FROM data LEFT JOIN x ON x.n = y.a WHERE n < 10
+  SELECT x.n + 1 FROM data LEFT JOIN x ON x.n = data.a WHERE n < 10
 )
 SELECT * FROM x;
 
@@ -368,7 +368,7 @@ SELECT * FROM x;
 WITH RECURSIVE x AS (
   SELECT a AS n FROM data WHERE a = 1
   UNION ALL
-  SELECT x.n + 1 FROM x RIGHT JOIN y ON x.n = y.a WHERE n < 10
+  SELECT x.n + 1 FROM x RIGHT JOIN data ON x.n = data.a WHERE n < 10
 )
 SELECT * FROM x;
 
@@ -376,8 +376,20 @@ SELECT * FROM x;
 WITH RECURSIVE x AS (
   SELECT a AS n FROM data WHERE a = 1
   UNION ALL
-  SELECT x.n + 1 FROM x FULL JOIN y ON x.n = y.a WHERE n < 10
+  SELECT x.n + 1 FROM x FULL JOIN data ON x.n = data.a WHERE n < 10
 ) SELECT * FROM x;
+
+-- exchange reuse works in recursion
+WITH RECURSIVE x AS (
+  SELECT a AS n FROM data WHERE a = 1
+  UNION ALL
+  SELECT x.n + 1
+  FROM x
+  JOIN data AS d1 ON d1.a = x.n
+  JOIN data AS d2 ON d2.a = x.n
+  WHERE n < 10
+)
+SELECT * FROM x;
 
 DROP VIEW data;
 
@@ -393,7 +405,7 @@ SELECT * FROM x;
 
 -- aggregate functions can't be used in a recursive term on a recursive reference
 WITH RECURSIVE x AS (
-  SELECT 1 AS n
+  SELECT 1L AS n
   UNION ALL
   SELECT COUNT(*) FROM x
 )
@@ -401,7 +413,7 @@ SELECT * FROM x;
 
 -- aggregate functions can't be used in a recursive term on a recursive reference 2
 WITH RECURSIVE x AS (
-  SELECT 1 AS n
+  SELECT 1L AS n
   UNION ALL
   SELECT SUM(n) FROM x
 )
@@ -560,6 +572,19 @@ WITH RECURSIVE t AS (
   VALUES (1) as t(j)
   UNION ALL
   SELECT j + 1 FROM s WHERE j < 3
+)
+SELECT * FROM t;
+
+-- outer recursive table name takes precedence over nested CTE name
+WITH RECURSIVE t AS (
+  WITH RECURSIVE t AS (
+    SELECT j, 1 AS i FROM t
+    UNION ALL
+    SELECT j, i + 1 FROM t WHERE i < 3
+  )
+  VALUES (1) as t(j)
+  UNION ALL
+  SELECT j + 1 FROM t WHERE j < 3
 )
 SELECT * FROM t;
 

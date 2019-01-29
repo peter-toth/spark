@@ -18,6 +18,7 @@
 package org.apache.spark.sql.execution
 
 import scala.collection.mutable
+import scala.collection.mutable.ArrayBuffer
 import scala.concurrent.{ExecutionContext, Future}
 import scala.concurrent.duration.Duration
 
@@ -232,59 +233,76 @@ case class FilterExec(condition: Expression, child: SparkPlan)
 /** Physical plan for RecursiveTable. */
 case class RecursiveTableExec(
     name: String,
-    anchorTerm: SparkPlan,
-    recursiveTerm: SparkPlan,
+    anchorTerms: Seq[SparkPlan],
+    recursiveTerms: Seq[SparkPlan],
     limit: Option[Long]) extends SparkPlan {
-  override def children: Seq[SparkPlan] = Seq(anchorTerm, recursiveTerm)
+  override def children: Seq[SparkPlan] = anchorTerms ++ recursiveTerms
 
-  override def output: Seq[Attribute] = anchorTerm.output
+  override def output: Seq[Attribute] = anchorTerms.head.output.map(_.withNullability(true))
 
-  override val doNotPrepareInAdvance: Seq[SparkPlan] = Seq(recursiveTerm)
+  override val doNotPrepareInAdvance: Seq[SparkPlan] = recursiveTerms
 
   override protected def doExecute(): RDD[InternalRow] = {
-    var temp = anchorTerm.execute().map(_.copy()).cache()
-    var tempCount = temp.count()
-    var result = temp
-    var sumCount = tempCount
+    val prevIterationRDDs = ArrayBuffer.empty[RDD[InternalRow]]
+    var prevIterationCount = 0L
+    val anchorTermsIterator = anchorTerms.iterator
+    while (anchorTermsIterator.hasNext && limit.forall(_ > prevIterationCount)) {
+      val anchorTerm = anchorTermsIterator.next()
+
+      val rdd = anchorTerm.execute().map(_.copy()).cache()
+      prevIterationRDDs += rdd
+      prevIterationCount += rdd.count()
+    }
+
+    val allRDDs = ArrayBuffer(prevIterationRDDs: _*)
+    var allCount = prevIterationCount
     var level = 0
     val levelLimit = conf.recursionLevelLimit
-    while ((level == 0 || tempCount > 0) && limit.forall(_ > sumCount)) {
+    while (prevIterationCount > 0 && limit.forall(_ > allCount)) {
       if (level > levelLimit) {
         throw new SparkException(s"Recursion level limit ${levelLimit} reached but query hasn't" +
           s"exhausted, try increasing ${SQLConf.RECURSION_LEVEL_LIMIT.key}")
       }
 
-      val newCoordinators = mutable.Map.empty[ExchangeCoordinator, Some[ExchangeCoordinator]]
-      val newRecursiveTerm = recursiveTerm.transform {
-        case se @ ShuffleExchangeExec(_, _, Some(co)) =>
-          se.copy(coordinator = newCoordinators.getOrElseUpdate(co, Some(co.copy)))
-      }
-      if (level > 0) {
-        newRecursiveTerm.reset()
-      }
+      val prevIterationResult = sparkContext.union(prevIterationRDDs)
 
-      def updateRecursiveTables(plan: SparkPlan): Unit = plan.foreach {
-        _ match {
-          case rr: RecursiveReferenceExec if rr.name == name => rr.recursiveTable = temp
-          case ReusedExchangeExec(_, child) => updateRecursiveTables(child)
-          case _ =>
+      prevIterationRDDs.clear()
+      prevIterationCount = 0
+      val recursiveTermsIterator = recursiveTerms.iterator
+      while (recursiveTermsIterator.hasNext && limit.forall(_ > allCount + prevIterationCount)) {
+        val recursiveTerm = recursiveTermsIterator.next()
+
+        val newCoordinators = mutable.Map.empty[ExchangeCoordinator, Some[ExchangeCoordinator]]
+        val newRecursiveTerm = recursiveTerm.transform {
+          case se @ ShuffleExchangeExec(_, _, Some(co)) =>
+            se.copy(coordinator = newCoordinators.getOrElseUpdate(co, Some(co.copy)))
         }
+        if (level > 0) {
+          newRecursiveTerm.reset()
+        }
+
+        def updateRecursiveTables(plan: SparkPlan): Unit = plan.foreach {
+          _ match {
+            case rr: RecursiveReferenceExec if rr.name == name =>
+              rr.recursiveTable = prevIterationResult
+            case ReusedExchangeExec(_, child) => updateRecursiveTables(child)
+            case _ =>
+          }
+        }
+
+        updateRecursiveTables(newRecursiveTerm)
+
+        val rdd = newRecursiveTerm.execute().map(_.copy()).cache()
+        prevIterationRDDs += rdd
+        prevIterationCount += rdd.count()
       }
 
-      updateRecursiveTables(newRecursiveTerm)
-
-      val newTemp = newRecursiveTerm.execute().map(_.copy()).cache()
-      tempCount = newTemp.count()
-      temp.unpersist()
-      temp = newTemp
-
-      result = result.union(temp)
-      sumCount += tempCount
-
+      allRDDs ++= prevIterationRDDs
+      allCount += prevIterationCount
       level = level + 1
     }
 
-    result
+    sparkContext.union(allRDDs)
   }
 }
 

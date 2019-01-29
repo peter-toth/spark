@@ -55,41 +55,45 @@ case class Subquery(child: LogicalPlan) extends OrderPreservingUnaryNode {
  * term are combined to form the final result.
  *
  * @param name name of the table
- * @param anchorTerm this child is used for initializing the query
- * @param recursiveTerm this child is used for extending the set of results with new rows based on
+ * @param anchorTerms this child is used for initializing the query
+ * @param recursiveTerms this child is used for extending the set of results with new rows based on
  *                      the results of the previous iteration (or the anchor in the first iteration)
  */
 case class RecursiveTable(
     name: String,
-    anchorTerm: LogicalPlan,
-    recursiveTerm: LogicalPlan,
+    anchorTerms: Seq[LogicalPlan],
+    recursiveTerms: Seq[LogicalPlan],
     limit: Option[Long]) extends LogicalPlan {
-  override def children: Seq[LogicalPlan] = Seq(anchorTerm, recursiveTerm)
+  override def children: Seq[LogicalPlan] = anchorTerms ++ recursiveTerms
 
-  override def output: Seq[Attribute] = anchorTerm.output.map(_.withNullability(true))
+  override def output: Seq[Attribute] = anchorTerms.head.output.map(_.withNullability(true))
 
   override lazy val resolved: Boolean = {
     val numberOfOutputMatches =
-      childrenResolved &&
-      anchorTerm.output.length > 0 &&
-      anchorTerm.output.length == recursiveTerm.output.length
+      children.length > 1 &&
+        childrenResolved &&
+        children.head.output.length > 0 &&
+        children.map(_.output.length).toSet.size == 1
     if (numberOfOutputMatches) {
-      val typeOfOutputMatches = anchorTerm.output.zip(recursiveTerm.output).forall {
-        case (l, r) => l.dataType.sameType(r.dataType)
-      }
-      if (!typeOfOutputMatches) {
-        throw new AnalysisException(s"Anchor term types ${anchorTerm.output.map(_.dataType)} " +
-          s"and recursive term types ${recursiveTerm.output.map(_.dataType)} doesn't match")
+      children.tail.foreach { child =>
+        val childCompatible = child.output.zip(children.head.output).forall {
+          case (l, r) => l.dataType.sameType(r.dataType)
+        }
+        if (!childCompatible) {
+          throw new AnalysisException("Recursion term types " +
+            s"${children.head.output.map(_.dataType)} and ${child.output.map(_.dataType)} does " +
+            "not match")
+        }
       }
     }
     numberOfOutputMatches
   }
 
-  lazy val anchorResolved = anchorTerm.resolved
+  lazy val anchorsResolved = anchorTerms.forall(_.resolved)
 }
 
 /**
- * A This node means a reference to a recursive table in CTE definitions.
+ * This node is a reference to a recursive table in CTE definitions.
  *
  * @param name the name of the table it references to
  * @param output the attributes of the recursive table

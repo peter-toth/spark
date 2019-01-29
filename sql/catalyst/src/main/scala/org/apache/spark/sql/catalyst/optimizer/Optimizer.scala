@@ -473,20 +473,20 @@ object LimitPushDown extends Rule[LogicalPlan] {
       LocalLimit(exp, newJoin)
     case LocalLimit(
         nl @ IntegerLiteral(newLimit),
-        rt @ RecursiveTable(_, anchorTerm, recursiveTerm, limit))
+        rt @ RecursiveTable(_, anchorTerms, recursiveTerms, limit))
       if limit.forall(_ > newLimit) =>
       rt.copy(
-        anchorTerm = maybePushLocalLimit(nl, anchorTerm),
-        recursiveTerm = maybePushLocalLimit(nl, recursiveTerm),
+        anchorTerms = anchorTerms.map(maybePushLocalLimit(nl, _)),
+        recursiveTerms = recursiveTerms.map(maybePushLocalLimit(nl, _)),
         limit = Some(newLimit)
       )
     case LocalLimit(
         nl @ IntegerLiteral(newLimit),
-        p @ Project(_, rt @ RecursiveTable(_, anchorTerm, recursiveTerm, limit)))
+        p @ Project(_, rt @ RecursiveTable(_, anchorTerms, recursiveTerms, limit)))
       if limit.forall(_ > newLimit) =>
       p.copy(child = rt.copy(
-        anchorTerm = maybePushLocalLimit(nl, anchorTerm),
-        recursiveTerm = maybePushLocalLimit(nl, recursiveTerm),
+        anchorTerms = anchorTerms.map(maybePushLocalLimit(nl, _)),
+        recursiveTerms = recursiveTerms.map(maybePushLocalLimit(nl, _)),
         limit = Some(newLimit)
       ))
   }

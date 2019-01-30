@@ -23,6 +23,7 @@ import org.apache.spark.sql.catalyst.errors.TreeNodeException
 import org.apache.spark.sql.catalyst.expressions._
 import org.apache.spark.sql.catalyst.expressions.codegen.{CodegenContext, ExprCode}
 import org.apache.spark.sql.catalyst.parser.ParserUtils
+import org.apache.spark.sql.catalyst.plans.LoopEnd
 import org.apache.spark.sql.catalyst.plans.logical.{LeafNode, LogicalPlan, UnaryNode}
 import org.apache.spark.sql.catalyst.trees.TreeNode
 import org.apache.spark.sql.catalyst.util.quoteIdentifier
@@ -514,7 +515,7 @@ case class UnresolvedOrdinal(ordinal: Int)
   override lazy val resolved = false
 }
 
-case class UnresolvedRecursiveReference(name: String) extends LeafNode {
+case class UnresolvedRecursiveReference(name: String) extends LeafNode with LoopEnd {
   override def output: Seq[Attribute] = Nil
 
   override lazy val resolved = false

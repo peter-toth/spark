@@ -63,7 +63,7 @@ case class RecursiveTable(
     name: String,
     anchorTerms: Seq[LogicalPlan],
     recursiveTerms: Seq[LogicalPlan],
-    limit: Option[Long]) extends LogicalPlan {
+    limit: Option[Long]) extends LogicalPlan with LoopStart {
   override def children: Seq[LogicalPlan] = anchorTerms ++ recursiveTerms
 
   override def output: Seq[Attribute] = anchorTerms.head.output.map(_.withNullability(true))
@@ -98,9 +98,11 @@ case class RecursiveTable(
  * @param name the name of the table it references to
  * @param output the attributes of the recursive table
  */
-case class RecursiveReference(name: String, output: Seq[Attribute]) extends LeafNode {
+case class RecursiveReference(name: String, output: Seq[Attribute]) extends LeafNode with LoopEnd {
   override lazy val resolved = output.forall(_.resolved)
 
+  // Since the size of a recursive reference can grow beyond the limit that a broadcast join can
+  // have on the broadcasted side, spark.sql.defaultSizeInBytes is used for estimating the stats.
   override def computeStats(): Statistics = Statistics(BigInt(conf.defaultSizeInBytes))
 }
 

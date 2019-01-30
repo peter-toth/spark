@@ -50,7 +50,7 @@ SELECT * FROM r ORDER BY level
 struct<>
 -- !query 2 output
 org.apache.spark.SparkException
-Recursion level limit 100 reached but query hasn'texhausted, try increasing spark.sql.cte.recursion.level.limit
+Recursion level limit 100 reached but query has not exhausted, try increasing spark.sql.cte.recursion.level.limit
 
 
 -- !query 3
@@ -138,7 +138,7 @@ SELECT SUM(n) FROM t LIMIT 10
 struct<>
 -- !query 7 output
 org.apache.spark.SparkException
-Recursion level limit 100 reached but query hasn'texhausted, try increasing spark.sql.cte.recursion.level.limit
+Recursion level limit 100 reached but query has not exhausted, try increasing spark.sql.cte.recursion.level.limit
 
 
 -- !query 8
@@ -152,7 +152,7 @@ SELECT n, n FROM t ORDER BY n LIMIT 10
 struct<>
 -- !query 8 output
 org.apache.spark.SparkException
-Recursion level limit 100 reached but query hasn'texhausted, try increasing spark.sql.cte.recursion.level.limit
+Recursion level limit 100 reached but query has not exhausted, try increasing spark.sql.cte.recursion.level.limit
 
 
 -- !query 9

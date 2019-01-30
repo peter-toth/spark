@@ -17,6 +17,8 @@
 
 package org.apache.spark.sql.catalyst.plans
 
+import scala.collection.mutable
+
 import org.apache.spark.sql.AnalysisException
 import org.apache.spark.sql.catalyst.expressions._
 import org.apache.spark.sql.catalyst.trees.{CurrentOrigin, TreeNode}
@@ -256,7 +258,23 @@ abstract class QueryPlan[PlanType <: QueryPlan[PlanType]] extends TreeNode[PlanT
    * This function performs a modified version of equality that is tolerant of cosmetic
    * differences like attribute naming and or expression id differences.
    */
-  def sameResult(other: PlanType): Boolean = this.canonicalized == other.canonicalized
+  final def sameResult(other: PlanType): Boolean = this.canonicalized == other.canonicalized &&
+    containsClosedLoopsOnly
+
+  // A recursion brings a loop into the tree structure of a plan. If the plan contains closed loops
+  // only then it can be compared to another plan safely. But comparing a subtree from an open loop
+  // is not safe and the result would depend on the context where the other plan comes from.
+  private lazy val containsClosedLoopsOnly = {
+    val loopStarts = mutable.Set.empty[String]
+    val loopEnds = mutable.Set.empty[String]
+    foreach {
+      case ls: LoopStart => loopStarts += ls.name
+      case le: LoopEnd => loopEnds += le.name
+      case _ =>
+    }
+
+    (loopEnds -- loopStarts).isEmpty
+  }
 
   /**
    * Returns a `hashCode` for the calculation performed by this plan. Unlike the standard
@@ -318,4 +336,12 @@ object QueryPlan extends PredicateHelper {
       case e: AnalysisException => append(e.toString)
     }
   }
+}
+
+trait LoopStart {
+  val name: String
+}
+
+trait LoopEnd {
+  val name: String
 }

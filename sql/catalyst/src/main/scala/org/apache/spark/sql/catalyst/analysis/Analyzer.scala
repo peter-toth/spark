@@ -1680,25 +1680,23 @@ class Analyzer(
       plan
     }
 
-    private def mergeMap(a: Map[String, Int], b: Map[String, Int]): Map[String, Int] =
-      a ++ b.map { case (k, v) => k -> (v + a.getOrElse(k, 0)) }
-
     private def traverse(
         plan: LogicalPlan,
-        allowedRecursiveReferences: Set[String] = Set.empty): Map[String, Int] = plan match {
+        allowedRecursiveReferences: Set[String] = Set.empty,
+        recursiveReferenceCounts: mutable.Map[String, Int] = mutable.Map.empty): Unit = plan match {
       case RecursiveTable(name, anchorTerms, recursiveTerms, _) =>
         if (allowedRecursiveReferences.contains(name)) {
           throw new AnalysisException(s"Recursive CTE definition $name is already in use.")
         }
-        (anchorTerms.map(traverse(_, allowedRecursiveReferences)) ++
+        anchorTerms.map(traverse(_, allowedRecursiveReferences, recursiveReferenceCounts))
         recursiveTerms.map { recursiveTerm =>
-          val m = traverse(recursiveTerm, allowedRecursiveReferences + name)
-          if (m.get(name).getOrElse(0) > 1) {
+          traverse(recursiveTerm, allowedRecursiveReferences + name, recursiveReferenceCounts)
+          if (recursiveReferenceCounts.get(name).getOrElse(0) > 1) {
             throw new AnalysisException(s"Recursive reference $name cannot be used multiple " +
               "times in a recursive term")
           }
-          m - name
-        }).foldLeft(Map.empty[String, Int])(mergeMap)
+          recursiveReferenceCounts -= name
+        }
       case RecursiveReference(name, _) =>
         if (!allowedRecursiveReferences.contains(name)) {
           throw new AnalysisException(s"Recursive reference $name cannot be used here. This can " +
@@ -1706,23 +1704,24 @@ class Analyzer(
             "using it on inner side of an outer join, using it with aggregate or distinct, using " +
             "it in a subquery or using it multiple times in a recursive term.")
         }
-        Map(name -> 1)
+        recursiveReferenceCounts += name -> (recursiveReferenceCounts.getOrElse(name, 0) + 1)
       case Join(left, right, Inner, _, _) =>
-        mergeMap(traverse(left, allowedRecursiveReferences),
-          traverse(right, allowedRecursiveReferences))
+        traverse(left, allowedRecursiveReferences, recursiveReferenceCounts)
+        traverse(right, allowedRecursiveReferences, recursiveReferenceCounts)
       case Join(left, right, LeftOuter, _, _) =>
-        mergeMap(traverse(left, allowedRecursiveReferences), traverse(right, Set.empty))
+        traverse(left, allowedRecursiveReferences, recursiveReferenceCounts)
+        traverse(right, Set.empty, recursiveReferenceCounts)
       case Join(left, right, RightOuter, _, _) =>
-        mergeMap(traverse(left, Set.empty), traverse(right, allowedRecursiveReferences))
+        traverse(left, Set.empty, recursiveReferenceCounts)
+        traverse(right, allowedRecursiveReferences, recursiveReferenceCounts)
       case Join(left, right, _, _, _) =>
-        mergeMap(traverse(left, Set.empty), traverse(right, Set.empty))
-      case Aggregate(_, _, child) => traverse(child, Set.empty)
-      case Distinct(child) => traverse(child, Set.empty)
+        traverse(left, Set.empty, recursiveReferenceCounts)
+        traverse(right, Set.empty, recursiveReferenceCounts)
+      case Aggregate(_, _, child) => traverse(child, Set.empty, recursiveReferenceCounts)
+      case Distinct(child) => traverse(child, Set.empty, recursiveReferenceCounts)
       case o =>
-        o.subqueries.foreach(traverse(_, Set.empty))
-        o.children
-          .map(traverse(_, allowedRecursiveReferences))
-          .foldLeft(Map.empty[String, Int])(mergeMap)
+        o.subqueries.foreach(traverse(_, Set.empty, recursiveReferenceCounts))
+        o.children.map(traverse(_, allowedRecursiveReferences, recursiveReferenceCounts))
     }
   }
 

@@ -623,11 +623,11 @@ SELECT * FROM sums_1_100;
 -- department structure represented here is as follows:
 --
 -- ROOT--->A--->B--->C
---  |      |
---  |      ∨
---  |      D--->F
---  ∨
---  E--->G
+-- |       |
+-- |       ∨
+-- |       D--->F
+-- ∨
+-- E--->G
 CREATE TEMPORARY VIEW department AS SELECT * FROM VALUES
   (0, null, 'ROOT'),
   (1, 0, 'A'),
@@ -813,10 +813,10 @@ DROP VIEW graph;
 
 -- routes represented here is as follows:
 --
--- New York<-->Boston
--- |           ∧
--- ∨           |
--- Washington--+
+-- New York<--->Boston
+-- |            ∧
+-- ∨            |
+-- Washington---+
 -- |
 -- ∨
 -- Raleigh

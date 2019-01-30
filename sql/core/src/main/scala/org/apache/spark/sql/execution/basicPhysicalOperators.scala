@@ -28,6 +28,7 @@ import org.apache.spark.sql.catalyst.InternalRow
 import org.apache.spark.sql.catalyst.expressions._
 import org.apache.spark.sql.catalyst.expressions.BindReferences.bindReferences
 import org.apache.spark.sql.catalyst.expressions.codegen._
+import org.apache.spark.sql.catalyst.plans.{LoopEnd, LoopStart}
 import org.apache.spark.sql.catalyst.plans.physical._
 import org.apache.spark.sql.execution.exchange.{ExchangeCoordinator, ReusedExchangeExec, ShuffleExchangeExec}
 import org.apache.spark.sql.execution.metric.SQLMetrics
@@ -235,7 +236,7 @@ case class RecursiveTableExec(
     name: String,
     anchorTerms: Seq[SparkPlan],
     recursiveTerms: Seq[SparkPlan],
-    limit: Option[Long]) extends SparkPlan {
+    limit: Option[Long]) extends SparkPlan with LoopStart {
   override def children: Seq[SparkPlan] = anchorTerms ++ recursiveTerms
 
   override def output: Seq[Attribute] = anchorTerms.head.output.map(_.withNullability(true))
@@ -260,7 +261,7 @@ case class RecursiveTableExec(
     val levelLimit = conf.recursionLevelLimit
     while (prevIterationCount > 0 && limit.forall(_ > allCount)) {
       if (level > levelLimit) {
-        throw new SparkException(s"Recursion level limit ${levelLimit} reached but query hasn't" +
+        throw new SparkException(s"Recursion level limit ${levelLimit} reached but query has not " +
           s"exhausted, try increasing ${SQLConf.RECURSION_LEVEL_LIMIT.key}")
       }
 
@@ -281,16 +282,16 @@ case class RecursiveTableExec(
           newRecursiveTerm.reset()
         }
 
-        def updateRecursiveTables(plan: SparkPlan): Unit = plan.foreach {
+        // We don't need to deal with ReusedExchangeExec here as ReuseExchange rule doesn't place
+        // it into the plan due to SparkPlan.sameResult() returns false if there is an open loop
+        // (ie. RecursiveReferenceExec without a corresponding RecursiveTableExec) in the plan.
+        newRecursiveTerm.foreach {
           _ match {
             case rr: RecursiveReferenceExec if rr.name == name =>
               rr.recursiveTable = prevIterationResult
-            case ReusedExchangeExec(_, child) => updateRecursiveTables(child)
             case _ =>
           }
         }
-
-        updateRecursiveTables(newRecursiveTerm)
 
         val rdd = newRecursiveTerm.execute().map(_.copy()).cache()
         prevIterationRDDs += rdd
@@ -307,7 +308,9 @@ case class RecursiveTableExec(
 }
 
 /** Physical plan for RecursiveReference. */
-case class RecursiveReferenceExec(name: String, output: Seq[Attribute]) extends LeafExecNode {
+case class RecursiveReferenceExec(
+    name: String,
+    output: Seq[Attribute]) extends LeafExecNode with LoopEnd {
   var recursiveTable: RDD[InternalRow] = _
 
   override protected def doExecute(): RDD[InternalRow] = recursiveTable

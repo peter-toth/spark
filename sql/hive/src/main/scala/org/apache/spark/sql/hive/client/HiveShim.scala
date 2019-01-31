@@ -1402,7 +1402,6 @@ private[client] class Shim_v3_0 extends Shim_v2_3 {
       writeIdInLoadTableOrPartition, stmtIdInLoadTableOrPartition, replace: JBoolean)
   }
 
-
   override def loadTable(
       hive: Hive,
       loadPath: Path,
@@ -1520,3 +1519,6 @@ private[client] class Shim_v3_0 extends Shim_v2_3 {
     renamePartitionMethod.invoke(hive, hiveTable, oldSpec, hivePart, -1L: JLong)
   }
 }
+
+private[client] class Shim_v3_1 extends Shim_v3_0
+

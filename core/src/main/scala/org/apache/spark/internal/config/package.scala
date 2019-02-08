@@ -183,6 +183,16 @@ package object config {
       .checkValues(Set("keytab", "ccache"))
       .createWithDefault("keytab")
 
+  // CDPD-3435: keep the 2.4 name for this property, which mentions YARN, even though it
+  // works in other resource managers. This avoids deprecation warnings.
+  private[spark] val KERBEROS_FILESYSTEMS_TO_ACCESS =
+    ConfigBuilder("spark.yarn.access.hadoopFileSystems")
+    .doc("Extra Hadoop filesystem URLs for which to request delegation tokens. The filesystem " +
+      "that hosts fs.defaultFS does not need to be listed here.")
+    .stringConf
+    .toSequence
+    .createWithDefault(Nil)
+
   private[spark] val EXECUTOR_INSTANCES = ConfigBuilder("spark.executor.instances")
     .intConf
     .createOptional
@@ -704,4 +714,9 @@ package object config {
       .stringConf
       .toSequence
       .createWithDefault(Nil)
+
+  private[spark] val STAGING_DIR = ConfigBuilder("spark.yarn.stagingDir")
+    .doc("Staging directory used while submitting applications.")
+    .stringConf
+    .createOptional
 }

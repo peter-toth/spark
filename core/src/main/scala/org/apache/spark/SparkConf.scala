@@ -717,8 +717,6 @@ private[spark] object SparkConf extends Logging {
       AlternateConfig("spark.akka.frameSize", "1.6")),
     "spark.yarn.jars" -> Seq(
       AlternateConfig("spark.yarn.jar", "2.0")),
-    "spark.yarn.access.hadoopFileSystems" -> Seq(
-      AlternateConfig("spark.yarn.access.namenodes", "2.2")),
     MAX_REMOTE_BLOCK_SIZE_FETCH_TO_MEM.key -> Seq(
       AlternateConfig("spark.reducer.maxReqSizeShuffleToMem", "2.3")),
     LISTENER_BUS_EVENT_QUEUE_CAPACITY.key -> Seq(
@@ -726,7 +724,9 @@ private[spark] object SparkConf extends Logging {
     DRIVER_MEMORY_OVERHEAD.key -> Seq(
       AlternateConfig("spark.yarn.driver.memoryOverhead", "2.3")),
     EXECUTOR_MEMORY_OVERHEAD.key -> Seq(
-      AlternateConfig("spark.yarn.executor.memoryOverhead", "2.3"))
+      AlternateConfig("spark.yarn.executor.memoryOverhead", "2.3")),
+    KERBEROS_FILESYSTEMS_TO_ACCESS.key -> Seq(
+      AlternateConfig("spark.yarn.access.namenodes", "2.2"))
   )
 
   /**

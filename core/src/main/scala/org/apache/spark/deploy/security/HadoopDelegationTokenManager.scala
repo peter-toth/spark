@@ -193,14 +193,6 @@ private[spark] class HadoopDelegationTokenManager(
       .getOrElse(isEnabledDeprecated)
   }
 
-  /**
-   * List of file systems for which to obtain delegation tokens. The base implementation
-   * returns just the default file system in the given Hadoop configuration.
-   */
-  protected def fileSystemsToAccess(): Set[FileSystem] = {
-    Set(FileSystem.get(hadoopConf))
-  }
-
   private def scheduleRenewal(delay: Long): Unit = {
     val _delay = math.max(0, delay)
     logInfo(s"Scheduling renewal in ${UIUtils.formatDuration(delay)}.")
@@ -280,7 +272,7 @@ private[spark] class HadoopDelegationTokenManager(
   }
 
   private def loadProviders(): Map[String, HadoopDelegationTokenProvider] = {
-    val providers = Seq(new HadoopFSDelegationTokenProvider(fileSystemsToAccess)) ++
+    val providers = Seq(new HadoopFSDelegationTokenProvider) ++
       safeCreateProvider(new HiveDelegationTokenProvider) ++
       safeCreateProvider(new HBaseDelegationTokenProvider) ++
       safeCreateProvider(new KafkaDelegationTokenProvider)

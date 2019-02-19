@@ -60,9 +60,10 @@ case class ProjectExec(projectList: Seq[NamedExpression], child: SparkPlan)
     val exprs = bindReferences[Expression](projectList, child.output)
     val resultVars = exprs.map(_.genCode(ctx))
     // Evaluation of non-deterministic expressions can't be deferred.
-    val nonDeterministicAttrs = projectList.filterNot(_.deterministic).map(_.toAttribute)
+    val evaluateNondeterministicResults =
+      evaluateNondeterministicVariables(output, resultVars, projectList)
     s"""
-       |${evaluateRequiredVariables(output, resultVars, AttributeSet(nonDeterministicAttrs))}
+       |$evaluateNondeterministicResults
        |${consume(ctx, resultVars)}
      """.stripMargin
   }

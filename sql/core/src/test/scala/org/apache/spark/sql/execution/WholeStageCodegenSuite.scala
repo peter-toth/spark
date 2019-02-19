@@ -367,4 +367,35 @@ class WholeStageCodegenSuite extends QueryTest with SharedSQLContext {
       checkAnswer(groupByWithId, Seq(Row(1, 2, 0), Row(1, 2, 0)))
     }
   }
+
+  private def sameCodegenDescendants(plan: SparkPlan): Stream[SparkPlan] =
+    if (plan.isInstanceOf[WholeStageCodegenExec] || !plan.isInstanceOf[CodegenSupport]) {
+      Stream.empty
+    } else {
+      plan +: plan.children.toStream.flatMap(sameCodegenDescendants)
+    }
+
+  test("SPARK-???: evaluate non-deterministic expressions for aggregate results") {
+    withSQLConf(
+      SQLConf.AUTO_BROADCASTJOIN_THRESHOLD.key -> Long.MaxValue.toString,
+      SQLConf.SHUFFLE_PARTITIONS.key -> "1") {
+      val baseTable = Seq(1, 1).toDF("idx")
+
+      // BroadcastHashJoinExec with a HashAggregateExec child containing no grouping
+      val distinctWithId = baseTable.agg(min("idx").as("idx"))
+        .selectExpr("idx", "monotonically_increasing_id() AS id", "1 AS temp")
+        .join(baseTable, "idx")
+      assert(distinctWithId.queryExecution.executedPlan.collectFirst {
+        case wsc: WholeStageCodegenExec if sameCodegenDescendants(wsc.child).collectFirst {
+          case p: ProjectExec if sameCodegenDescendants(p.child).collectFirst {
+            case bhj: BroadcastHashJoinExec
+              if bhj.children.toStream.flatMap(sameCodegenDescendants).collectFirst {
+                case _: HashAggregateExec => true
+              }.isDefined => true
+          }.isDefined => true
+        }.isDefined => true
+      }.isDefined)
+      checkAnswer(distinctWithId, Seq(Row(1, 0, 1), Row(1, 0, 1)))
+    }
+  }
 }

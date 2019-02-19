@@ -208,9 +208,11 @@ case class HashAggregateExec(
       // evaluate result expressions
       ctx.currentVars = aggResults
       val resultVars = bindReferences(resultExpressions, aggregateAttributes).map(_.genCode(ctx))
+      val evaluateNondeterministicResults =
+        evaluateNondeterministicVariables(output, resultVars, resultExpressions)
       (resultVars, s"""
         |$evaluateAggResults
-        |${evaluateVariables(resultVars)}
+        |$evaluateNondeterministicResults
        """.stripMargin)
     } else if (modes.contains(Partial) || modes.contains(PartialMerge)) {
       // output the aggregate buffer directly

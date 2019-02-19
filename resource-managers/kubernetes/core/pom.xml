@@ -33,6 +33,16 @@
   </properties>
 
   <dependencies>
+    <!-- Explicitly depend on shaded dependencies from the parent, since shaded deps aren't transitive -->
+    <dependency>
+      <groupId>com.google.guava</groupId>
+      <artifactId>guava</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>com.google.guava</groupId>
+      <artifactId>failureaccess</artifactId>
+    </dependency>
+    <!-- End of shaded deps. -->
     <dependency>
       <groupId>org.apache.spark</groupId>
       <artifactId>spark-core_${scala.binary.version}</artifactId>
@@ -80,17 +90,6 @@
       <artifactId>jackson-dataformat-yaml</artifactId>
       <version>${fasterxml.jackson.version}</version>
     </dependency>
-
-    <!-- Explicitly depend on shaded dependencies from the parent, since shaded deps aren't transitive -->
-    <dependency>
-      <groupId>com.google.guava</groupId>
-      <artifactId>guava</artifactId>
-    </dependency>
-    <dependency>
-      <groupId>com.google.guava</groupId>
-      <artifactId>failureaccess</artifactId>
-    </dependency>
-    <!-- End of shaded deps. -->
 
     <dependency>
       <groupId>org.mockito</groupId>

@@ -94,3 +94,4 @@ BUG FIXES
     BUG-121103 Upgrade jackson-databind to 2.9.9.1
     SPARK-24981 ShutdownHook timeout causes job to fail when succeeded when SparkContext stop() not called by user program
     SPARK-28156 Self-join should not miss cached view
+  SPARK-26895   prepareSubmitEnvironment should be called within doAs for proxy users

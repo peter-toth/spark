@@ -78,6 +78,7 @@ public class SaslIntegrationSuite {
   @AfterClass
   public static void afterAll() {
     server.close();
+    context.close();
   }
 
   @After
@@ -140,13 +141,14 @@ public class SaslIntegrationSuite {
   @Test
   public void testNoSaslServer() {
     RpcHandler handler = new TestRpcHandler();
-    TransportContext context = new TransportContext(conf, handler);
-    clientFactory = context.createClientFactory(
-      Arrays.asList(new SaslClientBootstrap(conf, "app-1", secretKeyHolder)));
-    try (TransportServer server = context.createServer()) {
-      clientFactory.createClient(TestUtils.getLocalHost(), server.getPort());
-    } catch (Exception e) {
-      assertTrue(e.getMessage(), e.getMessage().contains("Digest-challenge format violation"));
+    try (TransportContext context = new TransportContext(conf, handler)) {
+      clientFactory = context.createClientFactory(
+          Arrays.asList(new SaslClientBootstrap(conf, "app-1", secretKeyHolder)));
+      try (TransportServer server = context.createServer()) {
+        clientFactory.createClient(TestUtils.getLocalHost(), server.getPort());
+      } catch (Exception e) {
+        assertTrue(e.getMessage(), e.getMessage().contains("Digest-challenge format violation"));
+      }
     }
   }
 

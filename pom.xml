@@ -122,6 +122,7 @@
     <zookeeper.version>3.5.5.7.1.1.0-SNAPSHOT</zookeeper.version>
     <curator.version>4.2.0</curator.version>
     <hive.group>org.spark-project.hive</hive.group>
+    <hive.classifier></hive.classifier>
     <!-- Version used in Maven Hive dependency -->
     <hive.version>1.21.2.7.1.0.0-SNAPSHOT</hive.version>
     <hive23.version>2.3.5</hive23.version>
@@ -133,6 +134,7 @@
     <parquet.version>1.10.99.7.1.1.0-SNAPSHOT</parquet.version>
     <orc.version>1.5.1.7.1.1.0-SNAPSHOT</orc.version>
     <orc.classifier>nohive</orc.classifier>
+    <hive.parquet.group>com.twitter</hive.parquet.group>
     <hive.parquet.version>1.6.0</hive.parquet.version>
     <jetty.version>9.4.26.v20200117</jetty.version>
     <javaxservlet.version>3.1.0</javaxservlet.version>
@@ -1576,9 +1578,7 @@
       <dependency>
         <groupId>${hive.group}</groupId>
         <artifactId>hive-exec</artifactId>
-<!--
-        <classifier>core</classifier>
--->
+        <classifier>${hive.classifier}</classifier>
         <version>${hive.version}</version>
         <scope>${hive.deps.scope}</scope>
         <exclusions>
@@ -2113,7 +2113,7 @@
         <scope>${parquet.test.deps.scope}</scope>
       </dependency>
       <dependency>
-        <groupId>com.twitter</groupId>
+        <groupId>${hive.parquet.group}</groupId>
         <artifactId>parquet-hadoop-bundle</artifactId>
         <version>${hive.parquet.version}</version>
         <scope>compile</scope>

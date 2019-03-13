@@ -31,7 +31,7 @@ import org.apache.spark.sql.catalyst.plans.QueryPlan
 import org.apache.spark.sql.catalyst.plans.logical.{LogicalPlan, ReturnAnswer}
 import org.apache.spark.sql.catalyst.rules.Rule
 import org.apache.spark.sql.catalyst.util.DateTimeUtils
-import org.apache.spark.sql.catalyst.util.StringUtils.StringConcat
+import org.apache.spark.sql.catalyst.util.StringUtils.{PlanStringConcat, StringConcat}
 import org.apache.spark.sql.catalyst.util.truncatedString
 import org.apache.spark.sql.execution.command.{DescribeTableCommand, ExecutedCommandExec, ShowTablesCommand}
 import org.apache.spark.sql.execution.exchange.{EnsureRequirements, ReuseExchange}
@@ -187,7 +187,7 @@ class QueryExecution(val sparkSession: SparkSession, val logical: LogicalPlan) {
   }
 
   def simpleString: String = withRedaction {
-    val concat = new StringConcat()
+    val concat = new PlanStringConcat()
     concat.append("== Physical Plan ==\n")
     QueryPlan.append(executedPlan, concat.append, verbose = false, addSuffix = false)
     concat.append("\n")
@@ -215,13 +215,13 @@ class QueryExecution(val sparkSession: SparkSession, val logical: LogicalPlan) {
   }
 
   override def toString: String = withRedaction {
-    val concat = new StringConcat()
+    val concat = new PlanStringConcat()
     writePlans(concat.append, SQLConf.get.maxToStringFields)
     concat.toString
   }
 
   def stringWithStats: String = withRedaction {
-    val concat = new StringConcat()
+    val concat = new PlanStringConcat()
     val maxFields = SQLConf.get.maxToStringFields
 
     // trigger to compute stats for logical plans
@@ -276,9 +276,11 @@ class QueryExecution(val sparkSession: SparkSession, val logical: LogicalPlan) {
       val filePath = new Path(path)
       val fs = filePath.getFileSystem(sparkSession.sessionState.newHadoopConf())
       val writer = new BufferedWriter(new OutputStreamWriter(fs.create(filePath)))
-
+      val append = (s: String) => {
+        writer.write(s)
+      }
       try {
-        writePlans(writer.write, maxFields)
+        writePlans(append, maxFields)
         writer.write("\n== Whole Stage Codegen ==\n")
         org.apache.spark.sql.execution.debug.writeCodegen(writer.write, executedPlan)
       } finally {

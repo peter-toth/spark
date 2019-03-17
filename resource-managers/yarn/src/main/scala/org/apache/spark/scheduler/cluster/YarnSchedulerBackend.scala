@@ -186,19 +186,9 @@ private[spark] abstract class YarnSchedulerBackend(
           }
           conf.set("spark.ui.filters", allFilters)
 
-          ui.getHandlers.map(_.getServletHandler()).foreach { h =>
-            val holder = new FilterHolder()
-            holder.setName(filterName)
-            holder.setClassName(filterName)
-            filterParams.foreach { case (k, v) => holder.setInitParameter(k, v) }
-            h.addFilter(holder)
-
-            val mapping = new FilterMapping()
-            mapping.setFilterName(filterName)
-            mapping.setPathSpec("/*")
-            mapping.setDispatcherTypes(EnumSet.allOf(classOf[DispatcherType]))
-
-            h.prependFilterMapping(mapping)
+          ui.getDelegatingHandlers.foreach { h =>
+            h.addFilter(filterName, filterName, filterParams)
+            h.prependFilterMapping(filterName, "/*", EnumSet.allOf(classOf[DispatcherType]))
           }
         }
       }

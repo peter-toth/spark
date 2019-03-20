@@ -71,6 +71,7 @@ BUG FIXES
     SPARK-23679 Setting RM_HA_URLS for AmIpFilter to avoid redirect failure in YARN mode
     SPARK-25306 Avoid skewed filter trees to speed up `createFilter` in ORC
     SPARK-25183 Spark HiveServer2 to use Spark ShutdownHookManager
+    SPARK-27160 Fix DecimalType when building orc filters
 
     (Jira in Apache Spark is IN PROGRESS)
     SPARK-23977 Add commit protocol binding to Hadoop 3.1 PathOutputCommitter mechanism

@@ -111,7 +111,7 @@ class OrcFilterSuite extends OrcTest with SharedSQLContext {
     assert(maybeFilter.isEmpty, s"Could generate filter predicate for $selectedFilters")
   }
 
-  test("filter pushdown - integer") {
+ test("filter pushdown - integer") {
     withOrcDataFrame((1 to 4).map(i => Tuple1(Option(i)))) { implicit df =>
       checkFilterPredicate('_1.isNull, PredicateLeaf.Operator.IS_NULL)
 

@@ -228,6 +228,7 @@ case class FilterExec(condition: Expression, child: SparkPlan)
   override def outputPartitioning: Partitioning = child.outputPartitioning
 }
 
+
 /**
  * Physical plan for sampling the dataset.
  *

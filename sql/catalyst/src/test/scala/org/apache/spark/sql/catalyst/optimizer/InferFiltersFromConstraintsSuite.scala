@@ -17,6 +17,7 @@
 
 package org.apache.spark.sql.catalyst.optimizer
 
+import org.apache.spark.sql.Debugger
 import org.apache.spark.sql.catalyst.dsl.expressions._
 import org.apache.spark.sql.catalyst.dsl.plans._
 import org.apache.spark.sql.catalyst.expressions._
@@ -195,6 +196,8 @@ class InferFiltersFromConstraintsSuite extends PlanTest {
   }
 
   test("constraints should be inferred from aliased literals") {
+    Debugger.enabled = true
+
     val originalLeft = testRelation.subquery('left).as("left")
     val optimizedLeft = testRelation.subquery('left).where(IsNotNull('a) && 'a <=> 2).as("left")
 
@@ -205,6 +208,8 @@ class InferFiltersFromConstraintsSuite extends PlanTest {
     val correct = optimizedLeft.join(right, Inner, condition)
 
     comparePlans(Optimize.execute(original.analyze), correct.analyze)
+
+    Debugger.enabled = false
   }
 
   test("SPARK-23405: left-semi equal-join should filter out null join keys on both sides") {

@@ -22,7 +22,7 @@ import java.io.{BufferedWriter, OutputStreamWriter}
 import org.apache.hadoop.fs.Path
 
 import org.apache.spark.rdd.RDD
-import org.apache.spark.sql.{AnalysisException, SparkSession}
+import org.apache.spark.sql.{AnalysisException, Debugger, SparkSession}
 import org.apache.spark.sql.catalyst.{InternalRow, QueryPlanningTracker}
 import org.apache.spark.sql.catalyst.analysis.UnsupportedOperationChecker
 import org.apache.spark.sql.catalyst.plans.QueryPlan
@@ -44,7 +44,7 @@ import org.apache.spark.util.Utils
 class QueryExecution(
     val sparkSession: SparkSession,
     val logical: LogicalPlan,
-    val tracker: QueryPlanningTracker = new QueryPlanningTracker) {
+    val tracker: QueryPlanningTracker = new QueryPlanningTracker) extends Debugger {
 
   // TODO: Move the planner an optimizer into here from SessionState.
   protected def planner = sparkSession.sessionState.planner
@@ -102,7 +102,30 @@ class QueryExecution(
    * row format conversions as needed.
    */
   protected def prepareForExecution(plan: SparkPlan): SparkPlan = {
-    preparations.foldLeft(plan) { case (sp, rule) => rule.apply(sp) }
+    if (Debugger.enabled) {
+      logError(s"sparkPlan:\n$plan")
+    }
+
+    val newPlan = preparations.foldLeft(plan) {
+      case (sp, rule) =>
+        val newSP = rule.apply(sp)
+
+        if (Debugger.enabled) {
+          if (Debugger.enabled && sp.treeString != newSP.treeString) {
+            logError(s"Rule: ${rule.ruleName} changed:\n${newSP.treeString}")
+          } else {
+            logError(s"Rule: ${rule.ruleName}")
+          }
+        }
+
+        newSP
+    }
+
+    if (Debugger.enabled) {
+      logError(s"new sparkPlan:\n$newPlan")
+    }
+
+    newPlan
   }
 
   /** A sequence of rules that will be applied in order to the physical plan before execution. */

@@ -3003,6 +3003,143 @@ class SQLQuerySuite extends QueryTest with SharedSQLContext {
       }
     }
   }
+
+  test("SPARK-24497: recursive query") {
+    withSQLConf(SQLConf.WHOLESTAGE_CODEGEN_ENABLED.key -> "true"
+//      , SQLConf.AUTO_BROADCASTJOIN_THRESHOLD.key -> "-1",
+//        SQLConf.ADAPTIVE_EXECUTION_ENABLED.key -> "true"
+    ) {
+      withTempView("department") {
+        val df = Seq(
+          (0, None, "ROOT"),
+          (1, Some(0), "A"),
+          (2, Some(1), "B"),
+          (3, Some(2), "C"),
+          (4, Some(2), "D"),
+          (5, Some(0), "E"),
+          (6, Some(4), "F"),
+          (7, Some(5), "G")
+        ).toDF("id", "parent_department", "name")
+
+        df.show();
+
+        df.createTempView("department")
+
+        val df2 = Seq(
+          ("New York", "Washington"),
+          ("New York", "Boston"),
+          ("Boston", "New York"),
+          ("Washington", "Boston"),
+          ("Washington", "Raleigh")
+        ).toDF("origin", "destination")
+
+        df2.show();
+
+        df2.createTempView("routes")
+
+        val df3 = Seq(
+          (1, None),
+          (2, Some(1)),
+          (3, Some(1)),
+          (4, Some(2)),
+          (5, Some(2)),
+          (6, Some(2)),
+          (7, Some(3)),
+          (8, Some(3)),
+          (9, Some(4)),
+          (10, Some(4)),
+          (11, Some(7)),
+          (12, Some(7)),
+          (13, Some(7)),
+          (14, Some(9)),
+          (15, Some(11)),
+          (16, Some(11))
+        ).toDF("id", "parent_id")
+
+        df3.show();
+
+        df3.createTempView("tree")
+
+        val df4 = Seq(
+          (1, 2, "arc 1 -> 2"),
+          (1, 3, "arc 1 -> 3"),
+          (2, 3, "arc 2 -> 3"),
+          (1, 4, "arc 1 -> 4"),
+          (4, 5, "arc 4 -> 5"),
+          (5, 1, "arc 5 -> 1")
+        ).toDF("f", "t", "label")
+
+        df4.show();
+
+        df4.createTempView("graph")
+
+        val query0 = sql(s"""
+                             |CREATE TEMPORARY VIEW data AS SELECT EXPLODE(SEQUENCE(1, 10)) AS a
+                            |""".stripMargin)
+        query0.show(100, false)
+
+        val query01 = sql(s"""
+                             |SET spark.sql.cte.recursion.level.limit = 500
+                            |""".stripMargin)
+        query01.show(100, false)
+
+        Debugger.enabled = true
+
+        sparkContext.setLogLevel("INFO")
+
+         val query6 = sql(s"""
+                             |WITH RECURSIVE x AS (
+                             |  SELECT a AS n, 0 AS d FROM data WHERE a = 1
+                             |  UNION ALL
+                             |  SELECT x.n + 1, d1.a + d2.a
+                             |  FROM x
+                             |  JOIN data AS d1 ON d1.a = x.n
+                             |  JOIN data AS d2 ON d2.a = x.n
+                             |  WHERE n < 10
+                             |)
+                             |SELECT * FROM x
+                            |""".stripMargin)
+        query6.show(100, false)
+
+
+        // test old when with nested to with
+
+
+//                 val query6 = sql(s"""
+//                                     |WITH q1 AS (
+//                                     |  SELECT rand() FROM (SELECT EXPLODE(SEQUENCE(1, 5)))
+//                                     |)
+//                                     |SELECT * FROM q1
+//                                     |UNION ALL
+//                                     |SELECT * FROM q1
+//                                     |
+//                            |""".stripMargin)
+//        query6.show(100, false)
+
+
+
+//                val query7 = sql(s"""
+//                             |SELECT * FROM sums_1_100
+//                            |""".stripMargin)
+//        query7.show(100, false)
+
+
+//        val query6 = sql(s"""
+//                            |WITH r AS (
+//                            |  VALUES (0, 0) AS T(group, level)
+//                            |)
+//                            |SELECT T.group FROM r
+//                            |""".stripMargin)
+
+//  issue 1:
+//  SELECT r.destination, d.length + 1
+//  FROM (SELECT 'New York' AS destination, 0 AS length) d
+//  JOIN routes AS r ON d.destination = r.origin AND d.length < 2
+
+        Debugger.enabled = false
+      }
+    }
+  }
 }
 
 case class Foo(bar: Option[String])

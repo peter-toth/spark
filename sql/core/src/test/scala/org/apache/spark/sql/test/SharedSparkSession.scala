@@ -38,6 +38,7 @@ trait SharedSparkSession
 
   protected def sparkConf = {
     new SparkConf()
+      // .set("spark.logLineage", "true")
       .set("spark.hadoop.fs.file.impl", classOf[DebugFilesystem].getName)
       .set(UNSAFE_EXCEPTION_ON_MEMORY_LEAK, true)
       .set(SQLConf.CODEGEN_FALLBACK.key, "false")

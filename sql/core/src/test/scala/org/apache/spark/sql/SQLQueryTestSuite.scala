@@ -218,7 +218,14 @@ class SQLQueryTestSuite extends QueryTest with SharedSQLContext {
     }
     // Run the SQL queries preparing them for comparison.
     val outputs: Seq[QueryOutput] = queries.map { sql =>
+      logError(s"SQL:\n$sql")
+
+      val t0 = System.currentTimeMillis()
       val (schema, output) = getNormalizedResult(localSparkSession, sql)
+      val t1 = System.currentTimeMillis()
+
+      logError(s"time: ${(t1 - t0) / 1000}s")
+
       // We might need to do some query canonicalization in the future.
       QueryOutput(
         sql = sql,

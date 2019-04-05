@@ -72,6 +72,7 @@ BUG FIXES
     SPARK-25306 Avoid skewed filter trees to speed up `createFilter` in ORC
     SPARK-25183 Spark HiveServer2 to use Spark ShutdownHookManager
     SPARK-27160 Fix DecimalType when building orc filters
+    SPARK-27358 Update jquery to 1.12.x to pick up security fixes
 
     (Backport from master)
     SPARK-27620 Upgrade jetty to 9.4.18.v20190429

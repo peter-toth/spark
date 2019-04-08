@@ -32,6 +32,7 @@ import org.apache.hadoop.hive.conf.HiveConf
 import org.apache.hadoop.hive.conf.HiveConf.ConfVars
 import org.apache.hadoop.hive.ql.session.SessionState
 import org.apache.hadoop.util.VersionInfo
+import org.apache.hive.common.util.HiveVersionInfo
 
 import org.apache.spark.{SparkConf, SparkContext}
 import org.apache.spark.deploy.SparkHadoopUtil
@@ -54,9 +55,11 @@ private[spark] object HiveUtils extends Logging {
     sc
   }
 
-  /** The version of hive used internally by Spark SQL. */
-  val builtinHiveVersion: String = "1.2.2"
+  private val hiveVersion = HiveVersionInfo.getVersion
+  val isHive23: Boolean = hiveVersion.startsWith("2.3")
 
+  /** The version of hive used internally by Spark SQL. */
+  val builtinHiveVersion: String = if (isHive23) hiveVersion else "1.2.1"
   val HIVE_METASTORE_VERSION = buildConf("spark.sql.hive.metastore.version")
     .doc("Version of the Hive metastore. Available options are " +
         "<code>0.12.0</code> through <code>2.3.4</code> and " +

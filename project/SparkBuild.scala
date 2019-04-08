@@ -224,6 +224,7 @@ object SparkBuild extends PomBuild {
     resolvers := Seq(
       DefaultMavenRepository,
       Resolver.mavenLocal,
+      Resolver.url("cloudera", url("http://nexus-private.hortonworks.com/nexus/content/groups/public")),
       Resolver.file("local", file(Path.userHome.absolutePath + "/.ivy2/local"))(Resolver.ivyStylePatterns)
     ),
     externalResolvers := resolvers.value,

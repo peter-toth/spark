@@ -248,6 +248,13 @@
         <enabled>false</enabled>
       </snapshots>
     </repository>
+    <repository>
+      <id>cloudera</id>
+      <url>http://nexus-private.hortonworks.com/nexus/content/groups/public</url>
+      <releases>
+        <enabled>true</enabled>
+      </releases>
+    </repository>
   </repositories>
   <pluginRepositories>
     <pluginRepository>

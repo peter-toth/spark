@@ -341,7 +341,7 @@ package object config {
 
   private[yarn] val SPARK_SHUFFLE_SERVICE_NAME = ConfigBuilder("spark.shuffle.service.name")
     .stringConf
-    .createWithDefault("spark2_shuffle")
+    .createWithDefault("spark_shuffle")
 
   /* YARN allocator-level blacklisting related config entries. */
   private[spark] val YARN_EXECUTOR_LAUNCH_BLACKLIST_ENABLED =

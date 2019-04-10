@@ -136,6 +136,11 @@
   <profiles>
     <profile>
       <id>yarn</id>
+      <activation>
+        <property>
+          <name>cdpd.build</name>
+        </property>
+      </activation>
       <dependencies>
         <dependency>
           <groupId>org.apache.spark</groupId>
@@ -166,6 +171,11 @@
     </profile>
     <profile>
       <id>hive</id>
+      <activation>
+        <property>
+          <name>cdpd.build</name>
+        </property>
+      </activation>
       <dependencies>
         <dependency>
           <groupId>org.apache.spark</groupId>
@@ -198,6 +208,11 @@
       <id>bigtop-dist</id>
       <!-- This profile uses the assembly plugin to create a special "dist" package for BigTop
            that contains Spark but not the Hadoop JARs it depends on. -->
+      <activation>
+        <property>
+          <name>cdpd.build</name>
+        </property>
+      </activation>
       <build>
         <plugins>
           <plugin>
@@ -254,6 +269,11 @@
     -->
     <profile>
       <id>hadoop-cloud</id>
+      <activation>
+        <property>
+          <name>cdpd.build</name>
+        </property>
+      </activation>
       <dependencies>
         <dependency>
           <groupId>org.apache.spark</groupId>

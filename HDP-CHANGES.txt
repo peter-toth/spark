@@ -58,3 +58,5 @@ BUG FIXES
 
     (Security fix in Apache Spark)
     BUG-110890 Fix a security issue createRDDFromFile - large object ser/deserialization between R / JVM
+
+    [SPARK-27514] Skip collapsing windows with empty window expressions

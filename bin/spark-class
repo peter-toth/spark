@@ -50,22 +50,6 @@ else
   LAUNCH_CLASSPATH="$SPARK_JARS_DIR/*"
 fi
 
-HADOOP_LZO_JAR=
-HADOOP_LZO_DIR="/usr/hdp/${HDP_VERSION}/hadoop/lib"
-num_jars="$(ls -1 "$HADOOP_LZO_DIR" | grep "^hadoop-lzo.*${HDP_VERSION}\.jar$" | wc -l)"
-if [ "$num_jars" -eq "0" -a -z "$HADOOP_LZO_JAR" ]; then
-  HADOOP_LZO_JAR=
-elif [ "$num_jars" -gt "1" ]; then
-  echo "Found multiple Hadoop lzo jars in $HADOOP_LZO_DIR:" 1>&2
-  echo "Please remove all but one jar." 1>&2
-  exit 1
-elif [ "$num_jars" -eq "1" ]; then
-  LZO_JARS="$(ls -1 "$HADOOP_LZO_DIR" | grep "^hadoop-lzo-.*${HDP_VERSION}\.jar$" || true)"
-  HADOOP_LZO_JAR="${HADOOP_LZO_DIR}/${LZO_JARS}"
-fi
-
-export _HADOOP_LZO_JAR="${HADOOP_LZO_JAR}"
-
 # Add the launcher build dir to the classpath if requested.
 if [ -n "$SPARK_PREPEND_CLASSES" ]; then
   LAUNCH_CLASSPATH="${SPARK_HOME}/launcher/target/scala-$SPARK_SCALA_VERSION/classes:$LAUNCH_CLASSPATH"

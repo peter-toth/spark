@@ -23,7 +23,6 @@ IMPROVEMENTS
 
 BUG FIXES
     BUG-58486   Use cache file created by ambari as spark.yarn.archive
-    BUG-48982   Add hadoop lzo jar to the classpath
     BUG-52253   Support configuring YARN correctly for multiple Spark versions and their aux-services
     BUG-60289   Spark2 jersey and Timeline Jersey are incompatible
     BUG-59418   changes to KafkaRDD MessageAndMetadata to use named params

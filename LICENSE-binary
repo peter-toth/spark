@@ -495,8 +495,6 @@ org.glassfish.jaxb:jaxb-runtime
 jakarta.xml.bind:jakarta.xml.bind-api
 org.glassfish.jaxb:txw2
 com.sun.istack:istack-commons-runtime
-org.jvnet.staxex:stax-ex
-jakarta.activation:jakarta.activation-api
 
 
 Mozilla Public License (MPL) 1.1

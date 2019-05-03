@@ -73,6 +73,9 @@ BUG FIXES
     SPARK-25183 Spark HiveServer2 to use Spark ShutdownHookManager
     SPARK-27160 Fix DecimalType when building orc filters
 
+    (Backport from master)
+    SPARK-27620 Upgrade jetty to 9.4.18.v20190429
+
     (Jira in Apache Spark is IN PROGRESS)
     SPARK-23977 Add commit protocol binding to Hadoop 3.1 PathOutputCommitter mechanism
     SPARK-24601 BUG-109244 Bump Jackson version

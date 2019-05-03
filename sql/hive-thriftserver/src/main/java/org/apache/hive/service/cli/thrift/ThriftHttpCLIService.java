@@ -19,7 +19,6 @@
 package org.apache.hive.service.cli.thrift;
 
 import java.util.Arrays;
-import java.util.concurrent.ExecutorService;
 import java.util.concurrent.SynchronousQueue;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
@@ -65,10 +64,10 @@ public class ThriftHttpCLIService extends ThriftCLIService {
       // Server thread pool
       // Start with minWorkerThreads, expand till maxWorkerThreads and reject subsequent requests
       String threadPoolName = "HiveServer2-HttpHandler-Pool";
-      ExecutorService executorService = new ThreadPoolExecutor(minWorkerThreads, maxWorkerThreads,
+      ThreadPoolExecutor threadPoolExecutor = new ThreadPoolExecutor(minWorkerThreads, maxWorkerThreads,
           workerKeepAliveTime, TimeUnit.SECONDS, new SynchronousQueue<Runnable>(),
           new ThreadFactoryWithGarbageCleanup(threadPoolName));
-      ExecutorThreadPool threadPool = new ExecutorThreadPool(executorService);
+      ExecutorThreadPool threadPool = new ExecutorThreadPool(threadPoolExecutor);
 
       // HTTP Server
       httpServer = new org.eclipse.jetty.server.Server(threadPool);

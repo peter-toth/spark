@@ -3145,6 +3145,12 @@ class SQLTests(ReusedSQLTestCase):
         df = self.spark.createDataFrame(data, schema=schema)
         df.collect()
 
+    def test_int_array_serialization(self):
+        # Note that this test seems dependent on parallelism.
+        data = self.spark.sparkContext.parallelize([[1, 2, 3, 4]] * 100, numSlices=12)
+        df = self.spark.createDataFrame(data, "array<integer>")
+        self.assertEqual(len(list(filter(lambda r: None in r.value, df.collect()))), 0)
+
     # test for SPARK-16542
     def test_array_types(self):
         # This test need to make sure that the Scala type selected is at least

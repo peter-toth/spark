@@ -63,11 +63,10 @@ import itertools
 if sys.version < '3':
     import cPickle as pickle
     from itertools import izip as zip, imap as map
-    pickle_protocol = 2
 else:
     import pickle
     xrange = range
-    pickle_protocol = 3
+pickle_protocol = pickle.HIGHEST_PROTOCOL
 
 from pyspark import cloudpickle
 from pyspark.util import _exception_message

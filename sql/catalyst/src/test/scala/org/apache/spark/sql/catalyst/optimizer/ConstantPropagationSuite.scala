@@ -159,7 +159,7 @@ class ConstantPropagationSuite extends PlanTest {
       .where(
         columnA === Literal(1) && columnA === Literal(2) && columnB === Add(columnA, Literal(3)))
 
-    val correctAnswer = testRelation.where(Literal.FalseLiteral).analyze
+    val correctAnswer = testRelation.analyze
 
     comparePlans(Optimize.execute(query.analyze), correctAnswer)
   }

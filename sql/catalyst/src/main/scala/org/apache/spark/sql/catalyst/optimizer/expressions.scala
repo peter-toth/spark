@@ -92,7 +92,7 @@ object ConstantPropagation extends Rule[LogicalPlan] with PredicateHelper {
    * @param expression expression to be traversed
    * @return A tuple including:
    *         1. Option[Expression]: optional changed condition after traversal
-   *         2. Seq[(Expression, Literal)]: propagated mapping of expression => constant
+   *         2. Map[Expression, Literal]: propagated mapping of expression => constant
    */
   private def traverse(expression: Expression): (Expression, Map[Expression, Literal]) =
     expression match {

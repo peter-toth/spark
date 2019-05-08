@@ -17,6 +17,7 @@
 
 package org.apache.spark.sql.catalyst.optimizer
 
+import org.apache.spark.sql.Row
 import org.apache.spark.sql.catalyst.analysis.EliminateSubqueryAliases
 import org.apache.spark.sql.catalyst.dsl.expressions._
 import org.apache.spark.sql.catalyst.dsl.plans._
@@ -37,10 +38,12 @@ class ConstantPropagationSuite extends PlanTest {
         Batch("ConstantPropagation", FixedPoint(10),
           ConstantPropagation,
           ConstantFolding,
-          BooleanSimplification) :: Nil
+          BooleanSimplification,
+          SimplifyBinaryComparison,
+          PruneFilters) :: Nil
   }
 
-  val testRelation = LocalRelation('a.int, 'b.int, 'c.int)
+  val testRelation = LocalRelation('a.int, 'b.int, 'c.int, 'x.boolean)
 
   private val columnA = 'a
   private val columnB = 'b
@@ -159,5 +162,102 @@ class ConstantPropagationSuite extends PlanTest {
     val correctAnswer = testRelation.where(Literal.FalseLiteral).analyze
 
     comparePlans(Optimize.execute(query.analyze), correctAnswer)
+  }
+
+  val data = {
+    val intElements = Seq(null, 1, 2, 3)
+    val booleanElements = Seq(null, true, false)
+    for {
+      a <- intElements
+      b <- intElements
+      c <- intElements
+      x <- booleanElements
+    } yield (a, b, c, x)
+  }
+
+  val testRelationWithData = LocalRelation.fromExternalRows(testRelation.output, data.map(Row(_)))
+
+  private def testPropagation(
+      input: Expression,
+      expectEmptyRelation: Boolean,
+      expectedConstraints: Seq[Expression] = Seq.empty) = {
+    val originalQuery = testRelationWithData.where(input).analyze
+    val optimized = Optimize.execute(originalQuery)
+    val correctAnswer = if (expectEmptyRelation) {
+      testRelation
+    } else {
+      testRelationWithData.where(expectedConstraints.reduce(And)).analyze
+    }
+    comparePlans(optimized, correctAnswer)
+  }
+
+  test("Constant propagation") {
+    testPropagation('a < 2 && Literal(2) === 'a, true)
+    testPropagation('a < 2 && Literal(2) <=> 'a, true)
+    testPropagation('a <= 2 && Literal(2) === 'a, false, Seq('a === 2))
+    testPropagation('a <= 2 && Literal(2) <=> 'a, false, Seq('a <=> 2))
+    testPropagation('a === 2 && Literal(2) < 'a, true)
+    testPropagation('a === 2 && Literal(2) <= 'a, false, Seq('a === 2))
+    testPropagation('a === 2 && Literal(2) === 'a, false, Seq('a === 2))
+    testPropagation('a === 2 && Literal(2) <=> 'a, false, Seq('a === 2))
+    testPropagation('a === 2 && Literal(2) >= 'a, false, Seq('a === 2))
+    testPropagation('a === 2 && Literal(2) > 'a, true)
+    testPropagation('a <=> 2 && Literal(2) < 'a, true)
+    testPropagation('a <=> 2 && Literal(2) <= 'a, false, Seq('a <=> 2))
+    testPropagation('a <=> 2 && Literal(2) === 'a, false, Seq('a <=> 2))
+    testPropagation('a <=> 2 && Literal(2) <=> 'a, false, Seq('a <=> 2))
+    testPropagation('a <=> 2 && Literal(2) >= 'a, false, Seq('a <=> 2))
+    testPropagation('a <=> 2 && Literal(2) > 'a, true)
+    testPropagation('a >= 2 && Literal(2) === 'a, false, Seq('a === 2))
+    testPropagation('a >= 2 && Literal(2) <=> 'a, false, Seq('a <=> 2))
+    testPropagation('a > 2 && Literal(2) === 'a, true)
+    testPropagation('a > 2 && Literal(2) <=> 'a, true)
+
+    testPropagation(('x || 'a < 2) && Literal(2) === 'a, false, Seq('x, Literal(2) === 'a))
+    testPropagation(('x || 'a < 2) && Literal(2) <=> 'a, false, Seq('x, Literal(2) <=> 'a))
+    testPropagation(('x || 'a <= 2) && Literal(2) === 'a, false, Seq(Literal(2) === 'a))
+    testPropagation(('x || 'a <= 2) && Literal(2) <=> 'a, false, Seq(Literal(2) <=> 'a))
+    testPropagation(('x || 'a === 2) && Literal(2) === 'a, false, Seq(Literal(2) === 'a))
+    testPropagation(('x || 'a === 2) && Literal(2) <=> 'a, false, Seq(Literal(2) <=> 'a))
+    testPropagation(('x || 'a <=> 2) && Literal(2) === 'a, false, Seq(Literal(2) === 'a))
+    testPropagation(('x || 'a <=> 2) && Literal(2) <=> 'a, false, Seq(Literal(2) <=> 'a))
+    testPropagation(('x || 'a >= 2) && Literal(2) === 'a, false, Seq(Literal(2) === 'a))
+    testPropagation(('x || 'a >= 2) && Literal(2) <=> 'a, false, Seq(Literal(2) <=> 'a))
+    testPropagation(('x || 'a > 2) && Literal(2) === 'a, false, Seq('x, Literal(2) === 'a))
+    testPropagation(('x || 'a > 2) && Literal(2) <=> 'a, false, Seq('x, Literal(2) <=> 'a))
+
+    testPropagation('a < 2 && Literal(3) === 'a, true)
+    testPropagation('a < 2 && Literal(3) <=> 'a, true)
+    testPropagation('a <= 2 && Literal(3) === 'a, true)
+    testPropagation('a <= 2 && Literal(3) <=> 'a, true)
+    testPropagation('a === 2 && Literal(3) < 'a, true)
+    testPropagation('a === 2 && Literal(3) <= 'a, true)
+    testPropagation('a === 2 && Literal(3) === 'a, true)
+    testPropagation('a === 2 && Literal(3) <=> 'a, true)
+    testPropagation('a === 2 && Literal(3) >= 'a, false, Seq('a === 2))
+    testPropagation('a === 2 && Literal(3) > 'a, false, Seq('a === 2))
+    testPropagation('a <=> 2 && Literal(3) < 'a, true)
+    testPropagation('a <=> 2 && Literal(3) <= 'a, true)
+    testPropagation('a <=> 2 && Literal(3) === 'a, true)
+    testPropagation('a <=> 2 && Literal(3) <=> 'a, true)
+    testPropagation('a <=> 2 && Literal(3) >= 'a, false, Seq('a <=> 2))
+    testPropagation('a <=> 2 && Literal(3) > 'a, false, Seq('a <=> 2))
+    testPropagation('a >= 2 && Literal(3) === 'a, false, Seq(Literal(3) === 'a))
+    testPropagation('a >= 2 && Literal(3) <=> 'a, false, Seq(Literal(3) <=> 'a))
+    testPropagation('a > 2 && Literal(3) === 'a, false, Seq(Literal(3) === 'a))
+    testPropagation('a > 2 && Literal(3) <=> 'a, false, Seq(Literal(3) <=> 'a))
+
+    testPropagation(('x || 'a < 2) && Literal(3) === 'a, false, Seq('x, Literal(3) === 'a))
+    testPropagation(('x || 'a < 2) && Literal(3) <=> 'a, false, Seq('x, Literal(3) <=> 'a))
+    testPropagation(('x || 'a <= 2) && Literal(3) === 'a, false, Seq('x, Literal(3) === 'a))
+    testPropagation(('x || 'a <= 2) && Literal(3) <=> 'a, false, Seq('x, Literal(3) <=> 'a))
+    testPropagation(('x || 'a === 2) && Literal(3) === 'a, false, Seq('x, Literal(3) === 'a))
+    testPropagation(('x || 'a === 2) && Literal(3) <=> 'a, false, Seq('x, Literal(3) <=> 'a))
+    testPropagation(('x || 'a <=> 2) && Literal(3) === 'a, false, Seq('x, Literal(3) === 'a))
+    testPropagation(('x || 'a <=> 2) && Literal(3) <=> 'a, false, Seq('x, Literal(3) <=> 'a))
+    testPropagation(('x || 'a >= 2) && Literal(3) === 'a, false, Seq(Literal(3) === 'a))
+    testPropagation(('x || 'a >= 2) && Literal(3) <=> 'a, false, Seq(Literal(3) <=> 'a))
+    testPropagation(('x || 'a > 2) && Literal(3) === 'a, false, Seq(Literal(3) === 'a))
+    testPropagation(('x || 'a > 2) && Literal(3) <=> 'a, false, Seq(Literal(3) <=> 'a))
   }
 }

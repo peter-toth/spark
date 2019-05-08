@@ -141,8 +141,12 @@ object ConstantPropagation extends Rule[LogicalPlan] with PredicateHelper {
   private def replaceConstants(
       expression: Expression,
       constants: Map[Expression, Literal]) =
-    expression transformUp {
-      case e if constants.contains(e.canonicalized) => constants(e.canonicalized)
+    if (constants.isEmpty) {
+      expression
+    } else {
+      expression transformUp {
+        case e if constants.contains(e.canonicalized) => constants(e.canonicalized)
+      }
     }
 }
 

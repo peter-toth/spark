@@ -115,26 +115,8 @@ object ConstantPropagation extends Rule[LogicalPlan] with PredicateHelper {
           And(replacedNewLeft, replacedNewRight)
         }
         (newAnd, equalityPredicatesLeft ++= equalityPredicatesRight)
-      case o @ Or(left, right) =>
-        // Ignore the EqualityPredicates from children since they are only propagated through And.
-        val (newLeft, _) = traverse(left)
-        val (newRight, _) = traverse(right)
-        val newOr = if ((newLeft fastEquals left) && (newRight fastEquals right)) {
-          o
-        } else {
-          Or(newLeft, newRight)
-        }
-
-        (newOr, Map.empty)
-      case n @ Not(child) =>
-        // Ignore the EqualityPredicates from children since they are only propagated through And.
-        val (newChild, _) = traverse(child)
-        val newNot = if (newChild fastEquals child) {
-          n
-        } else {
-          Not(newChild)
-        }
-        (newNot, Map.empty)
+      case o @ (_: Or | _: Not) =>
+        (o.mapChildren(traverse(_)._1), Map.empty)
       case _ => (expression, Map.empty)
     }
 

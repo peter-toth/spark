@@ -197,7 +197,7 @@ class FileSourceStrategySuite extends QueryTest with SharedSQLContext with Predi
         "when checking partition values")
     }
     // Only the filters that do not contain the partition column should be pushed down
-    checkDataFilters(Set(IsNotNull("c1"), EqualTo("c1", 1)))
+    checkDataFilters(Set(EqualTo("c1", 1)))
   }
 
   test("partitioned table - case insensitive") {
@@ -224,7 +224,7 @@ class FileSourceStrategySuite extends QueryTest with SharedSQLContext with Predi
           "when checking partition values")
       }
       // Only the filters that do not contain the partition column should be pushed down
-      checkDataFilters(Set(IsNotNull("c1"), EqualTo("c1", 1)))
+      checkDataFilters(Set(EqualTo("c1", 1)))
     }
   }
 

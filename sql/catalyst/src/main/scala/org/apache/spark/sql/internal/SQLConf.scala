@@ -191,7 +191,7 @@ object SQLConf {
     .checkValue(logLevel => Set("TRACE", "DEBUG", "INFO", "WARN", "ERROR").contains(logLevel),
       "Invalid value for 'spark.sql.optimizer.planChangeLog.level'. Valid values are " +
         "'trace', 'debug', 'info', 'warn' and 'error'.")
-    .createWithDefault("trace")
+    .createWithDefault("INFO")
 
   val OPTIMIZER_PLAN_CHANGE_LOG_RULES = buildConf("spark.sql.optimizer.planChangeLog.rules")
     .internal()

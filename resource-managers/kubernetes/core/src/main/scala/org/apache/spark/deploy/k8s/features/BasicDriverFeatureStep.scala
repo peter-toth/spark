@@ -43,6 +43,9 @@ private[spark] class BasicDriverFeatureStep(conf: KubernetesDriverConf)
 
   // CPU settings
   private val driverCpuCores = conf.get("spark.driver.cores", "1")
+  private val driverCoresRequest = conf
+    .get(KUBERNETES_DRIVER_REQUEST_CORES)
+    .getOrElse(driverCpuCores.toString)
   private val driverLimitCores = conf.get(KUBERNETES_DRIVER_LIMIT_CORES)
 
   // Memory settings
@@ -76,7 +79,7 @@ private[spark] class BasicDriverFeatureStep(conf: KubernetesDriverConf)
       }
 
     val driverCpuQuantity = new QuantityBuilder(false)
-      .withAmount(driverCpuCores)
+      .withAmount(driverCoresRequest)
       .build()
     val driverMemoryQuantity = new QuantityBuilder(false)
       .withAmount(s"${driverMemoryWithOverheadMiB}Mi")

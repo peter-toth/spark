@@ -89,6 +89,12 @@ private[spark] object Config extends Logging {
       .stringConf
       .createOptional
 
+  val KUBERNETES_DRIVER_REQUEST_CORES =
+    ConfigBuilder("spark.kubernetes.driver.request.cores")
+      .doc("Specify the cpu request for the driver pod")
+      .stringConf
+      .createOptional
+
   val KUBERNETES_DRIVER_SUBMIT_CHECK =
     ConfigBuilder("spark.kubernetes.submitInDriver")
     .internal()

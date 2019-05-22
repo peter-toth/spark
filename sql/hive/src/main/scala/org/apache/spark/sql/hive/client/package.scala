@@ -75,9 +75,12 @@ package object client {
       exclusions = Seq("org.apache.curator:*",
         "org.pentaho:pentaho-aggdesigner-algorithm"))
 
-    // CDPD-4216: updated Hive version because of HIVE-18767.
-    case object v2_3 extends HiveVersion("2.3.4",
-      exclusions = Seq("org.apache.curator:*",
+    // Since HIVE-14496, Hive materialized view need calcite-core.
+    // For spark, only VersionsSuite currently creates a hive materialized view for testing.
+    case object v2_3 extends HiveVersion("2.3.5",
+      exclusions = Seq("org.apache.calcite:calcite-druid",
+        "org.apache.calcite.avatica:avatica",
+        "org.apache.curator:*",
         "org.pentaho:pentaho-aggdesigner-algorithm"))
 
     case object v3_0 extends HiveVersion("3.0.0",

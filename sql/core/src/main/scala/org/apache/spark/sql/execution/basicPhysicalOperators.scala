@@ -29,7 +29,8 @@ import org.apache.spark.sql.catalyst.InternalRow
 import org.apache.spark.sql.catalyst.expressions._
 import org.apache.spark.sql.catalyst.expressions.BindReferences.bindReferences
 import org.apache.spark.sql.catalyst.expressions.codegen._
-import org.apache.spark.sql.catalyst.plans.logical.LogicalPlan
+import org.apache.spark.sql.catalyst.plans.logical.{LogicalPlan, RecursiveReference, Statistics}
+import org.apache.spark.sql.catalyst.plans.logical.statsEstimation.EstimationUtils
 import org.apache.spark.sql.catalyst.plans.physical._
 import org.apache.spark.sql.execution.metric.SQLMetrics
 import org.apache.spark.sql.internal.SQLConf
@@ -279,19 +280,24 @@ case class RecursiveTableExec(
       while (recursiveTermsIterator.hasNext && limit.forall(_ > allCount + prevIterationCount)) {
         val recursiveTerm = recursiveTermsIterator.next()
 
-        val newRecursiveTerm =
+        recursiveTerm.foreach {
+          case rr: RecursiveReference if rr.name == name =>
+            rr.statistics = Statistics(EstimationUtils.getSizePerRow(output) * prevIterationCount,
+              Some(prevIterationCount))
+          case _ =>
+        }
+
+        val physicalRecursiveTerm =
           new QueryExecution(sqlContext.sparkSession, recursiveTerm, alreadyAnalyzed = true)
             .executedPlan
 
-        newRecursiveTerm.foreach {
-          _ match {
-            case rr: RecursiveReferenceExec if rr.name == name =>
-              rr.recursiveTable = prevIterationResult
-            case _ =>
-          }
+        physicalRecursiveTerm.foreach {
+          case rr: RecursiveReferenceExec if rr.name == name =>
+            rr.recursiveTable = prevIterationResult
+          case _ =>
         }
 
-        val rdd = newRecursiveTerm.execute().map(_.copy()).cache()
+        val rdd = physicalRecursiveTerm.execute().map(_.copy()).cache()
         val count = rdd.count()
         if (count > 0) {
           prevIterationRDDs += rdd

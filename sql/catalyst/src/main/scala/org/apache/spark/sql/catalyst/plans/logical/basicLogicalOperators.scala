@@ -103,10 +103,9 @@ case class RecursiveTable(
 case class RecursiveReference(name: String, output: Seq[Attribute]) extends LeafNode {
   override lazy val resolved = output.forall(_.resolved)
 
+  // this will be updated in RecursiveTableExec before the actual execution
   var statistics = Statistics(BigInt(0))
 
-  // Since the size of a recursive reference can grow beyond the limit that a broadcast join can
-  // have on the broadcasted side, spark.sql.defaultSizeInBytes is used for estimating the stats.
   override def computeStats(): Statistics = statistics
 }
 

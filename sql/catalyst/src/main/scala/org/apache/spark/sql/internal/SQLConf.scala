@@ -35,6 +35,7 @@ import org.apache.spark.network.util.ByteUnit
 import org.apache.spark.sql.catalyst.analysis.Resolver
 import org.apache.spark.sql.catalyst.expressions.CodegenObjectFactoryMode
 import org.apache.spark.sql.catalyst.expressions.codegen.CodeGenerator
+import org.apache.spark.storage.StorageLevel
 import org.apache.spark.unsafe.array.ByteArrayMethods
 import org.apache.spark.util.Utils
 
@@ -1784,6 +1785,15 @@ object SQLConf {
       "If a query does not get exhausted before reaching this limit it fails.")
     .intConf
     .createWithDefault(100)
+
+  val RECURSION_CACHE_STORAGE_LEVEL = buildConf("spark.sql.cte.recursion.cache.storageLevel")
+    .internal()
+    .doc("Storage level of cache where recursion stores intermediate results.")
+    .stringConf
+    .checkValues(Set("NONE", "DISK_ONLY", "DISK_ONLY_2", "MEMORY_ONLY", "MEMORY_ONLY_2",
+      "MEMORY_ONLY_SER", "MEMORY_ONLY_SER_2", "MEMORY_AND_DISK", "MEMORY_AND_DISK_2",
+      "MEMORY_AND_DISK_SER", "MEMORY_AND_DISK_SER_2", "OFF_HEAP"))
+    .createWithDefault("MEMORY_ONLY")
 }
 
 /**
@@ -2243,6 +2253,9 @@ class SQLConf extends Serializable with Logging {
   def defaultV2Catalog: Option[String] = getConf(DEFAULT_V2_CATALOG)
 
   def recursionLevelLimit: Int = getConf(SQLConf.RECURSION_LEVEL_LIMIT)
+
+  def recursionCacheStorageLevel: StorageLevel =
+    StorageLevel.fromString(getConf(SQLConf.RECURSION_CACHE_STORAGE_LEVEL))
 
   /** ********************** SQLConf functionality methods ************ */
 

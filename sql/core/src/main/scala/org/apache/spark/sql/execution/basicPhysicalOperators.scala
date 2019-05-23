@@ -266,6 +266,7 @@ case class RecursiveTableExec(
     var allCount = prevIterationCount
     var level = 0
     val levelLimit = conf.recursionLevelLimit
+    val storageLevel = conf.recursionCacheStorageLevel
     while (prevIterationCount > 0 && limit.forall(_ > allCount)) {
       if (level > levelLimit) {
         throw new SparkException(s"Recursion level limit ${levelLimit} reached but query has not " +
@@ -297,7 +298,7 @@ case class RecursiveTableExec(
           case _ =>
         }
 
-        val rdd = physicalRecursiveTerm.execute().map(_.copy()).cache()
+        val rdd = physicalRecursiveTerm.execute().map(_.copy()).persist(storageLevel)
         val count = rdd.count()
         if (count > 0) {
           prevIterationRDDs += rdd
@@ -316,6 +317,7 @@ case class RecursiveTableExec(
 
 /** Physical plan for RecursiveReference. */
 case class RecursiveReferenceExec(name: String, output: Seq[Attribute]) extends LeafExecNode {
+  // this will be updated in RecursiveTableExec before the actual execution
   var recursiveTable: RDD[InternalRow] = _
 
   override protected def doExecute(): RDD[InternalRow] = recursiveTable

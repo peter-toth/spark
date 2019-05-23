@@ -222,7 +222,7 @@ class SecurityManagerSuite extends SparkFunSuite with ResetSystemProperties {
     assert(securityManager.checkUIViewPermissions(null))
 
     securityManager.setAdminAcls("user6")
-    securityManager.setViewAcls("user8","user9")
+    securityManager.setViewAcls("user8", "user9")
     securityManager.setModifyAcls(Set("user11"), "user9")
     assert(securityManager.checkAdminPermissions("user6"))
     assert(!securityManager.checkAdminPermissions("user8"))

@@ -125,7 +125,8 @@ object SparkBuild extends PomBuild {
       "com.typesafe.genjavadoc" %% "genjavadoc-plugin" % unidocGenjavadocVersion.value cross CrossVersion.full),
     scalacOptions ++= Seq(
       "-P:genjavadoc:out=" + (target.value / "java"),
-      "-P:genjavadoc:strictVisibility=true" // hide package private types
+      "-P:genjavadoc:strictVisibility=true", // hide package private types
+      "-language:existentials"
     )
   )
 

@@ -39,7 +39,6 @@ class ConstantPropagationSuite extends PlanTest {
           ConstantPropagation,
           ConstantFolding,
           BooleanSimplification,
-          SimplifyBinaryComparison,
           PruneFilters) :: Nil
   }
 
@@ -159,7 +158,7 @@ class ConstantPropagationSuite extends PlanTest {
       .where(
         columnA === Literal(1) && columnA === Literal(2) && columnB === Add(columnA, Literal(3)))
 
-    val correctAnswer = testRelation.analyze
+    val correctAnswer = testRelation
 
     comparePlans(Optimize.execute(query.analyze), correctAnswer)
   }

@@ -29,6 +29,7 @@ import org.apache.spark.sql.catalyst.InternalRow
 import org.apache.spark.sql.catalyst.expressions._
 import org.apache.spark.sql.catalyst.expressions.BindReferences.bindReferences
 import org.apache.spark.sql.catalyst.expressions.codegen._
+import org.apache.spark.sql.catalyst.plans.QueryPlan
 import org.apache.spark.sql.catalyst.plans.logical.{LogicalPlan, RecursiveReference, Statistics}
 import org.apache.spark.sql.catalyst.plans.logical.statsEstimation.EstimationUtils
 import org.apache.spark.sql.catalyst.plans.physical._
@@ -245,7 +246,7 @@ case class RecursiveTableExec(
   override def simpleString(maxFields: Int): String =
     s"RecursiveTable $name${limit.map(", " + _).getOrElse("")}"
 
-  override def innerChildren: Seq[LogicalPlan] = recursiveTerms
+  override def innerChildren: Seq[QueryPlan[_]] = recursiveTerms ++ super.innerChildren
 
   override protected def doExecute(): RDD[InternalRow] = {
     val prevIterationRDDs = ArrayBuffer.empty[RDD[InternalRow]]

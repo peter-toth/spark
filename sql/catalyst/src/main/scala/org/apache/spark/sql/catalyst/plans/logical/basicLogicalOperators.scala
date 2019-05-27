@@ -111,7 +111,7 @@ case class RecursiveReference(name: String, output: Seq[Attribute]) extends Leaf
 
 case class Project(projectList: Seq[NamedExpression], child: LogicalPlan)
     extends OrderPreservingUnaryNode {
-  override def output: Seq[Attribute] = projectList.map(_.toAttribute)
+  override def output: Seq[Attribute] = if (resolved) projectList.map(_.toAttribute) else Nil
   override def maxRows: Option[Long] = child.maxRows
 
   override lazy val resolved: Boolean = {

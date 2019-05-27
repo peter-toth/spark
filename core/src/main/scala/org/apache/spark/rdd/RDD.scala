@@ -1805,15 +1805,16 @@ abstract class RDD[T: ClassTag](
         case 0 => Seq.empty
         case 1 =>
           val d = rdd.dependencies.head
-          debugString(d.rdd, prefix, d.isInstanceOf[ShuffleDependency[_, _, _]], true)
-        case _ =>
+          debugString(d.rdd, prefix + s"/1", d.isInstanceOf[ShuffleDependency[_, _, _]], true)
+        case n =>
           val frontDeps = rdd.dependencies.take(len - 1)
           val frontDepStrings = frontDeps.flatMap(
-            d => debugString(d.rdd, prefix, d.isInstanceOf[ShuffleDependency[_, _, _]]))
+            d => debugString(d.rdd, prefix + s"/$n", d.isInstanceOf[ShuffleDependency[_, _, _]]))
 
           val lastDep = rdd.dependencies.last
           val lastDepStrings =
-            debugString(lastDep.rdd, prefix, lastDep.isInstanceOf[ShuffleDependency[_, _, _]], true)
+            debugString(lastDep.rdd, prefix + s"/$n",
+              lastDep.isInstanceOf[ShuffleDependency[_, _, _]], true)
 
           frontDepStrings ++ lastDepStrings
       }

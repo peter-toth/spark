@@ -3051,6 +3051,7 @@ class SQLQuerySuite extends QueryTest with SharedSQLContext {
     }
   }
 
+<<<<<<< Updated upstream
   test("string date comparison") {
     spark.range(1).selectExpr("date '2000-01-01' as d").createOrReplaceTempView("t1")
     val result = Date.valueOf("2000-01-01")
@@ -3126,6 +3127,288 @@ class SQLQuerySuite extends QueryTest with SharedSQLContext {
       checkAnswer(sql("select * from t1 where d >= '2000'"), Row(result))
       checkAnswer(sql("select * from t1 where d > '1999-13'"), Row(result))
       checkAnswer(sql("select to_timestamp('2000-01-01 01:10:00') > '1'"), Row(true))
+=======
+
+  test("Recursion") {
+    Debugger.enabled = true
+
+    val df = sql(
+      """
+        |WITH RECURSIVE r AS (
+        |  VALUES (1) AS t(n)
+        |  UNION ALL
+        |  SELECT n + 1 FROM r WHERE n < 5
+        |)
+        |SELECT * FROM r
+      """.stripMargin)
+    df.show()
+
+    Debugger.enabled = false
+  }
+
+  test("Recursion 2") {
+    Debugger.enabled = true
+
+    val df = sql(
+      """
+        |WITH RECURSIVE t AS (
+        |  WITH RECURSIVE t AS (
+        |    SELECT j, 1 AS i FROM t
+        |    UNION ALL
+        |    SELECT j, i + 1 FROM t WHERE i < 3
+        |  )
+        |  VALUES (1) as t(j)
+        |  UNION ALL
+        |  SELECT j + 1 FROM t WHERE j < 3
+        |)
+        |SELECT * FROM t
+      """.stripMargin)
+    df.show()
+
+    Debugger.enabled = false
+  }
+
+  test("Recursion 3") {
+    Debugger.enabled = true
+
+    val df = sql(
+      """
+        |WITH t AS (
+        |  VALUES (1) as t(j)
+        |),
+        |x AS (
+        |  WITH t AS (
+        |    VALUES (2) as t(j)
+        |  )
+        |  SELECT * FROM t
+        |)
+        |SELECT * FROM x
+      """.stripMargin)
+    df.show()
+
+    Debugger.enabled = false
+  }
+
+  test("Recursion missing feature 1") {
+    withTable("t") {
+      val df = sql(
+        """
+          |WITH t(n) AS (
+          |  VALUES (1)
+          |)
+          |SELECT * FROM t
+        """.stripMargin)
+      df.show()
+    }
+  }
+
+  test("Recursion missing feature 2") {
+    withTable("t") {
+      val df = sql(
+        """
+          |CREATE RECURSIVE VIEW nums(n) AS (
+          |  VALUES (1)
+          |  UNION ALL
+          |  SELECT n + 1 FROM nums WHERE n < 5
+          |)
+        """.stripMargin)
+      df.show()
+    }
+  }
+
+  test("Recursion missing feature 3") {
+    withTable("t") {
+      val df = sql(
+        """
+          |WITH RECURSIVE r AS (
+          |  SELECT 1 AS n
+          |  UNION
+          |  SELECT 10 - n FROM r
+          |)
+          |SELECT * FROM t
+        """.stripMargin)
+      df.show()
+    }
+  }
+
+  test("Recursion missing feature 5") {
+    withTable("t") {
+      val df = sql(
+        """
+          |WITH RECURSIVE t AS (
+          |  SELECT '7' AS n
+          |  UNION ALL
+          |  SELECT n + 1 FROM t WHERE n < 10
+          |)
+          |SELECT n FROM t
+        """.stripMargin)
+      df.show()
+    }
+  }
+
+  test("Recursion missing feature 6") {
+    withTable("t") {
+      val df = sql(
+        """
+          |SELECT count(*) FROM (
+          |  WITH t AS (
+          |    VALUES (1)
+          |  )
+          |  SELECT * FROM t
+          |) AS t
+        """.stripMargin)
+      df.show()
+    }
+  }
+
+  test("Recursion missing feature 7") {
+    withTable("t") {
+      val df = sql(
+        """
+          |WITH RECURSIVE
+          |  x AS (SELECT * FROM y UNION ALL SELECT id + 1 FROM x WHERE id < 5),
+          |  y AS (VALUES (1))
+          |SELECT * FROM x
+        """.stripMargin)
+      df.show()
+    }
+  }
+
+  test("SPARK-24497: recursive query") {
+    withSQLConf(SQLConf.WHOLESTAGE_CODEGEN_ENABLED.key -> "true"
+//      , SQLConf.AUTO_BROADCASTJOIN_THRESHOLD.key -> "-1",
+//        SQLConf.ADAPTIVE_EXECUTION_ENABLED.key -> "true"
+    ) {
+      withTempView("department") {
+        val df = Seq(
+          (0, None, "ROOT"),
+          (1, Some(0), "A"),
+          (2, Some(1), "B"),
+          (3, Some(2), "C"),
+          (4, Some(2), "D"),
+          (5, Some(0), "E"),
+          (6, Some(4), "F"),
+          (7, Some(5), "G")
+        ).toDF("id", "parent_department", "name")
+
+        df.show();
+
+        df.createTempView("department")
+
+        val df2 = Seq(
+          ("New York", "Washington"),
+          ("New York", "Boston"),
+          ("Boston", "New York"),
+          ("Washington", "Boston"),
+          ("Washington", "Raleigh")
+        ).toDF("origin", "destination")
+
+        df2.show();
+
+        df2.createTempView("routes")
+
+        val df3 = Seq(
+          (1, None),
+          (2, Some(1)),
+          (3, Some(1)),
+          (4, Some(2)),
+          (5, Some(2)),
+          (6, Some(2)),
+          (7, Some(3)),
+          (8, Some(3)),
+          (9, Some(4)),
+          (10, Some(4)),
+          (11, Some(7)),
+          (12, Some(7)),
+          (13, Some(7)),
+          (14, Some(9)),
+          (15, Some(11)),
+          (16, Some(11))
+        ).toDF("id", "parent_id")
+
+        df3.show();
+
+        df3.createTempView("tree")
+
+        val df4 = Seq(
+          (1, 2, "arc 1 -> 2"),
+          (1, 3, "arc 1 -> 3"),
+          (2, 3, "arc 2 -> 3"),
+          (1, 4, "arc 1 -> 4"),
+          (4, 5, "arc 4 -> 5"),
+          (5, 1, "arc 5 -> 1")
+        ).toDF("f", "t", "label")
+
+        df4.show();
+
+        df4.createTempView("graph")
+
+        val query0 = sql(s"""
+                             |CREATE TEMPORARY VIEW data AS SELECT EXPLODE(SEQUENCE(1, 10)) AS a
+                            |""".stripMargin)
+        query0.show(100, false)
+
+        val query01 = sql(s"""
+                             |SET spark.sql.cte.recursion.level.limit = 500
+                            |""".stripMargin)
+        query01.show(100, false)
+
+        Debugger.enabled = true
+
+        sparkContext.setLogLevel("INFO")
+
+         val query6 = sql(s"""
+                             |WITH RECURSIVE x AS (
+                             |  SELECT a AS n, 0 AS d FROM data WHERE a = 1
+                             |  UNION ALL
+                             |  SELECT x.n + 1, d1.a + d2.a
+                             |  FROM x
+                             |  JOIN data AS d1 ON d1.a = x.n
+                             |  JOIN data AS d2 ON d2.a = x.n
+                             |  WHERE n < 10
+                             |)
+                             |SELECT * FROM x
+                            |""".stripMargin)
+        query6.show(100, false)
+
+
+        // test old when with nested to with
+
+
+//                 val query6 = sql(s"""
+//                                     |WITH q1 AS (
+//                                     |  SELECT rand() FROM (SELECT EXPLODE(SEQUENCE(1, 5)))
+//                                     |)
+//                                     |SELECT * FROM q1
+//                                     |UNION ALL
+//                                     |SELECT * FROM q1
+//                                     |
+//                            |""".stripMargin)
+//        query6.show(100, false)
+
+
+
+//                val query7 = sql(s"""
+//                             |SELECT * FROM sums_1_100
+//                            |""".stripMargin)
+//        query7.show(100, false)
+
+
+//        val query6 = sql(s"""
+//                            |WITH r AS (
+//                            |  VALUES (0, 0) AS T(group, level)
+//                            |)
+//                            |SELECT T.group FROM r
+//                            |""".stripMargin)
+
+//  issue 1:
+//  SELECT r.destination, d.length + 1
+//  FROM (SELECT 'New York' AS destination, 0 AS length) d
+//  JOIN routes AS r ON d.destination = r.origin AND d.length < 2
+
+        Debugger.enabled = false
+      }
+>>>>>>> Stashed changes
     }
   }
 }

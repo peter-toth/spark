@@ -299,7 +299,11 @@ case class RecursiveTableExec(
           case _ =>
         }
 
+<<<<<<< Updated upstream
         val rdd = physicalRecursiveTerm.execute().map(_.copy()).persist(storageLevel)
+=======
+        val rdd = newRecursiveTerm.execute().map(_.copy()).cache() // TODO: need to copy?
+>>>>>>> Stashed changes
         val count = rdd.count()
         if (count > 0) {
           prevIterationRDDs += rdd

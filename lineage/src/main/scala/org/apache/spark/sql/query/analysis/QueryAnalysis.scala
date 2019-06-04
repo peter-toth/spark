@@ -18,6 +18,7 @@
 package org.apache.spark.sql.query.analysis
 
 import java.net.URI
+import java.util.concurrent.atomic.AtomicBoolean
 
 import scala.collection.mutable
 
@@ -51,6 +52,8 @@ import org.apache.spark.sql.sources.BaseRelation
 @Private
 object QueryAnalysis extends Logging {
 
+  private val loggedSchemeError = new AtomicBoolean(false)
+
   /** Keep a map of serde-to-format mapping for recognized formats. */
   private val hiveSerdesMapping = Seq(
     HiveSerDe.serdeMap("parquet") -> DataSourceFormat.PARQUET,
@@ -81,6 +84,19 @@ object QueryAnalysis extends Logging {
    * @return Query lineage information if the query is a supported output command.
    */
   def getLineageInfo(qe: QueryExecution): LineageInfo = {
+    try {
+      findLineageInfo(qe)
+    } catch {
+      case e: UnrecognizedSchemeException =>
+        if (loggedSchemeError.compareAndSet(false, true)) {
+          logWarning("Query uses unrecognized scheme (future similar errors will be suppressed).",
+            e)
+        }
+        LineageInfo(Nil, Nil)
+    }
+  }
+
+  private def findLineageInfo(qe: QueryExecution): LineageInfo = {
     logDebug(s"computing lineage info for:\n${qe.optimizedPlan}")
 
     // Stash the location of the Hive metastore so that it can be saved with any Hive relations
@@ -358,10 +374,10 @@ object QueryAnalysis extends Logging {
 
   private def getDataSourceType(uri: URI): DataSourceType = {
     uri.getScheme() match {
-      case "s3" => DataSourceType.S3
       case "hdfs" => DataSourceType.HDFS
       case "file" => DataSourceType.LOCAL
-      case _ => DataSourceType.UNKNOWN
+      case scheme if scheme.startsWith("s3") => DataSourceType.S3
+      case scheme => throw new UnrecognizedSchemeException(s"Unsupported scheme: $scheme")
     }
   }
 
@@ -426,4 +442,5 @@ object QueryAnalysis extends Logging {
 
   }
 
+  private class UnrecognizedSchemeException(msg: String) extends IllegalArgumentException(msg)
 }

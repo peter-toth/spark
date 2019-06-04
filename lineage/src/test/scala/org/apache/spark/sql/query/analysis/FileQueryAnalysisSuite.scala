@@ -36,6 +36,10 @@ class FileQueryAnalysisSuite extends BaseLineageSuite {
     testSimpleQuery(DataSourceType.HDFS)
   }
 
+  test("s3 file") {
+    testSimpleQuery(DataSourceType.S3)
+  }
+
   test("multiple hdfs files") {
     testMultipleFiles(DataSourceType.HDFS)
   }

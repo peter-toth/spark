@@ -26,7 +26,7 @@ import scala.util.Try
 
 import com.cloudera.spark.lineage._
 import org.apache.hadoop.conf.Configuration
-import org.apache.hadoop.fs.{FileSystem, FileUtil, Path}
+import org.apache.hadoop.fs.{FileStatus, FileSystem, FileUtil, Path}
 import org.apache.hadoop.hdfs.MiniDFSCluster
 import org.scalatest.BeforeAndAfterAll
 
@@ -54,6 +54,11 @@ abstract class BaseLineageSuite extends ClouderaFunSuite with BeforeAndAfterAll 
     FileUtil.fullyDelete(baseDir)
     val conf = new Configuration()
     conf.set(MiniDFSCluster.HDFS_MINIDFS_BASEDIR, baseDir.getAbsolutePath())
+
+    // Mock "s3a" so we can test URI mapping.
+    conf.set("fs.s3a.impl", classOf[MockS3FileSystem].getName())
+    conf.set("fs.s3a.impl.disable.cache", "true")
+
     this.hdfs = new MiniDFSCluster.Builder(conf).build()
 
     val builder = SparkSession.builder()
@@ -118,6 +123,11 @@ abstract class BaseLineageSuite extends ClouderaFunSuite with BeforeAndAfterAll 
 
     case DataSourceType.HDFS =>
       hdfs.getFileSystem().makeQualified(new Path("hdfs_" + UUID.randomUUID()))
+
+    case DataSourceType.S3 =>
+      val file = File.createTempFile("s3_", ".parquet", localDir)
+      file.delete()
+      new Path(s"s3a:${file.getAbsolutePath()}")
 
     case _ =>
       throw new UnsupportedOperationException("NotImplemented")
@@ -231,3 +241,19 @@ abstract class BaseLineageSuite extends ClouderaFunSuite with BeforeAndAfterAll 
 }
 
 case class Customer(id: Int, name: String) extends Product
+
+class MockS3FileSystem extends org.apache.hadoop.fs.RawLocalFileSystem {
+
+  private def local(path: Path): Path = {
+    new Path(path.toUri().getPath())
+  }
+
+  override def pathToFile(path: Path): File = {
+    new File(path.toUri().getPath())
+  }
+
+  override def makeQualified(path: Path): Path = {
+    super.makeQualified(local(path))
+  }
+
+}

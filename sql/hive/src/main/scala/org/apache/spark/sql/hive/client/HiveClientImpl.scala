@@ -429,46 +429,49 @@ private[hive] class HiveClientImpl(
       dbName: String,
       tableName: String): Option[CatalogTable] = withHiveState {
     logDebug(s"Looking up $dbName.$tableName")
-    getRawTableOption(dbName, tableName).map { h =>
-      // Note: Hive separates partition columns and the schema, but for us the
-      // partition columns are part of the schema
-      val cols = h.getCols.asScala.map(fromHiveColumn)
-      val partCols = h.getPartCols.asScala.map(fromHiveColumn)
-      val schema = StructType(cols ++ partCols)
+    getRawTableOption(dbName, tableName).map(convertHiveTableToCatalogTable)
+  }
 
-      val bucketSpec = if (h.getNumBuckets > 0) {
-        val sortColumnOrders = h.getSortCols.asScala
-        // Currently Spark only supports columns to be sorted in ascending order
-        // but Hive can support both ascending and descending order. If all the columns
-        // are sorted in ascending order, only then propagate the sortedness information
-        // to downstream processing / optimizations in Spark
-        // TODO: In future we can have Spark support columns sorted in descending order
-        val allAscendingSorted = sortColumnOrders.forall(_.getOrder == HiveUtils.ASCENDING_CODE)
+  private def convertHiveTableToCatalogTable(h: HiveTable): CatalogTable = {
+    // Note: Hive separates partition columns and the schema, but for us the
+    // partition columns are part of the schema
+    val cols = h.getCols.asScala.map(fromHiveColumn)
+    val partCols = h.getPartCols.asScala.map(fromHiveColumn)
+    val schema = StructType(cols ++ partCols)
 
-        val sortColumnNames = if (allAscendingSorted) {
-          sortColumnOrders.map(_.getCol)
-        } else {
-          Seq.empty
-        }
-        Option(BucketSpec(h.getNumBuckets, h.getBucketCols.asScala, sortColumnNames))
+    val bucketSpec = if (h.getNumBuckets > 0) {
+      val sortColumnOrders = h.getSortCols.asScala
+      // Currently Spark only supports columns to be sorted in ascending order
+      // but Hive can support both ascending and descending order. If all the columns
+      // are sorted in ascending order, only then propagate the sortedness information
+      // to downstream processing / optimizations in Spark
+      // TODO: In future we can have Spark support columns sorted in descending order
+      val allAscendingSorted = sortColumnOrders.forall(_.getOrder == HiveUtils.ASCENDING_CODE)
+
+      val sortColumnNames = if (allAscendingSorted) {
+        sortColumnOrders.map(_.getCol)
       } else {
-        None
+        Seq.empty
       }
+      Option(BucketSpec(h.getNumBuckets, h.getBucketCols.asScala, sortColumnNames))
+    } else {
+      None
+    }
 
-      // Skew spec and storage handler can't be mapped to CatalogTable (yet)
-      val unsupportedFeatures = ArrayBuffer.empty[String]
+    // Skew spec and storage handler can't be mapped to CatalogTable (yet)
+    val unsupportedFeatures = ArrayBuffer.empty[String]
 
-      if (!h.getSkewedColNames.isEmpty) {
-        unsupportedFeatures += "skewed columns"
-      }
+    if (!h.getSkewedColNames.isEmpty) {
+      unsupportedFeatures += "skewed columns"
+    }
 
-      if (h.getStorageHandler != null) {
-        unsupportedFeatures += "storage handler"
-      }
+    if (h.getStorageHandler != null) {
+      unsupportedFeatures += "storage handler"
+    }
 
-      if (h.getTableType == HiveTableType.VIRTUAL_VIEW && partCols.nonEmpty) {
-        unsupportedFeatures += "partitioned view"
-      }
+    if (h.getTableType == HiveTableType.VIRTUAL_VIEW && partCols.nonEmpty) {
+      unsupportedFeatures += "partitioned view"
+    }
 
       // CDPD-454: If testing, get accessType from table parameters. Otherwise, get it from
       // from the Hive translation layer
@@ -485,19 +488,19 @@ private[hive] class HiveClientImpl(
 
       val properties = Option(h.getParameters).map(_.asScala.toMap).orNull
 
-      // Hive-generated Statistics are also recorded in ignoredProperties
-      val ignoredProperties = scala.collection.mutable.Map.empty[String, String]
-      for (key <- HiveStatisticsProperties; value <- properties.get(key)) {
-        ignoredProperties += key -> value
-      }
+    // Hive-generated Statistics are also recorded in ignoredProperties
+    val ignoredProperties = scala.collection.mutable.Map.empty[String, String]
+    for (key <- HiveStatisticsProperties; value <- properties.get(key)) {
+      ignoredProperties += key -> value
+    }
 
-      val excludedTableProperties = HiveStatisticsProperties ++ Set(
-        // The property value of "comment" is moved to the dedicated field "comment"
-        "comment",
-        // For EXTERNAL_TABLE, the table properties has a particular field "EXTERNAL". This is added
-        // in the function toHiveTable.
-        "EXTERNAL"
-      )
+    val excludedTableProperties = HiveStatisticsProperties ++ Set(
+      // The property value of "comment" is moved to the dedicated field "comment"
+      "comment",
+      // For EXTERNAL_TABLE, the table properties has a particular field "EXTERNAL". This is added
+      // in the function toHiveTable.
+      "EXTERNAL"
+    )
 
       val filteredProperties = properties.filterNot {
         case (key, _) => excludedTableProperties.contains(key)
@@ -564,7 +567,6 @@ private[hive] class HiveClientImpl(
           requiredWriteCapabilities = requiredWriteCapabilities
         )
       )
-    }
   }
 
   override def createTable(table: CatalogTable, ignoreIfExists: Boolean): Unit = withHiveState {

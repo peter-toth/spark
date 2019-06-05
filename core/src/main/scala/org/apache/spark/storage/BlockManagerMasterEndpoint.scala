@@ -131,18 +131,6 @@ class BlockManagerMasterEndpoint(
 
     case BlockManagerHeartbeat(blockManagerId) =>
       context.reply(heartbeatReceived(blockManagerId))
-
-    case HasCachedBlocks(executorId) =>
-      blockManagerIdByExecutor.get(executorId) match {
-        case Some(bm) =>
-          if (blockManagerInfo.contains(bm)) {
-            val bmInfo = blockManagerInfo(bm)
-            context.reply(bmInfo.cachedBlocks.nonEmpty)
-          } else {
-            context.reply(false)
-          }
-        case None => context.reply(false)
-      }
   }
 
   private def removeRdd(rddId: Int): Future[Seq[Int]] = {
@@ -507,9 +495,6 @@ private[spark] class BlockManagerInfo(
   // Mapping from block id to its status.
   private val _blocks = new JHashMap[BlockId, BlockStatus]
 
-  // Cached blocks held by this BlockManager. This does not include broadcast blocks.
-  private val _cachedBlocks = new mutable.HashSet[BlockId]
-
   def getStatus(blockId: BlockId): Option[BlockStatus] = Option(_blocks.get(blockId))
 
   def updateLastSeenMs() {
@@ -576,13 +561,9 @@ private[spark] class BlockManagerInfo(
             s" (size: ${Utils.bytesToString(diskSize)})")
         }
       }
-      if (!blockId.isBroadcast && blockStatus.isCached) {
-        _cachedBlocks += blockId
-      }
     } else if (blockExists) {
       // If isValid is not true, drop the block.
       _blocks.remove(blockId)
-      _cachedBlocks -= blockId
       if (originalLevel.useMemory) {
         logInfo(s"Removed $blockId on ${blockManagerId.hostPort} in memory" +
           s" (size: ${Utils.bytesToString(originalMemSize)}," +
@@ -600,7 +581,6 @@ private[spark] class BlockManagerInfo(
       _remainingMem += _blocks.get(blockId).memSize
       _blocks.remove(blockId)
     }
-    _cachedBlocks -= blockId
   }
 
   def remainingMem: Long = _remainingMem
@@ -608,9 +588,6 @@ private[spark] class BlockManagerInfo(
   def lastSeenMs: Long = _lastSeenMs
 
   def blocks: JHashMap[BlockId, BlockStatus] = _blocks
-
-  // This does not include broadcast blocks.
-  def cachedBlocks: collection.Set[BlockId] = _cachedBlocks
 
   override def toString: String = "BlockManagerInfo " + timeMs + " " + _remainingMem
 

@@ -413,7 +413,7 @@ queryPrimary
     : querySpecification                                                    #queryPrimaryDefault
     | TABLE tableIdentifier                                                 #table
     | inlineTable                                                           #inlineTableDefault1
-    | '(' queryNoWith  ')'                                                  #subquery
+    | '(' query  ')'                                                        #subquery
     ;
 
 sortItem
@@ -551,7 +551,7 @@ identifierComment
 
 relationPrimary
     : tableIdentifier sample? tableAlias      #tableName
-    | '(' queryNoWith ')' sample? tableAlias  #aliasedQuery
+    | '(' query ')' sample? tableAlias        #aliasedQuery
     | '(' relation ')' sample? tableAlias     #aliasedRelation
     | inlineTable                             #inlineTableDefault2
     | functionTable                           #tableValuedFunction

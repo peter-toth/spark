@@ -35,7 +35,7 @@ import org.apache.spark.sql.catalyst.expressions.objects._
 import org.apache.spark.sql.catalyst.plans._
 import org.apache.spark.sql.catalyst.plans.logical._
 import org.apache.spark.sql.catalyst.rules._
-import org.apache.spark.sql.catalyst.trees.TreeNodeRef
+import org.apache.spark.sql.catalyst.trees.{TreeNode, TreeNodeRef}
 import org.apache.spark.sql.catalyst.util.toPrettySQL
 import org.apache.spark.sql.internal.SQLConf
 import org.apache.spark.sql.types._
@@ -213,31 +213,147 @@ class Analyzer(
    * Analyze cte definitions and substitute child plan with analyzed cte definitions.
    */
   object CTESubstitution extends Rule[LogicalPlan] {
-    def apply(plan: LogicalPlan): LogicalPlan = plan.resolveOperatorsUp {
+    def apply(plan: LogicalPlan): LogicalPlan =
+      if (SQLConf.get.legacyCTESubstitutionEnabled) {
+        legacySubstitute(plan)
+      } else {
+        traversePlan(plan)._1
+      }
+
+    private def legacySubstitute(plan: LogicalPlan): LogicalPlan = plan.resolveOperatorsUp {
       case With(child, relations) =>
         // substitute CTE expressions right-to-left to resolve references to previous CTEs:
         // with a as (select * from t), b as (select * from a) select * from b
         relations.foldRight(child) {
           case ((cteName, ctePlan), currentPlan) =>
-            substituteCTE(currentPlan, cteName, ctePlan)
+            legacySubstituteCTE(currentPlan, cteName, ctePlan)
         }
+
       case other => other
     }
 
-    def substituteCTE(plan: LogicalPlan, cteName: String, ctePlan: LogicalPlan): LogicalPlan = {
+    private def legacySubstituteCTE(
+        plan: LogicalPlan,
+        cteName: String, ctePlan: LogicalPlan): LogicalPlan =
       plan resolveOperatorsUp {
         case UnresolvedRelation(TableIdentifier(table, None)) if resolver(cteName, table) =>
           ctePlan
-        case u: UnresolvedRelation =>
-          u
+        case u: UnresolvedRelation => u // TODO: minek?
         case other =>
           // This cannot be done in ResolveSubquery because ResolveSubquery does not know the CTE.
           other transformExpressions {
             case e: SubqueryExpression =>
-              e.withNewPlan(substituteCTE(e.plan, cteName, ctePlan))
+              e.withNewPlan(legacySubstituteCTE(e.plan, cteName, ctePlan))
           }
       }
+
+    private def planHasInnerCTE(plan: LogicalPlan): Boolean = (plan find {
+      case _: With => true
+      case o => o.expressions.exists {
+        case se: SubqueryExpression => planHasInnerCTE(se.plan)
+        case _ => false
+      }
+    }).isDefined
+
+    private def traversePlan(plan: LogicalPlan): (LogicalPlan, Boolean) = plan match {
+      case With(child, relations) =>
+        val (newPlan, newPlanHasInnerCTE) = traversePlan(child)
+        val newChild = if (newPlan fastEquals child) {
+          child
+        } else {
+          newPlan
+        }
+        if (newPlanHasInnerCTE) {
+          (With(newChild, relations), true)
+        } else {
+          val i = relations.reverseIterator
+          var currentPlan = newChild
+          var currentPlanHasInnerCTE = false
+          while (i.hasNext && !currentPlanHasInnerCTE) {
+            val (cteName, ctePlan) = i.next()
+            currentPlan = substituteCTE(currentPlan, cteName, ctePlan)
+            // True if there was CTE in ctePlan and it was inserted
+            currentPlanHasInnerCTE = planHasInnerCTE(currentPlan)
+          }
+          if (i.hasNext) {
+            (With(currentPlan, i.toSeq.reverse), true)
+          } else {
+            (currentPlan, currentPlanHasInnerCTE)
+          }
+        }
+
+      case _ =>
+        val (planMap, newPlansHaveInnerCTE) = traverseNodes(plan.children, traversePlan)
+
+        val withNewPlans = plan.mapChildren(c => planMap.getOrElse(c, c))
+
+        val (expressionMap, newExpressionsHaveInnerCTE) =
+          traverseNodes(withNewPlans.expressions, traverseExpression)
+
+        val withNewExpressions = withNewPlans.mapExpressions(c => expressionMap.getOrElse(c, c))
+
+        (withNewExpressions, newExpressionsHaveInnerCTE || newPlansHaveInnerCTE)
     }
+
+    private def traverseExpression(
+        expression: Expression): (Expression, Boolean) = expression match {
+      case se: SubqueryExpression =>
+        val (newPlan, newPlanHasInnerCTE) = traversePlan(se.plan)
+        val withNewPlan = if (newPlan fastEquals se.plan) {
+          se
+        } else {
+          se.withNewPlan(newPlan)
+        }
+
+        val (expressionMap, newExpressionsHaveInnerCTE) =
+          traverseNodes(expression.children, traverseExpression)
+
+        val withNewExpressions = withNewPlan.mapChildren(c => expressionMap.getOrElse(c, c))
+
+        (withNewExpressions, newPlanHasInnerCTE || newExpressionsHaveInnerCTE)
+      case _ =>
+        val (expressionMap, newExpressionsHaveInnerCTE) =
+          traverseNodes(expression.children, traverseExpression)
+
+        val withNewExpressions = expression.mapChildren(c => expressionMap.getOrElse(c, c))
+
+        (withNewExpressions, newExpressionsHaveInnerCTE)
+    }
+
+    private def traverseNodes[T <: TreeNode[T]](
+        nodes: Seq[T],
+        traverseFunction: T => (T, Boolean)): (Map[T, T], Boolean) = {
+      val substitutions = nodes.flatMap { n =>
+        val (substituted, hasInnerCTE) = traverseFunction(n)
+        if (substituted fastEquals n) {
+          None
+        } else {
+          Some(n -> ((substituted, hasInnerCTE)))
+        }
+      }
+      val substitutionMap = substitutions.map {
+        case (node, (substitutedNode, _)) => node -> substitutedNode
+      }.toMap
+      val haveInnerCTE = substitutions.exists {
+        case (_, (_, true)) => true
+        case _ => false
+      }
+
+      (substitutionMap, haveInnerCTE)
+    }
+
+    private def substituteCTE(
+        plan: LogicalPlan,
+        cteName: String,
+        ctePlan: LogicalPlan): LogicalPlan =
+      plan resolveOperatorsUp {
+        case UnresolvedRelation(TableIdentifier(table, None)) if resolver(cteName, table) =>
+          ctePlan
+        case other =>
+          other transformExpressions {
+            case e: SubqueryExpression => e.withNewPlan(substituteCTE(e.plan, cteName, ctePlan))
+          }
+      }
   }
 
   /**

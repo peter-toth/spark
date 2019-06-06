@@ -1784,6 +1784,12 @@ object SQLConf {
     .doc("When true, the upcast will be loose and allows string to atomic types.")
     .booleanConf
     .createWithDefault(false)
+
+  val LEGACY_CTE_SUBSTITUTION_ENABLED = buildConf("spark.sql.legacy.cte.substitution.enabled")
+    .internal()
+    .doc("When true, outer CTE definitions takes precedence over inner definitions.")
+    .booleanConf
+    .createWithDefault(false)
 }
 
 /**
@@ -2243,6 +2249,8 @@ class SQLConf extends Serializable with Logging {
   def castDatetimeToString: Boolean = getConf(SQLConf.LEGACY_CAST_DATETIME_TO_STRING)
 
   def defaultV2Catalog: Option[String] = getConf(DEFAULT_V2_CATALOG)
+
+  def legacyCTESubstitutionEnabled: Boolean = getConf(LEGACY_CTE_SUBSTITUTION_ENABLED)
 
   /** ********************** SQLConf functionality methods ************ */
 

@@ -772,6 +772,15 @@ private[hive] class HiveClientImpl(
    * running MapReduce jobs with `runHive`.
    */
   protected def runHive(cmd: String, maxRows: Int = 1000): Seq[String] = withHiveState {
+    def closeDriver(driver: Driver): Unit = {
+      // Since HIVE-18238(Hive 3.0.0), the Driver.close function's return type changed
+      // and the CommandProcessorFactory.clean function removed.
+      driver.getClass.getMethod("close").invoke(driver)
+      if (version != hive.v3_0 && version != hive.v3_1) {
+        CommandProcessorFactory.clean(conf)
+      }
+    }
+
     logDebug(s"Running hiveql '$cmd'")
     if (cmd.toLowerCase(Locale.ROOT).startsWith("set")) { logDebug(s"Changing config: $cmd") }
     try {

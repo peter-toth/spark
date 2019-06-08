@@ -545,6 +545,132 @@ class SQLQuerySuite extends QueryTest with SharedSQLContext {
     }
   }
 
+  test("SPARK-19799: CTE in subquery") {
+    checkAnswer(
+      sql("""
+        |SELECT max(c) FROM (
+        |  WITH t AS (
+        |    SELECT 1 AS c
+        |  )
+        |  SELECT * FROM t
+        |)
+        """.stripMargin),
+      Row(1) :: Nil
+    )
+  }
+
+  test("SPARK-19799: CTE in subquery expression") {
+    checkAnswer(
+      sql("""
+        |SELECT (
+        |  WITH t AS (
+        |    SELECT 1 AS c
+        |  )
+        |  SELECT * FROM t
+        |)
+        """.stripMargin),
+      Row(1) :: Nil
+    )
+  }
+
+  test("SPARK-19799: Inner CTE shadows outer") {
+    Seq(("true", 1), ("false", 2)).foreach {
+      case (legacy, expected) =>
+        withSQLConf(SQLConf.LEGACY_CTE_SUBSTITUTION_ENABLED.key -> legacy) {
+          checkAnswer(
+            sql("""
+              |WITH t AS (
+              |  SELECT 1 AS c
+              |),
+              |t2 AS (
+              |  WITH t AS (
+              |    SELECT 2 AS c
+              |  )
+              |  SELECT * FROM t
+              |)
+              |SELECT * FROM t2
+              """.stripMargin),
+            Row(expected) :: Nil
+          )
+        }
+    }
+  }
+
+  test("SPARK-19799: CTE in subquery shadows outer") {
+    checkAnswer(
+      sql("""
+        |WITH t AS (
+        |  SELECT 1 AS c
+        |)
+        |SELECT max(c) FROM (
+        |  WITH t AS (
+        |    SELECT 2 AS c
+        |  )
+        |  SELECT * FROM t
+        |)
+        """.stripMargin),
+      Row(2) :: Nil
+    )
+  }
+
+  test("SPARK-19799: CTE in subquery expression shadows outer") {
+    Seq(("true", 1), ("false", 2)).foreach {
+      case (legacy, expected) =>
+        withSQLConf(SQLConf.LEGACY_CTE_SUBSTITUTION_ENABLED.key -> legacy) {
+          checkAnswer(
+            sql("""
+              |WITH t AS (
+              |  SELECT 1 AS c
+              |)
+              |SELECT (
+              |  WITH t AS (
+              |    SELECT 2 AS c
+              |  )
+              |  SELECT * FROM t
+              |)
+              """.stripMargin),
+            Row(expected) :: Nil
+          )
+        }
+    }
+  }
+
+  test("SPARK-19799: no infinite recursion during CTE substitution") {
+    intercept[AnalysisException] {
+      sql("""
+        |WITH t AS (
+        |  SELECT * FROM t
+        |)
+        |SELECT * FROM t
+        """.stripMargin)
+    }
+    intercept[AnalysisException] {
+      sql("""
+        |WITH t AS (
+        |  SELECT (SELECT * FROM t)
+        |)
+        |SELECT * FROM t
+        """.stripMargin)
+    }
+  }
+
+  test("SPARK-19799: Support WITH clause in subqueries") {
+    checkAnswer(
+      sql("""
+            |SELECT avg(b) FROM (
+            |  WITH maxearnings AS (
+            |    SELECT course, year, max(earnings) as earnings
+            |    FROM courseSales
+            |    GROUP BY course, year
+            |  )
+            |  SELECT course, sum(earnings) as b
+            |  FROM maxearnings GROUP BY course
+            |)
+          """.stripMargin),
+      Row(54000) :: Nil
+    )
+  }
+
   test("date row") {
     checkAnswer(sql(
       """select cast("2015-01-28" as date) from testData limit 1"""),

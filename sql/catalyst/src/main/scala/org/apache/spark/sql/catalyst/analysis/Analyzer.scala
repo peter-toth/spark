@@ -238,7 +238,7 @@ class Analyzer(
       plan resolveOperatorsUp {
         case UnresolvedRelation(TableIdentifier(table, None)) if resolver(cteName, table) =>
           ctePlan
-        case u: UnresolvedRelation => u // TODO: minek?
+        case u: UnresolvedRelation => u
         case other =>
           // This cannot be done in ResolveSubquery because ResolveSubquery does not know the CTE.
           other transformExpressions {
@@ -247,16 +247,10 @@ class Analyzer(
           }
       }
 
-    private def planHasInnerCTE(plan: LogicalPlan): Boolean = (plan find {
-      case _: With => true
-      case o => o.expressions.exists {
-        case se: SubqueryExpression => planHasInnerCTE(se.plan)
-        case _ => false
-      }
-    }).isDefined
-
     private def traversePlan(plan: LogicalPlan): (LogicalPlan, Boolean) = plan match {
       case With(child, relations) =>
+        // substitute CTE expressions right-to-left to resolve references to previous CTEs:
+        // with a as (select * from t), b as (select * from a) select * from b
         val (newPlan, newPlanHasInnerCTE) = traversePlan(child)
         val newChild = if (newPlan fastEquals child) {
           child
@@ -272,7 +266,7 @@ class Analyzer(
           while (i.hasNext && !currentPlanHasInnerCTE) {
             val (cteName, ctePlan) = i.next()
             currentPlan = substituteCTE(currentPlan, cteName, ctePlan)
-            // True if there was CTE in ctePlan and it was inserted
+            // true if there is a CTE in ctePlan and it is substituted into
             currentPlanHasInnerCTE = planHasInnerCTE(currentPlan)
           }
           if (i.hasNext) {
@@ -284,16 +278,19 @@ class Analyzer(
 
       case _ =>
         val (planMap, newPlansHaveInnerCTE) = traverseNodes(plan.children, traversePlan)
-
         val withNewPlans = plan.mapChildren(c => planMap.getOrElse(c, c))
 
         val (expressionMap, newExpressionsHaveInnerCTE) =
           traverseNodes(withNewPlans.expressions, traverseExpression)
-
         val withNewExpressions = withNewPlans.mapExpressions(c => expressionMap.getOrElse(c, c))
 
-        (withNewExpressions, newExpressionsHaveInnerCTE || newPlansHaveInnerCTE)
+        (withNewExpressions, newPlansHaveInnerCTE || newExpressionsHaveInnerCTE)
     }
+
+    private def planHasInnerCTE(plan: LogicalPlan): Boolean = (plan find {
+      case _: With => true
+      case o => o.subqueries.exists(planHasInnerCTE)
+    }).isDefined
 
     private def traverseExpression(
         expression: Expression): (Expression, Boolean) = expression match {
@@ -307,14 +304,12 @@ class Analyzer(
 
         val (expressionMap, newExpressionsHaveInnerCTE) =
           traverseNodes(expression.children, traverseExpression)
-
         val withNewExpressions = withNewPlan.mapChildren(c => expressionMap.getOrElse(c, c))
 
         (withNewExpressions, newPlanHasInnerCTE || newExpressionsHaveInnerCTE)
       case _ =>
         val (expressionMap, newExpressionsHaveInnerCTE) =
           traverseNodes(expression.children, traverseExpression)
-
         val withNewExpressions = expression.mapChildren(c => expressionMap.getOrElse(c, c))
 
         (withNewExpressions, newExpressionsHaveInnerCTE)
@@ -347,10 +342,9 @@ class Analyzer(
         cteName: String,
         ctePlan: LogicalPlan): LogicalPlan =
       plan resolveOperatorsUp {
-        case UnresolvedRelation(TableIdentifier(table, None)) if resolver(cteName, table) =>
-          ctePlan
-        case other =>
-          other transformExpressions {
+        case UnresolvedRelation(TableIdentifier(table, None)) if resolver(cteName, table) => ctePlan
+        case o =>
+          o transformExpressions {
             case e: SubqueryExpression => e.withNewPlan(substituteCTE(e.plan, cteName, ctePlan))
           }
       }

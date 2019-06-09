@@ -210,41 +210,40 @@ class Analyzer(
   )
 
   /**
-   * Analyze cte definitions and substitute child plan with analyzed cte definitions.
+   * Substitute CTE definitions.
+   *
+   * Approach used:
+   * - CTE definitions are substituted into the child plan of the CTE
+   * - Substitution is done in reverse order which ensures that a subsequent CTE definition can use a previous one
+   *   eg. WITH a AS (SELECT 1 AS c), b AS (SELECT * FROM a) SELECT * FROM b return 1
+   * - Substitution is done in bottom-up manner with regards both plans and expressions which
+   *   ensures that inner CTE definitions takes precedence over outer
+    *  eg.
+    *  WITH t AS (SELECT 1 AS c),
+    *  t2 AS (WITH t AS (SELECT 2 AS c)SELECT * FROM t) SELECT * FROM t2 returns 2
+   * - Subn reverse order to make sure
    */
+  /**
+    * Substitutes [[Expression Expressions]] which can be statically evaluated with their corresponding
+    * value in conjunctive [[Expression Expressions]]	 * value in conjunctive [[Expression Expressions]]
+    * eg.	 * eg.
+    * {{{	 * {{{
+    *   SELECT * FROM table WHERE i = 5 AND j = i + 3	 *   SELECT * FROM table WHERE i = 5 AND j = i + 3             =>  ... WHERE i = 5 AND j = 8
+    *   ==>  SELECT * FROM table WHERE i = 5 AND j = 8	 *   SELECT * FROM table WHERE abs(i) = 5 AND j <= abs(i) + 3  =>  ... WHERE abs(i) = 5 AND j <= 8
+    * }}}	 * }}}
+    *	 *
+    * Approach used:	 * Approach used:
+    * - Populate a mapping of attribute => constant value by looking at all the equals predicates	 * - Populate a mapping of expression => constant value by looking at all the deterministic equals
+    * - Using this mapping, replace occurrence of the attributes with the corresponding constant values	 *   predicates
+    *   in the AND node.	 * - Using this mapping, replace occurrence of the expressions with the corresponding constant
+    *   values in the AND node.
+    */	 */
   object CTESubstitution extends Rule[LogicalPlan] {
     def apply(plan: LogicalPlan): LogicalPlan =
       if (SQLConf.get.legacyCTESubstitutionEnabled) {
         legacySubstitute(plan)
       } else {
         traversePlan(plan)._1
-      }
-
-    private def legacySubstitute(plan: LogicalPlan): LogicalPlan = plan.resolveOperatorsUp {
-      case With(child, relations) =>
-        // substitute CTE expressions right-to-left to resolve references to previous CTEs:
-        // with a as (select * from t), b as (select * from a) select * from b
-        relations.foldRight(child) {
-          case ((cteName, ctePlan), currentPlan) =>
-            legacySubstituteCTE(currentPlan, cteName, ctePlan)
-        }
-
-      case other => other
-    }
-
-    private def legacySubstituteCTE(
-        plan: LogicalPlan,
-        cteName: String, ctePlan: LogicalPlan): LogicalPlan =
-      plan resolveOperatorsUp {
-        case UnresolvedRelation(TableIdentifier(table, None)) if resolver(cteName, table) =>
-          ctePlan
-        case u: UnresolvedRelation => u
-        case other =>
-          // This cannot be done in ResolveSubquery because ResolveSubquery does not know the CTE.
-          other transformExpressions {
-            case e: SubqueryExpression =>
-              e.withNewPlan(legacySubstituteCTE(e.plan, cteName, ctePlan))
-          }
       }
 
     private def traversePlan(plan: LogicalPlan): (LogicalPlan, Boolean) = plan match {
@@ -348,6 +347,17 @@ class Analyzer(
             case e: SubqueryExpression => e.withNewPlan(substituteCTE(e.plan, cteName, ctePlan))
           }
       }
+
+    private def legacySubstitute(plan: LogicalPlan): LogicalPlan = plan.resolveOperatorsUp {
+      case With(child, relations) =>
+        // substitute CTE expressions right-to-left to resolve references to previous CTEs:
+        // with a as (select * from t), b as (select * from a) select * from b
+        relations.foldRight(child) {
+          case ((cteName, ctePlan), currentPlan) => substituteCTE(currentPlan, cteName, ctePlan)
+        }
+
+      case other => other
+    }
   }
 
   /**

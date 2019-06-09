@@ -657,16 +657,16 @@ class SQLQuerySuite extends QueryTest with SharedSQLContext {
   test("SPARK-19799: Support WITH clause in subqueries") {
     checkAnswer(
       sql("""
-            |SELECT avg(b) FROM (
-            |  WITH maxearnings AS (
-            |    SELECT course, year, max(earnings) as earnings
-            |    FROM courseSales
-            |    GROUP BY course, year
-            |  )
-            |  SELECT course, sum(earnings) as b
-            |  FROM maxearnings GROUP BY course
-            |)
-          """.stripMargin),
+        |SELECT avg(b) FROM (
+        |  WITH maxearnings AS (
+        |    SELECT course, year, max(earnings) as earnings
+        |    FROM courseSales
+        |    GROUP BY course, year
+        |  )
+        |  SELECT course, sum(earnings) as b
+        |  FROM maxearnings GROUP BY course
+        |)
+        """.stripMargin),
       Row(54000) :: Nil
     )
   }

@@ -278,6 +278,7 @@
                   <descriptors>
                     <descriptor>src/main/assembly/assembly.xml</descriptor>
                   </descriptors>
+                  <attach>false</attach>
                 </configuration>
               </execution>
             </executions>

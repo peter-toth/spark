@@ -194,6 +194,11 @@
   <profiles>
     <profile>
       <id>hive</id>
+      <activation>
+        <property>
+          <name>cdpd.build</name>
+        </property>
+      </activation>
       <build>
         <plugins>
           <plugin>

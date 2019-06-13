@@ -211,6 +211,11 @@
     -->
     <profile>
       <id>hadoop-3.1</id>
+      <activation>
+        <property>
+          <name>cdpd.build</name>
+        </property>
+      </activation>
       <properties>
         <extra.source.dir>src/hadoop-3/main/scala</extra.source.dir>
         <extra.testsource.dir>src/hadoop-3/test/scala</extra.testsource.dir>

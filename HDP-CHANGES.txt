@@ -82,6 +82,7 @@ BUG FIXES
     SPARK-24418 Upgrade Scala to 2.11.12 and 2.12.6
     SPARK-24785 Making sure REPL prints Spark UI info and then Welcome message
     SPARK-27029 Update Thrift to 0.12.0
+    SPARK-28004 Update jquery to 3.4.
 
     (Jira in Apache Spark is IN PROGRESS)
     SPARK-23977 Add commit protocol binding to Hadoop 3.1 PathOutputCommitter mechanism

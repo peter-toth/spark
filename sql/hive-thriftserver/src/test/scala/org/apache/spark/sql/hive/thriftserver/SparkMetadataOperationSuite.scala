@@ -146,7 +146,7 @@ class SparkMetadataOperationSuite extends HiveThriftJdbcTest {
       }
     }
 
-    withJdbcStatement("table1", "table2") { statement =>
+    withJdbcStatement("table1", "table2", "view1") { statement =>
       Seq(
         "CREATE TABLE table1(key INT, val STRING)",
         "CREATE TABLE table2(key INT, val STRING)",
@@ -180,9 +180,9 @@ class SparkMetadataOperationSuite extends HiveThriftJdbcTest {
 
   test("Spark's own GetColumnsOperation(SparkGetColumnsOperation)") {
     def testGetColumnsOperation(
-                                 schema: String,
-                                 tableNamePattern: String,
-                                 columnNamePattern: String)(f: HiveQueryResultSet => Unit): Unit = {
+        schema: String,
+        tableNamePattern: String,
+        columnNamePattern: String)(f: HiveQueryResultSet => Unit): Unit = {
       val rawTransport = new TSocket("localhost", serverPort)
       val connection = new HiveConnection(s"jdbc:hive2://localhost:$serverPort", new Properties)
       val user = System.getProperty("user.name")
@@ -217,8 +217,8 @@ class SparkMetadataOperationSuite extends HiveThriftJdbcTest {
     }
 
     def checkResult(
-                     columns: Seq[(String, String, String, String, String)],
-                     rs: HiveQueryResultSet): Unit = {
+        columns: Seq[(String, String, String, String, String)],
+        rs: HiveQueryResultSet) : Unit = {
       if (columns.nonEmpty) {
         for (i <- columns.indices) {
           assert(rs.next())
@@ -265,22 +265,6 @@ class SparkMetadataOperationSuite extends HiveThriftJdbcTest {
       testGetColumnsOperation("%", "table_not_exist", null) { rs =>
         checkResult(Seq.empty, rs)
       }
-    }
-  }
-
-  test("GetTypeInfo Thrift API") {
-    def checkResult(rs: ResultSet, typeNames: Seq[String]): Unit = {
-      for (i <- typeNames.indices) {
-        assert(rs.next())
-        assert(rs.getString("TYPE_NAME") === typeNames(i))
-      }
-      // Make sure there are no more elements
-      assert(!rs.next())
-    }
-
-    withJdbcStatement() { statement =>
-      val metaData = statement.getConnection.getMetaData
-      checkResult(metaData.getTypeInfo, ThriftserverShimUtils.supportedType().map(_.getName))
     }
   }
 

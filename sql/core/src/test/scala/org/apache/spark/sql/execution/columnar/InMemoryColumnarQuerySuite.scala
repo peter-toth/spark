@@ -513,8 +513,10 @@ class InMemoryColumnarQuerySuite extends QueryTest with SharedSQLContext {
 
           // Save the size of the generated files for later checks.
           val path = new Path(workDirPath)
+          // scalastyle:off hadoopconfiguration
           val fs = path.getFileSystem(spark.sparkContext.hadoopConfiguration)
           val expectedSize = fs.listStatus(path).map(_.getLen()).sum
+          // scalastyle:on hadoopconfiguration
 
           // InMemoryRelation's stats is file size before the underlying RDD is materialized
           assert(inMemoryRelation.computeStats().sizeInBytes === expectedSize)

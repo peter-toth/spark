@@ -17,9 +17,10 @@
 
 package org.apache.spark.sql.hive.thriftserver
 
-import java.util.{List => JList}
+import java.util.{List => JList, UUID}
+import java.util.regex.Pattern
 
-import scala.collection.JavaConverters.seqAsJavaListConverter
+import scala.collection.JavaConverters._
 
 import org.apache.hadoop.hive.ql.security.authorization.plugin.HiveOperationType
 import org.apache.hadoop.hive.ql.security.authorization.plugin.HivePrivilegeObjectUtils
@@ -70,6 +71,7 @@ private[hive] class SparkGetTablesOperation(
 
     val catalog = sqlContext.sessionState.catalog
     val schemaPattern = convertSchemaPattern(schemaName)
+    val tablePattern = convertIdentifierPattern(tableName, true)
     val matchingDbs = catalog.listDatabases(schemaPattern)
 
     if (isAuthV2Enabled) {

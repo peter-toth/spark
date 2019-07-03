@@ -56,6 +56,12 @@ private[hive] class SparkGetSchemasOperation(
       sqlContext.sessionState.catalog.listDatabases(schemaPattern).foreach { dbName =>
         rowSet.addRow(Array[AnyRef](dbName, DEFAULT_HIVE_CATALOG))
       }
+
+      val globalTempViewDb = sqlContext.sessionState.catalog.globalTempViewManager.database
+      val databasePattern = Pattern.compile(CLIServiceUtils.patternToRegex(schemaName))
+      if (databasePattern.matcher(globalTempViewDb).matches()) {
+        rowSet.addRow(Array[AnyRef](globalTempViewDb, DEFAULT_HIVE_CATALOG))
+      }
       setState(OperationState.FINISHED)
     } catch {
       case e: HiveSQLException =>

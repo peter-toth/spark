@@ -34,7 +34,7 @@ class SetOperationSuite extends PlanTest {
       Batch("Union Pushdown", Once,
         CombineUnions,
         PushProjectionThroughUnion,
-        PushDownPredicate,
+        PushPredicateThroughNonJoin,
         PruneFilters) :: Nil
   }
 

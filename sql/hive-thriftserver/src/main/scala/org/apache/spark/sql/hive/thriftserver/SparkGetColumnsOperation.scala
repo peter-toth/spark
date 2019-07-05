@@ -33,6 +33,8 @@ import org.apache.spark.sql.SQLContext
 import org.apache.spark.sql.catalyst.TableIdentifier
 import org.apache.spark.sql.catalyst.catalog.SessionCatalog
 import org.apache.spark.sql.hive.thriftserver.ThriftserverShimUtils.toJavaSQLType
+import org.apache.spark.sql.types.StructType
+import org.apache.spark.util.{Utils => SparkUtils}
 
 
 /**
@@ -76,6 +78,13 @@ private[hive] class SparkGetColumnsOperation(
     val executionHiveClassLoader = sqlContext.sharedState.jarClassLoader
     Thread.currentThread().setContextClassLoader(executionHiveClassLoader)
 
+    HiveThriftServer2.listener.onStatementStart(
+      statementId,
+      parentSession.getSessionHandle.getSessionId.toString,
+      logMsg,
+      statementId,
+      parentSession.getUsername)
+
     val schemaPattern = convertSchemaPattern(schemaName)
     val tablePattern = convertIdentifierPattern(tableName, true)
 
@@ -90,8 +99,6 @@ private[hive] class SparkGetColumnsOperation(
 
     if (isAuthV2Enabled) {
       val privObjs = seqAsJavaListConverter(getPrivObjs(db2Tabs)).asJava
-      val cmdStr =
-        s"catalog : $catalogName, schemaPattern : $schemaName, tablePattern : $tableName"
       authorizeMetaGets(HiveOperationType.GET_COLUMNS, privObjs, cmdStr)
     }
 
@@ -125,8 +132,11 @@ private[hive] class SparkGetColumnsOperation(
     } catch {
       case e: HiveSQLException =>
         setState(OperationState.ERROR)
+        HiveThriftServer2.listener.onStatementError(
+          statementId, e.getMessage, SparkUtils.exceptionString(e))
         throw e
     }
+    HiveThriftServer2.listener.onStatementFinish(statementId)
   }
 
   private def addToRowSet(

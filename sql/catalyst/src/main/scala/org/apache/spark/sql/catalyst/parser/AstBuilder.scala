@@ -1437,6 +1437,16 @@ class AstBuilder(conf: SQLConf) extends SqlBaseBaseVisitor[AnyRef] with Logging 
   }
 
   /**
+   * Create an Array from a query.
+   */
+  override def visitArray(ctx: ArrayContext): Expression = withOrigin(ctx) {
+    ScalarSubquery(
+      Project(
+        Seq(UnresolvedAlias(UnresolvedFunction("collect_list", Seq(UnresolvedStar(None)), false))),
+        plan(ctx.query)))
+  }
+
+  /**
    * Create a (windowed) Function expression.
    */
   override def visitFunctionCall(ctx: FunctionCallContext): Expression = withOrigin(ctx) {

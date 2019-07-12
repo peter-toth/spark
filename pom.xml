@@ -446,7 +446,13 @@
       <dependency>
         <groupId>com.google.guava</groupId>
         <artifactId>guava</artifactId>
-        <version>14.0.1</version>
+        <version>28.0-jre</version>
+        <scope>provided</scope>
+      </dependency>
+      <dependency>
+        <groupId>com.google.guava</groupId>
+        <artifactId>failureaccess</artifactId>
+        <version>1.0.1</version>
         <scope>provided</scope>
       </dependency>
       <dependency>
@@ -2839,6 +2845,7 @@
               <include>org.eclipse.jetty:jetty-security</include>
               <include>org.eclipse.jetty:jetty-util</include>
               <include>org.eclipse.jetty:jetty-server</include>
+              <include>com.google.guava:failureaccess</include>
               <include>com.google.guava:guava</include>
               <include>org.jpmml:*</include>
             </includes>

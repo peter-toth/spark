@@ -108,11 +108,11 @@ object JavaTypeInference {
         val (dataType, nullable) = inferDataType(typeToken.getComponentType, seenTypeSet)
         (ArrayType(dataType, nullable), true)
 
-      case _ if iterableType.isAssignableFrom(typeToken) =>
+      case _ if iterableType.isSupertypeOf(typeToken) =>
         val (dataType, nullable) = inferDataType(elementType(typeToken), seenTypeSet)
         (ArrayType(dataType, nullable), true)
 
-      case _ if mapType.isAssignableFrom(typeToken) =>
+      case _ if mapType.isSupertypeOf(typeToken) =>
         val (keyType, valueType) = mapKeyValueType(typeToken)
         val (keyDataType, _) = inferDataType(keyType, seenTypeSet)
         val (valueDataType, nullable) = inferDataType(valueType, seenTypeSet)
@@ -269,14 +269,14 @@ object JavaTypeInference {
             ObjectType(c))
         }
 
-      case c if listType.isAssignableFrom(typeToken) =>
+      case c if listType.isSupertypeOf(typeToken) =>
         val et = elementType(typeToken)
         UnresolvedMapObjects(
           p => deserializerFor(et, Some(p)),
           getPath,
           customCollectionCls = Some(c))
 
-      case _ if mapType.isAssignableFrom(typeToken) =>
+      case _ if mapType.isSupertypeOf(typeToken) =>
         val (keyType, valueType) = mapKeyValueType(typeToken)
         val keyDataType = inferDataType(keyType)._1
         val valueDataType = inferDataType(valueType)._1
@@ -424,10 +424,10 @@ object JavaTypeInference {
         case _ if typeToken.isArray =>
           toCatalystArray(inputObject, typeToken.getComponentType)
 
-        case _ if listType.isAssignableFrom(typeToken) =>
+        case _ if listType.isSupertypeOf(typeToken) =>
           toCatalystArray(inputObject, elementType(typeToken))
 
-        case _ if mapType.isAssignableFrom(typeToken) =>
+        case _ if mapType.isSupertypeOf(typeToken) =>
           val (keyType, valueType) = mapKeyValueType(typeToken)
 
           ExternalMapToCatalyst(

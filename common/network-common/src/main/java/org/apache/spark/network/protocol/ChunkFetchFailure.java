@@ -17,6 +17,7 @@
 
 package org.apache.spark.network.protocol;
 
+import com.google.common.base.MoreObjects;
 import com.google.common.base.Objects;
 import io.netty.buffer.ByteBuf;
 
@@ -68,7 +69,7 @@ public final class ChunkFetchFailure extends AbstractMessage implements Response
 
   @Override
   public String toString() {
-    return Objects.toStringHelper(this)
+    return MoreObjects.toStringHelper(this)
       .add("streamChunkId", streamChunkId)
       .add("errorString", errorString)
       .toString();

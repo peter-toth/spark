@@ -390,8 +390,7 @@ private[spark] object HadoopRDD extends Logging {
    * The three methods below are helpers for accessing the local map, a property of the SparkEnv of
    * the local process.
    */
-  // Adopting methods here to reduce exposure to guava as it is done in SPARK-30272
-  def getCachedMetadata(key: String): AnyRef = SparkEnv.get.hadoopJobMetadata.get(key)
+  def getCachedMetadata(key: String): AnyRef = SparkEnv.get.hadoopJobMetadata.getIfPresent(key)
 
   private def putCachedMetadata(key: String, value: AnyRef): Unit =
     SparkEnv.get.hadoopJobMetadata.put(key, value)

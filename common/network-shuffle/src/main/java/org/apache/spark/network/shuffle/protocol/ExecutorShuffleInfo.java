@@ -21,6 +21,7 @@ import java.util.Arrays;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.google.common.base.MoreObjects;
 import com.google.common.base.Objects;
 import io.netty.buffer.ByteBuf;
 
@@ -53,7 +54,7 @@ public class ExecutorShuffleInfo implements Encodable {
 
   @Override
   public String toString() {
-    return Objects.toStringHelper(this)
+    return MoreObjects.toStringHelper(this)
       .add("localDirs", Arrays.toString(localDirs))
       .add("subDirsPerLocalDir", subDirsPerLocalDir)
       .add("shuffleManager", shuffleManager)

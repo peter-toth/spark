@@ -48,7 +48,7 @@ private[hive] class SparkGetTypeInfoOperation(
 
   override def runInternal(): Unit = {
     statementId = UUID.randomUUID().toString
-    val logMsg = "Listing type info"
+    val logMsg = s"Listing databases '$cmdStr'"
     logInfo(s"$logMsg with $statementId")
     setState(OperationState.RUNNING)
     // Always use the latest class loader provided by executionHive's state.

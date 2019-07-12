@@ -467,7 +467,7 @@
       <dependency>
         <groupId>com.google.guava</groupId>
         <artifactId>guava</artifactId>
-        <version>14.0.1</version>
+        <version>28.0-jre</version>
         <scope>provided</scope>
       </dependency>
       <dependency>
@@ -2905,6 +2905,7 @@
               <include>org.eclipse.jetty:jetty-util</include>
               <include>org.eclipse.jetty:jetty-server</include>
               <include>com.google.guava:guava</include>
+              <include>com.google.guava:failureaccess</include>
               <include>org.jpmml:*</include>
             </includes>
           </artifactSet>
@@ -2919,6 +2920,10 @@
             <relocation>
               <pattern>com.google.common</pattern>
               <shadedPattern>${spark.shade.packageName}.guava</shadedPattern>
+            </relocation>
+            <relocation>
+              <pattern>com.google.thirdparty</pattern>
+              <shadedPattern>${spark.shade.packageName}.guava.thirdparty</shadedPattern>
             </relocation>
             <relocation>
               <pattern>org.dmg.pmml</pattern>

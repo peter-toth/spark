@@ -17,7 +17,7 @@
 
 package org.apache.spark.util.kvstore;
 
-import com.google.common.base.Objects;
+import com.google.common.base.MoreObjects;
 
 public class CustomType1 {
 
@@ -52,7 +52,7 @@ public class CustomType1 {
 
   @Override
   public String toString() {
-    return Objects.toStringHelper(this)
+    return MoreObjects.toStringHelper(this)
       .add("key", key)
       .add("id", id)
       .add("name", name)

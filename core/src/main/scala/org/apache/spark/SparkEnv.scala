@@ -24,7 +24,7 @@ import java.util.Locale
 import scala.collection.mutable
 import scala.util.Properties
 
-import com.google.common.collect.MapMaker
+import com.google.common.cache.CacheBuilder
 
 import org.apache.spark.annotation.DeveloperApi
 import org.apache.spark.api.python.PythonWorkerFactory
@@ -75,7 +75,8 @@ class SparkEnv (
 
   // A general, soft-reference map for metadata needed during HadoopRDD split computation
   // (e.g., HadoopFileRDD uses this to cache JobConfs and InputFormats).
-  private[spark] val hadoopJobMetadata = new MapMaker().softValues().makeMap[String, Any]()
+  private[spark] val hadoopJobMetadata =
+    CacheBuilder.newBuilder().softValues().build[String, AnyRef]()
 
   private[spark] var driverTmpDir: Option[String] = None
 

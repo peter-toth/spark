@@ -87,6 +87,7 @@ private[spark] class ExecutorAllocationManager(
     client: ExecutorAllocationClient,
     listenerBus: LiveListenerBus,
     conf: SparkConf,
+    cleaner: Option[ContextCleaner] = None,
     clock: Clock = new SystemClock())
   extends Logging {
 
@@ -142,7 +143,7 @@ private[spark] class ExecutorAllocationManager(
   // Listener for Spark events that impact the allocation policy
   val listener = new ExecutorAllocationListener
 
-  val executorMonitor = new ExecutorMonitor(conf, client, clock)
+  val executorMonitor = new ExecutorMonitor(conf, client, listenerBus, clock)
 
   // Executor that handles the scheduling task.
   private val executor =
@@ -186,11 +187,13 @@ private[spark] class ExecutorAllocationManager(
       throw new SparkException(
         "spark.dynamicAllocation.sustainedSchedulerBacklogTimeout must be > 0!")
     }
-    // Require external shuffle service for dynamic allocation
-    // Otherwise, we may lose shuffle files when killing executors
-    if (!conf.get(config.SHUFFLE_SERVICE_ENABLED) && !testing) {
-      throw new SparkException("Dynamic allocation of executors requires the external " +
-        "shuffle service. You may enable this through spark.shuffle.service.enabled.")
+    if (!conf.get(config.SHUFFLE_SERVICE_ENABLED)) {
+      if (conf.get(config.DYN_ALLOCATION_SHUFFLE_TRACKING)) {
+        logWarning("Dynamic allocation without a shuffle service is an experimental feature.")
+      } else if (!testing) {
+        throw new SparkException("Dynamic allocation of executors requires the external " +
+          "shuffle service. You may enable this through spark.shuffle.service.enabled.")
+      }
     }
     if (tasksPerExecutorForFullParallelism == 0) {
       throw new SparkException("spark.executor.cores must not be < spark.task.cpus.")
@@ -209,6 +212,7 @@ private[spark] class ExecutorAllocationManager(
   def start(): Unit = {
     listenerBus.addToManagementQueue(listener)
     listenerBus.addToManagementQueue(executorMonitor)
+    cleaner.foreach(_.attachListener(executorMonitor))
 
     val scheduleTask = new Runnable() {
       override def run(): Unit = {

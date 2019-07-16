@@ -2778,6 +2778,7 @@
         <hadoop.version>3.1.1.3.0.3.0-SNAPSHOT</hadoop.version>
         <curator.version>2.12.0</curator.version>
         <zookeeper.version>3.4.6.3.0.3.0-SNAPSHOT</zookeeper.version>
+        <datanucleus-core.version>4.1.6</datanucleus-core.version>
       </properties>
       <modules>
         <!-- turn on the hadoop cloud module -->

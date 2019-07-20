@@ -260,7 +260,7 @@ SELECT * FROM r;
 
 -- UNION combinator supported to eliminate duplicates and stop recursion
 WITH RECURSIVE r(level) AS (
-  VALUES (0)
+  VALUES (0), (0)
   UNION
   SELECT (level + 1) % 10 FROM r
 )

@@ -576,7 +576,7 @@ Recursive query r should contain UNION or UNION ALL statements only. This error 
 
 -- !query 37
 WITH RECURSIVE r(level) AS (
-  VALUES (0)
+  VALUES (0), (0)
   UNION
   SELECT (level + 1) % 10 FROM r
 )

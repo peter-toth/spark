@@ -202,7 +202,7 @@ object CTESubstitution extends Rule[LogicalPlan] {
       })
 
     val (distinctHandledAnchorTerms, distinctHandledRecursiveTerms) = if (distinct) {
-      (Seq(firstAnchor), (anchorTerms.tail ++ recursiveTerms).map(
+      (Seq(Distinct(firstAnchor)), (anchorTerms.tail ++ recursiveTerms).map(
         Except(_, UnresolvedRecursiveReference(recursiveTableName, true), false)
       ))
     } else {

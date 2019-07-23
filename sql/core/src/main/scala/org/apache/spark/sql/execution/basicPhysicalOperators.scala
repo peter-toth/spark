@@ -234,7 +234,29 @@ case class FilterExec(condition: Expression, child: SparkPlan)
   override def outputPartitioning: Partitioning = child.outputPartitioning
 }
 
-/** Physical plan for RecursiveTable. */
+/**
+ * Physical plan node for a recursive table that encapsulates the physical plans of the anchor
+ * terms and the logical plans of the recursive terms and the maximum number of rows to return.
+ *
+ * Anchor terms are physical plans and they are used to initialize the query in the first run.
+ * Recursive terms are used to extend the result with new rows, They are logical plans and contain
+ * references to the result of the previous iteration or to the so far cumulated result. These
+ * references are updated with new statistics and compiled to physical plan and then updated to
+ * reflect the appropriate RDD before execution.
+ *
+ * The execution terminates once the anchor terms or the current iteration of the recursive terms
+ * return no rows or the number of cumulated rows reaches the limit.
+ *
+ * During the execution of a recursive query the previously computed results are reused multiple
+ * times. To avoid massive recomputation of these pieces of the final result, they are cached.
+ *
+ * @param name the name of the recursive table
+ * @param anchorTerms this child is used for initializing the query
+ * @param recursiveTerms this child is used for extending the set of results with new rows based on
+ *                       the results of the previous iteration (or the anchor in the first
+ *                       iteration)
+ * @param limit the maximum number of rows to return
+ */
 case class RecursiveTableExec(
     name: String,
     anchorTerms: Seq[SparkPlan],

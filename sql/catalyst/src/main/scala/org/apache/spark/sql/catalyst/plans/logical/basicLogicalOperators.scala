@@ -54,14 +54,16 @@ case class Subquery(child: LogicalPlan) extends OrderPreservingUnaryNode {
 
 /**
  * This node defines a table that contains one ore more [[RecursiveReference]]s as child nodes
- * referring to this table. It can be used to define a recursive CTE query and contains an anchor
- * and a recursive term as children. The result of the anchor and the repeatedly executed recursive
- * term are combined to form the final result.
+ * referring to this table. It contains anchor and a recursive terms as children and can be used to
+ * define a recursive query. The result of the anchor and the repeatedly executed recursive terms
+ * are combined using UNION to form the final result.
  *
  * @param name name of the table
  * @param anchorTerms this child is used for initializing the query
  * @param recursiveTerms this child is used for extending the set of results with new rows based on
- *                      the results of the previous iteration (or the anchor in the first iteration)
+ *                       the results of the previous iteration (or the anchor in the first
+ *                       iteration)
+ * @param limit the maximum number of rows to return
  */
 case class RecursiveTable(
     name: String,

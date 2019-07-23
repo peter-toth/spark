@@ -125,6 +125,14 @@ object CTESubstitution extends Rule[LogicalPlan] {
     }
   }
 
+  /**
+   * If recursion is allowed recursion handling starts with inserting unresolved self-references
+   * ([[UnresolvedRecursiveReference]]) to places where a reference to the CTE definition itself is
+   * found.
+   * If there is a self-reference then we need to check if structure of the query satisfies the SQL
+   * recursion rules and determine if UNION or UNION ALL operator is used as combinator between the
+   * terms and insert the appropriate [[RecursiveTable]] finally.
+   */
   private def handleRecursion(
       plan: => LogicalPlan,
       recursiveTableName: String,
@@ -193,6 +201,7 @@ object CTESubstitution extends Rule[LogicalPlan] {
         s"recursive query ${recursiveTableName}")
     }
 
+    // The first anchor has a special role, its output column are aliased if required.
     val firstAnchor = SubqueryAlias(
       recursiveTableName,
       if (columnNames.isEmpty) {
@@ -201,6 +210,10 @@ object CTESubstitution extends Rule[LogicalPlan] {
         UnresolvedSubqueryColumnAliases(columnNames, anchorTerms.head)
       })
 
+    // If UNION combinator is used between the terms we extend each of them (except for the first
+    // anchor) with an EXCEPT clause and a reference to the so far cumulated result. If there are
+    // multiple anchors defined then only the first anchor term remains anchor, the rest of the
+    // terms becomes recursive due to the newly inserted recursive reference.
     val (distinctHandledAnchorTerms, distinctHandledRecursiveTerms) = if (distinct) {
       (Seq(Distinct(firstAnchor)), (anchorTerms.tail ++ recursiveTerms).map(
         Except(_, UnresolvedRecursiveReference(recursiveTableName, true), false)

@@ -218,31 +218,6 @@ class Analyzer(
       CleanupAliases)
   )
 
-  object ResolveRecursiveReferences extends Rule[LogicalPlan] {
-    def apply(plan: LogicalPlan): LogicalPlan = resolve(plan)
-
-    private def resolve(
-        plan: LogicalPlan,
-        recursiveTables: mutable.Map[String, Seq[Attribute]] = mutable.Map.empty): LogicalPlan = {
-      plan.foreach {
-        case rt @ RecursiveTable(name, _, _, _) if rt.firstAnchorResolved =>
-          recursiveTables += name -> rt.output
-        case _ =>
-      }
-
-      plan.resolveOperatorsUp {
-        case UnresolvedRecursiveReference(name, cumulated) if recursiveTables.contains(name) =>
-          // creating new instance of attributes here makes possible to avoid complex attribute
-          // handling in FoldablePropagation
-          RecursiveReference(name, recursiveTables(name).map(_.newInstance()), cumulated)
-        case other =>
-          other transformExpressions {
-            case e: SubqueryExpression => e.withNewPlan(resolve(e.plan, recursiveTables))
-          }
-      }
-    }
-  }
-
   /**
    * Substitute child plan with WindowSpecDefinitions.
    */
@@ -1416,6 +1391,35 @@ class Analyzer(
       }
     } catch {
       case a: AnalysisException if !throws => expr
+    }
+  }
+
+  /**
+   * This rule resolves [[RecursiveReference]]s when the first anchor term of the corresponding
+   * [[RecursiveTable]] gets resolved (ie. we know the output of the recursive table).
+   */
+  object ResolveRecursiveReferences extends Rule[LogicalPlan] {
+    def apply(plan: LogicalPlan): LogicalPlan = resolve(plan)
+
+    private def resolve(
+        plan: LogicalPlan,
+        recursiveTables: mutable.Map[String, Seq[Attribute]] = mutable.Map.empty): LogicalPlan = {
+      plan.foreach {
+        case rt @ RecursiveTable(name, _, _, _) if rt.firstAnchorResolved =>
+          recursiveTables += name -> rt.output
+        case _ =>
+      }
+
+      plan.resolveOperatorsUp {
+        case UnresolvedRecursiveReference(name, cumulated) if recursiveTables.contains(name) =>
+          // creating new instance of attributes here makes possible to avoid complex attribute
+          // handling in FoldablePropagation
+          RecursiveReference(name, recursiveTables(name).map(_.newInstance()), cumulated)
+        case other =>
+          other transformExpressions {
+            case e: SubqueryExpression => e.withNewPlan(resolve(e.plan, recursiveTables))
+          }
+      }
     }
   }
 

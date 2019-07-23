@@ -1264,6 +1264,40 @@ private[client] class Shim_v3_0 extends Shim_v2_3 {
       classOf[EnvironmentContext],
       JBoolean.TYPE)
 
+  private lazy val alterTableAddPartitionDescClazz = Utils.classForName(
+    "org.apache.hadoop.hive.ql.ddl.table.partition.AlterTableAddPartitionDesc")
+  private lazy val partitionDescClazz = Utils.classForName(
+    "org.apache.hadoop.hive.ql.ddl.table.partition.AlterTableAddPartitionDesc$PartitionDesc")
+  private lazy val partitionDescCtor = alterTableAddPartitionDescClazz.getConstructor(
+    classOf[String],
+    classOf[String],
+    JBoolean.TYPE)
+
+  private lazy val addPartitionMethod =
+    findMethod(
+      alterTableAddPartitionDescClazz,
+      "addPartition",
+      classOf[JMap[String, String]],
+      classOf[String])
+
+  private lazy val getPartitionMethod =
+    findMethod(
+      alterTableAddPartitionDescClazz,
+      "getPartition",
+      JInteger.TYPE)
+
+  private lazy val setPartParamsMethod =
+    findMethod(
+      partitionDescClazz,
+      "setPartParams",
+      classOf[JMap[String, String]])
+
+  private lazy val createPartitionsMethod =
+    findMethod(
+      classOf[Hive],
+      "createPartitions",
+      alterTableAddPartitionDescClazz)
+
   override def loadPartition(
       hive: Hive,
       loadPath: Path,
@@ -1337,5 +1371,38 @@ private[client] class Shim_v3_0 extends Shim_v2_3 {
   override def alterPartitions(hive: Hive, tableName: String, newParts: JList[Partition]): Unit = {
     alterPartitionsMethod.invoke(
       hive, tableName, newParts, environmentContextInAlterTable, transactional)
+  }
+
+  private def addPartition(
+      alterTableAddPartitionDesc: Any,
+      partSpec: JMap[String, String],
+      location: String): Unit = {
+    addPartitionMethod.invoke(alterTableAddPartitionDesc, partSpec, location)
+  }
+
+  private def setPartParams(
+      alterTableAddPartitionDesc: Any,
+      i: Int,
+      partParams: JMap[String, String]): Unit = {
+    val partitionDesc = getPartitionMethod.invoke(alterTableAddPartitionDesc, i: JInteger)
+    setPartParamsMethod.invoke(partitionDesc, partParams)
+  }
+
+  override def createPartitions(
+      hive: Hive,
+      db: String,
+      table: String,
+      parts: Seq[CatalogTablePartition],
+      ignoreIfExists: Boolean): Unit = {
+    val addPartitionDesc =
+      partitionDescCtor.newInstance(db, table, ignoreIfExists: JBoolean).asInstanceOf[Object]
+    parts.zipWithIndex.foreach { case (ctp, i) =>
+      addPartition(addPartitionDesc, ctp.spec.asJava,
+        ctp.storage.locationUri.map(CatalogUtils.URIToString(_)).orNull)
+      if (ctp.parameters.nonEmpty) {
+        setPartParams(addPartitionDesc, i, ctp.parameters.asJava)
+      }
+    }
+    createPartitionsMethod.invoke(hive, addPartitionDesc)
   }
 }

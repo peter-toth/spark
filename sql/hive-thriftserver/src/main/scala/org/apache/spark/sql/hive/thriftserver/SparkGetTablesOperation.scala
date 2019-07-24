@@ -50,7 +50,10 @@ private[hive] class SparkGetTablesOperation(
     schemaName: String,
     tableName: String,
     tableTypes: JList[String])
-  extends GetTablesOperation(parentSession, catalogName, schemaName, tableName, tableTypes) {
+  extends GetTablesOperation(parentSession, catalogName, schemaName, tableName, tableTypes)
+    with SparkMetadataOperationUtils with Logging {
+
+  private var statementId: String = _
 
   if (tableTypes != null) {
     this.tableTypes.addAll(tableTypes)
@@ -105,10 +108,22 @@ private[hive] class SparkGetTablesOperation(
     setState(OperationState.FINISHED)
   }
 
-  private def tableTypeString(tableType: CatalogTableType): String = tableType match {
-    case EXTERNAL | MANAGED => "TABLE"
-    case VIEW => "VIEW"
-    case t =>
-      throw new IllegalArgumentException(s"Unknown table type is found at showCreateHiveTable: $t")
+  private def addToRowSet(
+      dbName: String,
+      tableName: String,
+      tableType: String,
+      comment: Option[String]): Unit = {
+    val rowData = Array[AnyRef](
+      "",
+      dbName,
+      tableName,
+      tableType,
+      comment.getOrElse(""))
+    // Since HIVE-7575(Hive 2.0.0), adds 5 additional columns to the ResultSet of GetTables.
+    if (HiveUtils.isHive23) {
+      rowSet.addRow(rowData ++ Array(null, null, null, null, null))
+    } else {
+      rowSet.addRow(rowData)
+    }
   }
 }

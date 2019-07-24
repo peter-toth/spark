@@ -566,6 +566,8 @@ object CatalogTableType {
   val EXTERNAL = new CatalogTableType("EXTERNAL")
   val MANAGED = new CatalogTableType("MANAGED")
   val VIEW = new CatalogTableType("VIEW")
+
+  val tableTypes = Seq(EXTERNAL, MANAGED, VIEW)
 }
 
 

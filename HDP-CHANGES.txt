@@ -90,4 +90,5 @@ BUG FIXES
     (Security fix in Apache Spark)
     BUG-110890 Fix a security issue createRDDFromFile - large object ser/deserialization between R / JVM
     BUG-121103 Upgrade jackson-databind to 2.9.9.1
-  SPARK-24981   ShutdownHook timeout causes job to fail when succeeded when SparkContext stop() not called by user program
+    SPARK-24981 ShutdownHook timeout causes job to fail when succeeded when SparkContext stop() not called by user program
+    SPARK-28156 Self-join should not miss cached view

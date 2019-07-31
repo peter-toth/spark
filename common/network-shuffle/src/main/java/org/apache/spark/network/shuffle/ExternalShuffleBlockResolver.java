@@ -29,7 +29,6 @@ import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.annotations.VisibleForTesting;
-import com.google.common.base.MoreObjects;
 import com.google.common.base.Objects;
 import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheLoader;
@@ -300,7 +299,7 @@ public class ExternalShuffleBlockResolver {
 
     @Override
     public String toString() {
-      return MoreObjects.toStringHelper(this)
+      return Objects.toStringHelper(this)
         .add("appId", appId)
         .add("execId", execId)
         .toString();

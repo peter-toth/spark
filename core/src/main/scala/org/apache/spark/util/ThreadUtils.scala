@@ -31,7 +31,7 @@ import org.apache.spark.SparkException
 private[spark] object ThreadUtils {
 
   private val sameThreadExecutionContext =
-    ExecutionContext.fromExecutorService(MoreExecutors.newDirectExecutorService())
+    ExecutionContext.fromExecutorService(MoreExecutors.sameThreadExecutor())
 
   /**
    * An `ExecutionContextExecutor` that runs each task in the thread that invokes `execute/submit`.

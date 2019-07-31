@@ -110,7 +110,7 @@ class VersionsSuite extends SparkFunSuite with Logging {
   }
 
   private val versions =
-    Seq("0.13", "0.14", "1.0", "1.1", "1.2", "2.0", "2.1", "2.2", "2.3", "3.0")
+    Seq("0.12", "0.13", "0.14", "1.0", "1.1", "1.2", "2.0", "2.1", "2.2", "2.3", "3.0")
 
   private var client: HiveClient = null
 

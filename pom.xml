@@ -396,7 +396,7 @@
       <dependency>
         <groupId>com.google.guava</groupId>
         <artifactId>guava</artifactId>
-        <version>28.0-jre</version>
+        <version>14.0.1</version>
         <scope>provided</scope>
       </dependency>
       <dependency>

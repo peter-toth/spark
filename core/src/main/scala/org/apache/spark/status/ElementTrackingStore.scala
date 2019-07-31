@@ -52,7 +52,7 @@ private[spark] class ElementTrackingStore(store: KVStore, conf: SparkConf) exten
   private val executor = if (conf.get(ASYNC_TRACKING_ENABLED)) {
     ThreadUtils.newDaemonSingleThreadExecutor("element-tracking-store-worker")
   } else {
-    MoreExecutors.newDirectExecutorService()
+    MoreExecutors.sameThreadExecutor()
   }
 
   @volatile private var stopped = false

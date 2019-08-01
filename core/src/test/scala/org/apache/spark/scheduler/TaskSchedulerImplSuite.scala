@@ -421,11 +421,11 @@ class TaskSchedulerImplSuite extends SparkFunSuite with LocalSparkContext with B
         }
         // End the other task of the taskset, doesn't matter whether it succeeds or fails.
         val otherTask = tasks(1)
-        val result = new DirectTaskResult[Int](valueSer.serialize(otherTask.taskId), Seq())
+        val result = new DirectTaskResult[Int](valueSer.serialize(otherTask.taskId), Seq(), Array())
         tsm.handleSuccessfulTask(otherTask.taskId, result)
       } else {
         tasks.foreach { task =>
-          val result = new DirectTaskResult[Int](valueSer.serialize(task.taskId), Seq())
+          val result = new DirectTaskResult[Int](valueSer.serialize(task.taskId), Seq(), Array())
           tsm.handleSuccessfulTask(task.taskId, result)
         }
       }
@@ -1113,7 +1113,7 @@ class TaskSchedulerImplSuite extends SparkFunSuite with LocalSparkContext with B
     def completeTaskSuccessfully(tsm: TaskSetManager, partition: Int): Unit = {
       val indexInTsm = tsm.partitionToIndex(partition)
       val matchingTaskInfo = tsm.taskAttempts.flatten.filter(_.index == indexInTsm).head
-      val result = new DirectTaskResult[Int](valueSer.serialize(1), Seq())
+      val result = new DirectTaskResult[Int](valueSer.serialize(1), Seq(), Array())
       tsm.handleSuccessfulTask(matchingTaskInfo.taskId, result)
     }
 
@@ -1198,7 +1198,7 @@ class TaskSchedulerImplSuite extends SparkFunSuite with LocalSparkContext with B
         if (stageAttempt == 1) {
           tsm.handleFailedTask(tsm.taskInfos(index).taskId, TaskState.FAILED, TaskResultLost)
         } else {
-          val result = new DirectTaskResult[Int](valueSer.serialize(1), Seq())
+          val result = new DirectTaskResult[Int](valueSer.serialize(1), Seq(), Array())
           tsm.handleSuccessfulTask(tsm.taskInfos(index).taskId, result)
         }
       }

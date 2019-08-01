@@ -813,7 +813,8 @@ private[spark] class TaskSetManager(
     // "result.value()" in "TaskResultGetter.enqueueSuccessfulTask" before reaching here.
     // Note: "result.value()" only deserializes the value when it's called at the first time, so
     // here "result.value()" just returns the value and won't block other threads.
-    sched.dagScheduler.taskEnded(tasks(index), Success, result.value(), result.accumUpdates, info)
+    sched.dagScheduler.taskEnded(tasks(index), Success, result.value(), result.accumUpdates,
+      result.metricPeaks, info)
     maybeFinishTaskSet()
   }
 
@@ -847,6 +848,7 @@ private[spark] class TaskSetManager(
     val index = info.index
     copiesRunning(index) -= 1
     var accumUpdates: Seq[AccumulatorV2[_, _]] = Seq.empty
+    var metricPeaks: Array[Long] = Array.empty
     val failureReason = s"Lost task ${info.id} in stage ${taskSet.id} (TID $tid, ${info.host}," +
       s" executor ${info.executorId}): ${reason.toErrorString}"
     val failureException: Option[Throwable] = reason match {
@@ -868,6 +870,7 @@ private[spark] class TaskSetManager(
       case ef: ExceptionFailure =>
         // ExceptionFailure's might have accumulator updates
         accumUpdates = ef.accums
+        metricPeaks = ef.metricPeaks.toArray
         if (ef.className == classOf[NotSerializableException].getName) {
           // If the task result wasn't serializable, there's no point in trying to re-execute it.
           logError("Task %s in stage %s (TID %d) had a not serializable result: %s; not retrying"
@@ -905,6 +908,7 @@ private[spark] class TaskSetManager(
       case tk: TaskKilled =>
         // TaskKilled might have accumulator updates
         accumUpdates = tk.accums
+        metricPeaks = tk.metricPeaks.toArray
         logWarning(failureReason)
         None
 
@@ -923,7 +927,7 @@ private[spark] class TaskSetManager(
       isZombie = true
     }
 
-    sched.dagScheduler.taskEnded(tasks(index), reason, null, accumUpdates, info)
+    sched.dagScheduler.taskEnded(tasks(index), reason, null, accumUpdates, metricPeaks, info)
 
     if (!isZombie && reason.countTowardsTaskFailures) {
       assert (null != failureReason)
@@ -1010,7 +1014,7 @@ private[spark] class TaskSetManager(
           // Tell the DAGScheduler that this task was resubmitted so that it doesn't think our
           // stage finishes when a total of tasks.size tasks finish.
           sched.dagScheduler.taskEnded(
-            tasks(index), Resubmitted, null, Seq.empty, info)
+            tasks(index), Resubmitted, null, Seq.empty, Array.empty, info)
         }
       }
     }

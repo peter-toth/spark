@@ -78,6 +78,7 @@ private[scheduler] case class CompletionEvent(
     reason: TaskEndReason,
     result: Any,
     accumUpdates: Seq[AccumulatorV2[_, _]],
+    metricPeaks: Array[Long],
     taskInfo: TaskInfo)
   extends DAGSchedulerEvent
 

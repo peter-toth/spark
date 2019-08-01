@@ -87,6 +87,12 @@
       <version>28.0-jre</version>
       <scope>${hadoop.deps.scope}</scope>
     </dependency>
+    <dependency>
+      <groupId>com.google.guava</groupId>
+      <artifactId>failureaccess</artifactId>
+      <version>1.0.1</version>
+      <scope>${hadoop.deps.scope}</scope>
+    </dependency>
   </dependencies>
 
   <build>

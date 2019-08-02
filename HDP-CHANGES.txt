@@ -75,7 +75,6 @@ BUG FIXES
     SPARK-27358 Update jquery to 1.12.x to pick up security fixes
 
     (Backport from master)
-    SPARK-27620 Upgrade jetty to 9.4.18.v20190429
     SPARK-27757 Bump Jackson to 2.9.9
     [MINOR][DOCS] Add note about Spark network security
     SPARK-25088 Update Rest Server docs & defaults.

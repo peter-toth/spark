@@ -291,6 +291,8 @@ private[spark] class HiveExternalCatalog(conf: SparkConf, hadoopConf: Configurat
     // bucket specification to empty. Note that partition columns are retained, so that we can
     // call partition-related Hive API later.
     def newSparkSQLSpecificMetastoreTable(): CatalogTable = {
+      // CDPD-454: Include the capabilities that processors must possess to access this table
+      val capabilities = Map[String, String]("OBJCAPABILITIES" -> "SPARKSQL")
       table.copy(
         // Hive only allows directory paths as location URIs while Spark SQL data source tables
         // also allow file paths. For non-hive-compatible format, we should not set location URI
@@ -300,7 +302,7 @@ private[spark] class HiveExternalCatalog(conf: SparkConf, hadoopConf: Configurat
           properties = storagePropsWithLocation),
         schema = StructType(EMPTY_DATA_SCHEMA ++ table.partitionSchema),
         bucketSpec = None,
-        properties = table.properties ++ tableProperties)
+        properties = table.properties ++ tableProperties ++ capabilities)
     }
 
     // converts the table metadata to Hive compatible format, i.e. set the serde information.

@@ -1192,6 +1192,14 @@ object SQLConf {
   object Replaced {
     val MAPREDUCE_JOB_REDUCES = "mapreduce.job.reduces"
   }
+
+  // CDPD-454: Turn on and off the analyzer rules that consult with the Hive translation layer
+  val CHECK_TRANSLATION_LAYER =
+    buildConf("spark.sql.htl.check")
+      .internal()
+      .doc("If it is set to true, then Spark will check Hive translation layer for access")
+      .booleanConf
+      .createWithDefault(true)
 }
 
 /**
@@ -1532,6 +1540,8 @@ class SQLConf extends Serializable with Logging {
 
   def partitionOverwriteMode: PartitionOverwriteMode.Value =
     PartitionOverwriteMode.withName(getConf(PARTITION_OVERWRITE_MODE))
+
+  def checkTranslationLayer: Boolean = getConf(SQLConf.CHECK_TRANSLATION_LAYER)
 
   /** ********************** SQLConf functionality methods ************ */
 

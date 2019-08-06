@@ -31,6 +31,7 @@ import org.apache.hadoop.fs.Path
 import org.apache.hadoop.hive.conf.HiveConf
 import org.apache.hadoop.hive.metastore.api.{EnvironmentContext, Function => HiveFunction, FunctionType}
 import org.apache.hadoop.hive.metastore.api.{MetaException, PrincipalType, ResourceType, ResourceUri}
+import org.apache.hadoop.hive.metastore.api.{Table => TTable}
 import org.apache.hadoop.hive.ql.Driver
 import org.apache.hadoop.hive.ql.io.AcidUtils
 import org.apache.hadoop.hive.ql.metadata.{Hive, HiveException, Partition, Table}
@@ -153,6 +154,16 @@ private[client] sealed abstract class Shim {
       part: JList[String],
       deleteData: Boolean,
       purge: Boolean): Unit
+
+  def setHMSClientCapabilities(hive: Hive, capabilities: Array[String]): Unit
+
+  def setHMSClientIdentifier(hive: Hive, id : String): Unit
+
+  def getAccessType(table: TTable): Byte
+
+  def getRequiredReadCapabilities(table: TTable): Seq[String]
+
+  def getRequiredWriteCapabilities(table: TTable): Seq[String]
 
   protected def findStaticMethod(klass: Class[_], name: String, args: Class[_]*): Method = {
     val method = findMethod(klass, name, args: _*)
@@ -442,6 +453,20 @@ private[client] class Shim_v0_12 extends Shim with Logging {
 
   def listFunctions(hive: Hive, db: String, pattern: String): Seq[String] = {
     Seq.empty[String]
+  }
+
+  override def setHMSClientCapabilities(hive: Hive, capabilities: Array[String]): Unit = {}
+
+  override def setHMSClientIdentifier(hive: Hive, id : String): Unit = {}
+
+  override def getAccessType(table: TTable): Byte = CatalogUtils.ACCESSTYPE_READWRITE
+
+  override def getRequiredReadCapabilities(table: TTable): Seq[String] = {
+    Nil
+  }
+
+  override def getRequiredWriteCapabilities(table: TTable): Seq[String] = {
+    Nil
   }
 }
 
@@ -1249,6 +1274,28 @@ private[client] class Shim_v3_0 extends Shim_v2_3 {
       classOf[JList[Partition]],
       classOf[EnvironmentContext],
       JBoolean.TYPE)
+  private lazy val setHMSClientCapabilitiesMethod =
+    findMethod(
+      classOf[Hive],
+      "setHMSClientCapabilities",
+      classOf[Array[String]])
+  private lazy val setHMSClientIdentifierMethod =
+    findMethod(
+      classOf[Hive],
+      "setHMSClientIdentifier",
+      classOf[String])
+  private lazy val getAccessTypeMethod =
+    findMethod(
+      classOf[TTable],
+      "getAccessType")
+  private lazy val getRequiredReadCapabilitiesMethod =
+    findMethod(
+      classOf[TTable],
+      "getRequiredReadCapabilities")
+  private lazy val getRequiredWriteCapabilitiesMethod =
+    findMethod(
+      classOf[TTable],
+      "getRequiredWriteCapabilities")
 
   override def loadPartition(
       hive: Hive,
@@ -1323,5 +1370,34 @@ private[client] class Shim_v3_0 extends Shim_v2_3 {
   override def alterPartitions(hive: Hive, tableName: String, newParts: JList[Partition]): Unit = {
     alterPartitionsMethod.invoke(
       hive, tableName, newParts, environmentContextInAlterTable, transactional)
+  }
+
+  override def setHMSClientCapabilities(hive: Hive, capabilities: Array[String]): Unit = {
+    setHMSClientCapabilitiesMethod.invoke(hive, capabilities)
+  }
+
+  override def setHMSClientIdentifier(hive: Hive, id : String): Unit = {
+    setHMSClientIdentifierMethod.invoke(hive, id)
+  }
+
+  override def getAccessType(table: TTable): Byte = {
+    getAccessTypeMethod.invoke(table).asInstanceOf[Byte]
+  }
+
+  private def getRequiredCapabilities(table: TTable, method: Method): Seq[String] = {
+    val ret = method.invoke(table)
+    if (ret == null) {
+      Nil
+    } else {
+      ret.asInstanceOf[JList[String]].asScala
+    }
+  }
+
+  override def getRequiredReadCapabilities(table: TTable): Seq[String] = {
+    getRequiredCapabilities(table, getRequiredReadCapabilitiesMethod)
+  }
+
+  override def getRequiredWriteCapabilities(table: TTable): Seq[String] = {
+    getRequiredCapabilities(table, getRequiredWriteCapabilitiesMethod)
   }
 }

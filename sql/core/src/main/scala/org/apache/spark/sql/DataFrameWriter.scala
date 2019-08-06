@@ -425,6 +425,14 @@ final class DataFrameWriter[T] private[sql](ds: Dataset[T]) {
               if srcRelations.contains(relation.tableMeta.identifier) =>
             throw new AnalysisException(
               s"Cannot overwrite table $tableName that is also being read from")
+          // CDPD-454 This is very unfortunate, but Spark bypasses the analyzer when
+          // dropping the table in the saveAsTable with overwrite path. Therefore, we need
+          // to check if the table is R/O here (the no-access case can still be checked
+          // in the analyzer)
+          case HiveTableRelation(tableMeta, _, _) =>
+            CatalogUtils.throwIfRO(tableMeta)
+          case LogicalRelation(_, _, Some(tableMeta), _) =>
+            CatalogUtils.throwIfRO(tableMeta)
           case _ => // OK
         }
 

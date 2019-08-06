@@ -46,12 +46,15 @@ import org.apache.spark.sql.catalyst.TableIdentifier
 import org.apache.spark.sql.catalyst.analysis.{NoSuchDatabaseException, NoSuchPartitionException}
 import org.apache.spark.sql.catalyst.catalog._
 import org.apache.spark.sql.catalyst.catalog.CatalogTypes.TablePartitionSpec
+import org.apache.spark.sql.catalyst.catalog.CatalogUtils.TRANSLATION_LAYER_ACCESSTYPE_PROPERTY_TEST
 import org.apache.spark.sql.catalyst.expressions.Expression
 import org.apache.spark.sql.catalyst.parser.{CatalystSqlParser, ParseException}
 import org.apache.spark.sql.execution.QueryExecutionException
 import org.apache.spark.sql.execution.command.DDLUtils
 import org.apache.spark.sql.hive.HiveExternalCatalog.{DATASOURCE_SCHEMA, DATASOURCE_SCHEMA_NUMPARTS, DATASOURCE_SCHEMA_PART_PREFIX}
+import org.apache.spark.sql.hive.HiveUtils
 import org.apache.spark.sql.hive.client.HiveClientImpl._
+import org.apache.spark.sql.internal.SQLConf
 import org.apache.spark.sql.types._
 import org.apache.spark.util.{CircularBuffer, Utils}
 
@@ -247,6 +250,10 @@ private[hive] class HiveClientImpl(
       clientLoader.cachedHive.asInstanceOf[Hive]
     } else {
       val c = Hive.get(conf)
+      // CDPD-454: Set the capabilities that CDPD Spark possesses
+      val capabilities = SQLConf.get.getConf(HiveUtils.HIVE_SPARK_CAPABILITIES).toArray
+      shim.setHMSClientCapabilities(c, capabilities)
+      shim.setHMSClientIdentifier(c, "Spark")
       clientLoader.cachedHive = c
       c
     }
@@ -399,6 +406,19 @@ private[hive] class HiveClientImpl(
         unsupportedFeatures += "partitioned view"
       }
 
+      // CDPD-454: If testing, get accessType from table parameters. Otherwise, get it from
+      // from the Hive translation layer
+      val accessType =
+        if (h.getParameters
+            .containsKey(TRANSLATION_LAYER_ACCESSTYPE_PROPERTY_TEST) && Utils.isTesting) {
+          h.getParameters.get(TRANSLATION_LAYER_ACCESSTYPE_PROPERTY_TEST).toInt
+        } else {
+          shim.getAccessType(h.getTTable)
+        }
+
+      val requiredReadCapabilities = shim.getRequiredReadCapabilities(h.getTTable)
+      val requiredWriteCapabilities = shim.getRequiredWriteCapabilities(h.getTTable)
+
       val properties = Option(h.getParameters).map(_.asScala.toMap).orNull
 
       // Hive-generated Statistics are also recorded in ignoredProperties
@@ -428,6 +448,11 @@ private[hive] class HiveClientImpl(
           case HiveTableType.VIRTUAL_VIEW => CatalogTableType.VIEW
           case HiveTableType.INDEX_TABLE =>
             throw new AnalysisException("Hive index table is not supported.")
+          // CDPD-454: CDPD Spark is compiled against Hive 1.2, which does not
+          // know about the materialized view enum. For our purposes, we can treat
+          // such an object as a managed table
+          case l @ _ if (l.toString == "MATERIALIZED_VIEW") =>
+            CatalogTableType.MANAGED
         },
         schema = schema,
         partitionColumnNames = partCols.map(_.name),
@@ -465,7 +490,13 @@ private[hive] class HiveClientImpl(
         // `viewExpandedText` instead of `viewOriginalText` for viewText here.
         viewText = Option(h.getViewExpandedText),
         unsupportedFeatures = unsupportedFeatures,
-        ignoredProperties = ignoredProperties.toMap)
+        ignoredProperties = ignoredProperties.toMap,
+        accessInfo = AccessInfo(
+          accessType = accessType,
+          requiredReadCapabilities = requiredReadCapabilities,
+          requiredWriteCapabilities = requiredWriteCapabilities
+        )
+      )
     }
   }
 

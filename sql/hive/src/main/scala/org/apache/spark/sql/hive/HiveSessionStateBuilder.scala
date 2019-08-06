@@ -70,7 +70,10 @@ class HiveSessionStateBuilder(session: SparkSession, parentState: Option[Session
       new ResolveHiveSerdeTable(session) +:
         new FindDataSourceTable(session) +:
         new ResolveSQLOnFile(session) +:
-        customResolutionRules
+        customResolutionRules :+
+        // CDPD-454 Placed after custom resolution rules because datasource swap out
+        // would need to occur in a custom resolution rule
+        new HiveTranslationLayerCheck(session)
 
     override val postHocResolutionRules: Seq[Rule[LogicalPlan]] =
       new DetermineTableStats(session) +:

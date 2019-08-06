@@ -186,6 +186,13 @@ case class BucketSpec(
   }
 }
 
+// CDPD-454: Gathering translation layer fields here, as CatalogTable is getting
+// close to the 22 parameter limit for case classes.
+case class AccessInfo (
+    accessType: Int = CatalogUtils.ACCESSTYPE_READWRITE,
+    requiredReadCapabilities: Seq[String] = Seq.empty,
+    requiredWriteCapabilities: Seq[String] = Seq.empty)
+
 /**
  * A table defined in the catalog.
  *
@@ -229,7 +236,8 @@ case class CatalogTable(
     unsupportedFeatures: Seq[String] = Seq.empty,
     tracksPartitionsInCatalog: Boolean = false,
     schemaPreservesCase: Boolean = true,
-    ignoredProperties: Map[String, String] = Map.empty) {
+    ignoredProperties: Map[String, String] = Map.empty,
+    accessInfo: AccessInfo = AccessInfo()) {
 
   import CatalogTable._
 

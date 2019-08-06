@@ -1041,10 +1041,6 @@ class Analyzer(
             if AttributeSet(windowExpressions.map(_.toAttribute)).intersect(conflictingAttributes)
               .nonEmpty =>
           (oldVersion, oldVersion.copy(windowExpressions = newAliases(windowExpressions)))
-
-        case oldVersion @ RecursiveReference(_, output, _)
-            if oldVersion.outputSet.intersect(conflictingAttributes).nonEmpty =>
-          (oldVersion, oldVersion.copy(output = output.map(_.newInstance())))
       }
         // Only handle first case, others will be fixed on the next pass.
         .headOption match {
@@ -1395,31 +1391,19 @@ class Analyzer(
   }
 
   /**
-   * This rule resolves [[RecursiveReference]]s when the first anchor term of the corresponding
-   * [[RecursiveTable]] gets resolved (ie. we know the output of the recursive table).
+   * This rule resolve [[RecursiveReference]]s when the anchor term of the corresponding
+   * [[RecursiveRelation]] is resolved (ie. we know the output of the recursive table).
    */
   object ResolveRecursiveReferences extends Rule[LogicalPlan] {
-    def apply(plan: LogicalPlan): LogicalPlan = resolve(plan)
+    def apply(plan: LogicalPlan): LogicalPlan = plan.resolveOperatorsUp {
+      case rr @ RecursiveRelation(cteName, anchorTerm, recursiveTerm)
+        if anchorTerm.resolved && !recursiveTerm.resolved =>
 
-    private def resolve(
-        plan: LogicalPlan,
-        recursiveTables: mutable.Map[String, Seq[Attribute]] = mutable.Map.empty): LogicalPlan = {
-      plan.foreach {
-        case rt @ RecursiveTable(name, _, _, _) if rt.firstAnchorResolved =>
-          recursiveTables += name -> rt.output
-        case _ =>
-      }
-
-      plan.resolveOperatorsUp {
-        case UnresolvedRecursiveReference(name, cumulated) if recursiveTables.contains(name) =>
-          // creating new instance of attributes here makes possible to avoid complex attribute
-          // handling in FoldablePropagation
-          RecursiveReference(name, recursiveTables(name).map(_.newInstance()), cumulated)
-        case other =>
-          other transformExpressions {
-            case e: SubqueryExpression => e.withNewPlan(resolve(e.plan, recursiveTables))
-          }
-      }
+        val newRecursiveTerm = recursiveTerm.transform {
+          case UnresolvedRecursiveReference(name, cumulated) if name == cteName =>
+            RecursiveReference(name, anchorTerm.output.map(_.newInstance()), cumulated)
+        }
+        rr.copy(recursiveTerm = newRecursiveTerm)
     }
   }
 

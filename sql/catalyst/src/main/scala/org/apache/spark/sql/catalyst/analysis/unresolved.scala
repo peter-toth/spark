@@ -522,7 +522,7 @@ case class UnresolvedOrdinal(ordinal: Int)
   override lazy val resolved = false
 }
 
-case class UnresolvedRecursiveReference(name: String, cumulated: Boolean) extends LeafNode {
+case class UnresolvedRecursiveReference(cteName: String, cumulated: Boolean) extends LeafNode {
   override def output: Seq[Attribute] = Nil
 
   override lazy val resolved = false

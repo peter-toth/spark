@@ -481,24 +481,6 @@ object LimitPushDown extends Rule[LogicalPlan] {
         case _ => join
       }
       LocalLimit(exp, newJoin)
-    case LocalLimit(
-      nl @ IntegerLiteral(newLimit),
-      rt @ RecursiveTable(_, anchorTerms, recursiveTerms, limit)
-    ) if limit.forall(_ > newLimit) =>
-      rt.copy(
-        anchorTerms = anchorTerms.map(maybePushLocalLimit(nl, _)),
-        recursiveTerms = recursiveTerms.map(maybePushLocalLimit(nl, _)),
-        limit = Some(newLimit)
-      )
-    case LocalLimit(
-      nl @ IntegerLiteral(newLimit),
-      p @ Project(_, rt @ RecursiveTable(_, anchorTerms, recursiveTerms, limit))
-    ) if limit.forall(_ > newLimit) =>
-      p.copy(child = rt.copy(
-        anchorTerms = anchorTerms.map(maybePushLocalLimit(nl, _)),
-        recursiveTerms = recursiveTerms.map(maybePushLocalLimit(nl, _)),
-        limit = Some(newLimit)
-      ))
   }
 }
 
@@ -663,7 +645,7 @@ object ColumnPruning extends Rule[LogicalPlan] {
       NestedColumnAliasing.replaceToAliases(p, nestedFieldToAlias, attrToAliases)
 
     // Don't prune columns of RecursiveTable
-    case p @ Project(_, _: RecursiveTable) => p
+    case p @ Project(_, _: RecursiveRelation) => p
 
     // for all other logical plans that inherits the output from it's children
     // Project over project is handled by the first case, skip it here.

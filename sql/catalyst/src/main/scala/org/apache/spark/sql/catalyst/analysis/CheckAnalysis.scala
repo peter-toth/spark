@@ -528,9 +528,9 @@ trait CheckAnalysis extends PredicateHelper {
 
   /**
    * Recursion according to SQL standard comes with several limitations due to the fact that only
-   * those operations are allowed where the new set of rows can be computed from the result of
-   * the previous iteration. This implies that a recursive reference can't be used in some kinds of
-   * joins, aggregation, distinct computation and subqueries.
+   * those operations are allowed where the new set of rows can be computed from the result of the
+   * previous iteration. This implies that a recursive reference can't be used in some kinds of
+   * joins and aggregations.
    * A further constraint is that a recursive term can contain one recursive reference only (except
    * for using it on different sides of a UNION).
    *
@@ -540,23 +540,23 @@ trait CheckAnalysis extends PredicateHelper {
       plan: LogicalPlan,
       allowedRecursiveReferencesAndCounts: Map[String, Int] = Map.empty): Unit = {
     plan match {
-      case RecursiveTable(name, anchorTerms, recursiveTerms, _) =>
+      case RecursiveRelation(name, anchorTerm, recursiveTerm) =>
         if (allowedRecursiveReferencesAndCounts.contains(name)) {
           throw new AnalysisException(s"Recursive CTE definition $name is already in use.")
         }
-        anchorTerms.map(checkRecursion(_, allowedRecursiveReferencesAndCounts))
-        recursiveTerms.map(checkRecursion(_, allowedRecursiveReferencesAndCounts += name -> 0))
+        checkRecursion(anchorTerm, allowedRecursiveReferencesAndCounts)
+        checkRecursion(recursiveTerm, allowedRecursiveReferencesAndCounts += name -> 0)
         allowedRecursiveReferencesAndCounts -= name
-      case RecursiveReference(name, _, false) =>
+      case RecursiveReference(name, _, false, _, _) =>
         if (!allowedRecursiveReferencesAndCounts.contains(name)) {
           throw new AnalysisException(s"Recursive reference $name cannot be used here. This can " +
-            s"be caused by using it on inner side of an outer join, using it with aggregate or " +
-            s"distinct, using it in a subquery or using it multiple times in a recursive term (" +
-            s"except for using it on different sides of an UNION ALL).")
+            "be caused by using it on inner side of an outer join, using it with aggregate in a " +
+            "subquery or using it multiple times in a recursive term (except for using it on " +
+            "different sides of an UNION ALL).")
         }
         if (allowedRecursiveReferencesAndCounts(name) > 0) {
           throw new AnalysisException(s"Recursive reference $name cannot be used multiple times " +
-            s"in a recursive term")
+            "in a recursive term.")
         }
 
         allowedRecursiveReferencesAndCounts +=
@@ -575,12 +575,10 @@ trait CheckAnalysis extends PredicateHelper {
         checkRecursion(right, Map.empty)
       case Aggregate(_, _, child) => checkRecursion(child, Map.empty)
       case Union(children) =>
-        children.map(checkRecursion(_,
+        children.foreach(checkRecursion(_,
           Map(allowedRecursiveReferencesAndCounts.keys.map(name => name -> 0).toSeq: _*)))
-      case Distinct(child) => checkRecursion(child, Map.empty)
       case o =>
-        o.subqueries.foreach(checkRecursion(_, Map.empty))
-        o.children.map(checkRecursion(_, allowedRecursiveReferencesAndCounts))
+        o.children.foreach(checkRecursion(_, allowedRecursiveReferencesAndCounts))
     }
   }
 

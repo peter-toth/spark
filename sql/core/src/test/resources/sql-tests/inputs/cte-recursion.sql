@@ -1,3 +1,8 @@
+--SET spark.sql.autoBroadcastJoinThreshold=10485760
+--SET spark.sql.autoBroadcastJoinThreshold=-1
+--SET spark.sql.autoBroadcastJoinThreshold=10485760,spark.sql.adaptive.enabled=true
+--SET spark.sql.autoBroadcastJoinThreshold=-1,spark.sql.adaptive.enabled=true
+
 -- fails due to recursion isn't allowed with RECURSIVE keyword
 WITH r(level) AS (
   VALUES (0)
@@ -64,7 +69,7 @@ WITH RECURSIVE r(level) AS (
 )
 SELECT * FROM r;
 
--- multiple anchor terms are supported
+-- multiple anchor terms are not supported
 WITH RECURSIVE r(level, data) AS (
   VALUES (0, 'A')
   UNION ALL
@@ -74,7 +79,7 @@ WITH RECURSIVE r(level, data) AS (
 )
 SELECT * FROM r;
 
--- multiple recursive terms are supported
+-- multiple recursive terms are not supported
 WITH RECURSIVE r(level, data) AS (
   VALUES (0, 'A')
   UNION ALL
@@ -84,7 +89,7 @@ WITH RECURSIVE r(level, data) AS (
 )
 SELECT * FROM r;
 
--- multiple anchor and recursive terms are supported
+-- multiple anchor and recursive terms are not supported
 WITH RECURSIVE r(level, data) AS (
   VALUES (0, 'A')
   UNION ALL
@@ -193,7 +198,7 @@ WITH RECURSIVE r(level, data) AS (
 )
 SELECT COUNT(*) FROM r;
 
--- recursive reference is not allowed to use in combination with distinct
+-- recursive reference within distinct is supported
 WITH RECURSIVE r(level, data) AS (
   VALUES (0, 'A')
   UNION ALL
@@ -287,12 +292,12 @@ SELECT * FROM t;
 
 -- WITH nested into recursion
 WITH RECURSIVE outermost AS (
-  WITH innermost AS (
+  SELECT 0 AS level
+  UNION ALL
+  (WITH innermost AS (
     SELECT * FROM outermost
   )
-  SELECT level + 1 FROM innermost WHERE level < 5
-  UNION ALL
-  SELECT 0 AS level
+  SELECT level + 1 FROM innermost WHERE level < 5)
 )
 SELECT * FROM outermost;
 
@@ -322,6 +327,32 @@ WITH RECURSIVE t AS (
 )
 SELECT * FROM t;
 
+-- name collision of nested recursions
+WITH RECURSIVE r(level) AS (
+  WITH RECURSIVE r(level) AS (
+    VALUES (0)
+    UNION ALL
+    SELECT level + 1 FROM r WHERE level < 10
+  )
+  SELECT * FROM r
+  UNION ALL
+  SELECT level + 1 FROM r WHERE level < 10
+)
+SELECT * FROM r;
+
+-- name collision of nested recursions 2
+WITH RECURSIVE r(level) AS (
+  (WITH RECURSIVE r(level) AS (
+    VALUES (0)
+    UNION ALL
+    SELECT level + 1 FROM r WHERE level < 10
+  )
+  SELECT * FROM r)
+  UNION ALL
+  SELECT level + 1 FROM r WHERE level < 10
+)
+SELECT * FROM r;
+
 -- routes represented here is as follows:
 --
 -- New York<--->Boston
@@ -348,6 +379,8 @@ WITH RECURSIVE destinations_from_new_york AS (
 )
 SELECT * FROM destinations_from_new_york;
 
+DROP VIEW IF EXISTS routes;
+
 -- Fibonacci numbers
 WITH RECURSIVE fibonacci AS (
   VALUES (0, 1) AS t(a, b)
@@ -355,6 +388,3 @@ WITH RECURSIVE fibonacci AS (
   SELECT b, a + b FROM fibonacci WHERE a < 10
 )
 SELECT a FROM fibonacci ORDER BY a;
-
--- Clean up
-DROP VIEW IF EXISTS routes;

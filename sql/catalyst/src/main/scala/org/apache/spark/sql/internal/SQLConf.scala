@@ -1927,7 +1927,7 @@ object SQLConf {
     .booleanConf
     .createWithDefault(false)
 
-  val RECURSION_LEVEL_LIMIT = buildConf("spark.sql.cte.recursion.level.limit")
+  val CTE_RECURSION_LEVEL_LIMIT = buildConf("spark.sql.cte.recursion.level.limit")
     .internal()
     .doc("Maximum level of recursion that is allowed wile executing a recursive CTE definition." +
       "If a query does not get exhausted before reaching this limit it fails. Use -1 for " +
@@ -1935,7 +1935,7 @@ object SQLConf {
     .intConf
     .createWithDefault(100)
 
-  val RECURSION_CACHE_STORAGE_LEVEL = buildConf("spark.sql.cte.recursion.cache.storageLevel")
+  val CTE_RECURSION_CACHE_STORAGE_LEVEL = buildConf("spark.sql.cte.recursion.cache.storageLevel")
     .internal()
     .doc("Storage level of cache where recursion stores intermediate results.")
     .stringConf

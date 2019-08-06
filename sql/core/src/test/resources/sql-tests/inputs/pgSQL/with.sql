@@ -18,8 +18,6 @@ SELECT * FROM q1, q1 AS q2;
 
 -- Multiple uses are evaluated only once
 -- [SPARK-28299] Evaluation of multiple CTE uses
--- [SPARK-28086] Adds `random()` sql function
--- [ORIGINAL SQL]
 --SELECT count(*) FROM (
 --  WITH q1(x) AS (SELECT random() FROM generate_series(1, 5))
 --    SELECT * FROM q1
@@ -27,7 +25,7 @@ SELECT * FROM q1, q1 AS q2;
 --    SELECT * FROM q1
 --) ss;
 SELECT count(*) FROM (
-  WITH q1(x) AS (SELECT rand() FROM (SELECT EXPLODE(SEQUENCE(1, 5))))
+  WITH q1(x) AS (SELECT random() FROM (SELECT EXPLODE(SEQUENCE(1, 5))))
     SELECT * FROM q1
   UNION
     SELECT * FROM q1
@@ -91,18 +89,20 @@ UNION
 SELECT * FROM t;
 
 -- This'd be an infinite loop, but outside query reads only as much as needed
-WITH RECURSIVE t(n) AS (
-    VALUES (1)
-UNION ALL
-    SELECT n+1 FROM t)
-SELECT * FROM t LIMIT 10;
+-- [SPARK-28731] Support limit on recursive queries
+--WITH RECURSIVE t(n) AS (
+--    VALUES (1)
+--UNION ALL
+--    SELECT n+1 FROM t)
+--SELECT * FROM t LIMIT 10;
 
 -- UNION case should have same property
-WITH RECURSIVE t(n) AS (
-    SELECT 1
-UNION
-    SELECT n+1 FROM t)
-SELECT * FROM t LIMIT 10;
+-- [SPARK-28731] Support limit on recursive queries
+--WITH RECURSIVE t(n) AS (
+--    SELECT 1
+--UNION
+--    SELECT n+1 FROM t)
+--SELECT * FROM t LIMIT 10;
 
 -- Test behavior with an unknown-type literal in the WITH
 -- [SPARK-28146] Support IS OF type predicate
@@ -302,25 +302,27 @@ SHOW CREATE TABLE sums_1_100;
 DROP VIEW sums_1_100;
 
 -- corner case in which sub-WITH gets initialized first
-with recursive q as (
-      select * from department
-    union all
-      (with x as (select * from q)
-       select * from x)
-    )
-select * from q limit 24;
+-- [SPARK-28731] Support limit on recursive queries
+--with recursive q as (
+--      select * from department
+--    union all
+--      (with x as (select * from q)
+--       select * from x)
+--    )
+--select * from q limit 24;
 
-with recursive q as (
-      select * from department
-    union all
-      (with recursive x as (
-           select * from department
-         union all
-           (select * from q union all select * from x)
-        )
-       select * from x)
-    )
-select * from q limit 32;
+-- [SPARK-28731] Support limit on recursive queries
+--with recursive q as (
+--      select * from department
+--    union all
+--      (with recursive x as (
+--           select * from department
+--         union all
+--           (select * from q union all select * from x)
+--        )
+--       select * from x)
+--    )
+--select * from q limit 32;
 
 -- recursive term has sub-UNION
 WITH RECURSIVE t(i,j) AS (
@@ -611,7 +613,6 @@ WITH RECURSIVE x(n) AS (SELECT n FROM x)
 	SELECT * FROM x;
 
 -- recursive term in the left hand side (strictly speaking, should allow this)
--- [NOTE] Spark SQL does allow the first term to be recursive
 WITH RECURSIVE x(n) AS (SELECT n FROM x UNION ALL SELECT 1)
 	SELECT * FROM x;
 
@@ -691,7 +692,6 @@ WITH RECURSIVE
 SELECT * FROM x;
 
 -- non-linear recursion is not allowed
--- [NOTE] Spark SQL does allow multiple use of a recursive reference if they are combined with UNION ALL
 WITH RECURSIVE foo(i) AS
     (values (1)
     UNION ALL
@@ -700,7 +700,6 @@ WITH RECURSIVE foo(i) AS
        SELECT i+1 FROM foo WHERE i < 5)
 ) SELECT * FROM foo;
 
--- [NOTE] Spark SQL does allow multiple use of a recursive reference if they are combined with UNION ALL
 WITH RECURSIVE foo(i) AS
     (values (1)
     UNION ALL

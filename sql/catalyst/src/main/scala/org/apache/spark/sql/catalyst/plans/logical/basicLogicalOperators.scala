@@ -17,11 +17,12 @@
 
 package org.apache.spark.sql.catalyst.plans.logical
 
+import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.AnalysisException
 import org.apache.spark.sql.catalog.v2.{Identifier, TableCatalog, TableChange}
 import org.apache.spark.sql.catalog.v2.TableChange.{AddColumn, ColumnChange}
 import org.apache.spark.sql.catalog.v2.expressions.Transform
-import org.apache.spark.sql.catalyst.AliasIdentifier
+import org.apache.spark.sql.catalyst.{AliasIdentifier, InternalRow}
 import org.apache.spark.sql.catalyst.analysis.{MultiInstanceRelation, NamedRelation}
 import org.apache.spark.sql.catalyst.catalog.{CatalogStorageFormat, CatalogTable}
 import org.apache.spark.sql.catalyst.catalog.CatalogTypes.TablePartitionSpec
@@ -30,6 +31,7 @@ import org.apache.spark.sql.catalyst.expressions.aggregate.{AggregateExpression,
 import org.apache.spark.sql.catalyst.plans._
 import org.apache.spark.sql.catalyst.plans.physical.{HashPartitioning, Partitioning, RangePartitioning, RoundRobinPartitioning}
 import org.apache.spark.sql.catalyst.util.truncatedString
+import org.apache.spark.sql.internal.SQLConf
 import org.apache.spark.sql.types._
 import org.apache.spark.util.random.RandomSampler
 
@@ -53,26 +55,24 @@ case class Subquery(child: LogicalPlan) extends OrderPreservingUnaryNode {
 }
 
 /**
- * This node defines a table that contains one ore more [[RecursiveReference]]s as child nodes
- * referring to this table. It contains anchor and a recursive terms as children and can be used to
+ * This node defines a relation that contains a [[RecursiveReference]]s as child nodes referring to
+ * the relation itself. It contains one anchor and one recursive term as children and can be used to
  * define a recursive query. The result of the anchor and the repeatedly executed recursive terms
- * are combined using UNION to form the final result.
+ * are combined using UNION or UNION ALL to form the final result.
  *
- * @param name name of the table
- * @param anchorTerms this child is used for initializing the query
- * @param recursiveTerms this child is used for extending the set of results with new rows based on
- *                       the results of the previous iteration (or the anchor in the first
- *                       iteration)
- * @param limit the maximum number of rows to return
+ * @param cteName name of the recursive relation
+ * @param anchorTerm this child is used for initializing the query
+ * @param recursiveTerm this child is used for extending the set of results with new rows based on
+ *                      the results of the previous iteration (or based on the results of the anchor
+ *                      in the first iteration)
  */
-case class RecursiveTable(
-    name: String,
-    anchorTerms: Seq[LogicalPlan],
-    recursiveTerms: Seq[LogicalPlan],
-    limit: Option[Long]) extends LogicalPlan {
-  override def children: Seq[LogicalPlan] = anchorTerms ++ recursiveTerms
+case class RecursiveRelation(
+    cteName: String,
+    anchorTerm: LogicalPlan,
+    recursiveTerm: LogicalPlan) extends LogicalPlan {
+  override def children: Seq[LogicalPlan] = anchorTerm :: recursiveTerm :: Nil
 
-  override def output: Seq[Attribute] = anchorTerms.head.output.map(_.withNullability(true))
+  override def output: Seq[Attribute] = anchorTerm.output.map(_.withNullability(true))
 
   override lazy val resolved: Boolean = {
     val numberOfOutputMatches =
@@ -86,7 +86,7 @@ case class RecursiveTable(
           case (l, r) => l.dataType.sameType(r.dataType)
         }
         if (!outputTypeMatches) {
-          throw new AnalysisException(s"Recursive table $name term types " +
+          throw new AnalysisException(s"Recursive table $cteName term types " +
             s"${children.head.output.map(_.dataType)} and ${child.output.map(_.dataType)} do " +
             "not match")
         }
@@ -94,27 +94,38 @@ case class RecursiveTable(
     }
     numberOfOutputMatches
   }
-
-  lazy val firstAnchorResolved = anchorTerms.head.resolved
 }
 
 /**
  * This node is a reference to a recursive table in CTE definitions.
  *
- * @param name the name of the table it references to
+ * It is important that we can't calculate the statistics of a [[RecursiveRelation]] before the
+ * execution. And can't even estimate it as the recursive term can vastly increase the number of
+ * rows returned. To stay on the safe side [[RecursiveReference]] returns defaultSizeInBytes by
+ * default which causes it's [[RecursiveRelation]] statistics to be defaultSizeInBytes as well.
+ *
+ * Please note that during recursive execution the statistics and data are refreshed based on the
+ * results of the previous iteration to recreate the best physical plan in each iteration.
+ *
+ * @param cteName the name of the table it references to
  * @param output the attributes of the recursive table
  * @param cumulated defines if the reference carries cumulated result
+ * @param statistics statistics of the data that this reference caries
+ * @param data data that this reference caries
  */
 case class RecursiveReference(
-    name: String,
+    cteName: String,
     output: Seq[Attribute],
-    cumulated: Boolean) extends LeafNode {
+    cumulated: Boolean,
+    statistics: Statistics = Statistics(SQLConf.get.defaultSizeInBytes),
+    data: RDD[InternalRow] = null) extends LeafNode {
   override lazy val resolved = output.forall(_.resolved)
 
-  // this will be updated in RecursiveTableExec before the actual execution
-  var statistics = Statistics(BigInt(0))
-
   override def computeStats(): Statistics = statistics
+
+  def withNewIteration(statistics: Statistics, data: RDD[InternalRow]): RecursiveReference = {
+    copy(statistics = statistics, data = data)
+  }
 }
 
 case class Project(projectList: Seq[NamedExpression], child: LogicalPlan)

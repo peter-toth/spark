@@ -24,9 +24,11 @@ import org.apache.hadoop.fs.Path
 import org.apache.hadoop.util.Shell
 
 import org.apache.spark.sql.AnalysisException
-import org.apache.spark.sql.catalyst.analysis.Resolver
+import org.apache.spark.sql.catalyst.TableIdentifier
+import org.apache.spark.sql.catalyst.analysis.{NoSuchDatabaseException, NoSuchTableException, Resolver}
 import org.apache.spark.sql.catalyst.catalog.CatalogTypes.TablePartitionSpec
 import org.apache.spark.sql.catalyst.expressions.{And, AttributeReference, BoundReference, Expression, InterpretedPredicate}
+import org.apache.spark.sql.internal.SQLConf
 
 object ExternalCatalogUtils {
   // This duplicates default value of Hive `ConfVars.DEFAULTPARTITIONNAME`, since catalyst doesn't
@@ -245,6 +247,68 @@ object CatalogUtils {
     tableCols.find(resolver(_, colName)).getOrElse {
       throw new AnalysisException(s"$colType column $colName is not defined in table $tableName, " +
         s"defined table columns are: ${tableCols.mkString(", ")}")
+    }
+  }
+
+  // CDPD-454: Utlities related to translation layer
+
+  val ACCESSTYPE_NONE: Byte = 1
+  val ACCESSTYPE_READONLY: Byte = 2
+  val ACCESSTYPE_WRITEONLY: Byte = 4 // defined in translation layer but not used
+  val ACCESSTYPE_READWRITE: Byte = 8
+
+  val TRANSLATION_LAYER_ACCESSTYPE_PROPERTY_TEST = "xtranslationLayer.accessTypex"
+
+  private def getMetaData(tableName: TableIdentifier, catalog: SessionCatalog):
+      Option[CatalogTable] = {
+    try {
+      Some(catalog.getTableMetadata(tableName))
+    } catch {
+      case (_: NoSuchDatabaseException | _: NoSuchTableException) =>
+        None
+    }
+  }
+
+  def throwIfNoAccess(table: CatalogTable): Unit = {
+    if (SQLConf.get.checkTranslationLayer) {
+      if (table.accessInfo.accessType == ACCESSTYPE_NONE) {
+        // TODO: The actual message will be fleshed out later.
+        // The message will include instructions on how to use the locked-down Hive objects from
+        // Spark, but those are not fully known yet.
+        val requiredCapabilities = (table.accessInfo.requiredReadCapabilities
+          ++ table.accessInfo.requiredWriteCapabilities).mkString(",")
+        throw new AnalysisException(s"""
+          |Spark has no access to table ${table.identifier}. Clients can access this table only if
+          |they have the following capabilities: ${requiredCapabilities}.
+          |This table may be a Hive-managed ACID table, or require some other capability that Spark
+          |currently does not implement""".stripMargin)
+      }
+    }
+  }
+
+  def throwIfNoAccess(tableName: TableIdentifier, catalog: SessionCatalog): Unit = {
+    getMetaData(tableName, catalog).foreach { tableMeta =>
+      throwIfNoAccess(tableMeta)
+    }
+  }
+
+  def throwIfRO(table: CatalogTable): Unit = {
+    if (SQLConf.get.checkTranslationLayer) {
+      throwIfNoAccess(table)
+      if (table.accessInfo.accessType == ACCESSTYPE_READONLY) {
+        val requiredCapabilities = table.accessInfo.requiredReadCapabilities.mkString(",")
+        throw new AnalysisException(s"""
+          |Spark has only read access to table ${table.identifier}. Clients can modify this table
+          |only if they have the following capabilities: ${requiredCapabilities}.
+          |This table may be a Hive-managed ACID table, or require some other capability that Spark
+          |currently does not implement""".stripMargin)
+      }
+    }
+  }
+
+  def throwIfRO(tableName: TableIdentifier, catalog: SessionCatalog): Unit = {
+    getMetaData(tableName, catalog).foreach { tableMeta =>
+      throwIfRO(tableMeta)
     }
   }
 }

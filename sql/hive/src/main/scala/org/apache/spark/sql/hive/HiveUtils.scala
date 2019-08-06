@@ -136,6 +136,17 @@ private[spark] object HiveUtils extends Logging {
     .booleanConf
     .createWithDefault(true)
 
+  // CDPD-454: Capabilities that Spark will claim to possess when communicating with HMS.
+  // All of these (except SPARKSQL) are defined in the following CDPD Hive class:
+  // org.apache.hadoop.hive.metastore.MetastoreDefaultTransformer
+  // Note, however, that other processors can add any ad-hoc required capabilities
+  // (not just the ones defined in MetastoreDefaultTransformer) to tables they create
+  val HIVE_SPARK_CAPABILITIES = buildConf("spark.sql.htl.sparkCapabilities")
+    .doc("The list of Hive capabilities that Spark supports.")
+    .stringConf
+    .toSequence
+    .createWithDefault(Seq("SPARKSQL", "EXTREAD", "EXTWRITE", "HIVESQL", "HIVEBUCKET2"))
+
   /**
    * The version of the hive client that will be used to communicate with the metastore.  Note that
    * this does not necessarily need to be the same version of Hive that is used internally by

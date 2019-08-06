@@ -1550,6 +1550,14 @@ object SQLConf {
         "WHERE, which does not follow SQL standard.")
       .booleanConf
       .createWithDefault(false)
+
+  // CDPD-454: Turn on and off the analyzer rules that consult with the Hive translation layer
+  val CHECK_TRANSLATION_LAYER =
+    buildConf("spark.sql.htl.check")
+      .internal()
+      .doc("If it is set to true, then Spark will check Hive translation layer for access")
+      .booleanConf
+      .createWithDefault(true)
 }
 
 /**
@@ -1956,6 +1964,8 @@ class SQLConf extends Serializable with Logging {
     getConf(SQLConf.LEGACY_REPLACE_DATABRICKS_SPARK_AVRO_ENABLED)
 
   def setOpsPrecedenceEnforced: Boolean = getConf(SQLConf.LEGACY_SETOPS_PRECEDENCE_ENABLED)
+
+  def checkTranslationLayer: Boolean = getConf(SQLConf.CHECK_TRANSLATION_LAYER)
 
   /** ********************** SQLConf functionality methods ************ */
 

@@ -1369,7 +1369,8 @@ class HiveDDLSuite
       "Owner:",
       "totalNumberFiles",
       "maxFileSize",
-      "minFileSize"
+      "minFileSize",
+      "OBJCAPABILITIES"
     )
     assert(targetTable.properties.filterKeys(!metastoreGeneratedProperties.contains(_)).isEmpty,
       "the table properties of source tables should not be copied in the created table")

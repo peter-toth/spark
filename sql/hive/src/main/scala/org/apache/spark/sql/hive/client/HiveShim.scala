@@ -164,6 +164,12 @@ private[client] sealed abstract class Shim {
 
   def getRequiredWriteCapabilities(table: TTable): Seq[String]
 
+  def renamePartition(
+      hive: Hive,
+      hiveTable: Table,
+      oldSpec: JMap[String, String],
+      hivePart: Partition): Unit
+
   protected def findStaticMethod(klass: Class[_], name: String, args: Class[_]*): Method = {
     val method = findMethod(klass, name, args: _*)
     require(Modifier.isStatic(method.getModifiers()),
@@ -466,6 +472,14 @@ private[client] class Shim_v0_12 extends Shim with Logging {
 
   override def getRequiredWriteCapabilities(table: TTable): Seq[String] = {
     Nil
+  }
+
+  override def renamePartition(
+      hive: Hive,
+      hiveTable: Table,
+      oldSpec: JMap[String, String],
+      hivePart: Partition): Unit = {
+    hive.renamePartition(hiveTable, oldSpec, hivePart)
   }
 }
 
@@ -1345,6 +1359,21 @@ private[client] class Shim_v3_0 extends Shim_v2_3 {
       "createPartitions",
       alterTableAddPartitionDescClazz)
 
+  private lazy val renamePartitionMethod =
+    findMethod(
+      classOf[Hive],
+      "renamePartition",
+      classOf[Table],
+      classOf[JMap[String, String]],
+      classOf[Partition],
+      JLong.TYPE)
+
+  private lazy val setCatNameMethod =
+    findMethod(
+      classOf[TTable],
+      "setCatName",
+      classOf[String])
+
   override def loadPartition(
       hive: Hive,
       loadPath: Path,
@@ -1480,5 +1509,16 @@ private[client] class Shim_v3_0 extends Shim_v2_3 {
       }
     }
     createPartitionsMethod.invoke(hive, addPartitionDesc)
+  }
+
+  override def renamePartition(
+      hive: Hive,
+      hiveTable: Table,
+      oldSpec: JMap[String, String],
+      hivePart: Partition): Unit = {
+    val tTable = hiveTable.getTTable
+    // The line below is due to DWX-866. We'll remove this line when fixed.
+    setCatNameMethod.invoke(tTable, "hive")
+    renamePartitionMethod.invoke(hive, hiveTable, oldSpec, hivePart, -1L: JLong)
   }
 }

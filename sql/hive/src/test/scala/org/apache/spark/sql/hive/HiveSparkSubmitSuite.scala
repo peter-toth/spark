@@ -21,6 +21,7 @@ import java.io.{BufferedWriter, File, FileWriter}
 
 import scala.util.Properties
 
+import org.apache.commons.lang3.{JavaVersion, SystemUtils}
 import org.apache.hadoop.fs.Path
 import org.scalatest.{BeforeAndAfterEach, Matchers}
 
@@ -123,6 +124,7 @@ class HiveSparkSubmitSuite
   }
 
   ignore("SPARK-8020: set sql conf in spark conf") {
+    assume(!SystemUtils.isJavaVersionAtLeast(JavaVersion.JAVA_9))
     val unusedJar = TestUtils.createJarWithClasses(Seq.empty)
     val args = Seq(
       "--class", SparkSQLConfTest.getClass.getName.stripSuffix("$"),
@@ -159,6 +161,7 @@ class HiveSparkSubmitSuite
   }
 
   test("SPARK-9757 Persist Parquet relation with decimal column") {
+    assume(!SystemUtils.isJavaVersionAtLeast(JavaVersion.JAVA_9))
     val unusedJar = TestUtils.createJarWithClasses(Seq.empty)
     val args = Seq(
       "--class", SPARK_9757.getClass.getName.stripSuffix("$"),
@@ -252,6 +255,7 @@ class HiveSparkSubmitSuite
   // CDPD-521: test doesn't work in CDPD because dependency resolution does not work with
   // CDPD's Hadoop version (need a custom Ivy configuration).
   ignore("SPARK-16901: set javax.jdo.option.ConnectionURL") {
+    assume(!SystemUtils.isJavaVersionAtLeast(JavaVersion.JAVA_9))
     // In this test, we set javax.jdo.option.ConnectionURL and set metastore version to
     // 0.13. This test will make sure that javax.jdo.option.ConnectionURL will not be
     // overridden by hive's default settings when we create a HiveConf object inside

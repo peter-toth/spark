@@ -289,6 +289,12 @@ private[spark] object Config extends Logging {
       .booleanConf
       .createWithDefault(true)
 
+  val KUBERNETES_DYN_ALLOC_KILL_GRACE_PERIOD =
+    ConfigBuilder("spark.kubernetes.dynamicAllocation.deleteGracePeriod")
+      .doc("How long to wait for executors to shut down gracefully before a forceful kill.")
+      .timeConf(TimeUnit.MILLISECONDS)
+      .createWithDefaultString("5s")
+
   val KUBERNETES_DRIVER_LABEL_PREFIX = "spark.kubernetes.driver.label."
   val KUBERNETES_DRIVER_ANNOTATION_PREFIX = "spark.kubernetes.driver.annotation."
   val KUBERNETES_DRIVER_SECRETS_PREFIX = "spark.kubernetes.driver.secrets."

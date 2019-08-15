@@ -131,7 +131,7 @@
     <kafka.version>2.3.0.7.1.0.0-SNAPSHOT</kafka.version>
     <derby.version>10.12.1.1</derby.version>
     <parquet.version>1.10.99.7.1.0.0-SNAPSHOT</parquet.version>
-    <orc.version>1.5.4</orc.version>
+    <orc.version>1.5.1.7.1.0.0-SNAPSHOT</orc.version>
     <orc.classifier>nohive</orc.classifier>
     <hive.parquet.version>1.6.0</hive.parquet.version>
     <jetty.version>9.3.24.v20180605</jetty.version>

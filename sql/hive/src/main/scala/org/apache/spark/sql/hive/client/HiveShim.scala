@@ -1517,8 +1517,6 @@ private[client] class Shim_v3_0 extends Shim_v2_3 {
       oldSpec: JMap[String, String],
       hivePart: Partition): Unit = {
     val tTable = hiveTable.getTTable
-    // The line below is due to DWX-866. We'll remove this line when fixed.
-    setCatNameMethod.invoke(tTable, "hive")
     renamePartitionMethod.invoke(hive, hiveTable, oldSpec, hivePart, -1L: JLong)
   }
 }

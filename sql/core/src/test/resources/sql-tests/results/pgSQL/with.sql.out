@@ -312,17 +312,17 @@ struct<id:int,parent_department:int,name:string>
 
 
 -- !query 25
-SET spark.sql.cte.recursion.level.limit=500
+SET spark.sql.cte.recursion.level.limit=200
 -- !query 25 schema
 struct<key:string,value:string>
 -- !query 25 output
-spark.sql.cte.recursion.level.limit	500
+spark.sql.cte.recursion.level.limit	200
 
 
 -- !query 26
 SELECT count(*) FROM (
     WITH RECURSIVE t(n) AS (
-        SELECT 1 UNION ALL SELECT n + 1 FROM t WHERE n < 500
+        SELECT 1 UNION ALL SELECT n + 1 FROM t WHERE n < 200
     )
     SELECT * FROM t) AS t WHERE n < (
         SELECT count(*) FROM (

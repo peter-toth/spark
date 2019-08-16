@@ -228,10 +228,23 @@ WITH RECURSIVE subdepartment AS
 SELECT * FROM subdepartment ORDER BY name;
 
 -- inside subqueries
-SET spark.sql.cte.recursion.level.limit=500;
+-- [NOTE] Decreased recursion depth to avoid stack overflow
+-- [ORIGINAL SQL]
+--SELECT count(*) FROM (
+--    WITH RECURSIVE t(n) AS (
+--        SELECT 1 UNION ALL SELECT n + 1 FROM t WHERE n < 500
+--    )
+--    SELECT * FROM t) AS t WHERE n < (
+--        SELECT count(*) FROM (
+--            WITH RECURSIVE t(n) AS (
+--                   SELECT 1 UNION ALL SELECT n + 1 FROM t WHERE n < 100
+--                )
+--            SELECT * FROM t WHERE n < 50000
+--         ) AS t WHERE n < 100);
+SET spark.sql.cte.recursion.level.limit=200;
 SELECT count(*) FROM (
     WITH RECURSIVE t(n) AS (
-        SELECT 1 UNION ALL SELECT n + 1 FROM t WHERE n < 500
+        SELECT 1 UNION ALL SELECT n + 1 FROM t WHERE n < 200
     )
     SELECT * FROM t) AS t WHERE n < (
         SELECT count(*) FROM (

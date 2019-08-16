@@ -249,7 +249,6 @@ WITH q1(x,y) AS (
 SELECT count(*) FROM q1 WHERE y > (SELECT sum(y)/100 FROM q1 qsub);
 
 -- via a VIEW
--- [SPARK-28383] SHOW CREATE TABLE is not supported on a temporary view
 -- [ORIGINAL SQL]
 --CREATE TEMPORARY VIEW vsubdepartment AS
 --	WITH RECURSIVE subdepartment AS

@@ -62,38 +62,15 @@ case class Subquery(child: LogicalPlan) extends OrderPreservingUnaryNode {
  *
  * @param cteName name of the recursive relation
  * @param anchorTerm this child is used for initializing the query
- * @param recursiveTerm this child is used for extending the set of results with new rows based on
- *                      the results of the previous iteration (or based on the results of the anchor
- *                      in the first iteration)
+ * @param recursiveTerm this child is used for extending the results with new rows based on the
+ *                      results of the previous iteration (or based on the results of the anchor in
+ *                      the first iteration)
  */
 case class RecursiveRelation(
     cteName: String,
     anchorTerm: LogicalPlan,
-    recursiveTerm: LogicalPlan) extends LogicalPlan {
+    recursiveTerm: LogicalPlan) extends UnionBase {
   override def children: Seq[LogicalPlan] = anchorTerm :: recursiveTerm :: Nil
-
-  override def output: Seq[Attribute] = anchorTerm.output.map(_.withNullability(true))
-
-  override lazy val resolved: Boolean = {
-    val numberOfOutputMatches =
-      children.length > 1 &&
-        childrenResolved &&
-        children.head.output.length > 0 &&
-        children.map(_.output.length).toSet.size == 1
-    if (numberOfOutputMatches) {
-      children.tail.foreach { child =>
-        val outputTypeMatches = child.output.zip(children.head.output).forall {
-          case (l, r) => l.dataType.sameType(r.dataType)
-        }
-        if (!outputTypeMatches) {
-          throw new AnalysisException(s"Recursive table $cteName term types " +
-            s"${children.head.output.map(_.dataType)} and ${child.output.map(_.dataType)} do " +
-            "not match")
-        }
-      }
-    }
-    numberOfOutputMatches
-  }
 }
 
 /**
@@ -287,10 +264,40 @@ object Union {
   }
 }
 
+abstract class UnionBase extends LogicalPlan {
+  // updating nullability to make all the children consistent
+  override def output: Seq[Attribute] = {
+    children.map(_.output).transpose.map { attrs =>
+      val firstAttr = attrs.head
+      val nullable = attrs.exists(_.nullable)
+      val newDt = attrs.map(_.dataType).reduce(StructType.merge)
+      if (firstAttr.dataType == newDt) {
+        firstAttr.withNullability(nullable)
+      } else {
+        AttributeReference(firstAttr.name, newDt, nullable, firstAttr.metadata)(
+          firstAttr.exprId, firstAttr.qualifier)
+      }
+    }
+  }
+
+  override lazy val resolved: Boolean = {
+    // allChildrenCompatible needs to be evaluated after childrenResolved
+    def allChildrenCompatible: Boolean =
+      children.tail.forall( child =>
+        // compare the attribute number with the first child
+        child.output.length == children.head.output.length &&
+          // compare the data types with the first child
+          child.output.zip(children.head.output).forall {
+            case (l, r) => l.dataType.sameType(r.dataType)
+          })
+    children.length > 1 && childrenResolved && allChildrenCompatible
+  }
+}
+
 /**
  * Logical plan for unioning two plans, without a distinct. This is UNION ALL in SQL.
  */
-case class Union(children: Seq[LogicalPlan]) extends LogicalPlan {
+case class Union(children: Seq[LogicalPlan]) extends UnionBase {
   override def maxRows: Option[Long] = {
     if (children.exists(_.maxRows.isEmpty)) {
       None
@@ -313,34 +320,6 @@ case class Union(children: Seq[LogicalPlan]) extends LogicalPlan {
   def duplicateResolved: Boolean = {
     children.map(_.outputSet.size).sum ==
       AttributeSet.fromAttributeSets(children.map(_.outputSet)).size
-  }
-
-  // updating nullability to make all the children consistent
-  override def output: Seq[Attribute] = {
-    children.map(_.output).transpose.map { attrs =>
-      val firstAttr = attrs.head
-      val nullable = attrs.exists(_.nullable)
-      val newDt = attrs.map(_.dataType).reduce(StructType.merge)
-      if (firstAttr.dataType == newDt) {
-        firstAttr.withNullability(nullable)
-      } else {
-        AttributeReference(firstAttr.name, newDt, nullable, firstAttr.metadata)(
-          firstAttr.exprId, firstAttr.qualifier)
-      }
-    }
-  }
-
-  override lazy val resolved: Boolean = {
-    // allChildrenCompatible needs to be evaluated after childrenResolved
-    def allChildrenCompatible: Boolean =
-      children.tail.forall( child =>
-        // compare the attribute number with the first child
-        child.output.length == children.head.output.length &&
-        // compare the data types with the first child
-        child.output.zip(children.head.output).forall {
-          case (l, r) => l.dataType.sameType(r.dataType)
-        })
-    children.length > 1 && childrenResolved && allChildrenCompatible
   }
 
   /**

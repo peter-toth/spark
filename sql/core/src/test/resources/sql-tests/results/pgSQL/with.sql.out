@@ -157,8 +157,8 @@ SELECT n FROM t
 -- !query 11 schema
 struct<>
 -- !query 11 output
-org.apache.spark.sql.AnalysisException
-Recursive table t term types List(StringType) and List(DoubleType) do not match;
+org.apache.spark.SparkException
+Failed to merge incompatible data types string and double
 
 
 -- !query 12
@@ -1337,8 +1337,8 @@ SELECT * FROM foo
 -- !query 77 schema
 struct<>
 -- !query 77 output
-org.apache.spark.sql.AnalysisException
-Recursive table foo term types List(IntegerType) and List(DecimalType(10,0)) do not match;
+org.apache.spark.SparkException
+Failed to merge incompatible data types int and decimal(10,0)
 
 
 -- !query 78
@@ -1350,8 +1350,8 @@ SELECT * FROM foo
 -- !query 78 schema
 struct<>
 -- !query 78 output
-org.apache.spark.sql.AnalysisException
-Recursive table foo term types List(DecimalType(3,0)) and List(DecimalType(10,0)) do not match;
+org.apache.spark.SparkException
+Failed to merge decimal types with incompatible precision 3 and 10
 
 
 -- !query 79

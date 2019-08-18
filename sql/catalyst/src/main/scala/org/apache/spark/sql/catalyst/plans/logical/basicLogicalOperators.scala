@@ -74,7 +74,7 @@ case class RecursiveRelation(
 }
 
 /**
- * This node is a reference to a recursive table in CTE definitions.
+ * This node is a reference to a recursive relation in CTE definitions.
  *
  * It is important that we can't calculate the statistics of a [[RecursiveRelation]] before the
  * execution. And can't even estimate it as the recursive term can vastly increase the number of
@@ -85,7 +85,7 @@ case class RecursiveRelation(
  * results of the previous iteration to recreate the best physical plan in each iteration.
  *
  * @param cteName the name of the table it references to
- * @param output the attributes of the recursive table
+ * @param output the attributes of the recursive relation
  * @param cumulated defines if the reference carries cumulated result
  * @param statistics statistics of the data that this reference caries
  * @param data data that this reference caries
@@ -96,8 +96,6 @@ case class RecursiveReference(
     cumulated: Boolean,
     statistics: Statistics = Statistics(SQLConf.get.defaultSizeInBytes),
     data: RDD[InternalRow] = null) extends LeafNode {
-  override lazy val resolved = output.forall(_.resolved)
-
   override def computeStats(): Statistics = statistics
 
   def withNewIteration(statistics: Statistics, data: RDD[InternalRow]): RecursiveReference = {

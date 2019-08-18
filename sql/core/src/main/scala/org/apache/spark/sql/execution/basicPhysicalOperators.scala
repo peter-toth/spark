@@ -235,8 +235,8 @@ case class FilterExec(condition: Expression, child: SparkPlan)
 }
 
 /**
- * Physical plan node for a recursive table that encapsulates the physical plan of the anchor term
- * and the logical plan of the recursive term.
+ * Physical plan node for a recursive relation that encapsulates the physical plan of the anchor
+ * term and the logical plan of the recursive term.
  *
  * Anchor is used to initialize the query in the first run.
  * Recursive term is used to extend the result with new rows, They are logical plans and contain
@@ -250,16 +250,18 @@ case class FilterExec(condition: Expression, child: SparkPlan)
  * During the execution of a recursive query the previously computed results are reused multiple
  * times. To avoid massive recomputation of these pieces they are cached.
  *
- * @param cteName the name of the recursive table
+ * @param cteName the name of the recursive relation
  * @param anchorTerm this child is used for initializing the query
+ * @param output the attributes of the recursive relation
  */
-case class RecursiveRelationExec(cteName: String, anchorTerm: SparkPlan) extends SparkPlan {
+case class RecursiveRelationExec(
+    cteName: String,
+    anchorTerm: SparkPlan,
+    output: Seq[Attribute]) extends SparkPlan {
   @transient
   lazy val recursiveTerm = logicalLink.get.asInstanceOf[RecursiveRelation].recursiveTerm
 
   override def children: Seq[SparkPlan] = anchorTerm :: Nil
-
-  override def output: Seq[Attribute] = anchorTerm.output.map(_.withNullability(true))
 
   override def innerChildren: Seq[QueryPlan[_]] = recursiveTerm +: super.innerChildren
 
@@ -281,7 +283,7 @@ case class RecursiveRelationExec(cteName: String, anchorTerm: SparkPlan) extends
       }
 
       val newRecursiveTerm = recursiveTerm.transform {
-        case rr @ RecursiveReference(cteName, _, cumulated, _, _) if cteName == cteName =>
+        case rr @ RecursiveReference(name, _, cumulated, _, _) if name == cteName =>
           val (newStatistics, newRDD) = if (cumulated) {
             (
               Statistics(

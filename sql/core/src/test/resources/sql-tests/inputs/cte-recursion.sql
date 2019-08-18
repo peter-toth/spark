@@ -190,7 +190,7 @@ WITH RECURSIVE r(level) AS (
 )
 SELECT * FROM r;
 
--- aggregate is supported on a recursive table
+-- aggregate is supported on a recursive relation
 WITH RECURSIVE r(level, data) AS (
   VALUES (0, 'A')
   UNION ALL

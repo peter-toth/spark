@@ -216,5 +216,24 @@ class HiveTranslationLayerSuite extends QueryTest with SQLTestUtils with TestHiv
       )
     }
   }
+
+  test("CDPD-3196: Ensure virtual views can be dropped") {
+    withTable("transtbl", "transview") {
+      sql(
+        s"""
+           |CREATE TABLE transtbl (employeeID INT, employeeName STRING)
+           |stored as orc
+        """.stripMargin)
+      sql(
+        s"""
+           |CREATE VIEW transview
+           |TBLPROPERTIES ('${CatalogUtils.TRANSLATION_LAYER_ACCESSTYPE_PROPERTY_TEST}'='1')
+           |AS SELECT * from transtbl
+         """.stripMargin)
+      withSQLConf((SQLConf.CHECK_TRANSLATION_LAYER.key, "true")) {
+        sql("drop view transview")
+      }
+    }
+  }
 }
 

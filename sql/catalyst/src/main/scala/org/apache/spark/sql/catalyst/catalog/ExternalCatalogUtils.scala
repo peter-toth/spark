@@ -311,4 +311,15 @@ object CatalogUtils {
       throwIfRO(tableMeta)
     }
   }
+
+  def throwIfDropNotAllowed(tableName: TableIdentifier, catalog: SessionCatalog): Unit = {
+    getMetaData(tableName, catalog).foreach { tableMeta =>
+      // Make an exception for virtual views. Virtual views are by nature read only, but
+      // since they don't have underlying data (just underlying queries), it is safe to allow
+      // Spark to drop them.
+      if (tableMeta.tableType != CatalogTableType.VIEW) {
+        throwIfRO(tableMeta)
+      }
+    }
+  }
 }

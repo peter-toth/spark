@@ -32,9 +32,6 @@ import org.apache.spark.sql.hive.execution._
 private object IsRunnableCommand {
   def unapply(r: RunnableCommand): Option[TableIdentifier] = {
     r match {
-      case DropTableCommand(tableName, _, _, _) =>
-        Some(tableName)
-
       case LoadDataCommand(tableName, _, _, _, _) =>
         Some(tableName)
 
@@ -111,6 +108,10 @@ class HiveTranslationLayerCheck(session: SparkSession) extends Rule[LogicalPlan]
       case h @ HiveTableRelation(tableMeta, _, _) =>
         CatalogUtils.throwIfNoAccess(tableMeta)
         h
+
+      case d @ DropTableCommand(tableName, _, _, _) =>
+        CatalogUtils.throwIfDropNotAllowed(tableName, session.sessionState.catalog)
+        d
 
       case r @ IsRunnableCommand(tableName) =>
         CatalogUtils.throwIfRO(tableName, session.sessionState.catalog)

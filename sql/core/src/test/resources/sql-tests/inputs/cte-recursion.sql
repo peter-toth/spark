@@ -3,6 +3,8 @@
 --SET spark.sql.autoBroadcastJoinThreshold=10485760,spark.sql.adaptive.enabled=true
 --SET spark.sql.autoBroadcastJoinThreshold=-1,spark.sql.adaptive.enabled=true
 
+create temporary view t as select * from values 0, 1, 2 as t(id);
+
 -- fails due to recursion isn't allowed with RECURSIVE keyword
 WITH r(level) AS (
   VALUES (0)
@@ -353,6 +355,19 @@ WITH RECURSIVE r(level) AS (
 )
 SELECT * FROM r;
 
+-- exchange reuse with recursion
+WITH RECURSIVE r(level, id) AS (
+  VALUES (0, 0)
+  UNION ALL
+  SELECT level + 1, t.id
+  FROM r
+  LEFT JOIN t ON t.id = r.level
+  WHERE level < 10
+)
+SELECT *
+FROM r AS r1
+JOIN r AS r2 ON r1.id = r2.id + 1 AND r1.level = r2.level + 1;
+
 -- routes represented here is as follows:
 --
 -- New York<--->Boston
@@ -388,3 +403,6 @@ WITH RECURSIVE fibonacci AS (
   SELECT b, a + b FROM fibonacci WHERE a < 10
 )
 SELECT a FROM fibonacci ORDER BY a;
+
+-- Clean up
+DROP VIEW IF EXISTS t;

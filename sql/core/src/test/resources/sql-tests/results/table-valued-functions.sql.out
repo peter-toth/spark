@@ -136,5 +136,5 @@ Join Cross
 == Physical Plan ==
 BroadcastNestedLoopJoin BuildRight, Cross
 :- *Range (0, 3, step=1, splits=2)
-+- BroadcastExchange IdentityBroadcastMode
++- BroadcastExchange IdentityBroadcastMode, [id=#x]
    +- *Range (0, 3, step=1, splits=2)

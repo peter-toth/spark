@@ -18,6 +18,7 @@
 package org.apache.spark.sql.execution
 
 import java.io.{ByteArrayInputStream, ByteArrayOutputStream, DataInputStream, DataOutputStream}
+import java.util.concurrent.atomic.AtomicInteger
 
 import scala.collection.mutable.ArrayBuffer
 import scala.concurrent.ExecutionContext
@@ -39,6 +40,13 @@ import org.apache.spark.sql.execution.metric.SQLMetric
 import org.apache.spark.sql.types.DataType
 import org.apache.spark.util.ThreadUtils
 
+object SparkPlan {
+  private val nextPlanId = new AtomicInteger(0)
+
+  /** Register a new SparkPlan, returning its SparkPlan ID */
+  private[execution] def newPlanId(): Int = nextPlanId.getAndIncrement()
+}
+
 /**
  * The base class for physical operators.
  *
@@ -54,6 +62,8 @@ abstract class SparkPlan extends QueryPlan[SparkPlan] with Logging with Serializ
   @transient final val sqlContext = SparkSession.getActiveSession.map(_.sqlContext).orNull
 
   protected def sparkContext = sqlContext.sparkContext
+
+  val id: Int = SparkPlan.newPlanId()
 
   // sqlContext will be null when SparkPlan nodes are created without the active sessions.
   val subexpressionEliminationEnabled: Boolean = if (sqlContext != null) {

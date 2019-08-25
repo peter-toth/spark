@@ -88,7 +88,7 @@ class QueryExecution(
     // TODO: We use next(), i.e. take the first plan returned by the planner, here for now,
     //       but we will implement to choose the best plan.
     // Clone the logical plan here, in case the planner rules change the states of the logical plan.
-    planner.plan(ReturnAnswer(optimizedPlan.clone())).next()
+    planner.plan(ReturnAnswer(optimizedPlan.clone()), this).next()
   }
 
   // executedPlan should not be used to initialize any SparkPlan. It should be

@@ -87,6 +87,7 @@ case class RecursiveRelation(
  * @param cteName the name of the table it references to
  * @param output the attributes of the recursive relation
  * @param cumulated defines if the reference carries cumulated result
+ * @param level the recursion level
  * @param statistics statistics of the data that this reference caries
  * @param data data that this reference caries
  */
@@ -94,12 +95,18 @@ case class RecursiveReference(
     cteName: String,
     output: Seq[Attribute],
     cumulated: Boolean,
+    level: Int = 0,
     statistics: Statistics = Statistics(SQLConf.get.defaultSizeInBytes),
     data: RDD[InternalRow] = null) extends LeafNode {
   override def computeStats(): Statistics = statistics
 
-  def withNewIteration(statistics: Statistics, data: RDD[InternalRow]): RecursiveReference = {
-    copy(statistics = statistics, data = data)
+  override def stringArgs: Iterator[Any] = Iterator(cteName, output, cumulated, level)
+
+  def withNewIteration(
+      level: Int,
+      statistics: Statistics,
+      data: RDD[InternalRow]): RecursiveReference = {
+    copy(level = level, statistics = statistics, data = data)
   }
 }
 

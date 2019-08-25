@@ -547,7 +547,7 @@ trait CheckAnalysis extends PredicateHelper {
         checkRecursion(anchorTerm, allowedRecursiveReferencesAndCounts)
         checkRecursion(recursiveTerm, allowedRecursiveReferencesAndCounts += name -> 0)
         allowedRecursiveReferencesAndCounts -= name
-      case RecursiveReference(name, _, false, _, _) =>
+      case RecursiveReference(name, _, false, _, _, _) =>
         if (!allowedRecursiveReferencesAndCounts.contains(name)) {
           throw new AnalysisException(s"Recursive reference $name cannot be used here. This can " +
             "be caused by using it on inner side of an outer join, using it with aggregate in a " +

@@ -630,7 +630,7 @@ abstract class SparkStrategies extends QueryPlanner[SparkPlan] {
     }
   }
 
-  object BasicOperators extends Strategy {
+  case class BasicOperators(queryExecution: QueryExecution) extends Strategy {
     def apply(plan: LogicalPlan): Seq[SparkPlan] = plan match {
       case d: DataWritingCommand => DataWritingCommandExec(d, planLater(d.query)) :: Nil
       case r: RunnableCommand => ExecutedCommandExec(r) :: Nil
@@ -713,9 +713,10 @@ abstract class SparkStrategies extends QueryPlanner[SparkPlan] {
       case logical.Filter(condition, child) =>
         execution.FilterExec(condition, planLater(child)) :: Nil
       case rr @ logical.RecursiveRelation(name, anchorTerm, _) =>
-        execution.RecursiveRelationExec(name, planLater(anchorTerm), rr.output) :: Nil
-      case logical.RecursiveReference(name, output, _, _, rdd) =>
-        RDDScanExec(output, rdd, s"RecursiveReference $name") :: Nil
+        execution.RecursiveRelationExec(name, planLater(anchorTerm), rr.output, queryExecution) ::
+          Nil
+      case logical.RecursiveReference(name, output, _, level, _, rdd) =>
+        RDDScanExec(output, rdd, s"RecursiveReference $name, $level") :: Nil
       case f: logical.TypedFilter =>
         execution.FilterExec(f.typedCondition(f.deserializer), planLater(f.child)) :: Nil
       case e @ logical.Expand(_, _, child) =>

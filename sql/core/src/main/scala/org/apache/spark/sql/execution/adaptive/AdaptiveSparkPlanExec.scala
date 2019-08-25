@@ -38,7 +38,7 @@ import org.apache.spark.sql.execution._
 import org.apache.spark.sql.execution.adaptive.AdaptiveSparkPlanExec._
 import org.apache.spark.sql.execution.adaptive.rule.ReduceNumShufflePartitions
 import org.apache.spark.sql.execution.exchange._
-import org.apache.spark.sql.execution.ui.SparkListenerSQLAdaptiveExecutionUpdate
+import org.apache.spark.sql.execution.ui.SparkListenerSQLExecutionUpdate
 import org.apache.spark.sql.internal.SQLConf
 import org.apache.spark.util.ThreadUtils
 
@@ -442,7 +442,7 @@ case class AdaptiveSparkPlanExec(
    * Notify the listeners of the physical plan change.
    */
   private def onUpdatePlan(executionId: Long): Unit = {
-    session.sparkContext.listenerBus.post(SparkListenerSQLAdaptiveExecutionUpdate(
+    session.sparkContext.listenerBus.post(SparkListenerSQLExecutionUpdate(
       executionId,
       SQLExecution.getQueryExecution(executionId).toString,
       SparkPlanInfo.fromSparkPlan(this)))

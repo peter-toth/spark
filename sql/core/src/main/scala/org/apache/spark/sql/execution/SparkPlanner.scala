@@ -47,7 +47,14 @@ class SparkPlanner(
       Window ::
       JoinSelection ::
       InMemoryScans ::
-      BasicOperators :: Nil)
+      BasicOperators(queryExecutionThreadLocal.get()) :: Nil)
+
+  private val queryExecutionThreadLocal = new ThreadLocal[QueryExecution]
+
+  def plan(plan: LogicalPlan, queryExecution: QueryExecution): Iterator[SparkPlan] = {
+    queryExecutionThreadLocal.set(queryExecution)
+    super.plan(plan)
+  }
 
   /**
    * Override to add extra planning strategies to the planner. These strategies are tried after

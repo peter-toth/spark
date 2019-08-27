@@ -17,12 +17,10 @@
 
 package org.apache.spark.sql.catalyst.plans.logical
 
-import org.apache.spark.rdd.RDD
-import org.apache.spark.sql.AnalysisException
 import org.apache.spark.sql.catalog.v2.{Identifier, TableCatalog, TableChange}
 import org.apache.spark.sql.catalog.v2.TableChange.{AddColumn, ColumnChange}
 import org.apache.spark.sql.catalog.v2.expressions.Transform
-import org.apache.spark.sql.catalyst.{AliasIdentifier, InternalRow}
+import org.apache.spark.sql.catalyst.AliasIdentifier
 import org.apache.spark.sql.catalyst.analysis.{MultiInstanceRelation, NamedRelation}
 import org.apache.spark.sql.catalyst.catalog.{CatalogStorageFormat, CatalogTable}
 import org.apache.spark.sql.catalyst.catalog.CatalogTypes.TablePartitionSpec
@@ -87,27 +85,12 @@ case class RecursiveRelation(
  * @param cteName the name of the table it references to
  * @param output the attributes of the recursive relation
  * @param cumulated defines if the reference carries cumulated result
- * @param level the recursion level
- * @param statistics statistics of the data that this reference caries
- * @param data data that this reference caries
  */
 case class RecursiveReference(
     cteName: String,
     output: Seq[Attribute],
-    cumulated: Boolean,
-    level: Int = 0,
-    statistics: Statistics = Statistics(SQLConf.get.defaultSizeInBytes),
-    data: RDD[InternalRow] = null) extends LeafNode {
-  override def computeStats(): Statistics = statistics
-
-  override def stringArgs: Iterator[Any] = Iterator(cteName, output, cumulated, level)
-
-  def withNewIteration(
-      level: Int,
-      statistics: Statistics,
-      data: RDD[InternalRow]): RecursiveReference = {
-    copy(level = level, statistics = statistics, data = data)
-  }
+    cumulated: Boolean)extends LeafNode {
+  override def computeStats(): Statistics = Statistics(SQLConf.get.defaultSizeInBytes)
 }
 
 case class Project(projectList: Seq[NamedExpression], child: LogicalPlan)

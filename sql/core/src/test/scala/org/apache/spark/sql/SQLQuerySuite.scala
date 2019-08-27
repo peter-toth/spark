@@ -3180,6 +3180,27 @@ class SQLQuerySuite extends QueryTest with SharedSparkSession {
     }
 
   }
+
+  test("Recursion") {
+    withSQLConf(
+//      SQLConf.WHOLESTAGE_CODEGEN_ENABLED.key -> "false",
+//      SQLConf.CODEGEN_FACTORY_MODE.key -> "NO_CODEGEN",
+      SQLConf.AUTO_BROADCASTJOIN_THRESHOLD.key -> "10485760",
+      SQLConf.ADAPTIVE_EXECUTION_ENABLED.key -> "true") {
+      withTable("tree") {
+        val df = sql(
+          """
+            |WITH RECURSIVE r(level) AS (
+            |  VALUES (0), (0)
+            |  UNION
+            |  SELECT (level + 1) % 10 FROM r
+            |)
+            |SELECT * FROM r
+          """.stripMargin)
+        df.show()
+      }
+    }
+  }
 }
 
 case class Foo(bar: Option[String])

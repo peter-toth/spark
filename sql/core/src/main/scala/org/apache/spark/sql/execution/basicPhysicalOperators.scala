@@ -24,17 +24,15 @@ import scala.collection.JavaConverters._
 import scala.collection.mutable.ArrayBuffer
 import scala.concurrent.{ExecutionContext, Future}
 import scala.concurrent.duration.Duration
-
 import org.apache.spark._
 import org.apache.spark.rdd.{EmptyRDD, PartitionwiseSampledRDD, RDD}
 import org.apache.spark.sql.catalyst.InternalRow
 import org.apache.spark.sql.catalyst.expressions._
 import org.apache.spark.sql.catalyst.expressions.BindReferences.bindReferences
 import org.apache.spark.sql.catalyst.expressions.codegen._
-import org.apache.spark.sql.catalyst.plans.QueryPlan
-import org.apache.spark.sql.catalyst.plans.logical.{LogicalPlan, RecursiveReference, RecursiveRelation, Statistics}
-import org.apache.spark.sql.catalyst.plans.logical.statsEstimation.EstimationUtils
 import org.apache.spark.sql.catalyst.plans.physical._
+import org.apache.spark.sql.execution.adaptive.{QueryStageExec, ShuffleQueryStageExec}
+import org.apache.spark.sql.execution.exchange.ShuffleExchangeExec
 import org.apache.spark.sql.execution.metric.SQLMetrics
 import org.apache.spark.sql.execution.ui.SparkListenerSQLExecutionUpdate
 import org.apache.spark.sql.internal.SQLConf
@@ -90,7 +88,6 @@ case class ProjectExec(projectList: Seq[NamedExpression], child: SparkPlan)
 
   override def outputPartitioning: Partitioning = child.outputPartitioning
 }
-
 
 /** Physical plan for Filter. */
 case class FilterExec(condition: Expression, child: SparkPlan)
@@ -237,6 +234,17 @@ case class FilterExec(condition: Expression, child: SparkPlan)
   override def outputPartitioning: Partitioning = child.outputPartitioning
 }
 
+/** Physical plan for RecursiveReference. */
+case class RecursiveReferenceExec(
+    cteName: String,
+    output: Seq[Attribute],
+    cumulated: Boolean) extends LeafExecNode {
+  override protected def doExecute(): RDD[InternalRow] = throw new NotImplementedError
+
+  def withNewIteration(data: RDD[InternalRow]): RDDScanExec =
+    RDDScanExec(output, data, s"RecursiveReference $cteName")
+}
+
 /**
  * Physical plan node for a recursive relation that encapsulates the physical plan of the anchor
  * term and the logical plan of the recursive term.
@@ -255,19 +263,16 @@ case class FilterExec(condition: Expression, child: SparkPlan)
  *
  * @param cteName the name of the recursive relation
  * @param anchorTerm this child is used for initializing the query
- * @param output the attributes of the recursive relation
+ * @param recursiveTerm this child is used for extending the results with new rows based on the
+ *                      results of the previous iteration (or based on the results of the anchor in
+ *                      the first iteration)
  */
 case class RecursiveRelationExec(
     cteName: String,
     anchorTerm: SparkPlan,
-    output: Seq[Attribute],
-    @transient queryExecution: QueryExecution) extends SparkPlan {
-  @transient
-  lazy val logicalRecursiveTerm = logicalLink.get.asInstanceOf[RecursiveRelation].recursiveTerm
-
-  override def children: Seq[SparkPlan] = anchorTerm :: Nil
-
-  override def innerChildren: Seq[QueryPlan[_]] = logicalRecursiveTerm +: super.innerChildren
+    recursiveTerm: SparkPlan,
+    @transient queryExecution: QueryExecution) extends UnionExecBase {
+  override def children: Seq[SparkPlan] = anchorTerm :: recursiveTerm :: Nil
 
   override def stringArgs: Iterator[Any] = Iterator(cteName, output)
 
@@ -322,41 +327,25 @@ case class RecursiveRelationExec(
       numOutputRows += prevIterationCount
       SQLMetrics.postDriverMetricUpdates(sparkContext, executionId, metrics.values.toSeq)
 
-      val newLogicalRecursiveTerm = logicalRecursiveTerm.transform {
-        case rr @ RecursiveReference(name, _, cumulated, _, _, _) if name == cteName =>
-          val (newStatistics, newRDD) = if (cumulated) {
-            (
-              Statistics(
-                EstimationUtils.getSizePerRow(output) * cumulatedCount,
-                Some(cumulatedCount)
-              ),
-              if (cumulatedRDDs.size > 1) {
-                sparkContext.union(cumulatedRDDs)
-              } else {
-                cumulatedRDDs.head
-              }
-            )
+      val newRecursiveTerm = recursiveTerm.transform {
+        case rr @ RecursiveReferenceExec(name, _, cumulated) if name == cteName =>
+          val newRDD = if (cumulated) {
+            if (cumulatedRDDs.size > 1) {
+              sparkContext.union(cumulatedRDDs)
+            } else {
+              cumulatedRDDs.head
+            }
           } else {
-            (
-              Statistics(
-                EstimationUtils.getSizePerRow(output) * prevIterationCount,
-                Some(prevIterationCount)
-              ),
-              prevIterationRDD
-            )
+            prevIterationRDD
           }
-          rr.withNewIteration(level, newStatistics, newRDD)
+          rr.withNewIteration(newRDD)
       }
 
-      val physicalRecursiveTerm =
-        new QueryExecution(sqlContext.sparkSession, newLogicalRecursiveTerm,
-          alreadyOptimized = true).executedPlan
-
-      physicalRecursiveTerms.offer(physicalRecursiveTerm)
+      physicalRecursiveTerms.offer(newRecursiveTerm)
 
       executionIdLong.foreach(onUpdatePlan)
 
-      prevIterationRDD = physicalRecursiveTerm.execute().map(_.copy()).persist(storageLevel)
+      prevIterationRDD = newRecursiveTerm.execute().map(_.copy()).persist(storageLevel)
       prevIterationCount = prevIterationRDD.count()
 
       level = level + 1
@@ -740,13 +729,7 @@ case class RangeExec(range: org.apache.spark.sql.catalyst.plans.logical.Range)
   }
 }
 
-/**
- * Physical plan for unioning two plans, without a distinct. This is UNION ALL in SQL.
- *
- * If we change how this is implemented physically, we'd need to update
- * [[org.apache.spark.sql.catalyst.plans.logical.Union.maxRowsPerPartition]].
- */
-case class UnionExec(children: Seq[SparkPlan]) extends SparkPlan {
+abstract class UnionExecBase extends SparkPlan {
   // updating nullability to make all the children consistent
   override def output: Seq[Attribute] = {
     children.map(_.output).transpose.map { attrs =>
@@ -761,7 +744,15 @@ case class UnionExec(children: Seq[SparkPlan]) extends SparkPlan {
       }
     }
   }
+}
 
+/**
+ * Physical plan for unioning two plans, without a distinct. This is UNION ALL in SQL.
+ *
+ * If we change how this is implemented physically, we'd need to update
+ * [[org.apache.spark.sql.catalyst.plans.logical.Union.maxRowsPerPartition]].
+ */
+case class UnionExec(children: Seq[SparkPlan]) extends UnionExecBase {
   protected override def doExecute(): RDD[InternalRow] =
     sparkContext.union(children.map(_.execute()))
 }

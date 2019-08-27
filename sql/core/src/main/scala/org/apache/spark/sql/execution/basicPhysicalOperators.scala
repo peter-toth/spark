@@ -298,10 +298,8 @@ case class RecursiveRelationExec(
     }
 
     val levelLimit = conf.getConf(SQLConf.CTE_RECURSION_LEVEL_LIMIT)
-    val storageLevel =
-      StorageLevel.fromString(conf.getConf(SQLConf.CTE_RECURSION_CACHE_STORAGE_LEVEL))
 
-    var prevIterationRDD = anchorTerm.execute().map(_.copy()).persist(storageLevel)
+    var prevIterationRDD = anchorTerm.execute().map(_.copy())
     var prevIterationCount = prevIterationRDD.count()
 
     val cumulatedRDDs = ArrayBuffer.empty[RDD[InternalRow]]
@@ -356,7 +354,7 @@ case class RecursiveRelationExec(
 
       executionIdLong.foreach(onUpdatePlan)
 
-      prevIterationRDD = physicalRecursiveTerm.execute().map(_.copy()).persist(storageLevel)
+      prevIterationRDD = physicalRecursiveTerm.execute().map(_.copy())
       prevIterationCount = prevIterationRDD.count()
 
       level = level + 1

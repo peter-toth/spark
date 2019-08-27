@@ -1935,15 +1935,6 @@ object SQLConf {
     .intConf
     .createWithDefault(100)
 
-  val CTE_RECURSION_CACHE_STORAGE_LEVEL = buildConf("spark.sql.cte.recursion.cache.storageLevel")
-    .internal()
-    .doc("Storage level of cache where recursion stores intermediate results.")
-    .stringConf
-    .checkValues(Set("NONE", "DISK_ONLY", "DISK_ONLY_2", "MEMORY_ONLY", "MEMORY_ONLY_2",
-      "MEMORY_ONLY_SER", "MEMORY_ONLY_SER_2", "MEMORY_AND_DISK", "MEMORY_AND_DISK_2",
-      "MEMORY_AND_DISK_SER", "MEMORY_AND_DISK_SER_2", "OFF_HEAP"))
-    .createWithDefault("MEMORY_ONLY")
-
   val LEGACY_ARRAY_EXISTS_FOLLOWS_THREE_VALUED_LOGIC =
     buildConf("spark.sql.legacy.arrayExistsFollowsThreeValuedLogic")
       .doc("When true, the ArrayExists will follow the three-valued boolean logic.")

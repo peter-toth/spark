@@ -32,7 +32,7 @@ import org.apache.spark.sql.catalyst.expressions._
 import org.apache.spark.sql.catalyst.expressions.BindReferences.bindReferences
 import org.apache.spark.sql.catalyst.expressions.codegen._
 import org.apache.spark.sql.catalyst.plans.QueryPlan
-import org.apache.spark.sql.catalyst.plans.logical.{LogicalPlan, RecursiveReference, RecursiveRelation, Statistics}
+import org.apache.spark.sql.catalyst.plans.logical.{RecursiveReference, RecursiveRelation, Statistics}
 import org.apache.spark.sql.catalyst.plans.logical.statsEstimation.EstimationUtils
 import org.apache.spark.sql.catalyst.plans.physical._
 import org.apache.spark.sql.execution.metric.SQLMetrics
@@ -89,6 +89,14 @@ case class ProjectExec(projectList: Seq[NamedExpression], child: SparkPlan)
   override def outputOrdering: Seq[SortOrder] = child.outputOrdering
 
   override def outputPartitioning: Partitioning = child.outputPartitioning
+
+  override def verboseStringWithOperatorId(): String = {
+    s"""
+       |(${ExplainUtils.getOpId(this)}) $nodeName ${ExplainUtils.getCodegenId(this)}
+       |Output    : ${projectList.mkString("[", ", ", "]")}
+       |Input     : ${child.output.mkString("[", ", ", "]")}
+     """.stripMargin
+  }
 }
 
 
@@ -235,6 +243,14 @@ case class FilterExec(condition: Expression, child: SparkPlan)
   override def outputOrdering: Seq[SortOrder] = child.outputOrdering
 
   override def outputPartitioning: Partitioning = child.outputPartitioning
+
+  override def verboseStringWithOperatorId(): String = {
+    s"""
+       |(${ExplainUtils.getOpId(this)}) $nodeName ${ExplainUtils.getCodegenId(this)}
+       |Input     : ${child.output.mkString("[", ", ", "]")}
+       |Condition : ${condition}
+     """.stripMargin
+  }
 }
 
 /**
@@ -826,6 +842,34 @@ abstract class BaseSubqueryExec extends SparkPlan {
   override def outputPartitioning: Partitioning = child.outputPartitioning
 
   override def outputOrdering: Seq[SortOrder] = child.outputOrdering
+
+  override def generateTreeString(
+      depth: Int,
+      lastChildren: Seq[Boolean],
+      append: String => Unit,
+      verbose: Boolean,
+      prefix: String = "",
+      addSuffix: Boolean = false,
+      maxFields: Int,
+      printNodeId: Boolean): Unit = {
+    /**
+     * In the new explain mode `EXPLAIN FORMATTED`, the subqueries are not shown in the
+     * main plan and are printed separately along with correlation information with
+     * its parent plan. The condition below makes sure that subquery plans are
+     * excluded from the main plan.
+     */
+    if (!printNodeId) {
+      super.generateTreeString(
+        depth,
+        lastChildren,
+        append,
+        verbose,
+        "",
+        false,
+        maxFields,
+        printNodeId)
+    }
+  }
 }
 
 /**

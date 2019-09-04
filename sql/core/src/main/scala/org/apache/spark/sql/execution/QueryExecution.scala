@@ -33,6 +33,7 @@ import org.apache.spark.sql.catalyst.rules.Rule
 import org.apache.spark.sql.catalyst.util.DateTimeUtils
 import org.apache.spark.sql.catalyst.util.StringUtils.{PlanStringConcat, StringConcat}
 import org.apache.spark.sql.catalyst.util.truncatedString
+import org.apache.spark.sql.dynamicpruning.PlanDynamicPruningFilters
 import org.apache.spark.sql.execution.command.{DescribeTableCommand, ExecutedCommandExec, ShowTablesCommand}
 import org.apache.spark.sql.execution.exchange.{EnsureRequirements, ReuseExchange}
 import org.apache.spark.sql.internal.SQLConf
@@ -102,6 +103,7 @@ class QueryExecution(val sparkSession: SparkSession, val logical: LogicalPlan) {
 
   /** A sequence of rules that will be applied in order to the physical plan before execution. */
   protected def preparations: Seq[Rule[SparkPlan]] = Seq(
+    PlanDynamicPruningFilters(sparkSession),
     PlanSubqueries(sparkSession),
     EnsureRequirements(sparkSession.sessionState.conf),
     CollapseCodegenStages(sparkSession.sessionState.conf),

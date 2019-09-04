@@ -434,7 +434,7 @@ object DataSourceStrategy {
     filters.map { e =>
       e transform {
         case a: AttributeReference =>
-          a.withName(attributes.find(_.semanticEquals(a)).get.name)
+          a.withName(attributes.find(_.semanticEquals(a)).getOrElse(a).name)
       }
     }
   }

@@ -19,7 +19,8 @@ package org.apache.spark.sql.execution
 
 import org.apache.spark.sql.ExperimentalMethods
 import org.apache.spark.sql.catalyst.catalog.SessionCatalog
-import org.apache.spark.sql.catalyst.optimizer.{Optimizer, PushPredicateThroughNonJoin}
+import org.apache.spark.sql.catalyst.optimizer.{Optimizer, PruneFilters, PushDownPredicates, PushPredicateThroughNonJoin}
+import org.apache.spark.sql.dynamicpruning.{CleanupDynamicPruningFilters, PartitionPruning}
 import org.apache.spark.sql.execution.datasources.PruneFileSourcePartitions
 import org.apache.spark.sql.execution.datasources.parquet.ParquetSchemaPruning
 import org.apache.spark.sql.execution.python.{ExtractPythonUDFFromAggregate, ExtractPythonUDFs}
@@ -34,7 +35,15 @@ class SparkOptimizer(
     Batch("Extract Python UDFs", Once,
       Seq(ExtractPythonUDFFromAggregate, ExtractPythonUDFs, PushPredicateThroughNonJoin): _*) :+
     Batch("Prune File Source Table Partitions", Once, PruneFileSourcePartitions) :+
-    Batch("Parquet Schema Pruning", Once, ParquetSchemaPruning)) ++
+    Batch("Parquet Schema Pruning", Once, ParquetSchemaPruning) :+
+    Batch("PartitionPruning", Once,
+      PartitionPruning,
+      OptimizeSubqueries) :+
+    Batch("Pushdown Filters from PartitionPruning", fixedPoint,
+      PushDownPredicates) :+
+    Batch("Cleanup filters that cannot be pushed down", Once,
+      CleanupDynamicPruningFilters,
+      PruneFilters)) ++
     postHocOptimizationBatches :+
     Batch("User Provided Optimizers", fixedPoint, experimentalMethods.extraOptimizations: _*)
 

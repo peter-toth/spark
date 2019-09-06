@@ -119,7 +119,7 @@
     <protobuf.version>2.5.0</protobuf.version>
     <yarn.version>${hadoop.version}</yarn.version>
     <flume.version>1.6.0</flume.version>
-    <zookeeper.version>3.4.6.7.1.0.0-SNAPSHOT</zookeeper.version>
+    <zookeeper.version>3.5.5.7.1.0.0-SNAPSHOT</zookeeper.version>
     <curator.version>2.6.0</curator.version>
     <hive.group>org.spark-project.hive</hive.group>
     <!-- Version used in Maven Hive dependency -->
@@ -2823,7 +2823,7 @@
       <properties>
         <hadoop.version>3.1.1.7.1.0.0-SNAPSHOT</hadoop.version>
         <curator.version>2.12.0</curator.version>
-        <zookeeper.version>3.4.6.7.1.0.0-SNAPSHOT</zookeeper.version>
+        <zookeeper.version>3.5.5.7.1.0.0-SNAPSHOT</zookeeper.version>
       </properties>
       <modules>
         <!-- turn on the hadoop cloud module -->

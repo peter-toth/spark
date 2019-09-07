@@ -167,7 +167,7 @@ object CTESubstitution extends Rule[LogicalPlan] {
   /**
    * If we encounter a relation that matches the recursive CTE then the relation is replaced to an
    * [[UnresolvedRecursiveReference]]. The replacement process also checks possible references in
-   * subqueries and report them as errors.
+   * subqueries and reports them as errors.
    */
   private def insertRecursiveReferences(
       ctePlan: LogicalPlan,

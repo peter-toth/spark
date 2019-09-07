@@ -153,7 +153,7 @@ object CTESubstitution extends Rule[LogicalPlan] {
             insertRecursiveRelation(cteName, columnNames, true, u)
           case _ =>
             throw new AnalysisException(s"Recursive query ${cteName} should contain UNION or " +
-              s"UNION ALL statements only. This error can also be caused by ORDER BY or LIMIT " +
+              "UNION ALL statements only. This error can also be caused by ORDER BY or LIMIT " +
               "keywords used on result of UNION or UNION ALL.")
         }
       } else {

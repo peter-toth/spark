@@ -126,7 +126,7 @@ object CTESubstitution extends Rule[LogicalPlan] {
   }
 
   /**
-   * If recursion is allowed recursion handling starts with inserting unresolved self-references
+   * If recursion is allowed, recursion handling starts with inserting unresolved self-references
    * ([[UnresolvedRecursiveReference]]) to places where a reference to the CTE definition itself is
    * found.
    * If there is a self-reference then we need to check if structure of the query satisfies the SQL

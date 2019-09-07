@@ -537,7 +537,7 @@ trait CheckAnalysis extends PredicateHelper {
    * A further constraint is that a recursive term can contain one recursive reference only (except
    * for using it on different sides of a UNION).
    *
-   * This rules checks that these restrictions are not violated and returns the original plan.
+   * This rule checks that these restrictions are not violated and returns the original plan.
    */
   private def checkRecursion(
       plan: LogicalPlan,

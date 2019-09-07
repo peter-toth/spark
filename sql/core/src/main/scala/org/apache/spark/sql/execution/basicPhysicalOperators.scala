@@ -287,9 +287,9 @@ case class RecursiveRelationExec(
 
   override def stringArgs: Iterator[Any] = Iterator(cteName, output)
 
-  private val physicalRecursiveTerms = new ConcurrentLinkedQueue[SparkPlan]
+  private val physicalRecursiveTerms = new ArrayBuffer[SparkPlan]
 
-  def recursiveTermIterations: Seq[SparkPlan] = physicalRecursiveTerms.asScala.toList
+  def recursiveTermIterations: Seq[SparkPlan] = physicalRecursiveTerms.toList
 
   override lazy val metrics = Map(
     "numOutputRows" -> SQLMetrics.createMetric(sparkContext, "number of output rows"))
@@ -366,7 +366,7 @@ case class RecursiveRelationExec(
         new QueryExecution(sqlContext.sparkSession, newLogicalRecursiveTerm,
           alreadyOptimized = true).executedPlan
 
-      physicalRecursiveTerms.offer(physicalRecursiveTerm)
+      physicalRecursiveTerms += physicalRecursiveTerm
 
       executionIdLong.foreach(onUpdatePlan)
 

@@ -199,7 +199,7 @@ object CTESubstitution extends Rule[LogicalPlan] {
       union: Union) = {
     if (union.children.size != 2) {
       throw new AnalysisException(s"Recursive query ${cteName} should contain one anchor term " +
-        s"and one recursive term connected with UNION or UNION ALL.")
+        "and one recursive term connected with UNION or UNION ALL.")
     }
 
     val anchorTerm :: recursiveTerm :: Nil = union.children

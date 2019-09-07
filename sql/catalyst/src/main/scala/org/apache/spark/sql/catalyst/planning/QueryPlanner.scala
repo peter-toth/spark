@@ -26,7 +26,7 @@ import org.apache.spark.sql.catalyst.trees.TreeNode
  * be used for execution. If this strategy does not apply to the given logical operation then an
  * empty list should be returned.
  */
-abstract class GenericStrategy[PhysicalPlan <: TreeNode[PhysicalPlan]] extends Logging {
+abstract class GenericStrategy[PhysicalPlan <: TreeNode[PhysicalPlan], PlanParam] extends Logging {
 
   /**
    * Returns a placeholder for a physical plan that executes `plan`. This placeholder will be
@@ -34,6 +34,8 @@ abstract class GenericStrategy[PhysicalPlan <: TreeNode[PhysicalPlan]] extends L
    * available.
    */
   protected def planLater(plan: LogicalPlan): PhysicalPlan
+
+  def apply(plan: LogicalPlan, param: PlanParam): Seq[PhysicalPlan] = apply(plan)
 
   def apply(plan: LogicalPlan): Seq[PhysicalPlan]
 }
@@ -52,15 +54,15 @@ abstract class GenericStrategy[PhysicalPlan <: TreeNode[PhysicalPlan]] extends L
  *
  * @tparam PhysicalPlan The type of physical plan produced by this [[QueryPlanner]]
  */
-abstract class QueryPlanner[PhysicalPlan <: TreeNode[PhysicalPlan]] {
+abstract class QueryPlanner[PhysicalPlan <: TreeNode[PhysicalPlan], PlanParam] {
   /** A list of execution strategies that can be used by the planner */
-  def strategies: Seq[GenericStrategy[PhysicalPlan]]
+  def strategies: Seq[GenericStrategy[PhysicalPlan, PlanParam]]
 
-  def plan(plan: LogicalPlan): Iterator[PhysicalPlan] = {
+  def plan(plan: LogicalPlan, param: PlanParam): Iterator[PhysicalPlan] = {
     // Obviously a lot to do here still...
 
     // Collect physical plan candidates.
-    val candidates = strategies.iterator.flatMap(_(plan))
+    val candidates = strategies.iterator.flatMap(_(plan, param))
 
     // The candidates may contain placeholders marked as [[planLater]],
     // so try to replace them by their child plans.
@@ -75,7 +77,7 @@ abstract class QueryPlanner[PhysicalPlan <: TreeNode[PhysicalPlan]] {
         placeholders.iterator.foldLeft(Iterator(candidate)) {
           case (candidatesWithPlaceholders, (placeholder, logicalPlan)) =>
             // Plan the logical plan for the placeholder.
-            val childPlans = this.plan(logicalPlan)
+            val childPlans = this.plan(logicalPlan, param)
 
             candidatesWithPlaceholders.flatMap { candidateWithPlaceholders =>
               childPlans.map { childPlan =>

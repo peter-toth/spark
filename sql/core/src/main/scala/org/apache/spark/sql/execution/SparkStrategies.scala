@@ -47,7 +47,7 @@ import org.apache.spark.sql.types.StructType
  * writing libraries should instead consider using the stable APIs provided in
  * [[org.apache.spark.sql.sources]]
  */
-abstract class SparkStrategy extends GenericStrategy[SparkPlan] {
+abstract class SparkStrategy extends GenericStrategy[SparkPlan, QueryExecution] {
 
   override protected def planLater(plan: LogicalPlan): SparkPlan = PlanLater(plan)
 }
@@ -61,11 +61,11 @@ case class PlanLater(plan: LogicalPlan) extends LeafExecNode {
   }
 }
 
-abstract class SparkStrategies extends QueryPlanner[SparkPlan] {
+abstract class SparkStrategies extends QueryPlanner[SparkPlan, QueryExecution] {
   self: SparkPlanner =>
 
-  override def plan(plan: LogicalPlan): Iterator[SparkPlan] = {
-    super.plan(plan).map { p =>
+  override def plan(plan: LogicalPlan, param: QueryExecution): Iterator[SparkPlan] = {
+    super.plan(plan, param).map { p =>
       val logicalPlan = plan match {
         case ReturnAnswer(rootPlan) => rootPlan
         case _ => plan
@@ -630,122 +630,129 @@ abstract class SparkStrategies extends QueryPlanner[SparkPlan] {
     }
   }
 
-  case class BasicOperators(queryExecution: QueryExecution) extends Strategy {
-    def apply(plan: LogicalPlan): Seq[SparkPlan] = plan match {
-      case d: DataWritingCommand => DataWritingCommandExec(d, planLater(d.query)) :: Nil
-      case r: RunnableCommand => ExecutedCommandExec(r) :: Nil
+  object BasicOperators extends Strategy {
+    override def apply(plan: LogicalPlan, queryExecution: QueryExecution): Seq[SparkPlan] = {
+      plan match {
+        case d: DataWritingCommand => DataWritingCommandExec(d, planLater(d.query)) :: Nil
+        case r: RunnableCommand => ExecutedCommandExec(r) :: Nil
 
-      case MemoryPlan(sink, output) =>
-        val encoder = RowEncoder(StructType.fromAttributes(output))
-        LocalTableScanExec(output, sink.allData.map(r => encoder.toRow(r).copy())) :: Nil
+        case MemoryPlan(sink, output) =>
+          val encoder = RowEncoder(StructType.fromAttributes(output))
+          LocalTableScanExec(output, sink.allData.map(r => encoder.toRow(r).copy())) :: Nil
 
-      case logical.Distinct(child) =>
-        throw new IllegalStateException(
-          "logical distinct operator should have been replaced by aggregate in the optimizer")
-      case logical.Intersect(left, right, false) =>
-        throw new IllegalStateException(
-          "logical intersect  operator should have been replaced by semi-join in the optimizer")
-      case logical.Intersect(left, right, true) =>
-        throw new IllegalStateException(
-          "logical intersect operator should have been replaced by union, aggregate" +
-            " and generate operators in the optimizer")
-      case logical.Except(left, right, false) =>
-        throw new IllegalStateException(
-          "logical except operator should have been replaced by anti-join in the optimizer")
-      case logical.Except(left, right, true) =>
-        throw new IllegalStateException(
-          "logical except (all) operator should have been replaced by union, aggregate" +
-            " and generate operators in the optimizer")
-      case logical.ResolvedHint(child, hints) =>
-        throw new IllegalStateException(
-          "ResolvedHint operator should have been replaced by join hint in the optimizer")
+        case logical.Distinct(child) =>
+          throw new IllegalStateException(
+            "logical distinct operator should have been replaced by aggregate in the optimizer")
+        case logical.Intersect(left, right, false) =>
+          throw new IllegalStateException(
+            "logical intersect  operator should have been replaced by semi-join in the optimizer")
+        case logical.Intersect(left, right, true) =>
+          throw new IllegalStateException(
+            "logical intersect operator should have been replaced by union, aggregate" +
+              " and generate operators in the optimizer")
+        case logical.Except(left, right, false) =>
+          throw new IllegalStateException(
+            "logical except operator should have been replaced by anti-join in the optimizer")
+        case logical.Except(left, right, true) =>
+          throw new IllegalStateException(
+            "logical except (all) operator should have been replaced by union, aggregate" +
+              " and generate operators in the optimizer")
+        case logical.ResolvedHint(child, hints) =>
+          throw new IllegalStateException(
+            "ResolvedHint operator should have been replaced by join hint in the optimizer")
 
-      case logical.DeserializeToObject(deserializer, objAttr, child) =>
-        execution.DeserializeToObjectExec(deserializer, objAttr, planLater(child)) :: Nil
-      case logical.SerializeFromObject(serializer, child) =>
-        execution.SerializeFromObjectExec(serializer, planLater(child)) :: Nil
-      case logical.MapPartitions(f, objAttr, child) =>
-        execution.MapPartitionsExec(f, objAttr, planLater(child)) :: Nil
-      case logical.MapPartitionsInR(f, p, b, is, os, objAttr, child) =>
-        execution.MapPartitionsExec(
-          execution.r.MapPartitionsRWrapper(f, p, b, is, os), objAttr, planLater(child)) :: Nil
-      case logical.FlatMapGroupsInR(f, p, b, is, os, key, value, grouping, data, objAttr, child) =>
-        execution.FlatMapGroupsInRExec(f, p, b, is, os, key, value, grouping,
-          data, objAttr, planLater(child)) :: Nil
-      case logical.FlatMapGroupsInRWithArrow(f, p, b, is, ot, key, grouping, child) =>
-        execution.FlatMapGroupsInRWithArrowExec(
-          f, p, b, is, ot, key, grouping, planLater(child)) :: Nil
-      case logical.MapPartitionsInRWithArrow(f, p, b, is, ot, child) =>
-        execution.MapPartitionsInRWithArrowExec(
-          f, p, b, is, ot, planLater(child)) :: Nil
-      case logical.FlatMapGroupsInPandas(grouping, func, output, child) =>
-        execution.python.FlatMapGroupsInPandasExec(grouping, func, output, planLater(child)) :: Nil
-      case logical.MapInPandas(func, output, child) =>
-        execution.python.MapInPandasExec(func, output, planLater(child)) :: Nil
-      case logical.MapElements(f, _, _, objAttr, child) =>
-        execution.MapElementsExec(f, objAttr, planLater(child)) :: Nil
-      case logical.AppendColumns(f, _, _, in, out, child) =>
-        execution.AppendColumnsExec(f, in, out, planLater(child)) :: Nil
-      case logical.AppendColumnsWithObject(f, childSer, newSer, child) =>
-        execution.AppendColumnsWithObjectExec(f, childSer, newSer, planLater(child)) :: Nil
-      case logical.MapGroups(f, key, value, grouping, data, objAttr, child) =>
-        execution.MapGroupsExec(f, key, value, grouping, data, objAttr, planLater(child)) :: Nil
-      case logical.FlatMapGroupsWithState(
-          f, key, value, grouping, data, output, _, _, _, timeout, child) =>
-        execution.MapGroupsExec(
-          f, key, value, grouping, data, output, timeout, planLater(child)) :: Nil
-      case logical.CoGroup(f, key, lObj, rObj, lGroup, rGroup, lAttr, rAttr, oAttr, left, right) =>
-        execution.CoGroupExec(
-          f, key, lObj, rObj, lGroup, rGroup, lAttr, rAttr, oAttr,
-          planLater(left), planLater(right)) :: Nil
+        case logical.DeserializeToObject(deserializer, objAttr, child) =>
+          execution.DeserializeToObjectExec(deserializer, objAttr, planLater(child)) :: Nil
+        case logical.SerializeFromObject(serializer, child) =>
+          execution.SerializeFromObjectExec(serializer, planLater(child)) :: Nil
+        case logical.MapPartitions(f, objAttr, child) =>
+          execution.MapPartitionsExec(f, objAttr, planLater(child)) :: Nil
+        case logical.MapPartitionsInR(f, p, b, is, os, objAttr, child) =>
+          execution.MapPartitionsExec(
+            execution.r.MapPartitionsRWrapper(f, p, b, is, os), objAttr, planLater(child)) :: Nil
+        case logical.FlatMapGroupsInR(f, p, b, is, os, key, value, grouping, data, objAttr,
+            child) =>
+          execution.FlatMapGroupsInRExec(f, p, b, is, os, key, value, grouping,
+            data, objAttr, planLater(child)) :: Nil
+        case logical.FlatMapGroupsInRWithArrow(f, p, b, is, ot, key, grouping, child) =>
+          execution.FlatMapGroupsInRWithArrowExec(
+            f, p, b, is, ot, key, grouping, planLater(child)) :: Nil
+        case logical.MapPartitionsInRWithArrow(f, p, b, is, ot, child) =>
+          execution.MapPartitionsInRWithArrowExec(
+            f, p, b, is, ot, planLater(child)) :: Nil
+        case logical.FlatMapGroupsInPandas(grouping, func, output, child) =>
+          execution.python.FlatMapGroupsInPandasExec(grouping, func, output, planLater(child)) ::
+            Nil
+        case logical.MapInPandas(func, output, child) =>
+          execution.python.MapInPandasExec(func, output, planLater(child)) :: Nil
+        case logical.MapElements(f, _, _, objAttr, child) =>
+          execution.MapElementsExec(f, objAttr, planLater(child)) :: Nil
+        case logical.AppendColumns(f, _, _, in, out, child) =>
+          execution.AppendColumnsExec(f, in, out, planLater(child)) :: Nil
+        case logical.AppendColumnsWithObject(f, childSer, newSer, child) =>
+          execution.AppendColumnsWithObjectExec(f, childSer, newSer, planLater(child)) :: Nil
+        case logical.MapGroups(f, key, value, grouping, data, objAttr, child) =>
+          execution.MapGroupsExec(f, key, value, grouping, data, objAttr, planLater(child)) :: Nil
+        case logical.FlatMapGroupsWithState(
+        f, key, value, grouping, data, output, _, _, _, timeout, child) =>
+          execution.MapGroupsExec(
+            f, key, value, grouping, data, output, timeout, planLater(child)) :: Nil
+        case logical.CoGroup(f, key, lObj, rObj, lGroup, rGroup, lAttr, rAttr, oAttr, left,
+            right) =>
+          execution.CoGroupExec(
+            f, key, lObj, rObj, lGroup, rGroup, lAttr, rAttr, oAttr,
+            planLater(left), planLater(right)) :: Nil
 
-      case logical.Repartition(numPartitions, shuffle, child) =>
-        if (shuffle) {
-          ShuffleExchangeExec(RoundRobinPartitioning(numPartitions),
-            planLater(child), canChangeNumPartitions = false) :: Nil
-        } else {
-          execution.CoalesceExec(numPartitions, planLater(child)) :: Nil
-        }
-      case logical.Sort(sortExprs, global, child) =>
-        execution.SortExec(sortExprs, global, planLater(child)) :: Nil
-      case logical.Project(projectList, child) =>
-        execution.ProjectExec(projectList, planLater(child)) :: Nil
-      case logical.Filter(condition, child) =>
-        execution.FilterExec(condition, planLater(child)) :: Nil
-      case rr @ logical.RecursiveRelation(name, anchorTerm, _) =>
-        execution.RecursiveRelationExec(name, planLater(anchorTerm), rr.output, queryExecution) ::
-          Nil
-      case logical.RecursiveReference(name, output, _, level, _, rdd) =>
-        RDDScanExec(output, rdd, s"RecursiveReference $name, $level") :: Nil
-      case f: logical.TypedFilter =>
-        execution.FilterExec(f.typedCondition(f.deserializer), planLater(f.child)) :: Nil
-      case e @ logical.Expand(_, _, child) =>
-        execution.ExpandExec(e.projections, e.output, planLater(child)) :: Nil
-      case logical.Sample(lb, ub, withReplacement, seed, child) =>
-        execution.SampleExec(lb, ub, withReplacement, seed, planLater(child)) :: Nil
-      case logical.LocalRelation(output, data, _) =>
-        LocalTableScanExec(output, data) :: Nil
-      case logical.LocalLimit(IntegerLiteral(limit), child) =>
-        execution.LocalLimitExec(limit, planLater(child)) :: Nil
-      case logical.GlobalLimit(IntegerLiteral(limit), child) =>
-        execution.GlobalLimitExec(limit, planLater(child)) :: Nil
-      case logical.Union(unionChildren) =>
-        execution.UnionExec(unionChildren.map(planLater)) :: Nil
-      case g @ logical.Generate(generator, _, outer, _, _, child) =>
-        execution.GenerateExec(
-          generator, g.requiredChildOutput, outer,
-          g.qualifiedGeneratorOutput, planLater(child)) :: Nil
-      case _: logical.OneRowRelation =>
-        execution.RDDScanExec(Nil, singleRowRdd, "OneRowRelation") :: Nil
-      case r: logical.Range =>
-        execution.RangeExec(r) :: Nil
-      case r: logical.RepartitionByExpression =>
-        exchange.ShuffleExchangeExec(
-          r.partitioning, planLater(r.child), canChangeNumPartitions = false) :: Nil
-      case ExternalRDD(outputObjAttr, rdd) => ExternalRDDScanExec(outputObjAttr, rdd) :: Nil
-      case r: LogicalRDD =>
-        RDDScanExec(r.output, r.rdd, "ExistingRDD", r.outputPartitioning, r.outputOrdering) :: Nil
-      case _ => Nil
+        case logical.Repartition(numPartitions, shuffle, child) =>
+          if (shuffle) {
+            ShuffleExchangeExec(RoundRobinPartitioning(numPartitions),
+              planLater(child), canChangeNumPartitions = false) :: Nil
+          } else {
+            execution.CoalesceExec(numPartitions, planLater(child)) :: Nil
+          }
+        case logical.Sort(sortExprs, global, child) =>
+          execution.SortExec(sortExprs, global, planLater(child)) :: Nil
+        case logical.Project(projectList, child) =>
+          execution.ProjectExec(projectList, planLater(child)) :: Nil
+        case logical.Filter(condition, child) =>
+          execution.FilterExec(condition, planLater(child)) :: Nil
+        case rr @ logical.RecursiveRelation(name, anchorTerm, _) =>
+          execution.RecursiveRelationExec(name, planLater(anchorTerm), rr.output, queryExecution) ::
+            Nil
+        case logical.RecursiveReference(name, output, _, level, _, rdd) =>
+          RDDScanExec(output, rdd, s"RecursiveReference $name, $level") :: Nil
+        case f: logical.TypedFilter =>
+          execution.FilterExec(f.typedCondition(f.deserializer), planLater(f.child)) :: Nil
+        case e @ logical.Expand(_, _, child) =>
+          execution.ExpandExec(e.projections, e.output, planLater(child)) :: Nil
+        case logical.Sample(lb, ub, withReplacement, seed, child) =>
+          execution.SampleExec(lb, ub, withReplacement, seed, planLater(child)) :: Nil
+        case logical.LocalRelation(output, data, _) =>
+          LocalTableScanExec(output, data) :: Nil
+        case logical.LocalLimit(IntegerLiteral(limit), child) =>
+          execution.LocalLimitExec(limit, planLater(child)) :: Nil
+        case logical.GlobalLimit(IntegerLiteral(limit), child) =>
+          execution.GlobalLimitExec(limit, planLater(child)) :: Nil
+        case logical.Union(unionChildren) =>
+          execution.UnionExec(unionChildren.map(planLater)) :: Nil
+        case g @ logical.Generate(generator, _, outer, _, _, child) =>
+          execution.GenerateExec(
+            generator, g.requiredChildOutput, outer,
+            g.qualifiedGeneratorOutput, planLater(child)) :: Nil
+        case _: logical.OneRowRelation =>
+          execution.RDDScanExec(Nil, singleRowRdd, "OneRowRelation") :: Nil
+        case r: logical.Range =>
+          execution.RangeExec(r) :: Nil
+        case r: logical.RepartitionByExpression =>
+          exchange.ShuffleExchangeExec(
+            r.partitioning, planLater(r.child), canChangeNumPartitions = false) :: Nil
+        case ExternalRDD(outputObjAttr, rdd) => ExternalRDDScanExec(outputObjAttr, rdd) :: Nil
+        case r: LogicalRDD =>
+          RDDScanExec(r.output, r.rdd, "ExistingRDD", r.outputPartitioning, r.outputOrdering) :: Nil
+        case _ => Nil
+      }
     }
+
+    override def apply(plan: LogicalPlan): Seq[SparkPlan] = Nil
   }
 }

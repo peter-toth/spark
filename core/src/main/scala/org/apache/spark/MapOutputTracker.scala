@@ -87,35 +87,25 @@ private class ShuffleStatus(numPartitions: Int) {
   /**
    * Register a map output. If there is already a registered location for the map output then it
    * will be replaced by the new location.
-   *
-   * @return The old map status, which can be null.
    */
-  def addMapOutput(mapId: Int, status: MapStatus): MapStatus = synchronized {
-    val old = mapStatuses(mapId)
-    if (old == null) {
+  def addMapOutput(mapId: Int, status: MapStatus): Unit = synchronized {
+    if (mapStatuses(mapId) == null) {
       _numAvailableOutputs += 1
       invalidateSerializedMapOutputStatusCache()
     }
     mapStatuses(mapId) = status
-    old
   }
 
   /**
    * Remove the map output which was served by the specified block manager.
    * This is a no-op if there is no registered map output or if the registered output is from a
    * different block manager.
-   *
-   * @return The old map status, which can be null.
    */
-  def removeMapOutput(mapId: Int, bmAddress: BlockManagerId): MapStatus = synchronized {
-    val old = mapStatuses(mapId)
-    if (old != null && old.location == bmAddress) {
+  def removeMapOutput(mapId: Int, bmAddress: BlockManagerId): Unit = synchronized {
+    if (mapStatuses(mapId) != null && mapStatuses(mapId).location == bmAddress) {
       _numAvailableOutputs -= 1
       mapStatuses(mapId) = null
       invalidateSerializedMapOutputStatusCache()
-      old
-    } else {
-      null
     }
   }
 
@@ -123,8 +113,8 @@ private class ShuffleStatus(numPartitions: Int) {
    * Removes all shuffle outputs associated with this host. Note that this will also remove
    * outputs which are served by an external shuffle server (if one exists).
    */
-  def removeOutputsOnHost(host: String, listeners: Seq[MapOutputTrackerListener] = Nil): Unit = {
-    removeOutputsByFilter(x => x.host == host, listeners)
+  def removeOutputsOnHost(host: String): Unit = {
+    removeOutputsByFilter(x => x.host == host)
   }
 
   /**
@@ -140,16 +130,12 @@ private class ShuffleStatus(numPartitions: Int) {
    * Removes all shuffle outputs which satisfies the filter. Note that this will also
    * remove outputs which are served by an external shuffle server (if one exists).
    */
-  def removeOutputsByFilter(
-      f: (BlockManagerId) => Boolean,
-      listeners: Seq[MapOutputTrackerListener] = Nil): Unit = synchronized {
+  def removeOutputsByFilter(f: (BlockManagerId) => Boolean): Unit = synchronized {
     for (mapId <- 0 until mapStatuses.length) {
-      val status = mapStatuses(mapId)
-      if (status != null && f(status.location)) {
+      if (mapStatuses(mapId) != null && f(mapStatuses(mapId).location)) {
         _numAvailableOutputs -= 1
         mapStatuses(mapId) = null
         invalidateSerializedMapOutputStatusCache()
-        listeners.foreach(_.mapOutputRemoved(status))
       }
     }
   }
@@ -364,8 +350,6 @@ private[spark] class MapOutputTrackerMaster(
   // requests for map output statuses
   private val mapOutputRequests = new LinkedBlockingQueue[GetMapOutputMessage]
 
-  private var listeners: Seq[MapOutputTrackerListener] = Nil
-
   // Thread pool used for handling map output status requests. This is a separate thread pool
   // to ensure we don't block the normal dispatcher threads.
   private val threadpool: ThreadPoolExecutor = {
@@ -385,10 +369,6 @@ private[spark] class MapOutputTrackerMaster(
       "message that is too large."
     logError(msg)
     throw new IllegalArgumentException(msg)
-  }
-
-  def addListener(listener: MapOutputTrackerListener): Unit = synchronized {
-    listeners = (listeners :+ listener)
   }
 
   def post(message: GetMapOutputMessage): Unit = {
@@ -440,22 +420,15 @@ private[spark] class MapOutputTrackerMaster(
   }
 
   def registerMapOutput(shuffleId: Int, mapId: Int, status: MapStatus) {
-    val old = shuffleStatuses(shuffleId).addMapOutput(mapId, status)
-    if (old != null) {
-      listeners.foreach(_.mapOutputRemoved(old))
-    }
-    listeners.foreach(_.mapOutputAdded(status))
+    shuffleStatuses(shuffleId).addMapOutput(mapId, status)
   }
 
   /** Unregister map output information of the given shuffle, mapper and block manager */
   def unregisterMapOutput(shuffleId: Int, mapId: Int, bmAddress: BlockManagerId) {
     shuffleStatuses.get(shuffleId) match {
       case Some(shuffleStatus) =>
-        val old = shuffleStatus.removeMapOutput(mapId, bmAddress)
+        shuffleStatus.removeMapOutput(mapId, bmAddress)
         incrementEpoch()
-        if (old != null) {
-          listeners.foreach(_.mapOutputRemoved(old))
-        }
       case None =>
         throw new SparkException("unregisterMapOutput called for nonexistent shuffle ID")
     }
@@ -465,7 +438,7 @@ private[spark] class MapOutputTrackerMaster(
   def unregisterAllMapOutput(shuffleId: Int) {
     shuffleStatuses.get(shuffleId) match {
       case Some(shuffleStatus) =>
-        shuffleStatus.removeOutputsByFilter(x => true, listeners)
+        shuffleStatus.removeOutputsByFilter(x => true)
         incrementEpoch()
       case None =>
         throw new SparkException(
@@ -477,9 +450,6 @@ private[spark] class MapOutputTrackerMaster(
   def unregisterShuffle(shuffleId: Int) {
     shuffleStatuses.remove(shuffleId).foreach { shuffleStatus =>
       shuffleStatus.invalidateSerializedMapOutputStatusCache()
-      if (listeners.nonEmpty) {
-        shuffleStatus.removeOutputsByFilter(x => true, listeners)
-      }
     }
   }
 
@@ -488,7 +458,7 @@ private[spark] class MapOutputTrackerMaster(
    * outputs which are served by an external shuffle server (if one exists).
    */
   def removeOutputsOnHost(host: String): Unit = {
-    shuffleStatuses.valuesIterator.foreach { _.removeOutputsOnHost(host, listeners) }
+    shuffleStatuses.valuesIterator.foreach { _.removeOutputsOnHost(host) }
     incrementEpoch()
   }
 
@@ -922,24 +892,4 @@ private[spark] object MapOutputTracker extends Logging {
     }
     splitsByAddress.iterator
   }
-}
-
-/**
- * A listener for receiving events about map output blocks being added or removed.
- *
- * Events are not triggered for executor lifecycle events, such as an executor dying. So to
- * properly track an executor's managed shuffle blocks, the listener needs to also monitor
- * those events.
- */
-private[spark] trait MapOutputTrackerListener {
-
-  /** Called when a new map output has been added to the tracker. */
-  def mapOutputAdded(status: MapStatus): Unit
-
-  /**
-   * Called when a map output has been removed from the tracker, or overwritten by another
-   * block manager.
-   */
-  def mapOutputRemoved(status: MapStatus): Unit
-
 }

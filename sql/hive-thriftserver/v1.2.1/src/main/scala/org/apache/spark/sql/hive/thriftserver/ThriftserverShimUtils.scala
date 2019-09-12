@@ -43,4 +43,23 @@ private[thriftserver] object ThriftserverShimUtils {
     RowSetFactory.create(getResultSetSchema, getProtocolVersion)
   }
 
+  private[thriftserver] def toJavaSQLType(s: String): Int = Type.getType(s).toJavaSQLType
+
+  private[thriftserver] def supportedType(): Seq[Type] = {
+    Seq(NULL_TYPE, BOOLEAN_TYPE, STRING_TYPE, BINARY_TYPE,
+      TINYINT_TYPE, SMALLINT_TYPE, INT_TYPE, BIGINT_TYPE,
+      FLOAT_TYPE, DOUBLE_TYPE, DECIMAL_TYPE,
+      DATE_TYPE, TIMESTAMP_TYPE,
+      ARRAY_TYPE, MAP_TYPE, STRUCT_TYPE)
+  }
+
+  private[thriftserver] val testedProtocolVersions = Seq(
+    HIVE_CLI_SERVICE_PROTOCOL_V1,
+    HIVE_CLI_SERVICE_PROTOCOL_V2,
+    HIVE_CLI_SERVICE_PROTOCOL_V3,
+    HIVE_CLI_SERVICE_PROTOCOL_V4,
+    HIVE_CLI_SERVICE_PROTOCOL_V5,
+    HIVE_CLI_SERVICE_PROTOCOL_V6,
+    HIVE_CLI_SERVICE_PROTOCOL_V7,
+    HIVE_CLI_SERVICE_PROTOCOL_V8)
 }

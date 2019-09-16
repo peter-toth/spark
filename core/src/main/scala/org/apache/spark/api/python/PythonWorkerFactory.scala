@@ -21,7 +21,6 @@ import java.io.{DataInputStream, DataOutputStream, EOFException, InputStream, Ou
 import java.net.{InetAddress, ServerSocket, Socket, SocketException}
 import java.nio.charset.StandardCharsets
 import java.util.Arrays
-import java.util.concurrent.atomic.AtomicInteger
 
 import scala.collection.JavaConverters._
 import scala.collection.mutable
@@ -31,11 +30,7 @@ import org.apache.spark.internal.Logging
 import org.apache.spark.security.SocketAuthHelper
 import org.apache.spark.util.{RedirectThread, Utils}
 
-
-private[spark] class PythonWorkerFactory(
-    pythonExec: String,
-    envVars: Map[String, String],
-    conf: SparkConf)
+private[spark] class PythonWorkerFactory(pythonExec: String, envVars: Map[String, String])
   extends Logging {
 
   import PythonWorkerFactory._
@@ -81,14 +76,6 @@ private[spark] class PythonWorkerFactory(
   val daemonWorkers = new mutable.WeakHashMap[Socket, Int]()
   val idleWorkers = new mutable.Queue[Socket]()
   var lastActivity = 0L
-  val virtualEnvEnabled = conf.getBoolean("spark.pyspark.virtualenv.enabled", false)
-  val virtualenvPythonExec = if (virtualEnvEnabled) {
-    val virtualEnvFactory = new VirtualEnvFactory(pythonExec, conf, false)
-    virtualEnvFactory.setupVirtualEnv()
-  } else {
-    pythonExec
-  }
-
   new MonitorThread().start()
 
   var simpleWorkers = new mutable.WeakHashMap[Socket, Process]()
@@ -157,7 +144,7 @@ private[spark] class PythonWorkerFactory(
       serverSocket = new ServerSocket(0, 1, InetAddress.getByAddress(Array(127, 0, 0, 1)))
 
       // Create and start the worker
-      val pb = new ProcessBuilder(Arrays.asList(virtualenvPythonExec, "-m", workerModule))
+      val pb = new ProcessBuilder(Arrays.asList(pythonExec, "-m", workerModule))
       val workerEnv = pb.environment()
       workerEnv.putAll(envVars.asJava)
       workerEnv.put("PYTHONPATH", pythonPath)
@@ -199,7 +186,7 @@ private[spark] class PythonWorkerFactory(
 
       try {
         // Create and start the daemon
-        val command = Arrays.asList(virtualenvPythonExec, "-m", daemonModule)
+        val command = Arrays.asList(pythonExec, "-m", daemonModule)
         val pb = new ProcessBuilder(command)
         val workerEnv = pb.environment()
         workerEnv.putAll(envVars.asJava)

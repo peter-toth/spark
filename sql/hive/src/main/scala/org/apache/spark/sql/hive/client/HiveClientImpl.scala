@@ -37,6 +37,7 @@ import org.apache.hadoop.hive.ql.metadata.{Hive, Partition => HivePartition, Tab
 import org.apache.hadoop.hive.ql.parse.BaseSemanticAnalyzer.HIVE_COLUMN_ORDER_ASC
 import org.apache.hadoop.hive.ql.processors._
 import org.apache.hadoop.hive.ql.session.SessionState
+import org.apache.hadoop.security.UserGroupInformation
 
 import org.apache.spark.{SparkConf, SparkException}
 import org.apache.spark.internal.Logging
@@ -194,7 +195,7 @@ private[hive] class HiveClientImpl(
   /** Returns the configuration for the current session. */
   def conf: HiveConf = state.getConf
 
-  private val userName = conf.getUser
+  private val userName = UserGroupInformation.getCurrentUser.getShortUserName
 
   override def getConf(key: String, defaultValue: String): String = {
     conf.get(key, defaultValue)

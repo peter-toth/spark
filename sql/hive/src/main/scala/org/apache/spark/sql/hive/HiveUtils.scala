@@ -19,6 +19,8 @@ package org.apache.spark.sql.hive
 
 import java.io.File
 import java.net.{URL, URLClassLoader}
+import java.nio.charset.StandardCharsets
+import java.sql.Timestamp
 import java.util.Locale
 import java.util.concurrent.TimeUnit
 
@@ -28,9 +30,11 @@ import scala.language.implicitConversions
 
 import org.apache.commons.lang3.{JavaVersion, SystemUtils}
 import org.apache.hadoop.conf.Configuration
+import org.apache.hadoop.hive.common.`type`.HiveDecimal
 import org.apache.hadoop.hive.conf.HiveConf
 import org.apache.hadoop.hive.conf.HiveConf.ConfVars
 import org.apache.hadoop.hive.ql.session.SessionState
+import org.apache.hadoop.hive.serde2.io.{DateWritable, TimestampWritable}
 import org.apache.hadoop.util.VersionInfo
 import org.apache.hive.common.util.HiveVersionInfo
 
@@ -56,7 +60,7 @@ private[spark] object HiveUtils extends Logging {
   }
 
   private val hiveVersion = HiveVersionInfo.getVersion
-  val isHive23: Boolean = hiveVersion.startsWith("2.3")
+  val isHive23: Boolean = hiveVersion.startsWith("2.3") || hiveVersion.startsWith("3")
 
   /** The version of hive used internally by Spark SQL. */
   val builtinHiveVersion: String = if (isHive23) hiveVersion else "1.2.1"
@@ -552,6 +556,6 @@ private[spark] object HiveUtils extends Logging {
 
   // CDPD-4216: this is used in some tests to decide what checks to make. This is obviously
   // broken, but it's only used in tests currently, and should go away when CDPD-3881 is finished.
-  def isHive23: Boolean = SystemUtils.isJavaVersionAtLeast(JavaVersion.JAVA_9)
+  // def isHive23: Boolean = SystemUtils.isJavaVersionAtLeast(JavaVersion.JAVA_9)
 
 }

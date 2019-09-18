@@ -25,12 +25,6 @@ import scala.reflect.runtime.universe.TypeTag
 import org.scalatest.BeforeAndAfterAll
 
 import org.apache.spark.sql._
-import org.apache.spark.sql.catalyst.expressions.{Attribute, Predicate}
-import org.apache.spark.sql.catalyst.planning.PhysicalOperation
-import org.apache.spark.sql.execution.datasources.{DataSourceStrategy, FileBasedDataSourceTest}
-import org.apache.spark.sql.execution.datasources.v2.DataSourceV2Relation
-import org.apache.spark.sql.execution.datasources.v2.orc.OrcTable
-import org.apache.spark.sql.internal.SQLConf
 import org.apache.spark.sql.internal.SQLConf.ORC_IMPLEMENTATION
 import org.apache.spark.sql.test.SQLTestUtils
 
@@ -123,6 +117,9 @@ abstract class OrcTest extends QueryTest with SQLTestUtils with BeforeAndAfterAl
     }
   }
 
+  // Commenting this part because of compilation failures. It requires bringing many datasource
+  // v2 changes from apache spark master
+  /*
   protected def checkNoFilterPredicate
       (predicate: Predicate, noneSupported: Boolean = false)
       (implicit df: DataFrame): Unit = {
@@ -149,5 +146,5 @@ abstract class OrcTest extends QueryTest with SQLTestUtils with BeforeAndAfterAl
       case _ =>
         throw new AnalysisException("Can not match OrcTable in the query.")
     }
-  }
+  } */
 }

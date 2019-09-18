@@ -192,12 +192,14 @@
     <dependency>
       <groupId>${hive.group}</groupId>
       <artifactId>hive-exec</artifactId>
+      <version>${hive23.version}</version>
       <classifier>${hive.classifier}</classifier>
       <scope>provided</scope>
     </dependency>
     <dependency>
       <groupId>${hive.group}</groupId>
       <artifactId>hive-metastore</artifactId>
+      <version>${hive23.version}</version>
       <scope>provided</scope>
     </dependency>
     <dependency>

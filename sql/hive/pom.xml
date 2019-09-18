@@ -97,15 +97,18 @@
     <dependency>
       <groupId>${hive.group}</groupId>
       <artifactId>hive-exec</artifactId>
+      <version>${hive23.version}</version>
       <classifier>${hive.classifier}</classifier>
     </dependency>
     <dependency>
       <groupId>${hive.group}</groupId>
       <artifactId>hive-metastore</artifactId>
+      <version>${hive23.version}</version>
     </dependency>
     <dependency>
       <groupId>${hive.group}</groupId>
       <artifactId>hive-contrib</artifactId>
+      <version>${hive23.version}</version>
     </dependency>
     <dependency>
       <groupId>${hive.group}.hcatalog</groupId>
@@ -222,7 +225,12 @@
       </build>
     </profile>
     <profile>
-      <id>hadoop-3.2</id>
+      <id>hadoop-3.1</id>
+      <activation>
+        <property>
+          <name>cdpd.build</name>
+        </property>
+      </activation>
       <dependencies>
         <dependency>
           <groupId>${hive.group}</groupId>

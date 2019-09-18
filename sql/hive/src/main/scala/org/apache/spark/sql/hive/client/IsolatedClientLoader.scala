@@ -123,7 +123,7 @@ private[hive] object IsolatedClientLoader extends Logging {
 
     var remoteRepos = "https://maven-central.storage-download.googleapis.com/repos/central/data/"
     if (Utils.isTesting) {
-      remoteRepos += ",http://nexus-private.hortonworks.com/nexus/content/groups/public"
+      remoteRepos += ",https://nexus-private.hortonworks.com/nexus/content/groups/public"
     }
     val classpath = quietly {
       SparkSubmitUtils.resolveMavenCoordinates(

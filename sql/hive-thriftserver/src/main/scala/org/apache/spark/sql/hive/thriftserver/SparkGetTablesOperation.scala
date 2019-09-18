@@ -61,8 +61,6 @@ private[hive] class SparkGetTablesOperation(
     this.tableTypes.addAll(tableTypes)
   }
 
-  private var statementId: String = _
-
   override def close(): Unit = {
     super.close()
     HiveThriftServer2.listener.onOperationClosed(statementId)

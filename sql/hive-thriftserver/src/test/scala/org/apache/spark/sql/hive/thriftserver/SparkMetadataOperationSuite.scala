@@ -17,7 +17,7 @@
 
 package org.apache.spark.sql.hive.thriftserver
 
-import java.sql.ResultSet
+import java.sql.{DatabaseMetaData, ResultSet}
 
 class SparkMetadataOperationSuite extends HiveThriftJdbcTest {
 
@@ -183,7 +183,12 @@ class SparkMetadataOperationSuite extends HiveThriftJdbcTest {
     }
   }
 
-  test("Spark's own GetTablesOperation(SparkGetTablesOperation)") {
+  // The following code is commented since it was introducing compile failures
+  // All of the tests in below code exist in other parts of this file with the same name.
+  // The code was brought during backport of several commits from upstream and
+  // to avoid confusion I am commenting them out, instead of removing them.
+  /*
+   test("Spark's own GetTablesOperation(SparkGetTablesOperation)") {
     def testGetTablesOperation(
         schema: String,
         tableNamePattern: String,
@@ -389,6 +394,7 @@ class SparkMetadataOperationSuite extends HiveThriftJdbcTest {
       checkResult(metaData.getTableTypes, Seq("TABLE", "VIEW"))
     }
   }
+   */
 
   test("GetTypeInfo Thrift API") {
     def checkResult(rs: ResultSet, typeNames: Seq[String]): Unit = {

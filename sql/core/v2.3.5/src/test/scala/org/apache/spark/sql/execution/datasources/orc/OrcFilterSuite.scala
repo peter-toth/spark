@@ -25,13 +25,11 @@ import scala.collection.JavaConverters._
 
 import org.apache.hadoop.hive.ql.io.sarg.{PredicateLeaf, SearchArgument}
 
-import org.apache.spark.sql.{AnalysisException, Column, DataFrame}
+import org.apache.spark.sql.{Column, DataFrame}
 import org.apache.spark.sql.catalyst.dsl.expressions._
 import org.apache.spark.sql.catalyst.expressions._
 import org.apache.spark.sql.catalyst.planning.PhysicalOperation
 import org.apache.spark.sql.execution.datasources.{DataSourceStrategy, HadoopFsRelation, LogicalRelation}
-import org.apache.spark.sql.execution.datasources.v2.DataSourceV2Relation
-import org.apache.spark.sql.execution.datasources.v2.orc.OrcTable
 import org.apache.spark.sql.test.SharedSQLContext
 import org.apache.spark.sql.types._
 
@@ -44,6 +42,7 @@ import org.apache.spark.sql.types._
  */
 class OrcFilterSuite extends OrcTest with SharedSQLContext {
 
+
   protected def checkFilterPredicate(
       df: DataFrame,
       predicate: Predicate,
@@ -53,6 +52,12 @@ class OrcFilterSuite extends OrcTest with SharedSQLContext {
       .select(output.map(e => Column(e)): _*)
       .where(Column(predicate))
 
+    // The following commented code is a result of partial backport of  SPARK-23817
+    //  that has happened during conflict resolution of some other backports. Not commenting
+    // will cause compilation failures since it relies on fully backporting
+    // SPARK-23817. I will comment these codes here to avoid confusion. Some codes are
+    // also added to make this file like before partially bringing SPARK-23817
+    /*
     query.queryExecution.optimizedPlan match {
       case PhysicalOperation(_, filters,
         DataSourceV2Relation(orcTable: OrcTable, _, options)) =>
@@ -68,6 +73,23 @@ class OrcFilterSuite extends OrcTest with SharedSQLContext {
       case _ =>
         throw new AnalysisException("Can not match OrcTable in the query.")
     }
+    */
+
+    var maybeRelation: Option[HadoopFsRelation] = None
+    val maybeAnalyzedPredicate = query.queryExecution.optimizedPlan.collect {
+      case PhysicalOperation(_, filters, LogicalRelation(orcRelation: HadoopFsRelation, _, _, _)) =>
+        maybeRelation = Some(orcRelation)
+        filters
+    }.flatten.reduceLeftOption(_ && _)
+    assert(maybeAnalyzedPredicate.isDefined, "No filter is analyzed from the given query")
+
+    val (_, selectedFilters, _) =
+      DataSourceStrategy.selectFilters(maybeRelation.get, maybeAnalyzedPredicate.toSeq)
+    assert(selectedFilters.nonEmpty, "No filter is pushed down")
+
+    val maybeFilter = OrcFilters.createFilter(query.schema, selectedFilters)
+    assert(maybeFilter.isDefined, s"Couldn't generate filter predicate for $selectedFilters")
+    checker(maybeFilter.get)
   }
 
   protected def checkFilterPredicate
@@ -87,6 +109,30 @@ class OrcFilterSuite extends OrcTest with SharedSQLContext {
       assert(filter.toString == stringExpr)
     }
     checkFilterPredicate(df, predicate, checkLogicalOperator)
+  }
+
+  private def checkNoFilterPredicate
+      (predicate: Predicate)
+      (implicit df: DataFrame): Unit = {
+    val output = predicate.collect { case a: Attribute => a }.distinct
+    val query = df
+      .select(output.map(e => Column(e)): _*)
+      .where(Column(predicate))
+
+    var maybeRelation: Option[HadoopFsRelation] = None
+    val maybeAnalyzedPredicate = query.queryExecution.optimizedPlan.collect {
+      case PhysicalOperation(_, filters, LogicalRelation(orcRelation: HadoopFsRelation, _, _, _)) =>
+        maybeRelation = Some(orcRelation)
+        filters
+    }.flatten.reduceLeftOption(_ && _)
+    assert(maybeAnalyzedPredicate.isDefined, "No filter is analyzed from the given query")
+
+    val (_, selectedFilters, _) =
+      DataSourceStrategy.selectFilters(maybeRelation.get, maybeAnalyzedPredicate.toSeq)
+    assert(selectedFilters.nonEmpty, "No filter is pushed down")
+
+    val maybeFilter = OrcFilters.createFilter(query.schema, selectedFilters)
+    assert(maybeFilter.isEmpty, s"Could generate filter predicate for $selectedFilters")
   }
 
   test("filter pushdown - integer") {
@@ -325,15 +371,15 @@ class OrcFilterSuite extends OrcTest with SharedSQLContext {
     }
     // ArrayType
     withOrcDataFrame((1 to 4).map(i => Tuple1(Array(i)))) { implicit df =>
-      checkNoFilterPredicate('_1.isNull, noneSupported = true)
+      checkNoFilterPredicate('_1.isNull)
     }
     // BinaryType
     withOrcDataFrame((1 to 4).map(i => Tuple1(i.b))) { implicit df =>
-      checkNoFilterPredicate('_1 <=> 1.b, noneSupported = true)
+      checkNoFilterPredicate('_1 <=> 1.b)
     }
     // MapType
     withOrcDataFrame((1 to 4).map(i => Tuple1(Map(i -> i)))) { implicit df =>
-      checkNoFilterPredicate('_1.isNotNull, noneSupported = true)
+      checkNoFilterPredicate('_1.isNotNull)
     }
   }
 
@@ -410,4 +456,3 @@ class OrcFilterSuite extends OrcTest with SharedSQLContext {
     }
   }
 }
-

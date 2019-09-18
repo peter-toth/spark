@@ -169,16 +169,22 @@ class VersionsSuite extends SparkFunSuite with Logging {
         hadoopConf.set("hive.metastore.schema.verification", "false")
       }
 
-      // Since Hive 3.0, HIVE-19310 skipped `ensureDbInit` if `hive.in.test=false`.
-      if (version == "3.0" || version == "3.1") {
-        hadoopConf.set("datanucleus.schema.autoCreateAll", "true")
-        hadoopConf.set("hive.metastore.schema.verification", "false")
-      }
       if (version == "3.0" || version == "3.1") {
         // Since Hive 3.0, HIVE-19310 skipped `ensureDbInit` if `hive.in.test=false`.
         hadoopConf.set("hive.in.test", "true")
+        // Since HIVE-17626(Hive 3.0.0), need to set hive.query.reexecution.enabled=false.
+        hadoopConf.set("hive.query.reexecution.enabled", "false")
       }
-      client = buildClient(version, hadoopConf, HiveUtils.formatTimeVarsForHiveClient(hadoopConf))
+      client =
+        new IsolatedClientLoader(
+          version = IsolatedClientLoader.hiveVersion(version),
+          sparkConf = sparkConf,
+          hadoopConf = hadoopConf,
+          execJars = allJars,
+          config = buildConf(),
+          isolationOn = true,
+          baseClassLoader = Utils.getContextOrSparkClassLoader
+        ).createClient()
       if (versionSpark != null) versionSpark.reset()
       versionSpark = TestHiveVersion(client)
       assert(versionSpark.sharedState.externalCatalog.unwrapped.asInstanceOf[HiveExternalCatalog]

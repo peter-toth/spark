@@ -1401,7 +1401,7 @@
       <dependency>
         <groupId>${hive.group}</groupId>
         <artifactId>hive-beeline</artifactId>
-        <version>${hive.version}</version>
+        <version>${hive23.version}</version>
         <scope>${hive.deps.scope}</scope>
         <exclusions>
           <exclusion>
@@ -1453,7 +1453,7 @@
       <dependency>
         <groupId>${hive.group}</groupId>
         <artifactId>hive-cli</artifactId>
-        <version>${hive.version}</version>
+        <version>${hive23.version}</version>
         <scope>${hive.deps.scope}</scope>
         <exclusions>
           <exclusion>
@@ -1509,7 +1509,7 @@
       <dependency>
         <groupId>${hive.group}</groupId>
         <artifactId>hive-common</artifactId>
-        <version>${hive.version}</version>
+        <version>${hive23.version}</version>
         <scope>${hive.deps.scope}</scope>
         <exclusions>
           <exclusion>
@@ -1578,7 +1578,7 @@
         <groupId>${hive.group}</groupId>
         <artifactId>hive-exec</artifactId>
         <classifier>${hive.classifier}</classifier>
-        <version>${hive.version}</version>
+        <version>${hive23.version}</version>
         <scope>${hive.deps.scope}</scope>
         <exclusions>
 
@@ -1715,7 +1715,7 @@
       <dependency>
         <groupId>${hive.group}</groupId>
         <artifactId>hive-jdbc</artifactId>
-        <version>${hive.version}</version>
+        <version>${hive23.version}</version>
         <exclusions>
           <exclusion>
             <groupId>${hive.group}</groupId>
@@ -1783,7 +1783,7 @@
       <dependency>
         <groupId>${hive.group}</groupId>
         <artifactId>hive-metastore</artifactId>
-        <version>${hive.version}</version>
+        <version>${hive23.version}</version>
         <scope>${hive.deps.scope}</scope>
         <exclusions>
           <exclusion>
@@ -1835,7 +1835,7 @@
       <dependency>
         <groupId>${hive.group}</groupId>
         <artifactId>hive-serde</artifactId>
-        <version>${hive.version}</version>
+        <version>${hive23.version}</version>
         <scope>${hive.deps.scope}</scope>
         <exclusions>
           <exclusion>
@@ -1924,7 +1924,7 @@
       <dependency>
         <groupId>${hive.group}</groupId>
         <artifactId>hive-shims</artifactId>
-        <version>${hive.version}</version>
+        <version>${hive23.version}</version>
         <scope>${hive.deps.scope}</scope>
         <exclusions>
           <exclusion>
@@ -2040,7 +2040,7 @@
       <dependency>
         <groupId>${hive.group}</groupId>
         <artifactId>hive-contrib</artifactId>
-        <version>${hive.version}</version>
+        <version>${hive23.version}</version>
         <scope>test</scope>
         <exclusions>
           <exclusion>
@@ -2068,7 +2068,7 @@
       <dependency>
         <groupId>${hive.group}.hcatalog</groupId>
         <artifactId>hive-hcatalog-core</artifactId>
-        <version>${hive.version}</version>
+        <version>${hive23.version}</version>
         <scope>test</scope>
         <exclusions>
           <exclusion>

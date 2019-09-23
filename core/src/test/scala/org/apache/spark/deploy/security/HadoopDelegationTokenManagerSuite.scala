@@ -17,17 +17,11 @@
 
 package org.apache.spark.deploy.security
 
-import java.security.PrivilegedExceptionAction
-
 import org.apache.commons.io.IOUtils
 import org.apache.hadoop.conf.Configuration
-import org.apache.hadoop.fs.CommonConfigurationKeysPublic.HADOOP_SECURITY_AUTHENTICATION
-import org.apache.hadoop.security.{Credentials, UserGroupInformation}
-
-import org.apache.spark.util.Utils
 
 import org.apache.spark.{SparkConf, SparkFunSuite}
-import org.apache.spark.deploy.SparkHadoopUtil
+import org.apache.spark.util.Utils
 
 class HadoopDelegationTokenManagerSuite extends SparkFunSuite {
   private val hadoopConf = new Configuration()
@@ -96,39 +90,6 @@ class HadoopDelegationTokenManagerSuite extends SparkFunSuite {
     Utils.withContextClassLoader(noHive) {
       val test = noHive.loadClass(NoHiveTest.getClass.getName().stripSuffix("$"))
       test.getMethod("runTest").invoke(null)
-    }
-  }
-
-  test("SPARK-29082: do not fail if current user does not have credentials") {
-    // SparkHadoopUtil overrides the UGI configuration during initialization. That normally
-    // happens early in the Spark application, but here it may affect the test depending on
-    // how it's run, so force its initialization.
-    SparkHadoopUtil.get
-
-    val krbConf = new Configuration()
-    krbConf.set(HADOOP_SECURITY_AUTHENTICATION, "kerberos")
-
-    UserGroupInformation.setConfiguration(krbConf)
-    try {
-      val manager = new HadoopDelegationTokenManager(new SparkConf(false), krbConf, null)
-      val testImpl = new PrivilegedExceptionAction[Unit] {
-        override def run(): Unit = {
-          assert(UserGroupInformation.isSecurityEnabled())
-          val creds = new Credentials()
-          manager.obtainDelegationTokens(creds)
-          assert(creds.numberOfTokens() === 0)
-          assert(creds.numberOfSecretKeys() === 0)
-        }
-      }
-
-      val realUser = UserGroupInformation.createUserForTesting("realUser", Array.empty)
-      realUser.doAs(testImpl)
-
-      val proxyUser = UserGroupInformation.createProxyUserForTesting("proxyUser", realUser,
-        Array.empty)
-      proxyUser.doAs(testImpl)
-    } finally {
-      UserGroupInformation.reset()
     }
   }
 }

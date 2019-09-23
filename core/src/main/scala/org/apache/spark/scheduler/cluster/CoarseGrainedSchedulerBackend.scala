@@ -402,14 +402,12 @@ class CoarseGrainedSchedulerBackend(scheduler: TaskSchedulerImpl, val rpcEnv: Rp
         val ugi = UserGroupInformation.getCurrentUser()
         val tokens = if (dtm.renewalEnabled) {
           dtm.start()
-        } else {
+        } else if (ugi.hasKerberosCredentials()) {
           val creds = ugi.getCredentials()
           dtm.obtainDelegationTokens(creds)
-          if (creds.numberOfTokens() > 0 || creds.numberOfSecretKeys() > 0) {
-            SparkHadoopUtil.get.serialize(creds)
-          } else {
-            null
-          }
+          SparkHadoopUtil.get.serialize(creds)
+        } else {
+          null
         }
         if (tokens != null) {
           updateDelegationTokens(tokens)

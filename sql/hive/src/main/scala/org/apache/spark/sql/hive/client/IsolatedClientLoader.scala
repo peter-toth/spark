@@ -116,7 +116,7 @@ private[hive] object IsolatedClientLoader extends Logging {
       Seq("com.google.guava:guava:14.0.1",
         s"org.apache.hadoop:hadoop-client:$hadoopVersion")
 
-    var remoteRepos = "http://www.datanucleus.org/downloads/maven2"
+    var remoteRepos = "https://maven-central.storage-download.googleapis.com/repos/central/data/"
     if (Utils.isTesting) {
       remoteRepos += ",http://nexus-private.hortonworks.com/nexus/content/groups/public"
     }

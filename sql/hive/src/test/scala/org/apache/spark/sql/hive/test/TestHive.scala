@@ -650,9 +650,9 @@ object TestHiveUtils {
    * We can probably revert this to upstream's version when CDPD-3881 is finalized.
    */
   def newCatalogConfig(
-      conf: SparkConf,
-      hadoopConf: Configuration,
-      createMetastoreDir: Boolean = false): (SparkConf, Configuration) = {
+                        conf: SparkConf,
+                        hadoopConf: Configuration,
+                        createMetastoreDir: Boolean = false): (SparkConf, Configuration) = {
     val (catalogConf, hiveConf) = if (SystemUtils.isJavaVersionAtLeast(JavaVersion.JAVA_9)) {
       val _hconf = new Configuration(hadoopConf)
       _hconf.set("hive.metastore.schema.verification", "false")
@@ -672,11 +672,31 @@ object TestHiveUtils {
       val warehousePath = Utils.createTempDir()
 
       hiveConf.set(ConfVars.METASTORECONNECTURLKEY.varname,
-         s"jdbc:derby:;databaseName=$metastorePath;create=true")
+        s"jdbc:derby:;databaseName=$metastorePath;create=true")
       catalogConf.set(WAREHOUSE_PATH, warehousePath.toURI().toString())
     }
 
     (catalogConf, hiveConf)
   }
+}
 
+private[hive] object HiveTestJars {
+  private val repository = SQLConf.ADDITIONAL_REMOTE_REPOSITORIES.defaultValueString
+  private val hiveTestJarsDir = Utils.createTempDir()
+
+  def getHiveContribJar(version: String = HiveUtils.builtinHiveVersion): File =
+    getJarFromUrl(s"${repository}org/apache/hive/hive-contrib/" +
+      s"$version/hive-contrib-$version.jar")
+  def getHiveHcatalogCoreJar(version: String = HiveUtils.builtinHiveVersion): File =
+    getJarFromUrl(s"${repository}org/apache/hive/hcatalog/hive-hcatalog-core/" +
+      s"$version/hive-hcatalog-core-$version.jar")
+
+  private def getJarFromUrl(urlString: String): File = {
+    val fileName = urlString.split("/").last
+    val targetFile = new File(hiveTestJarsDir, fileName)
+    if (!targetFile.exists()) {
+      Utils.doFetchFile(urlString, hiveTestJarsDir, fileName, new SparkConf, null, null)
+    }
+    targetFile
+  }
 }

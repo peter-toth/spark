@@ -105,15 +105,6 @@
       <artifactId>hive-metastore</artifactId>
       <version>${hive23.version}</version>
     </dependency>
-    <dependency>
-      <groupId>${hive.group}</groupId>
-      <artifactId>hive-contrib</artifactId>
-      <version>${hive23.version}</version>
-    </dependency>
-    <dependency>
-      <groupId>${hive.group}.hcatalog</groupId>
-      <artifactId>hive-hcatalog-core</artifactId>
-    </dependency>
     <!--
         <dependency>
           <groupId>${hive.group}</groupId>

@@ -21,6 +21,8 @@ private[spark] trait PythonTestsSuite { k8sSuite: KubernetesSuite =>
   import PythonTestsSuite._
   import KubernetesSuite.k8sTestTag
 
+  private val pySparkDockerImage =
+    s"${getTestImageRepo}/spark-py:${getTestImageTag}"
   test("Run PySpark on simple pi.py example", k8sTestTag) {
     sparkAppConf
       .set("spark.kubernetes.container.image", pyImage)

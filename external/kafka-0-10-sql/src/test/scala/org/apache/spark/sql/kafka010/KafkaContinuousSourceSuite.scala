@@ -170,6 +170,10 @@ class KafkaContinuousSourceSuite extends KafkaSourceSuiteBase with KafkaContinuo
       }
     }
   }
+
+  test("SPARK-27494: read kafka record containing null key/values.") {
+    testNullableKeyValue(ContinuousTrigger(100))
+  }
 }
 
 class KafkaContinuousSourceTopicDeletionSuite extends KafkaContinuousTest {

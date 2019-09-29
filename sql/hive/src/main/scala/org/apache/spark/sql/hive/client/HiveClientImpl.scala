@@ -463,6 +463,9 @@ private[hive] class HiveClientImpl(
           // such an object as a managed table
           case l @ _ if (l.toString == "MATERIALIZED_VIEW") =>
             CatalogTableType.MANAGED
+          case unsupportedType =>
+            val tableTypeStr = unsupportedType.toString.toLowerCase(Locale.ROOT).replace("_", " ")
+            throw new AnalysisException(s"Hive $tableTypeStr is not supported.")
         },
         schema = schema,
         partitionColumnNames = partCols.map(_.name),

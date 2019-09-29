@@ -188,9 +188,6 @@ object JSONBenchmarks extends SQLHelper {
       benchmark.addCase(s"Select 1 column + count()", 3) { _ =>
         ds.select($"col1").filter((_: Row) => true).count()
       }
-      benchmark.addCase(s"count()", 3) { _ =>
-        ds.count()
-      }
 
       /*
       Intel(R) Core(TM) i7-7700HQ CPU @ 2.80GHz
@@ -199,7 +196,6 @@ object JSONBenchmarks extends SQLHelper {
       ---------------------------------------------------------------------------------------------
       Select 10 columns + count()               9961 / 10006          1.0         996.1       1.0X
       Select 1 column + count()                  8355 / 8470          1.2         835.5       1.2X
-      count()                                    2104 / 2156          4.8         210.4       4.7X
       */
       benchmark.run()
     }

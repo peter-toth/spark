@@ -61,6 +61,7 @@ case class DataSourceV2Relation(
 
   override def pushedFilters: Seq[Expression] = Seq.empty
 
+
   def newReader(): DataSourceReader = source.createReader(options, userSpecifiedSchema)
 
   def newWriter(): DataSourceWriter = source.createWriter(options, schema)

@@ -239,3 +239,19 @@ private[spark] class KubernetesClientApplication extends SparkApplication {
     }
   }
 }
+
+private[spark] object KubernetesClientApplication {
+
+  def getAppName(conf: SparkConf): String = conf.getOption("spark.app.name").getOrElse("spark")
+
+  def getResourceNamePrefix(appName: String): String = {
+    val launchTime = System.currentTimeMillis()
+    s"$appName-$launchTime"
+      .trim
+      .toLowerCase
+      .replaceAll("\\s+", "-")
+      .replaceAll("\\.", "-")
+      .replaceAll("[^a-z0-9\\-]", "")
+      .replaceAll("-+", "-")
+  }
+}

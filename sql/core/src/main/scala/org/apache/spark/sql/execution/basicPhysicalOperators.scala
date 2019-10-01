@@ -17,11 +17,9 @@
 
 package org.apache.spark.sql.execution
 
-import java.util.concurrent.ConcurrentLinkedQueue
 import java.util.concurrent.TimeUnit._
 
-import scala.collection.JavaConverters._
-import scala.collection.mutable.ArrayBuffer
+import scala.collection.mutable
 import scala.concurrent.{ExecutionContext, Future}
 import scala.concurrent.duration.Duration
 
@@ -39,7 +37,6 @@ import org.apache.spark.sql.execution.metric.SQLMetrics
 import org.apache.spark.sql.execution.ui.SparkListenerSQLExecutionUpdate
 import org.apache.spark.sql.internal.SQLConf
 import org.apache.spark.sql.types.{LongType, StructType}
-import org.apache.spark.storage.StorageLevel
 import org.apache.spark.util.ThreadUtils
 import org.apache.spark.util.random.{BernoulliCellSampler, PoissonSampler}
 
@@ -179,6 +176,7 @@ case class FilterExec(condition: Expression, child: SparkPlan)
     // This is very perf sensitive.
     // TODO: revisit this. We can consider reordering predicates as well.
     val generatedIsNotNullChecks = new Array[Boolean](notNullPreds.length)
+    val extraIsNotNullAttrs = mutable.Set[Attribute]()
     val generated = otherPreds.map { c =>
       val nullChecks = c.references.map { r =>
         val idx = notNullPreds.indexWhere { n => n.asInstanceOf[IsNotNull].child.semanticEquals(r)}
@@ -186,6 +184,9 @@ case class FilterExec(condition: Expression, child: SparkPlan)
           generatedIsNotNullChecks(idx) = true
           // Use the child's output. The nullability is what the child produced.
           genPredicate(notNullPreds(idx), input, child.output)
+        } else if (notNullAttributes.contains(r.exprId) && !extraIsNotNullAttrs.contains(r)) {
+          extraIsNotNullAttrs += r
+          genPredicate(IsNotNull(r), input, child.output)
         } else {
           ""
         }
@@ -287,7 +288,7 @@ case class RecursiveRelationExec(
 
   override def stringArgs: Iterator[Any] = Iterator(cteName, output)
 
-  private val physicalRecursiveTerms = new ArrayBuffer[SparkPlan]
+  private val physicalRecursiveTerms = new mutable.ArrayBuffer[SparkPlan]
 
   def recursiveTermIterations: Seq[SparkPlan] = physicalRecursiveTerms.toList
 
@@ -318,7 +319,7 @@ case class RecursiveRelationExec(
     var prevIterationRDD = anchorTerm.execute().map(_.copy())
     var prevIterationCount = prevIterationRDD.count()
 
-    val cumulatedRDDs = ArrayBuffer.empty[RDD[InternalRow]]
+    val cumulatedRDDs = mutable.ArrayBuffer.empty[RDD[InternalRow]]
     var cumulatedCount = 0L
 
     val numOutputRows = longMetric("numOutputRows")

@@ -89,6 +89,8 @@ statement
          (WITH DBPROPERTIES tablePropertyList))*                       #createDatabase
     | ALTER database db=errorCapturingIdentifier
         SET DBPROPERTIES tablePropertyList                             #setDatabaseProperties
+    | ALTER database db=errorCapturingIdentifier
+        SET locationSpec                                               #setDatabaseLocation
     | DROP database (IF EXISTS)? db=errorCapturingIdentifier
         (RESTRICT | CASCADE)?                                          #dropDatabase
     | SHOW DATABASES (LIKE? pattern=STRING)?                           #showDatabases
@@ -216,7 +218,8 @@ statement
     | SET ROLE .*?                                                     #failNativeCommand
     | SET .*?                                                          #setConfiguration
     | RESET                                                            #resetConfiguration
-    | DELETE FROM multipartIdentifier tableAlias whereClause           #deleteFromTable
+    | DELETE FROM multipartIdentifier tableAlias whereClause?          #deleteFromTable
+    | UPDATE multipartIdentifier tableAlias setClause whereClause?     #updateTable
     | unsupportedHiveNativeCommands .*?                                #failNativeCommand
     ;
 
@@ -474,6 +477,14 @@ transformClause
 
 selectClause
     : SELECT (hints+=hint)* setQuantifier? namedExpressionSeq
+    ;
+
+setClause
+    : SET assign (',' assign)*
+    ;
+
+assign
+    : key=multipartIdentifier EQ value=expression
     ;
 
 whereClause
@@ -1085,6 +1096,7 @@ ansiNonReserved
     | UNCACHE
     | UNLOCK
     | UNSET
+    | UPDATE
     | USE
     | VALUES
     | VIEW
@@ -1356,6 +1368,7 @@ nonReserved
     | UNKNOWN
     | UNLOCK
     | UNSET
+    | UPDATE
     | USE
     | USER
     | VALUES
@@ -1624,6 +1637,7 @@ UNIQUE: 'UNIQUE';
 UNKNOWN: 'UNKNOWN';
 UNLOCK: 'UNLOCK';
 UNSET: 'UNSET';
+UPDATE: 'UPDATE';
 USE: 'USE';
 USER: 'USER';
 USING: 'USING';

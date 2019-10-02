@@ -147,6 +147,13 @@ private[spark] object HiveUtils extends Logging {
     .toSequence
     .createWithDefault(Seq("SPARKSQL", "EXTREAD", "EXTWRITE", "HIVESQL", "HIVEBUCKET2"))
 
+  // In earlier versions of hive there was a field HIVE_COLUMN_ORDER_ASC in class
+  // org.apache.hadoop.hive.ql.parse.BaseSemanticAnalyzer. This field is renamed to ASCENDING_CODE
+  // and moved to class org.apache.hadoop.hive.ql.util.DirectionUtils in hive 4 and later
+  // ASCENDING_CODE is defined here to be used instead of ASCENDING_CODE in hive 4 and
+  // HIVE_COLUMN_ORDER_ASC in earlier versions of hive.
+  val ASCENDING_CODE = 1
+
   /**
    * The version of the hive client that will be used to communicate with the metastore.  Note that
    * this does not necessarily need to be the same version of Hive that is used internally by

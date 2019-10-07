@@ -107,35 +107,22 @@ case class ReuseExchange(conf: SQLConf) extends Rule[SparkPlan] {
     if (!conf.exchangeReuseEnabled) {
       return plan
     }
-    // Build a hash map using schema of exchanges to avoid O(N*N) sameResult calls.
-    val exchanges = mutable.HashMap[StructType, ArrayBuffer[Exchange]]()
+    val exchanges = mutable.HashMap[SparkPlan, Exchange]()
 
-    // Replace a Exchange duplicate with a ReusedExchange
-    def reuse: PartialFunction[Exchange, SparkPlan] = {
+    def reuse(plan: SparkPlan): SparkPlan = plan.transform {
       case exchange: Exchange =>
-        val sameSchema = exchanges.getOrElseUpdate(exchange.schema, ArrayBuffer[Exchange]())
-        val samePlan = sameSchema.find { e =>
-          exchange.sameResult(e)
-        }
-        if (samePlan.isDefined) {
-          // Keep the output of this exchange, the following plans require that to resolve
-          // attributes.
-          ReusedExchangeExec(exchange.output, samePlan.get)
+        val newExchange = exchanges.getOrElseUpdate(exchange.canonicalized, exchange)
+        if (newExchange.ne(exchange)) {
+          ReusedExchangeExec(exchange.output, newExchange)
         } else {
-          sameSchema += exchange
           exchange
         }
+      case other => other.transformExpressions {
+        case sub: ExecSubqueryExpression =>
+          sub.withNewPlan(reuse(sub.plan).asInstanceOf[BaseSubqueryExec])
+      }
     }
 
-    plan transformUp {
-      case exchange: Exchange => reuse(exchange)
-    } transformAllExpressions {
-      // Lookup inside subqueries for duplicate exchanges
-      case in: InSubqueryExec =>
-        val newIn = in.plan.transformUp {
-          case exchange: Exchange => reuse(exchange)
-        }
-        in.copy(plan = newIn.asInstanceOf[BaseSubqueryExec])
-    }
+    reuse(plan)
   }
 }

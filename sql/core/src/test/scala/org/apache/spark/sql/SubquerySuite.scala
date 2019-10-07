@@ -23,6 +23,7 @@ import org.apache.spark.sql.catalyst.expressions.SubqueryExpression
 import org.apache.spark.sql.catalyst.plans.logical.{Join, LogicalPlan, Sort}
 import org.apache.spark.sql.execution.{ColumnarToRowExec, ExecSubqueryExpression, FileSourceScanExec, InputAdapter, ReusedSubqueryExec, ScalarSubquery, SubqueryExec, WholeStageCodegenExec}
 import org.apache.spark.sql.execution.datasources.FileScanRDD
+import org.apache.spark.sql.execution.exchange.{Exchange, ReusedExchangeExec}
 import org.apache.spark.sql.internal.SQLConf
 import org.apache.spark.sql.test.SharedSparkSession
 
@@ -1516,6 +1517,36 @@ class SubquerySuite extends QueryTest with SharedSparkSession {
           assert(countSubqueryExec == 2, "expect 2 SubqueryExec when not reusing")
           assert(countReuseSubqueryExec == 0,
             "expect 0 ReusedSubqueryExec when not reusing")
+        }
+      }
+    }
+  }
+
+  test("Exhange reuse across all subquery levels") {
+    Seq(true, false).foreach { reuse =>
+      withSQLConf(SQLConf.EXCHANGE_REUSE_ENABLED.key -> reuse.toString) {
+        val df = sql(
+          """
+            |SELECT
+            |  (SELECT max(a.key) FROM testData AS a JOIN testData AS b ON b.key = a.key),
+            |  a.key
+            |FROM testData AS a
+            |JOIN testData AS b ON b.key = a.key
+          """.stripMargin)
+
+        val plan = df.queryExecution.executedPlan
+
+        val countExchange = plan.collectInPlanAndSubqueries({ case _: Exchange => 1 }).sum
+        val countReusedExchange =
+          plan.collectInPlanAndSubqueries({ case _: ReusedExchangeExec => 1 }).sum
+
+        if (reuse) {
+          assert(countExchange == 2, "Exchange reusing not working correctly")
+          assert(countReusedExchange == 3, "Exchange reusing not working correctly")
+        } else {
+          assert(countExchange == 5, "expect 4 Exchange when not reusing")
+          assert(countReusedExchange == 0,
+            "expect 0 ReusedExchangeExec when not reusing")
         }
       }
     }

@@ -47,7 +47,8 @@ import org.apache.spark.util.Utils
 class QueryExecution(
     val sparkSession: SparkSession,
     val logical: LogicalPlan,
-    val tracker: QueryPlanningTracker = new QueryPlanningTracker) {
+    val tracker: QueryPlanningTracker = new QueryPlanningTracker,
+    val subQuery: Boolean = false) {
 
   // TODO: Move the planner an optimizer into here from SessionState.
   protected def planner = sparkSession.sessionState.planner
@@ -127,9 +128,9 @@ class QueryExecution(
     EnsureRequirements(sparkSession.sessionState.conf),
     ApplyColumnarRulesAndInsertTransitions(sparkSession.sessionState.conf,
       sparkSession.sessionState.columnarRules),
-    CollapseCodegenStages(sparkSession.sessionState.conf),
-    ReuseExchange(sparkSession.sessionState.conf),
-    ReuseSubquery(sparkSession.sessionState.conf))
+    CollapseCodegenStages(sparkSession.sessionState.conf)) ++
+    (if (subQuery) Nil else Seq(ReuseExchange(sparkSession.sessionState.conf))) :+
+    ReuseSubquery(sparkSession.sessionState.conf)
 
   def simpleString: String = simpleString(false)
 

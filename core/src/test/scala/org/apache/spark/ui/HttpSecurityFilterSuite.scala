@@ -24,7 +24,7 @@ import javax.servlet.http.{HttpServletRequest, HttpServletResponse}
 import scala.collection.JavaConverters._
 
 import org.mockito.ArgumentCaptor
-import org.mockito.Matchers.{any, eq => meq}
+import org.mockito.ArgumentMatchers.{any, eq => meq}
 import org.mockito.Mockito.{mock, times, verify, when}
 
 import org.apache.spark._

@@ -19,6 +19,8 @@ package org.apache.spark.sql.hive.orc
 
 import java.io.File
 
+import org.apache.commons.lang3.{JavaVersion, SystemUtils}
+
 import org.apache.spark.sql.{AnalysisException, Row}
 import org.apache.spark.sql.TestingUDT.{IntervalData, IntervalUDT}
 import org.apache.spark.sql.execution.datasources.orc.OrcSuite
@@ -147,6 +149,8 @@ class HiveOrcSourceSuite extends OrcSuite with TestHiveSingleton {
   }
 
   test("Check BloomFilter creation") {
+    // CDPD-4216: disabled in JDK11; possibly fixed upstream as part of SPARK-27737.
+    assume(!SystemUtils.isJavaVersionAtLeast(JavaVersion.JAVA_9))
     Seq(true, false).foreach { convertMetastore =>
       withSQLConf(HiveUtils.CONVERT_METASTORE_ORC.key -> s"$convertMetastore") {
         if (HiveUtils.isHive23) {

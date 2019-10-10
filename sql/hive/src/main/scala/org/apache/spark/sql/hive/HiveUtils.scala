@@ -532,4 +532,9 @@ private[spark] object HiveUtils extends Logging {
       table.copy(schema = StructType(dataCols ++ partCols))
     }
   }
+
+  // CDPD-4216: this is used in some tests to decide what checks to make. This is obviously
+  // broken, but it's only used in tests currently, and should go away when CDPD-3881 is finished.
+  def isHive23: Boolean = SystemUtils.isJavaVersionAtLeast(JavaVersion.JAVA_9)
+
 }

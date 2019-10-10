@@ -24,6 +24,7 @@ import java.util.{Locale, TimeZone}
 
 import scala.util.Try
 
+import org.apache.commons.lang3.{JavaVersion, SystemUtils}
 import org.apache.hadoop.hive.conf.HiveConf.ConfVars
 import org.scalatest.BeforeAndAfter
 
@@ -815,6 +816,11 @@ class HiveQuerySuite extends HiveComparisonTest with SQLTestUtils with BeforeAnd
   }
 
   test("ADD JAR command 2") {
+    // CDPD-4216: this test seems to need some different jars which are currently not available
+    // to the tests; this seems to have been fixed by SPARK-27831 upstream, so should be fixed
+    // when CDPD-3881 is finished.
+    assume(!SystemUtils.isJavaVersionAtLeast(JavaVersion.JAVA_9))
+
     // this is a test case from mapjoin_addjar.q
     val testJar = TestHive.getHiveFile("hive-hcatalog-core-0.13.1.jar").toURI
     val testData = TestHive.getHiveFile("data/files/sample.json").toURI

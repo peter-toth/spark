@@ -75,7 +75,8 @@ package object client {
       exclusions = Seq("org.apache.curator:*",
         "org.pentaho:pentaho-aggdesigner-algorithm"))
 
-    case object v2_3 extends HiveVersion("2.3.3",
+    // CDPD-4216: updated Hive version because of HIVE-18767.
+    case object v2_3 extends HiveVersion("2.3.4",
       exclusions = Seq("org.apache.curator:*",
         "org.pentaho:pentaho-aggdesigner-algorithm"))
 

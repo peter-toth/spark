@@ -25,6 +25,7 @@ import scala.collection.JavaConverters._
 import scala.collection.mutable
 import scala.language.implicitConversions
 
+import org.apache.commons.lang3.{JavaVersion, SystemUtils}
 import org.apache.hadoop.conf.Configuration
 import org.apache.hadoop.fs.Path
 import org.apache.hadoop.hive.conf.HiveConf.ConfVars
@@ -35,7 +36,7 @@ import org.apache.spark.{SparkConf, SparkContext}
 import org.apache.spark.internal.Logging
 import org.apache.spark.sql.{SparkSession, SQLContext}
 import org.apache.spark.sql.catalyst.analysis.UnresolvedRelation
-import org.apache.spark.sql.catalyst.catalog.{ExternalCatalog, ExternalCatalogWithListener}
+import org.apache.spark.sql.catalyst.catalog.ExternalCatalogWithListener
 import org.apache.spark.sql.catalyst.optimizer.ConvertToLocalRelation
 import org.apache.spark.sql.catalyst.plans.logical.{LogicalPlan, OneRowRelation}
 import org.apache.spark.sql.execution.{QueryExecution, SQLExecution}
@@ -43,7 +44,7 @@ import org.apache.spark.sql.execution.command.CacheTableCommand
 import org.apache.spark.sql.hive._
 import org.apache.spark.sql.hive.client.HiveClient
 import org.apache.spark.sql.internal.{SessionState, SharedState, SQLConf, WithTestConf}
-import org.apache.spark.sql.internal.StaticSQLConf.CATALOG_IMPLEMENTATION
+import org.apache.spark.sql.internal.StaticSQLConf.{CATALOG_IMPLEMENTATION, WAREHOUSE_PATH}
 import org.apache.spark.util.{ShutdownHookManager, Utils}
 
 // SPARK-3729: Test key required to check for initialization errors with config.
@@ -61,6 +62,9 @@ object TestHive
         // SPARK-8910
         .set("spark.ui.enabled", "false")
         .set("spark.unsafe.exceptionOnMemoryLeak", "true")
+        // Hive changed the default of hive.metastore.disallow.incompatible.col.type.changes
+        // from false to true. For details, see the JIRA HIVE-12320 and HIVE-17764.
+        .set("spark.hadoop.hive.metastore.disallow.incompatible.col.type.changes", "false")
         // Disable ConvertToLocalRelation for better test coverage. Test cases built on
         // LocalRelation will exercise the optimization rules better by disabling it as
         // this rule may potentially block testing of other optimization rules such as
@@ -80,7 +84,8 @@ private[hive] class TestHiveExternalCatalog(
 
   override lazy val client: HiveClient =
     hiveClient.getOrElse {
-      HiveUtils.newClientForMetadata(conf, hadoopConf)
+      val (sconf, hconf) = TestHiveUtils.newCatalogConfig(conf, hadoopConf)
+      HiveUtils.newClientForMetadata(sconf, hconf)
     }
 }
 
@@ -629,4 +634,50 @@ private[sql] class TestHiveSessionStateBuilder(
   }
 
   override protected def newBuilder: NewBuilder = new TestHiveSessionStateBuilder(_, _)
+}
+
+object TestHiveUtils {
+
+  /**
+   * CDPD-4216: this is a hack to make unit tests work on JDK 11, since the Datanucleus
+   * jars of our built-in version of Hive (1.2.1) do not.
+   *
+   * This uses Hive 2.3, which is not the most current, but it's what upstream uses
+   * on Hadoop 3. Trying to use 3.0 for this runs into problems.
+   *
+   * There's also an option to create a separate metastore directory, since Hive 2.3's
+   * Derby doesn't seem to like multiple instances using the same underlying DB.
+   *
+   * We can probably revert this to upstream's version when CDPD-3881 is finalized.
+   */
+  def newCatalogConfig(
+      conf: SparkConf,
+      hadoopConf: Configuration,
+      createMetastoreDir: Boolean = false): (SparkConf, Configuration) = {
+    val (catalogConf, hiveConf) = if (SystemUtils.isJavaVersionAtLeast(JavaVersion.JAVA_9)) {
+      val _hconf = new Configuration(hadoopConf)
+      _hconf.set("hive.metastore.schema.verification", "false")
+      _hconf.set("datanucleus.schema.autoCreateAll", "true")
+
+      val _sconf = conf.clone()
+        .set(HiveUtils.HIVE_METASTORE_VERSION, "2.3")
+        .set(HiveUtils.HIVE_METASTORE_JARS, "maven")
+
+      (_sconf, _hconf)
+    } else {
+      (conf, hadoopConf)
+    }
+
+    if (createMetastoreDir) {
+      val metastorePath = new File(Utils.createTempDir(), "metastore").getAbsolutePath()
+      val warehousePath = Utils.createTempDir()
+
+      hiveConf.set(ConfVars.METASTORECONNECTURLKEY.varname,
+         s"jdbc:derby:;databaseName=$metastorePath;create=true")
+      catalogConf.set(WAREHOUSE_PATH, warehousePath.toURI().toString())
+    }
+
+    (catalogConf, hiveConf)
+  }
+
 }

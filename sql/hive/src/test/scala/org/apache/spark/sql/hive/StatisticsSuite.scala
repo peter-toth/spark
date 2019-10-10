@@ -99,8 +99,14 @@ class StatisticsSuite extends StatisticsCollectionTestBase with TestHiveSingleto
             .asInstanceOf[HiveTableRelation]
 
           val properties = relation.tableMeta.ignoredProperties
-          assert(properties("totalSize").toLong <= 0, "external table totalSize must be <= 0")
-          assert(properties("rawDataSize").toLong <= 0, "external table rawDataSize must be <= 0")
+          if (HiveUtils.isHive23) {
+            // Since HIVE-6727, Hive fixes table-level stats for external tables are incorrect.
+            assert(properties("totalSize").toLong == 6)
+            assert(properties.get("rawDataSize").isEmpty)
+          } else {
+            assert(properties("totalSize").toLong <= 0, "external table totalSize must be <= 0")
+            assert(properties("rawDataSize").toLong <= 0, "external table rawDataSize must be <= 0")
+          }
 
           val sizeInBytes = relation.stats.sizeInBytes
           assert(sizeInBytes === BigInt(file1.length() + file2.length()))

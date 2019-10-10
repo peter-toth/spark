@@ -17,16 +17,14 @@
 
 package org.apache.spark.sql.hive
 
-import java.net.URL
-
+import org.apache.hadoop.conf.Configuration
 import org.apache.hadoop.hive.conf.HiveConf.ConfVars
 
 import org.apache.spark.SparkConf
-import org.apache.spark.deploy.SparkHadoopUtil
 import org.apache.spark.sql.QueryTest
-import org.apache.spark.sql.hive.test.TestHiveSingleton
+import org.apache.spark.sql.hive.test.{TestHiveSingleton, TestHiveUtils}
 import org.apache.spark.sql.test.{ExamplePoint, ExamplePointUDT, SQLTestUtils}
-import org.apache.spark.util.{ChildFirstURLClassLoader, MutableURLClassLoader}
+import org.apache.spark.util.ChildFirstURLClassLoader
 
 class HiveUtilsSuite extends QueryTest with SQLTestUtils with TestHiveSingleton {
 
@@ -49,14 +47,15 @@ class HiveUtilsSuite extends QueryTest with SQLTestUtils with TestHiveSingleton 
   }
 
   test("ChildFirstURLClassLoader's parent is null, get spark classloader instead") {
-    val conf = new SparkConf
+    val (sconf, hconf) = TestHiveUtils.newCatalogConfig(new SparkConf(),
+      new Configuration(), createMetastoreDir = true)
     val contextClassLoader = Thread.currentThread().getContextClassLoader
     val loader = new ChildFirstURLClassLoader(Array(), contextClassLoader)
     try {
       Thread.currentThread().setContextClassLoader(loader)
       HiveUtils.newClientForMetadata(
-        conf,
-        SparkHadoopUtil.newConfiguration(conf),
+        sconf,
+        hconf,
         HiveUtils.newTemporaryConfiguration(useInMemoryDerby = true))
     } finally {
       Thread.currentThread().setContextClassLoader(contextClassLoader)

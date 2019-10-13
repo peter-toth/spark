@@ -1431,6 +1431,12 @@ class TypeCoercionSuite extends AnalysisTest {
     ruleTest(dateTimeOperations, Add(intValue, date), DateAdd(date, intValue))
     ruleTest(dateTimeOperations, Subtract(date, intValue), DateSub(date, intValue))
     ruleTest(dateTimeOperations, Subtract(date, date), DateDiff(date, date))
+    ruleTest(dateTimeOperations, Subtract(timestamp, timestamp),
+      TimestampDiff(timestamp, timestamp))
+    ruleTest(dateTimeOperations, Subtract(timestamp, date),
+      TimestampDiff(timestamp, Cast(date, TimestampType)))
+    ruleTest(dateTimeOperations, Subtract(date, timestamp),
+      TimestampDiff(Cast(date, TimestampType), timestamp))
   }
 
   /**

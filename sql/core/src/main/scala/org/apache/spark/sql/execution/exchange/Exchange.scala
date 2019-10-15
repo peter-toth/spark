@@ -107,13 +107,27 @@ case class ReuseExchange(conf: SQLConf) extends Rule[SparkPlan] {
     if (!conf.exchangeReuseEnabled) {
       return plan
     }
-    val exchanges = mutable.HashMap[SparkPlan, Exchange]()
+    // To avoid costly canonicalization of an exchange:
+    // - we use its schema first to check if it can be replaced to a reused exchange at all
+    // - we insert an exchange into the map of canonicalized plans only when at least 2 exchange
+    //   have the same schema
+    val exchanges = mutable.Map[StructType, (Exchange, mutable.Map[SparkPlan, Exchange])]()
 
     def reuse(plan: SparkPlan): SparkPlan = plan.transform {
       case exchange: Exchange =>
-        val newExchange = exchanges.getOrElseUpdate(exchange.canonicalized, exchange)
-        if (newExchange.ne(exchange)) {
-          ReusedExchangeExec(exchange.output, newExchange)
+        val (firstSameSchemaExchange, sameResultExchanges) =
+          exchanges.getOrElseUpdate(exchange.schema, (exchange, mutable.Map()))
+        if (firstSameSchemaExchange.ne(exchange)) {
+          if (sameResultExchanges.isEmpty) {
+            sameResultExchanges += firstSameSchemaExchange.canonicalized -> firstSameSchemaExchange
+          }
+          val sameResultExchange =
+            sameResultExchanges.getOrElseUpdate(exchange.canonicalized, exchange)
+          if (sameResultExchange.ne(exchange)) {
+            ReusedExchangeExec(exchange.output, sameResultExchange)
+          } else {
+            exchange
+          }
         } else {
           exchange
         }

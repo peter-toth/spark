@@ -91,15 +91,12 @@ private[spark] object ClientArguments {
  * @param builder Responsible for building the base driver pod based on a composition of
  *                implemented features.
  * @param kubernetesClient the client to talk to the Kubernetes API server
- * @param waitForAppCompletion a flag indicating whether the client should wait for the application
- *                             to complete
  * @param watcher a watcher that monitors and logs the application status
  */
 private[spark] class Client(
     conf: KubernetesDriverConf,
     builder: KubernetesDriverBuilder,
     kubernetesClient: KubernetesClient,
-    waitForAppCompletion: Boolean,
     watcher: LoggingPodStatusWatcher) extends Logging {
 
   def run(): Unit = {
@@ -129,10 +126,11 @@ private[spark] class Client(
           .endVolume()
         .endSpec()
       .build()
+    val driverPodName = resolvedDriverPod.getMetadata.getName
     Utils.tryWithResource(
       kubernetesClient
         .pods()
-        .withName(resolvedDriverPod.getMetadata.getName)
+        .withName(driverPodName)
         .watch(watcher)) { _ =>
       val createdDriverPod = kubernetesClient.pods().create(resolvedDriverPod)
       try {
@@ -146,13 +144,8 @@ private[spark] class Client(
           throw e
       }
 
-      if (waitForAppCompletion) {
-        logInfo(s"Waiting for application ${conf.appName} to finish...")
-        watcher.awaitCompletion()
-        logInfo(s"Application ${conf.appName} finished.")
-      } else {
-        logInfo(s"Deployed Spark application ${conf.appName} into Kubernetes.")
-      }
+      val sId = Seq(conf.namespace, driverPodName).mkString(":")
+      watcher.watchOrStop(sId)
     }
   }
 
@@ -201,13 +194,11 @@ private[spark] class KubernetesClientApplication extends SparkApplication {
   }
 
   private def run(clientArguments: ClientArguments, sparkConf: SparkConf): Unit = {
-    val appName = sparkConf.getOption("spark.app.name").getOrElse("spark")
     // For constructing the app ID, we can't use the Spark application name, as the app ID is going
     // to be added as a label to group resources belonging to the same application. Label values are
     // considerably restrictive, e.g. must be no longer than 63 characters in length. So we generate
     // a unique app ID (captured by spark.app.id) in the format below.
     val kubernetesAppId = s"spark-${UUID.randomUUID().toString.replaceAll("-", "")}"
-    val waitForAppCompletion = sparkConf.get(WAIT_FOR_APP_COMPLETION)
     val kubernetesConf = KubernetesConf.createDriverConf(
       sparkConf,
       kubernetesAppId,
@@ -218,9 +209,7 @@ private[spark] class KubernetesClientApplication extends SparkApplication {
     // The master URL has been checked for validity already in SparkSubmit.
     // We just need to get rid of the "k8s://" prefix here.
     val master = KubernetesUtils.parseMasterUrl(sparkConf.get("spark.master"))
-    val loggingInterval = if (waitForAppCompletion) Some(sparkConf.get(REPORT_INTERVAL)) else None
-
-    val watcher = new LoggingPodStatusWatcherImpl(kubernetesAppId, loggingInterval)
+    val watcher = new LoggingPodStatusWatcherImpl(kubernetesConf)
 
     Utils.tryWithResource(SparkKubernetesClientFactory.createKubernetesClient(
       master,
@@ -234,7 +223,6 @@ private[spark] class KubernetesClientApplication extends SparkApplication {
           kubernetesConf,
           new KubernetesDriverBuilder(),
           kubernetesClient,
-          waitForAppCompletion,
           watcher)
         client.run()
     }

@@ -17,7 +17,7 @@
 
 package org.apache.spark.scheduler
 
-import java.io.{File, FileOutputStream, InputStream, IOException}
+import java.io.{File, InputStream}
 import java.util.Arrays
 
 import scala.collection.immutable.Map
@@ -32,6 +32,8 @@ import org.scalatest.BeforeAndAfter
 
 import org.apache.spark._
 import org.apache.spark.deploy.SparkHadoopUtil
+import org.apache.spark.deploy.history.{EventLogFileReader, SingleEventLogFileWriter}
+import org.apache.spark.deploy.history.EventLogTestHelper._
 import org.apache.spark.executor.{ExecutorMetrics, TaskMetrics}
 import org.apache.spark.internal.Logging
 import org.apache.spark.io._
@@ -50,8 +52,6 @@ import org.apache.spark.util.{JsonProtocol, Utils}
 class EventLoggingListenerSuite extends SparkFunSuite with LocalSparkContext with BeforeAndAfter
   with Logging {
 
-  import EventLoggingListenerSuite._
-
   private val fileSystem = Utils.getHadoopFileSystem("/",
     SparkHadoopUtil.get.newConfiguration(new SparkConf()))
   private var testDir: File = _
@@ -65,26 +65,6 @@ class EventLoggingListenerSuite extends SparkFunSuite with LocalSparkContext wit
 
   after {
     Utils.deleteRecursively(testDir)
-  }
-
-  test("Verify log file exist") {
-    // Verify logging directory exists
-    val conf = getLoggingConf(testDirPath)
-    val eventLogger = new EventLoggingListener("test", None, testDirPath.toUri(), conf)
-    eventLogger.start()
-
-    val logPath = new Path(eventLogger.logPath + EventLoggingListener.IN_PROGRESS)
-    assert(fileSystem.exists(logPath))
-    val logStatus = fileSystem.getFileStatus(logPath)
-    assert(!logStatus.isDirectory)
-
-    // Verify log is renamed after stop()
-    eventLogger.stop()
-    assert(!fileSystem.getFileStatus(new Path(eventLogger.logPath)).isDirectory)
-  }
-
-  test("Basic event logging") {
-    testEventLogging()
   }
 
   test("Basic event logging with compression") {
@@ -115,35 +95,6 @@ class EventLoggingListenerSuite extends SparkFunSuite with LocalSparkContext wit
     assert(redactedProps(key) == "*********(redacted)")
   }
 
-  test("Log overwriting") {
-    val logUri = EventLoggingListener.getLogPath(testDir.toURI, "test", None)
-    val logPath = new Path(logUri).toUri.getPath
-    // Create file before writing the event log
-    new FileOutputStream(new File(logPath)).close()
-    // Expected IOException, since we haven't enabled log overwrite.
-    intercept[IOException] { testEventLogging() }
-    // Try again, but enable overwriting.
-    testEventLogging(extraConf = Map("spark.eventLog.overwrite" -> "true"))
-  }
-
-  test("Event log name") {
-    val baseDirUri = Utils.resolveURI("/base-dir")
-    // without compression
-    assert(s"${baseDirUri.toString}/app1" === EventLoggingListener.getLogPath(
-      baseDirUri, "app1", None))
-    // with compression
-    assert(s"${baseDirUri.toString}/app1.lzf" ===
-      EventLoggingListener.getLogPath(baseDirUri, "app1", None, Some("lzf")))
-    // illegal characters in app ID
-    assert(s"${baseDirUri.toString}/a-fine-mind_dollar_bills__1" ===
-      EventLoggingListener.getLogPath(baseDirUri,
-        "a fine:mind$dollar{bills}.1", None))
-    // illegal characters in app ID with compression
-    assert(s"${baseDirUri.toString}/a-fine-mind_dollar_bills__1.lz4" ===
-      EventLoggingListener.getLogPath(baseDirUri,
-        "a fine:mind$dollar{bills}.1", None, Some("lz4")))
-  }
-
   test("Executor metrics update") {
     testStageExecutorMetricsEventLogging()
   }
@@ -151,8 +102,6 @@ class EventLoggingListenerSuite extends SparkFunSuite with LocalSparkContext wit
   /* ----------------- *
    * Actual test logic *
    * ----------------- */
-
-  import EventLoggingListenerSuite._
 
   /**
    * Test basic event logging functionality.
@@ -182,7 +131,8 @@ class EventLoggingListenerSuite extends SparkFunSuite with LocalSparkContext wit
     eventLogger.stop()
 
     // Verify file contains exactly the two events logged
-    val logData = EventLoggingListener.openEventLog(new Path(eventLogger.logPath), fileSystem)
+    val logPath = eventLogger.logWriter.logPath
+    val logData = EventLogFileReader.openEventLog(new Path(logPath), fileSystem)
     try {
       val lines = readLines(logData)
       val logStart = SparkListenerLogStart(SPARK_VERSION)
@@ -210,9 +160,10 @@ class EventLoggingListenerSuite extends SparkFunSuite with LocalSparkContext wit
     sc = new SparkContext("local-cluster[2,2,1024]", "test", conf)
     assert(sc.eventLogger.isDefined)
     val eventLogger = sc.eventLogger.get
-    val eventLogPath = eventLogger.logPath
+
+    val eventLogPath = eventLogger.logWriter.logPath
     val expectedLogDir = testDir.toURI()
-    assert(eventLogPath === EventLoggingListener.getLogPath(
+    assert(eventLogPath === SingleEventLogFileWriter.getLogPath(
       expectedLogDir, sc.applicationId, None, compressionCodec.map(CompressionCodec.getShortName)))
 
     // Begin listening for events that trigger asserts
@@ -227,7 +178,8 @@ class EventLoggingListenerSuite extends SparkFunSuite with LocalSparkContext wit
     eventExistenceListener.assertAllCallbacksInvoked()
 
     // Make sure expected events exist in the log file.
-    val logData = EventLoggingListener.openEventLog(new Path(eventLogger.logPath), fileSystem)
+    val logData = EventLogFileReader.openEventLog(new Path(eventLogger.logWriter.logPath),
+      fileSystem)
     val eventSet = mutable.Set(
       SparkListenerApplicationStart,
       SparkListenerBlockManagerAdded,
@@ -450,7 +402,7 @@ class EventLoggingListenerSuite extends SparkFunSuite with LocalSparkContext wit
     // Verify the log file contains the expected events.
     // Posted events should be logged, except for ExecutorMetricsUpdate events -- these
     // are consolidated, and the peak values for each stage are logged at stage end.
-    val logData = EventLoggingListener.openEventLog(new Path(eventLogger.logPath), fileSystem)
+    val logData = EventLogFileReader.openEventLog(new Path(eventLogger.logWriter.logPath), fileSystem)
     try {
       val lines = readLines(logData)
       val logStart = SparkListenerLogStart(SPARK_VERSION)
@@ -623,25 +575,4 @@ class EventLoggingListenerSuite extends SparkFunSuite with LocalSparkContext wit
     }
   }
 
-}
-
-
-object EventLoggingListenerSuite {
-
-  /** Get a SparkConf with event logging enabled. */
-  def getLoggingConf(logDir: Path, compressionCodec: Option[String] = None): SparkConf = {
-    val conf = new SparkConf
-    conf.set("spark.eventLog.enabled", "true")
-    conf.set("spark.eventLog.logBlockUpdates.enabled", "true")
-    conf.set("spark.eventLog.testing", "true")
-    conf.set("spark.eventLog.dir", logDir.toString)
-    compressionCodec.foreach { codec =>
-      conf.set("spark.eventLog.compress", "true")
-      conf.set("spark.io.compression.codec", codec)
-    }
-    conf.set("spark.eventLog.logStageExecutorMetrics.enabled", "true")
-    conf
-  }
-
-  def getUniqueApplicationId: String = "test-" + System.currentTimeMillis
 }

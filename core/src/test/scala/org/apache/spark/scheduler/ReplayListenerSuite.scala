@@ -19,6 +19,7 @@ package org.apache.spark.scheduler
 
 import java.io._
 import java.net.URI
+import java.nio.charset.StandardCharsets
 import java.util.concurrent.atomic.AtomicInteger
 
 import scala.collection.mutable.ArrayBuffer
@@ -30,6 +31,8 @@ import org.scalatest.BeforeAndAfter
 
 import org.apache.spark._
 import org.apache.spark.deploy.SparkHadoopUtil
+import org.apache.spark.deploy.history.EventLogFileReader
+import org.apache.spark.deploy.history.EventLogTestHelper._
 import org.apache.spark.io.{CompressionCodec, LZ4CompressionCodec}
 import org.apache.spark.util.{JsonProtocol, JsonProtocolSuite, Utils}
 
@@ -62,7 +65,7 @@ class ReplayListenerSuite extends SparkFunSuite with BeforeAndAfter with LocalSp
     // scalastyle:on println
     writer.close()
 
-    val conf = EventLoggingListenerSuite.getLoggingConf(logFilePath)
+    val conf = getLoggingConf(logFilePath)
     val logData = fileSystem.open(logFilePath)
     val eventMonster = new EventBufferingListener
     try {
@@ -107,14 +110,14 @@ class ReplayListenerSuite extends SparkFunSuite with BeforeAndAfter with LocalSp
     }
 
     // Read the compressed .inprogress file and verify only first event was parsed.
-    val conf = EventLoggingListenerSuite.getLoggingConf(logFilePath)
+    val conf = getLoggingConf(logFilePath)
     val replayer = new ReplayListenerBus()
 
     val eventMonster = new EventBufferingListener
     replayer.addListener(eventMonster)
 
     // Verify the replay returns the events given the input maybe truncated.
-    val logData = EventLoggingListener.openEventLog(logFilePath, fileSystem)
+    val logData = EventLogFileReader.openEventLog(logFilePath, fileSystem)
     Utils.tryWithResource(new EarlyEOFInputStream(logData, buffered.size - 10)) { failingStream =>
       replayer.replay(failingStream, logFilePath.toString, true)
 
@@ -123,7 +126,7 @@ class ReplayListenerSuite extends SparkFunSuite with BeforeAndAfter with LocalSp
     }
 
     // Verify the replay throws the EOF exception since the input may not be truncated.
-    val logData2 = EventLoggingListener.openEventLog(logFilePath, fileSystem)
+    val logData2 = EventLogFileReader.openEventLog(logFilePath, fileSystem)
     Utils.tryWithResource(new EarlyEOFInputStream(logData2, buffered.size - 10)) { failingStream2 =>
       intercept[EOFException] {
         replayer.replay(failingStream2, logFilePath.toString, false)
@@ -145,7 +148,7 @@ class ReplayListenerSuite extends SparkFunSuite with BeforeAndAfter with LocalSp
     // scalastyle:on println
     writer.close()
 
-    val conf = EventLoggingListenerSuite.getLoggingConf(logFilePath)
+    val conf = getLoggingConf(logFilePath)
     val logData = fileSystem.open(logFilePath)
     val eventMonster = new EventBufferingListener
     try {
@@ -191,7 +194,7 @@ class ReplayListenerSuite extends SparkFunSuite with BeforeAndAfter with LocalSp
     val logDirPath = new Path(logDir.toURI)
     fileSystem.mkdirs(logDirPath)
 
-    val conf = EventLoggingListenerSuite.getLoggingConf(logDirPath, codecName)
+    val conf = getLoggingConf(logDirPath, codecName)
     sc = new SparkContext("local-cluster[2,1,1024]", "Test replay", conf)
 
     // Run a few jobs
@@ -208,7 +211,7 @@ class ReplayListenerSuite extends SparkFunSuite with BeforeAndAfter with LocalSp
     assert(!eventLog.isDirectory)
 
     // Replay events
-    val logData = EventLoggingListener.openEventLog(eventLog.getPath(), fileSystem)
+    val logData = EventLogFileReader.openEventLog(eventLog.getPath(), fileSystem)
     val eventMonster = new EventBufferingListener
     try {
       val replayer = new ReplayListenerBus()

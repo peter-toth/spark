@@ -537,7 +537,7 @@ class HiveThriftBinaryServerSuite extends HiveThriftJdbcTest {
         conf += resultSet.getString(1) -> resultSet.getString(2)
       }
 
-      assert(conf.get("spark.sql.hive.version") === Some("1.2.1"))
+      assert(conf.get("spark.sql.hive.version") === Some("1.2.2"))
     }
   }
 
@@ -550,7 +550,7 @@ class HiveThriftBinaryServerSuite extends HiveThriftJdbcTest {
         conf += resultSet.getString(1) -> resultSet.getString(2)
       }
 
-      assert(conf.get("spark.sql.hive.version") === Some("1.2.1"))
+      assert(conf.get("spark.sql.hive.version") === Some("1.2.2"))
     }
   }
 

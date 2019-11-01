@@ -1544,7 +1544,7 @@ class SubquerySuite extends QueryTest with SharedSparkSession {
           assert(countExchange == 2, "Exchange reusing not working correctly")
           assert(countReusedExchange == 3, "Exchange reusing not working correctly")
         } else {
-          assert(countExchange == 5, "expect 4 Exchange when not reusing")
+          assert(countExchange == 5, "expect 5 Exchange when not reusing")
           assert(countReusedExchange == 0,
             "expect 0 ReusedExchangeExec when not reusing")
         }

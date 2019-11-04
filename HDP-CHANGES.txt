@@ -97,3 +97,4 @@ BUG FIXES
     SPARK-28156 Self-join should not miss cached view
     SPARK-26895 prepareSubmitEnvironment should be called within doAs for proxy users
     SPARK-26895 Uninitializing log after `prepareSubmitEnvironment` in SparkSubmit
+    BUG-122306 Set default value of spark.sql.hive.convertMetastoreCtas setting to false

@@ -1522,7 +1522,7 @@ class SubquerySuite extends QueryTest with SharedSparkSession {
     }
   }
 
-  test("Exhange reuse across all subquery levels") {
+  test("Exchange reuse across all subquery levels") {
     Seq(true, false).foreach { reuse =>
       withSQLConf(SQLConf.EXCHANGE_REUSE_ENABLED.key -> reuse.toString) {
         val df = sql(

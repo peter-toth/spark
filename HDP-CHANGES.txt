@@ -48,6 +48,10 @@ BUG FIXES
     BUG-108092  Disable flaky kafka test suites
     BUG-109093  HiveThriftServer2 and its SparkContext should be started from keytab
     BUG-109528  Thriftserver not starting in unsecure mode
+    BUG-122306  Set default value of spark.sql.hive.convertMetastoreCtas setting to false
+    BUG-121783  Set spark.sql.parquet.writeLegacyFormat=true in spark
+    CDPD-3196   Allow Spark to drop virtual views
+    CDPD-454    Spark support for Hive Translation Layer
 
     (Backport from 2.4)
     SPARK-21783 Turn on `native` ORC impl and PPD by default
@@ -74,6 +78,10 @@ BUG FIXES
     SPARK-26307 Fix CTAS when INSERT a partitioned table using Hive serde
     SPARK-27160 Fix DecimalType when building orc filters
     SPARK-27358 Update jquery to 1.12.x to pick up security fixes
+    SPARK-28156 Self-join should not miss cached view
+    SPARK-24981 ShutdownHook timeout causes job to fail when succeeded when SparkContext stop() not called by user program
+    SPARK-26895 prepareSubmitEnvironment should be called within doAs for proxy users
+    SPARK-26895 Uninitializing log after `prepareSubmitEnvironment` in SparkSubmit
 
     (Backport from master)
     SPARK-25271 Hive ctas commands should use data source if it is convertible
@@ -84,17 +92,13 @@ BUG FIXES
     SPARK-24785 Making sure REPL prints Spark UI info and then Welcome message
     SPARK-27029 Update Thrift to 0.12.0
     SPARK-28004 Update jquery to 3.4.
+    SPARK-29445 Bump netty-all from 4.1.39.Final to 4.1.42.Final
+    SPARK-24601 Bump Jackson version
+    SPARK-23977 Add commit protocol binding to Hadoop 3.1 PathOutputCommitter mechanism
 
     (Jira in Apache Spark is IN PROGRESS)
-    SPARK-23977 Add commit protocol binding to Hadoop 3.1 PathOutputCommitter mechanism
-    SPARK-24601 BUG-109244 Bump Jackson version
 
     (Security fix in Apache Spark)
-    BUG-122130 Upgrade Jackson to 2.10.0
     BUG-110890 Fix a security issue createRDDFromFile - large object ser/deserialization between R / JVM
     BUG-121103 Upgrade jackson-databind to 2.9.9.1
-    SPARK-24981 ShutdownHook timeout causes job to fail when succeeded when SparkContext stop() not called by user program
-    SPARK-28156 Self-join should not miss cached view
-    SPARK-26895 prepareSubmitEnvironment should be called within doAs for proxy users
-    SPARK-26895 Uninitializing log after `prepareSubmitEnvironment` in SparkSubmit
-    BUG-122306 Set default value of spark.sql.hive.convertMetastoreCtas setting to false
+    BUG-122130 Upgrade Jackson to 2.10.0

@@ -371,6 +371,7 @@ class InsertSuite extends QueryTest with TestHiveSingleton with BeforeAndAfter
       }
   }
 
+  /* This is ignore becuase of CDPD-7882
   testPartitionedTable("INSERT INTO a partitioned table (semantic and error handling)") {
     tableName =>
       withSQLConf(("hive.exec.dynamic.partition.mode", "nonstrict")) {
@@ -439,7 +440,7 @@ class InsertSuite extends QueryTest with TestHiveSingleton with BeforeAndAfter
             Row(25, 26, 27, 28) :: Nil
         )
       }
-  }
+  } */
 
   testPartitionedTable("insertInto() should match columns by position and ignore column names") {
     tableName =>

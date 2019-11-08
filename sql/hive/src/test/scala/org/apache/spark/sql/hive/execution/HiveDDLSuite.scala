@@ -114,6 +114,8 @@ class HiveCatalogedDDLSuite extends DDLSuite with TestHiveSingleton with BeforeA
       // The following are hive specific schema parameters which we do not need to match exactly.
       "numFiles",
       "numRows",
+      "numFilesErasureCoded",
+      "bucketing_version",
       "rawDataSize",
       "totalSize",
       "totalNumberFiles",
@@ -131,7 +133,8 @@ class HiveCatalogedDDLSuite extends DDLSuite with TestHiveSingleton with BeforeA
     )
   }
 
-  test("alter table: set location") {
+  // CDPD-8900. Location of external table in cdp hive is prefixed with some default locations
+  ignore("alter table: set location") {
     testSetLocation(isDatasourceTable = false)
   }
 
@@ -853,7 +856,9 @@ class HiveDDLSuite
     }
   }
 
-  test("alter views and alter table - misuse") {
+  // Alter view lacked required capabilities.
+  // This can be revisited after CDPD-6743
+  ignore("alter views and alter table - misuse") {
     val tabName = "tab1"
     withTable(tabName) {
       spark.range(10).write.saveAsTable(tabName)
@@ -1159,13 +1164,15 @@ class HiveDDLSuite
     }
   }
 
-  test("create/drop database - location without pre-created directory") {
+  // This can be revisited after CDPD-6761
+  ignore("create/drop database - location without pre-created directory") {
      withTempPath { tmpDir =>
        createDatabaseWithLocation(tmpDir, dirExists = false)
     }
   }
 
-  test("create/drop database - location with pre-created directory") {
+  // This can be revisited after CDPD-6761
+  ignore("create/drop database - location with pre-created directory") {
     withTempDir { tmpDir =>
       createDatabaseWithLocation(tmpDir, dirExists = true)
     }
@@ -1542,7 +1549,9 @@ class HiveDDLSuite
       "totalNumberFiles",
       "maxFileSize",
       "minFileSize",
-      "OBJCAPABILITIES"
+      "OBJCAPABILITIES",
+      "bucketing_version",
+      "numFilesErasureCoded"
     )
     assert(targetTable.properties.filterKeys(!metastoreGeneratedProperties.contains(_)).isEmpty,
       "the table properties of source tables should not be copied in the created table")
@@ -1607,7 +1616,8 @@ class HiveDDLSuite
       sql(s"SELECT * FROM ${targetTable.identifier}"))
   }
 
-  test("create table with the same name as an index table") {
+  // Indexes are removed from Hive 3 and later
+  ignore("create table with the same name as an index table") {
     val tabName = "tab1"
     val indexName = tabName + "_index"
     withTable(tabName) {
@@ -1647,7 +1657,8 @@ class HiveDDLSuite
     }
   }
 
-  test("insert skewed table") {
+  // CDPD-7003
+  ignore("insert skewed table") {
     val tabName = "tab1"
     withTable(tabName) {
       // Spark SQL does not support creating skewed table. Thus, we have to use Hive client.

@@ -65,7 +65,8 @@ public abstract class ExecuteStatementOperation extends Operation {
         isOperationLogEnabled = false;
         return;
       }
-      OperationLog.setCurrentOperationLog(operationLog);
+      // Method is removed in HIVE-16061
+      // OperationLog.setCurrentOperationLog(operationLog);
     }
   }
 }

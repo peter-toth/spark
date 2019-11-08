@@ -20,11 +20,13 @@ package org.apache.spark.sql.hive.thriftserver
 import org.apache.hadoop.hive.cli.CliSessionState
 import org.apache.hadoop.hive.conf.HiveConf
 import org.apache.hadoop.hive.ql.session.SessionState
+import org.scalatest.Ignore
 
 import org.apache.spark.{SparkConf, SparkFunSuite}
 import org.apache.spark.deploy.SparkHadoopUtil
 import org.apache.spark.sql.hive.HiveUtils
 
+@Ignore
 class HiveCliSessionStateSuite extends SparkFunSuite {
 
   def withSessionClear(f: () => Unit): Unit = {

@@ -17,6 +17,7 @@
 
 package org.apache.spark.sql.hive.thriftserver
 
+import org.scalatest.Ignore
 import test.custom.listener.{DummyQueryExecutionListener, DummyStreamingQueryListener}
 
 import org.apache.spark.SparkFunSuite
@@ -26,6 +27,7 @@ import org.apache.spark.sql.hive.HiveUtils.{HIVE_METASTORE_JARS, HIVE_METASTORE_
 import org.apache.spark.sql.hive.test.TestHiveContext
 import org.apache.spark.sql.internal.StaticSQLConf.{QUERY_EXECUTION_LISTENERS, STREAMING_QUERY_LISTENERS, WAREHOUSE_PATH}
 
+@Ignore
 class SparkSQLEnvSuite extends SparkFunSuite {
   test("SPARK-29604 external listeners should be initialized with Spark classloader") {
     withSystemProperties(

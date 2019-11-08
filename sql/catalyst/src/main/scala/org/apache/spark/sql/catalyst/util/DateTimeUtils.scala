@@ -26,6 +26,8 @@ import java.util.concurrent.TimeUnit._
 
 import scala.util.control.NonFatal
 
+import org.apache.hadoop.hive.common.`type`.{Date => HiveDate, Timestamp => HiveTimestamp}
+
 import org.apache.spark.sql.catalyst.util.DateTimeConstants._
 import org.apache.spark.sql.types.Decimal
 import org.apache.spark.unsafe.types.{CalendarInterval, UTF8String}
@@ -87,6 +89,16 @@ object DateTimeUtils {
   }
 
   /**
+   * Returns the number of days since epoch from HiveDate.
+   */
+  def fromHiveDate(date: HiveDate): SQLDate = {
+    val convertedMicros =
+      convertTz(date.toEpochMilli * 1000, TimeZone.getDefault.toZoneId, ZoneOffset.UTC)
+    val r = millisToDays(convertedMicros / 1000)
+    r
+  }
+
+  /**
    * Converts an instance of `java.sql.Date` to a number of days since the epoch
    * 1970-01-01 via extracting date fields `year`, `month`, `days` from the input,
    * creating a local date in Proleptic Gregorian calendar from the fields, and
@@ -132,6 +144,31 @@ object DateTimeUtils {
     new Date(localDate.getYear - 1900, localDate.getMonthValue - 1, localDate.getDayOfMonth)
   }
 
+  def toHiveDate(daysSinceEpoch: SQLDate): HiveDate = {
+
+    val micros = daysToMillis(daysSinceEpoch) * 1000
+    val convertedMicros = convertTz(micros, ZoneOffset.UTC, TimeZone.getDefault.toZoneId)
+    val r = HiveDate.ofEpochMilli(convertedMicros / 1000)
+    r
+  }
+
+  /**
+   * Returns a HiveTimestamp from number of micros since epoch.
+   */
+  def toHiveTimestamp(us: SQLTimestamp): HiveTimestamp = {
+    // setNanos() will overwrite the millisecond part, so the milliseconds should be
+    // cut off at seconds
+    val usToDefault = convertTz(us, ZoneOffset.UTC, TimeZone.getDefault.toZoneId)
+    var seconds = usToDefault / MICROS_PER_SECOND
+    var micros = usToDefault % MICROS_PER_SECOND
+    // setNanos() can not accept negative value
+    if (micros < 0) {
+      micros += MICROS_PER_SECOND
+      seconds -= 1
+    }
+    HiveTimestamp.ofEpochSecond(seconds, micros.toInt * 1000)
+  }
+
   /**
    * Converts microseconds since the epoch to an instance of `java.sql.Timestamp`
    * via creating a local timestamp at the system time zone in Proleptic Gregorian
@@ -151,6 +188,15 @@ object DateTimeUtils {
   def toJavaTimestamp(us: SQLTimestamp): Timestamp = {
     val ldt = microsToInstant(us).atZone(ZoneId.systemDefault()).toLocalDateTime
     Timestamp.valueOf(ldt)
+  }
+
+  /**
+   * Returns the number of micros since epoch from HiveTimestamp.
+   */
+  def fromHiveTimestamp(t: HiveTimestamp): SQLTimestamp = {
+    val jTimestamp = t.toSqlTimestamp
+    val utcJTs = fromJavaTimestamp(jTimestamp)
+    convertTz(utcJTs, TimeZone.getDefault.toZoneId, ZoneOffset.UTC )
   }
 
   /**

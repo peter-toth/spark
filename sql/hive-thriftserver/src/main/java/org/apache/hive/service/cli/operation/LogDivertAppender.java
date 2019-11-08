@@ -97,10 +97,11 @@ public class LogDivertAppender extends WriterAppender {
 
     @Override
     public int decide(LoggingEvent ev) {
-      OperationLog log = operationManager.getOperationLogByThread();
+      // HIVE-16061 removed getCurrentOperationLog so getOperationLogByThread is useless
+      // OperationLog log = operationManager.getOperationLogByThread();
       boolean excludeMatches = (loggingMode == OperationLog.LoggingLevel.VERBOSE);
 
-      if (log == null) {
+      /* if (log == null) {
         return Filter.DENY;
       }
 
@@ -123,7 +124,7 @@ public class LogDivertAppender extends WriterAppender {
         // matched
         // or if this is whitelist filter and it didn't match
         return Filter.DENY;
-      }
+      } */
       return Filter.NEUTRAL;
     }
   }
@@ -172,11 +173,13 @@ public class LogDivertAppender extends WriterAppender {
 
   @Override
   public void doAppend(LoggingEvent event) {
-    OperationLog log = operationManager.getOperationLogByThread();
+    // HIVE-16061 removed getCurrentOperationLog so getOperationLogByThread is useless
+    /* OperationLog log = operationManager.getOperationLogByThread();
 
     // Set current layout depending on the verbose/non-verbose mode.
     if (log != null) {
       boolean isCurrModeVerbose = (log.getOpLoggingLevel() == OperationLog.LoggingLevel.VERBOSE);
+
 
       // If there is a logging level change from verbose->non-verbose or vice-versa since
       // the last subAppend call, change the layout to preserve consistency.
@@ -184,7 +187,7 @@ public class LogDivertAppender extends WriterAppender {
         isVerbose = isCurrModeVerbose;
         setLayout(isVerbose, verboseLayout);
       }
-    }
+    } */
     super.doAppend(event);
   }
 
@@ -198,12 +201,13 @@ public class LogDivertAppender extends WriterAppender {
     // That should've gone into our writer. Notify the LogContext.
     String logOutput = writer.toString();
     writer.reset();
-
-    OperationLog log = operationManager.getOperationLogByThread();
+    // HIVE-16061 removed getCurrentOperationLog so getOperationLogByThread is useless
+    /* OperationLog log = operationManager.getOperationLogByThread();
     if (log == null) {
       LOG.debug(" ---+++=== Dropped log event from thread " + event.getThreadName());
       return;
     }
-    log.writeOperationLog(logOutput);
+
+     log.writeOperationLog(logOutput); */
   }
 }

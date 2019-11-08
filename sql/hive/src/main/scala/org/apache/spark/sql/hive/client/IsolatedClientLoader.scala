@@ -107,6 +107,7 @@ private[hive] object IsolatedClientLoader extends Logging {
     case "2.3" | "2.3.0" | "2.3.1" | "2.3.2" | "2.3.3" | "2.3.4" | "2.3.5" | "2.3.6" => hive.v2_3
     case "3.0" | "3.0.0" => hive.v3_0
     case "3.1" | "3.1.0" | "3.1.1" | "3.1.2" => hive.v3_1
+    case cdp_hive if version.startsWith("3.1") => hive.vcdpd
     case version =>
       throw new UnsupportedOperationException(s"Unsupported Hive Metastore version ($version). " +
         s"Please set ${HiveUtils.HIVE_METASTORE_VERSION.key} with a valid version.")
@@ -120,14 +121,19 @@ private[hive] object IsolatedClientLoader extends Logging {
     val hiveArtifacts = version.extraDeps ++
       Seq("hive-metastore", "hive-exec", "hive-common", "hive-serde")
         .map(a => s"org.apache.hive:$a:${version.fullVersion}") ++
-      Seq("com.google.guava:guava:14.0.1",
+      Seq("com.google.guava:guava:14.0.1", // TODO ptoth: SURE? our hive is still on 14.0.1?
         s"org.apache.hadoop:hadoop-client:$hadoopVersion")
 
+    val nexusPrivateRepo = if (Utils.isTesting) {
+      ",https://nexus-private.hortonworks.com/nexus/content/groups/public"
+    } else {
+      ""
+    }
     val classpath = quietly {
       SparkSubmitUtils.resolveMavenCoordinates(
         hiveArtifacts.mkString(","),
         SparkSubmitUtils.buildIvySettings(
-          Some(remoteRepos),
+          Some(remoteRepos + nexusPrivateRepo),
           ivyPath),
         exclusions = version.exclusions)
     }

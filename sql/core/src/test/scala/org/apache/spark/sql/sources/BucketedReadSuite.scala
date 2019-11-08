@@ -745,7 +745,8 @@ abstract class BucketedReadSuite extends QueryTest with SQLTestUtils {
     }
   }
 
-  test("error if there exists any malformed bucket files") {
+  // Ignoring this for now and tracking it under CDPD-8876
+  ignore("error if there exists any malformed bucket files") {
     withTable("bucketed_table") {
       df1.write.format("parquet").bucketBy(8, "i").saveAsTable("bucketed_table")
       val warehouseFilePath = new URI(spark.sessionState.conf.warehousePath).getPath

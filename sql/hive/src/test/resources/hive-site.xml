@@ -23,4 +23,40 @@
       <value>true</value>
       <description>Internal marker for test.</description>
   </property>
+  <property>
+  <name>hive.metastore.schema.verification</name>
+  <value>false</value>
+  </property>
+  <property>
+    <name>datanucleus.schema.autoCreateTables</name>
+    <value>true</value>
+  </property>
+  <property>
+    <name>datanucleus.autoCreateSchema</name>
+    <value>true</value>
+  </property>
+  <property>
+    <name>datanucleus.schema.autoCreateAll</name>
+    <value>true</value>
+  </property>
+  <property>
+    <name>datanucleus.autoCreateColumns</name>
+    <value>true</value>
+  </property>
+  <property>
+    <name>datanucleus.autoCreateConstraints</name>
+    <value>true</value>
+  </property>
+  <property>
+    <name>hive.cbo.enable</name>
+    <value>false</value>
+  </property>
+  <property>
+    <name>metastore.metadata.transformer.class</name>
+    <value></value>
+  </property>
+  <property>
+    <name>hive.query.reexecution.enabled</name>
+    <value>false</value>
+  </property>
 </configuration>

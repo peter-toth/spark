@@ -24,6 +24,7 @@ import java.util.{Locale, MissingFormatArgumentException}
 import scala.util.control.NonFatal
 
 import org.apache.commons.lang3.exception.ExceptionUtils
+import org.scalatest.Ignore
 
 import org.apache.spark.SparkException
 import org.apache.spark.sql.SQLQueryTestSuite
@@ -51,6 +52,7 @@ import org.apache.spark.sql.types._
  *   2. Support DESC command.
  *   3. Support SHOW command.
  */
+@Ignore
 class ThriftServerQueryTestSuite extends SQLQueryTestSuite with SharedThriftServer {
 
   /** List of test cases to ignore, in lower cases. */

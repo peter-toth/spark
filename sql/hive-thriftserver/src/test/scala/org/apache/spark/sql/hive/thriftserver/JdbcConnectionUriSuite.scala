@@ -20,9 +20,11 @@ package org.apache.spark.sql.hive.thriftserver
 import java.sql.DriverManager
 
 import org.apache.hive.jdbc.HiveDriver
+import org.scalatest.Ignore
 
 import org.apache.spark.util.Utils
 
+@Ignore
 class JdbcConnectionUriSuite extends HiveThriftServer2Test {
   Utils.classForName(classOf[HiveDriver].getCanonicalName)
 

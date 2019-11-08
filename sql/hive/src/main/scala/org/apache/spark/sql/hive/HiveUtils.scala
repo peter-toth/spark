@@ -56,10 +56,10 @@ private[spark] object HiveUtils extends Logging {
   }
 
   private val hiveVersion = HiveVersionInfo.getVersion
-  val isHive23: Boolean = hiveVersion.startsWith("2.3")
+  val isHive23: Boolean = hiveVersion.startsWith("2.3") || hiveVersion.startsWith("3")
 
   /** The version of hive used internally by Spark SQL. */
-  val builtinHiveVersion: String = if (isHive23) hiveVersion else "1.2.2"
+  val builtinHiveVersion: String = "3.1.3000.7.1.1.0-355"
 
   val HIVE_METASTORE_VERSION = buildConf("spark.sql.hive.metastore.version")
     .doc("Version of the Hive metastore. Available options are " +
@@ -396,10 +396,9 @@ private[spark] object HiveUtils extends Logging {
       // TODO: Support for loading the jars from an already downloaded location.
       logInfo(
         s"Initializing HiveMetastoreConnection version $hiveMetastoreVersion using maven.")
-      val v = VersionInfo.getVersion
       IsolatedClientLoader.forVersion(
         hiveMetastoreVersion = hiveMetastoreVersion,
-        hadoopVersion = raw"(\d).(\d).(\d)".r.findFirstIn(v).getOrElse(v),
+        hadoopVersion = VersionInfo.getVersion,
         sparkConf = conf,
         hadoopConf = hadoopConf,
         config = configurations,
@@ -408,17 +407,13 @@ private[spark] object HiveUtils extends Logging {
     } else {
       // Convert to files and expand any directories.
       val jars =
-        (hiveMetastoreJars + File.pathSeparator + "__hive_libs__/*" +
-          File.pathSeparator + s"/usr/hdp/current/spark2-client/standalone-metastore/*")
+        hiveMetastoreJars
           .split(File.pathSeparator)
           .flatMap {
           case path if new File(path).getName == "*" =>
             val files = new File(path).getParentFile.listFiles()
             if (files == null) {
-              if (!path.equals("__hive_libs__/*") &&
-                  !path.equals("/usr/hdp/current/spark2-client/standalone-metastore/*")) {
-                logWarning(s"Hive jar path '$path' does not exist.")
-              }
+              logWarning(s"Hive jar path '$path' does not exist.")
               Nil
             } else {
               files.filter(_.getName.toLowerCase(Locale.ROOT).endsWith(".jar"))
@@ -471,6 +466,7 @@ private[spark] object HiveUtils extends Logging {
     // MetaException(message:Version information not found in metastore.)
     propMap.put("hive.metastore.schema.verification", "false")
     propMap.put("datanucleus.schema.autoCreateAll", "true")
+    propMap.put("datanucleus.schema.autoCreateTables", "true")
 
     // SPARK-11783: When "hive.metastore.uris" is set, the metastore connection mode will be
     // remote (https://cwiki.apache.org/confluence/display/Hive/AdminManual+MetastoreAdmin

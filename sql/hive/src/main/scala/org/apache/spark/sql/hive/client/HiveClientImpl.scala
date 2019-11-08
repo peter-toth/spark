@@ -27,14 +27,14 @@ import scala.collection.mutable.ArrayBuffer
 
 import org.apache.hadoop.fs.Path
 import org.apache.hadoop.hive.common.StatsSetupConst
-import org.apache.hadoop.hive.conf.HiveConf
+import org.apache.hadoop.hive.conf.{HiveConf, HiveConfUtil}
 import org.apache.hadoop.hive.conf.HiveConf.ConfVars
 import org.apache.hadoop.hive.metastore.{IMetaStoreClient, TableType => HiveTableType}
 import org.apache.hadoop.hive.metastore.api.{Database => HiveDatabase, Table => MetaStoreApiTable}
 import org.apache.hadoop.hive.metastore.api.{FieldSchema, Order, SerDeInfo, StorageDescriptor}
 import org.apache.hadoop.hive.ql.Driver
 import org.apache.hadoop.hive.ql.metadata.{Hive, HiveException, Partition => HivePartition, Table => HiveTable}
-import org.apache.hadoop.hive.ql.processors._
+import org.apache.hadoop.hive.ql.processors.{CommandProcessorException, CommandProcessorResponse}
 import org.apache.hadoop.hive.ql.session.SessionState
 import org.apache.hadoop.hive.serde.serdeConstants
 import org.apache.hadoop.hive.serde2.MetadataTypedColumnsetSerDe
@@ -113,6 +113,7 @@ private[hive] class HiveClientImpl(
     case hive.v2_3 => new Shim_v2_3()
     case hive.v3_0 => new Shim_v3_0()
     case hive.v3_1 => new Shim_v3_1()
+    case hive.vcdpd => new Shim_cdpd()
   }
 
   // Create an internal session state for this HiveClientImpl.
@@ -176,7 +177,18 @@ private[hive] class HiveClientImpl(
     // 2: we set all spark confs to this hiveConf.
     // 3: we set all entries in config to this hiveConf.
     (hadoopConf.iterator().asScala.map(kv => kv.getKey -> kv.getValue)
-      ++ (if (version == hive.v3_0) Seq("hive.execution.engine" -> "mr") else Nil)
+      ++ (if (version == hive.v3_0 || version == hive.v3_1 || version == hive.vcdpd) {
+            Seq(
+              "hive.execution.engine" -> "mr",
+              "datanucleus.schema.autoCreateTables" -> "true",
+              "hive.metastore.schema.verification" -> "false",
+              "datanucleus.schema.autoCreateAll" -> "true",
+              "datanucleus.autoCreateSchema" -> "true",
+              "datanucleus.autoCreateColumns" -> "true",
+              "datanucleus.autoCreateConstraints" -> "true",
+              "hive.query.reexecution.enabled" -> "false",
+              "metastore.metadata.transformer.class" -> "")
+          } else Nil)
       ++ sparkConf.getAll.toMap ++ extraConfig).foreach { case (k, v) =>
       logDebug(
         s"""
@@ -190,6 +202,10 @@ private[hive] class HiveClientImpl(
     val state = new SessionState(hiveConf)
     if (clientLoader.cachedHive != null) {
       Hive.set(clientLoader.cachedHive.asInstanceOf[Hive])
+    }
+    if (HiveConfUtil.isEmbeddedMetaStore(hiveConf.getVar(ConfVars.METASTOREURIS))) {
+      hiveConf.setBoolVar(ConfVars.METASTORE_AUTO_CREATE_ALL, true)
+      hiveConf.setBoolVar(ConfVars.METASTORE_SCHEMA_VERIFICATION, false)
     }
     // Hive 2.3 will set UDFClassLoader to hiveConf when initializing SessionState
     // since HIVE-11878, and ADDJarCommand will add jars to clientLoader.classLoader.
@@ -803,14 +819,14 @@ private[hive] class HiveClientImpl(
       // Since HIVE-18238(Hive 3.0.0), the Driver.close function's return type changed
       // and the CommandProcessorFactory.clean function removed.
       driver.getClass.getMethod("close").invoke(driver)
-      if (version != hive.v3_0 && version != hive.v3_1) {
-        CommandProcessorFactory.clean(conf)
-      }
+      // CDPD-3881. commenting out the following lines since clean method is removed from cdp hive
+      /*  if (version != hive.v3_0 && version != hive.v3_1) {
+           CommandProcessorFactory.clean(conf)
+         } */
     }
 
     logDebug(s"Running hiveql '$cmd'")
     if (cmd.toLowerCase(Locale.ROOT).startsWith("set")) { logDebug(s"Changing config: $cmd") }
-    try {
       val cmd_trimmed: String = cmd.trim()
       val tokens: Array[String] = cmd_trimmed.split("\\s+")
       // The remainder of the command.
@@ -818,42 +834,52 @@ private[hive] class HiveClientImpl(
       val proc = shim.getCommandProcessor(tokens(0), conf)
       proc match {
         case driver: Driver =>
-          val response: CommandProcessorResponse = driver.run(cmd)
-          // Throw an exception if there is an error in query processing.
-          if (response.getResponseCode != 0) {
+          try {
+            driver.run(cmd)
+            driver.setMaxRows(maxRows)
+
+            val results = shim.getDriverResults(driver)
             driver.close()
-            CommandProcessorFactory.clean(conf)
-            throw new QueryExecutionException(response.getErrorMessage)
+            results
+          } catch {
+            case e: Exception =>
+              logError(
+                s"""
+                   |======================
+                   |HIVE FAILURE OUTPUT
+                   |======================
+                   |${outputBuffer.toString}
+                   |======================
+                   |END HIVE FAILURE OUTPUT
+                   |======================
+          """.stripMargin)
+              driver.close()
+              throw e
           }
-          driver.setMaxRows(maxRows)
-
-          val results = shim.getDriverResults(driver)
-          driver.close()
-          CommandProcessorFactory.clean(conf)
-          results
-
         case _ =>
           if (state.out != null) {
             // scalastyle:off println
             state.out.println(tokens(0) + " " + cmd_1)
             // scalastyle:on println
           }
-          Seq(proc.run(cmd_1).getResponseCode.toString)
-      }
-    } catch {
-      case e: Exception =>
-        logError(
-          s"""
-            |======================
-            |HIVE FAILURE OUTPUT
-            |======================
-            |${outputBuffer.toString}
-            |======================
-            |END HIVE FAILURE OUTPUT
-            |======================
+          try {
+            proc.run(cmd_1).getMessage
+            Seq("0")
+          } catch {
+            case e: Exception =>
+              logError(
+                s"""
+                   |======================
+                   |HIVE FAILURE OUTPUT
+                   |======================
+                   |${outputBuffer.toString}
+                   |======================
+                   |END HIVE FAILURE OUTPUT
+                   |======================
           """.stripMargin)
-        throw e
-    }
+              throw e
+          }
+      }
   }
 
   def loadPartition(
@@ -865,15 +891,20 @@ private[hive] class HiveClientImpl(
       inheritTableSpecs: Boolean,
       isSrcLocal: Boolean): Unit = withHiveState {
     val hiveTable = client.getTable(dbName, tableName, true /* throw exception */)
-    shim.loadPartition(
-      client,
-      new Path(loadPath), // TODO: Use URI
-      s"$dbName.$tableName",
-      partSpec,
-      replace,
-      inheritTableSpecs,
-      isSkewedStoreAsSubdir = hiveTable.isStoredAsSubDirectories,
-      isSrcLocal = isSrcLocal)
+    try {
+      shim.loadPartition(
+        client,
+        new Path(loadPath), // TODO: Use URI
+        s"$dbName.$tableName",
+        partSpec,
+        replace,
+        inheritTableSpecs,
+        isSkewedStoreAsSubdir = hiveTable.isStoredAsSubDirectories,
+        isSrcLocal = isSrcLocal)
+    } catch {
+      case e: Exception =>
+        throw new AnalysisException(e.getMessage, cause = Some(e))
+    }
   }
 
   def loadTable(
@@ -881,12 +912,17 @@ private[hive] class HiveClientImpl(
       tableName: String,
       replace: Boolean,
       isSrcLocal: Boolean): Unit = withHiveState {
-    shim.loadTable(
-      client,
-      new Path(loadPath),
-      tableName,
-      replace,
-      isSrcLocal)
+    try {
+      shim.loadTable(
+        client,
+        new Path(loadPath),
+        tableName,
+        replace,
+        isSrcLocal)
+    } catch {
+      case e: Exception =>
+        throw new AnalysisException(e.getMessage, cause = Some(e))
+    }
   }
 
   def loadDynamicPartitions(
@@ -897,14 +933,19 @@ private[hive] class HiveClientImpl(
       replace: Boolean,
       numDP: Int): Unit = withHiveState {
     val hiveTable = client.getTable(dbName, tableName, true /* throw exception */)
-    shim.loadDynamicPartitions(
-      client,
-      new Path(loadPath),
-      s"$dbName.$tableName",
-      partSpec,
-      replace,
-      numDP,
-      listBucketingEnabled = hiveTable.isStoredAsSubDirectories)
+    try {
+      shim.loadDynamicPartitions(
+        client,
+        new Path(loadPath),
+        s"$dbName.$tableName",
+        partSpec,
+        replace,
+        numDP,
+        listBucketingEnabled = hiveTable.isStoredAsSubDirectories)
+    } catch {
+      case e: Exception =>
+        throw new AnalysisException(e.getMessage, cause = Some(e))
+    }
   }
 
   override def createFunction(db: String, func: CatalogFunction): Unit = withHiveState {
@@ -953,7 +994,9 @@ private[hive] class HiveClientImpl(
     client.getAllTables("default").asScala.foreach { t =>
       logDebug(s"Deleting table $t")
       val table = client.getTable("default", t)
-      try {
+      client.dropTable("default", t)
+      // CDPD-3881. HIVE-18448 Hive 3.0 remove index APIs, so the following lines are not relevant
+      /*  try {
         client.getIndexes("default", t, 255).asScala.foreach { index =>
           shim.dropIndex(client, "default", t, index.getIndexName)
         }
@@ -964,7 +1007,7 @@ private[hive] class HiveClientImpl(
         case _: NoSuchMethodError =>
           // HIVE-18448 Hive 3.0 remove index APIs
           client.dropTable("default", t)
-      }
+      } */
     }
     client.getAllDatabases.asScala.filterNot(_ == "default").foreach { db =>
       logDebug(s"Dropping Database: $db")

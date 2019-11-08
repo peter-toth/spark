@@ -1657,7 +1657,9 @@ class DDLParserSuite extends PlanTest with SharedSQLContext {
       "escape.delim" -> "y",
       "serialization.format" -> "x",
       "line.delim" -> "\n",
-      "colelction.delim" -> "a", // yes, it's a typo from Hive :)
+      // CDPD-3881: The below property used to be different, due to a typo.
+      // Hive has since fixed the typo.
+      "collection.delim" -> "a",
       "mapkey.delim" -> "b"))
   }
 

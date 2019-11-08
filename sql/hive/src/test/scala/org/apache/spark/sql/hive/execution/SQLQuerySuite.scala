@@ -21,7 +21,7 @@ import java.io.File
 import java.net.URI
 import java.nio.charset.StandardCharsets
 import java.sql.{Date, Timestamp}
-import java.util.{Locale, Set}
+import java.util.{Locale, Set, TimeZone}
 
 import com.google.common.io.Files
 import org.apache.hadoop.fs.{FileSystem, Path}
@@ -1152,7 +1152,6 @@ class SQLQuerySuite extends QueryTest with SQLTestUtils with TestHiveSingleton {
         Timestamp.valueOf("1969-12-31 16:00:00"),
         String.valueOf("1969-12-31 16:00:00"),
         Timestamp.valueOf("1970-01-01 00:00:00")))
-
   }
 
   test("SPARK-8588 HiveTypeCoercion.inConversion fires too early") {

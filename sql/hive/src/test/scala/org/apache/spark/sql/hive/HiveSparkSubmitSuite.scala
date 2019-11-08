@@ -23,7 +23,7 @@ import scala.util.Properties
 
 import org.apache.commons.lang3.{JavaVersion, SystemUtils}
 import org.apache.hadoop.fs.Path
-import org.scalatest.{BeforeAndAfterEach, Matchers}
+import org.scalatest.{BeforeAndAfterEach, Ignore, Matchers}
 
 import org.apache.spark._
 import org.apache.spark.internal.Logging
@@ -41,6 +41,8 @@ import org.apache.spark.util.{ResetSystemProperties, Utils}
 /**
  * This suite tests spark-submit with applications using HiveContext.
  */
+// This will be tracked under CDPD-8431
+@Ignore
 class HiveSparkSubmitSuite
   extends SparkSubmitTestUtils
   with Matchers
@@ -164,7 +166,9 @@ class HiveSparkSubmitSuite
     runSparkSubmit(args)
   }
 
-  test("SPARK-9757 Persist Parquet relation with decimal column") {
+  // This tests talking to lower versions of metastore which is not relevant
+  // to cdp spark
+  ignore("SPARK-9757 Persist Parquet relation with decimal column") {
     assume(!SystemUtils.isJavaVersionAtLeast(JavaVersion.JAVA_9))
     val unusedJar = TestUtils.createJarWithClasses(Seq.empty)
     val args = Seq(
@@ -217,7 +221,9 @@ class HiveSparkSubmitSuite
     runSparkSubmit(args)
   }
 
-  test("set hive.metastore.warehouse.dir") {
+  // This test need to be rewritten, to consider specific configs
+  // that spark requires for cdp hive to be set in the temporary hive-site.xml
+  ignore("set hive.metastore.warehouse.dir") {
     // In this test, we set hive.metastore.warehouse.dir in hive-site.xml but
     // not set spark.sql.warehouse.dir. So, the warehouse dir should be
     // the value of hive.metastore.warehouse.dir. Also, the value of
@@ -300,7 +306,8 @@ class HiveSparkSubmitSuite
     runSparkSubmit(args)
   }
 
-  test("SPARK-18360: default table path of tables in default database should depend on the " +
+  // CDPD-6761
+  ignore("SPARK-18360: default table path of tables in default database should depend on the " +
     "location of default database") {
     // CDPD-4216: disabled on JDK11 because this uses the built-in Hive.
     assume(!SystemUtils.isJavaVersionAtLeast(JavaVersion.JAVA_9))

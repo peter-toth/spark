@@ -17,9 +17,12 @@
 
 package org.apache.spark.sql.hive.thriftserver
 
+import org.scalatest.Ignore
+
 import org.apache.spark.SparkFunSuite
 import org.apache.spark.sql.types.{IntegerType, NullType, StringType, StructField, StructType}
 
+@Ignore
 class SparkExecuteStatementOperationSuite extends SparkFunSuite {
   test("SPARK-17112 `select null` via JDBC triggers IllegalArgumentException in ThriftServer") {
     val field1 = StructField("NULL", NullType)

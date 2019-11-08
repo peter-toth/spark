@@ -27,6 +27,8 @@ import javax.xml.bind.DatatypeConverter
 
 import scala.annotation.tailrec
 
+import org.apache.hadoop.hive.common.`type`.{Date => HiveDate, Timestamp => HiveTimestamp}
+
 import org.apache.spark.unsafe.types.UTF8String
 
 /**
@@ -192,6 +194,15 @@ object DateTimeUtils {
   }
 
   /**
+   * Returns the number of days since epoch from HiveDate.
+   */
+  def fromHiveDate(date: HiveDate): SQLDate = {
+    val convertedMicros = convertTz(date.toEpochMilli * 1000, TimeZone.getDefault, TimeZoneUTC)
+    val r = millisToDays(convertedMicros / 1000)
+    r
+  }
+
+  /**
    * Returns the number of days since epoch from java.sql.Date.
    */
   def fromJavaDate(date: Date): SQLDate = {
@@ -203,6 +214,31 @@ object DateTimeUtils {
    */
   def toJavaDate(daysSinceEpoch: SQLDate): Date = {
     new Date(daysToMillis(daysSinceEpoch))
+  }
+
+  def toHiveDate(daysSinceEpoch: SQLDate): HiveDate = {
+
+    val micros = daysToMillis(daysSinceEpoch) * 1000
+    val convertedMicros = convertTz(micros, TimeZoneUTC, TimeZone.getDefault)
+    val r = HiveDate.ofEpochMilli(convertedMicros / 1000)
+    r
+  }
+
+  /**
+   * Returns a HiveTimestamp from number of micros since epoch.
+   */
+  def toHiveTimestamp(us: SQLTimestamp): HiveTimestamp = {
+    // setNanos() will overwrite the millisecond part, so the milliseconds should be
+    // cut off at seconds
+    val usToDefault = convertTz(us, TimeZoneUTC, TimeZone.getDefault)
+    var seconds = usToDefault / MICROS_PER_SECOND
+    var micros = usToDefault % MICROS_PER_SECOND
+    // setNanos() can not accept negative value
+    if (micros < 0) {
+      micros += MICROS_PER_SECOND
+      seconds -= 1
+    }
+    HiveTimestamp.ofEpochSecond(seconds, micros.toInt * 1000)
   }
 
   /**
@@ -221,6 +257,15 @@ object DateTimeUtils {
     val t = new Timestamp(seconds * 1000)
     t.setNanos(micros.toInt * 1000)
     t
+  }
+
+  /**
+   * Returns the number of micros since epoch from HiveTimestamp.
+   */
+  def fromHiveTimestamp(t: HiveTimestamp): SQLTimestamp = {
+    val jTimestamp = t.toSqlTimestamp
+    val utcJTs = fromJavaTimestamp(jTimestamp)
+    convertTz(utcJTs, TimeZone.getDefault, TimeZoneUTC )
   }
 
   /**

@@ -33,9 +33,10 @@ import org.apache.hadoop.hive.metastore.api.{EnvironmentContext, Function => Hiv
 import org.apache.hadoop.hive.metastore.api.{MetaException, PrincipalType, ResourceType, ResourceUri}
 import org.apache.hadoop.hive.metastore.api.{Table => TTable}
 import org.apache.hadoop.hive.ql.Driver
+import org.apache.hadoop.hive.ql.ddl.table.partition.AlterTableAddPartitionDesc
 import org.apache.hadoop.hive.ql.io.AcidUtils
 import org.apache.hadoop.hive.ql.metadata.{Hive, HiveException, Partition, Table}
-import org.apache.hadoop.hive.ql.plan.{AddPartitionDesc, LoadTableDesc}
+import org.apache.hadoop.hive.ql.plan.LoadTableDesc
 import org.apache.hadoop.hive.ql.processors.{CommandProcessor, CommandProcessorFactory}
 import org.apache.hadoop.hive.ql.session.SessionState
 import org.apache.hadoop.hive.serde.serdeConstants
@@ -488,12 +489,20 @@ private[client] class Shim_v0_12 extends Shim with Logging {
     Nil
   }
 
+  private lazy val renamePartitionMethod =
+    findMethod(
+      classOf[Hive],
+      "renamePartition",
+      classOf[Table],
+      classOf[JMap[String, String]],
+      classOf[Partition])
+
   override def renamePartition(
       hive: Hive,
       hiveTable: Table,
       oldSpec: JMap[String, String],
       hivePart: Partition): Unit = {
-    hive.renamePartition(hiveTable, oldSpec, hivePart)
+    renamePartitionMethod.invoke(hive, hiveTable, oldSpec, hivePart)
   }
 }
 
@@ -538,21 +547,59 @@ private[client] class Shim_v0_13 extends Shim_v0_12 {
   override def setDataLocation(table: Table, loc: String): Unit =
     setDataLocationMethod.invoke(table, new Path(loc))
 
+  private lazy val addPartitionDescClass =
+    Utils.classForName("org.apache.hadoop.hive.ql.plan.AddPartitionDesc")
+
+  private lazy val addPartitionDescCtor = addPartitionDescClass.getConstructor(
+    classOf[String],
+    classOf[String],
+    JBoolean.TYPE)
+
+  private lazy val addPartitionMethod =
+    findMethod(
+      addPartitionDescClass,
+      "addPartition",
+      classOf[JMap[String, String]],
+      classOf[String])
+
+  private lazy val getPartitionMethod =
+    findMethod(
+      addPartitionDescClass,
+      "getPartition",
+      JInteger.TYPE)
+
+  private lazy val setPartParamsMethod =
+    findMethod(
+      addPartitionDescClass,
+      "setPartParams",
+      classOf[JMap[String, String]])
+
+  private lazy val createPartitionsMethod =
+    findMethod(
+      classOf[Hive],
+      "createPartitions",
+      addPartitionDescClass)
+
   override def createPartitions(
       hive: Hive,
       db: String,
       table: String,
       parts: Seq[CatalogTablePartition],
       ignoreIfExists: Boolean): Unit = {
-    val addPartitionDesc = new AddPartitionDesc(db, table, ignoreIfExists)
+    val addPartitionDesc =
+      addPartitionDescCtor.newInstance(db, table, ignoreIfExists: JBoolean).asInstanceOf[Object]
     parts.zipWithIndex.foreach { case (s, i) =>
-      addPartitionDesc.addPartition(
-        s.spec.asJava, s.storage.locationUri.map(CatalogUtils.URIToString(_)).orNull)
+      addPartitionMethod.invoke(
+        addPartitionDesc,
+        s.spec.asJava,
+        s.storage.locationUri.map(CatalogUtils.URIToString(_)).orNull)
+
       if (s.parameters.nonEmpty) {
-        addPartitionDesc.getPartition(i).setPartParams(s.parameters.asJava)
+        val partitionDesc = getPartitionMethod.invoke(addPartitionDesc, i: JInteger)
+        setPartParamsMethod.invoke(partitionDesc, s.parameters.asJava)
       }
     }
-    hive.createPartitions(addPartitionDesc)
+    createPartitionsMethod.invoke(hive, addPartitionDesc)
   }
 
   override def getAllPartitions(hive: Hive, table: Table): Seq[Partition] =
@@ -1537,3 +1584,73 @@ private[client] class Shim_v3_0 extends Shim_v2_3 {
 }
 
 private[client] class Shim_v3_1 extends Shim_v3_0
+
+private[client] class Shim_cdpd extends Shim_v3_1 {
+
+  override def loadDynamicPartitions(
+      hive: Hive,
+      loadPath: Path,
+      tableName: String,
+      partSpec: JMap[String, String],
+      replace: Boolean,
+      numDP: Int,
+      listBucketingEnabled: Boolean): Unit = {
+
+    val isDirectInsert: Boolean = false
+    val loadFileType = if (replace) {
+      org.apache.hadoop.hive.ql.plan.LoadTableDesc.LoadFileType.REPLACE_ALL
+    } else {
+      org.apache.hadoop.hive.ql.plan.LoadTableDesc.LoadFileType.KEEP_EXISTING
+    }
+    hive.loadDynamicPartitions(loadPath, tableName, partSpec, loadFileType,
+      numDP, listBucketingLevel, isAcid, writeIdInLoadTableOrPartition,
+      stmtIdInLoadTableOrPartition, hasFollowingStatsTask, AcidUtils.Operation.NOT_ACID,
+      replace, isDirectInsert)
+  }
+
+  override def loadTable(
+      hive: Hive,
+      loadPath: Path,
+      tableName: String,
+      replace: Boolean,
+      isSrcLocal: Boolean): Unit = {
+
+    val isDirectInsert: Boolean = false
+    val loadFileType = if (replace) {
+      org.apache.hadoop.hive.ql.plan.LoadTableDesc.LoadFileType.REPLACE_ALL
+    } else {
+      org.apache.hadoop.hive.ql.plan.LoadTableDesc.LoadFileType.KEEP_EXISTING
+    }
+
+    hive.loadTable(loadPath, tableName, loadFileType, isSrcLocal,
+      isSkewedStoreAsSubdir, isAcidIUDoperation, hasFollowingStatsTask,
+      writeIdInLoadTableOrPartition, stmtIdInLoadTableOrPartition, replace, isDirectInsert)
+  }
+
+  override def loadPartition(
+      hive: Hive,
+      loadPath: Path,
+      tableName: String,
+      partSpec: JMap[String, String],
+      replace: Boolean,
+      inheritTableSpecs: Boolean,
+      isSkewedStoreAsSubdir: Boolean,
+      isSrcLocal: Boolean): Unit = {
+    val isDirectInsert: Boolean = false
+    val session = SparkSession.getActiveSession
+    assert(session.nonEmpty)
+    val database = session.get.sessionState.catalog.getCurrentDatabase
+    val table = hive.getTable(database, tableName)
+    val loadFileType = if (replace) {
+      org.apache.hadoop.hive.ql.plan.LoadTableDesc.LoadFileType.REPLACE_ALL
+    } else {
+      org.apache.hadoop.hive.ql.plan.LoadTableDesc.LoadFileType.KEEP_EXISTING
+    }
+    // Looks we should handle HIVE-19891 but looks no way to access the appropriate value here.
+    // Here, it just uses 'inheritTableSpecs' to keep the existing behaviour.
+    val inheritLocation = inheritTableSpecs
+    hive.loadPartition(loadPath, table, partSpec, loadFileType, inheritTableSpecs,
+      inheritLocation, isSkewedStoreAsSubdir, isSrcLocal, isAcid, hasFollowingStatsTask,
+      writeIdInLoadTableOrPartition, stmtIdInLoadTableOrPartition, replace, isDirectInsert)
+  }
+}

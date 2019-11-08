@@ -121,13 +121,13 @@
     <flume.version>1.6.0</flume.version>
     <zookeeper.version>3.5.5.7.1.1.0-SNAPSHOT</zookeeper.version>
     <curator.version>4.2.0</curator.version>
-    <hive.group>org.spark-project.hive</hive.group>
+    <hive.group>org.apache.hive</hive.group>
     <hive.classifier></hive.classifier>
     <!-- Version used in Maven Hive dependency -->
-    <hive.version>1.21.2.7.1.0.0-SNAPSHOT</hive.version>
-    <hive23.version>2.3.6</hive23.version>
+    <hive.version>3.1.3000.7.1.1.0-SNAPSHOT</hive.version>
     <!-- Version used for internal directory structure -->
-    <hive.version.short>1.2.1</hive.version.short>
+    <!-- The following is just used for distinguishing some source folders between hive 1.2 and newer versions -->
+    <hive.version.short>2.3.5</hive.version.short>
     <!-- note that this should be compatible with Kafka brokers version 0.10 and up -->
     <kafka.version>2.4.0.7.1.1.0-SNAPSHOT</kafka.version>
     <derby.version>10.12.1.1</derby.version>
@@ -164,6 +164,7 @@
     <fasterxml.jackson.databind.version>2.10.0</fasterxml.jackson.databind.version>
     <snappy.version>1.1.7.3</snappy.version>
     <netlib.java.version>1.1.2</netlib.java.version>
+    <calcite.version>1.2.0-incubating</calcite.version>
     <commons-codec.version>1.10</commons-codec.version>
     <commons-io.version>2.4</commons-io.version>
     <!-- org.apache.commons/commons-lang/-->
@@ -1401,7 +1402,7 @@
       <dependency>
         <groupId>${hive.group}</groupId>
         <artifactId>hive-beeline</artifactId>
-        <version>${hive23.version}</version>
+        <version>${hive.version}</version>
         <scope>${hive.deps.scope}</scope>
         <exclusions>
           <exclusion>
@@ -1453,7 +1454,7 @@
       <dependency>
         <groupId>${hive.group}</groupId>
         <artifactId>hive-cli</artifactId>
-        <version>${hive23.version}</version>
+        <version>${hive.version}</version>
         <scope>${hive.deps.scope}</scope>
         <exclusions>
           <exclusion>
@@ -1509,7 +1510,7 @@
       <dependency>
         <groupId>${hive.group}</groupId>
         <artifactId>hive-common</artifactId>
-        <version>${hive23.version}</version>
+        <version>${hive.version}</version>
         <scope>${hive.deps.scope}</scope>
         <exclusions>
           <exclusion>
@@ -1578,7 +1579,7 @@
         <groupId>${hive.group}</groupId>
         <artifactId>hive-exec</artifactId>
         <classifier>${hive.classifier}</classifier>
-        <version>${hive23.version}</version>
+        <version>${hive.version}</version>
         <scope>${hive.deps.scope}</scope>
         <exclusions>
 
@@ -1631,10 +1632,6 @@
           <exclusion>
             <groupId>org.apache.calcite</groupId>
             <artifactId>calcite-core</artifactId>
-          </exclusion>
-          <exclusion>
-            <groupId>org.apache.calcite</groupId>
-            <artifactId>calcite-avatica</artifactId>
           </exclusion>
           <exclusion>
             <groupId>org.apache.curator</groupId>
@@ -1715,7 +1712,7 @@
       <dependency>
         <groupId>${hive.group}</groupId>
         <artifactId>hive-jdbc</artifactId>
-        <version>${hive23.version}</version>
+        <version>${hive.version}</version>
         <exclusions>
           <exclusion>
             <groupId>${hive.group}</groupId>
@@ -1783,7 +1780,7 @@
       <dependency>
         <groupId>${hive.group}</groupId>
         <artifactId>hive-metastore</artifactId>
-        <version>${hive23.version}</version>
+        <version>${hive.version}</version>
         <scope>${hive.deps.scope}</scope>
         <exclusions>
           <exclusion>
@@ -1835,7 +1832,7 @@
       <dependency>
         <groupId>${hive.group}</groupId>
         <artifactId>hive-serde</artifactId>
-        <version>${hive23.version}</version>
+        <version>${hive.version}</version>
         <scope>${hive.deps.scope}</scope>
         <exclusions>
           <exclusion>
@@ -1924,7 +1921,7 @@
       <dependency>
         <groupId>${hive.group}</groupId>
         <artifactId>hive-shims</artifactId>
-        <version>${hive23.version}</version>
+        <version>${hive.version}</version>
         <scope>${hive.deps.scope}</scope>
         <exclusions>
           <exclusion>
@@ -1982,7 +1979,7 @@
       <dependency>
         <groupId>org.apache.hive</groupId>
         <artifactId>hive-llap-common</artifactId>
-        <version>${hive23.version}</version>
+        <version>${hive.version}</version>
         <scope>${hive.deps.scope}</scope>
         <exclusions>
           <exclusion>
@@ -2003,7 +2000,7 @@
       <dependency>
         <groupId>org.apache.hive</groupId>
         <artifactId>hive-llap-client</artifactId>
-        <version>${hive23.version}</version>
+        <version>${hive.version}</version>
         <scope>test</scope>
         <exclusions>
           <exclusion>
@@ -2158,6 +2155,71 @@
           <exclusion>
             <groupId>org.apache.thrift</groupId>
             <artifactId>libthrift</artifactId>
+          </exclusion>
+        </exclusions>
+      </dependency>
+      <dependency>
+        <groupId>org.apache.calcite</groupId>
+        <artifactId>calcite-core</artifactId>
+        <version>${calcite.version}</version>
+        <exclusions>
+          <exclusion>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-annotations</artifactId>
+          </exclusion>
+          <exclusion>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-core</artifactId>
+          </exclusion>
+          <exclusion>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-databind</artifactId>
+          </exclusion>
+          <exclusion>
+            <groupId>com.google.guava</groupId>
+            <artifactId>guava</artifactId>
+          </exclusion>
+          <exclusion>
+            <groupId>com.google.code.findbugs</groupId>
+            <artifactId>jsr305</artifactId>
+          </exclusion>
+          <exclusion>
+            <groupId>org.codehaus.janino</groupId>
+            <artifactId>janino</artifactId>
+          </exclusion>
+          <exclusion>
+            <groupId>org.codehaus.janino</groupId>
+            <artifactId>commons-compiler</artifactId>
+          </exclusion>
+          <!-- hsqldb interferes with the use of derby as the default db
+            in hive's use of datanucleus.
+          -->
+          <exclusion>
+            <groupId>org.hsqldb</groupId>
+            <artifactId>hsqldb</artifactId>
+          </exclusion>
+          <exclusion>
+            <groupId>org.pentaho</groupId>
+            <artifactId>pentaho-aggdesigner-algorithm</artifactId>
+          </exclusion>
+        </exclusions>
+      </dependency>
+      <dependency>
+        <groupId>org.apache.calcite</groupId>
+        <artifactId>calcite-avatica</artifactId>
+        <version>${calcite.version}</version>
+        <exclusions>
+          <exclusion>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-annotations</artifactId>
+          </exclusion>
+          <exclusion>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-core</artifactId>
+          </exclusion>
+          <exclusion>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-databind</artifactId>
           </exclusion>
         </exclusions>
       </dependency>
@@ -3045,10 +3107,6 @@
         <hadoop.version>3.1.1.7.1.1.0-SNAPSHOT</hadoop.version>
         <curator.version>4.2.0</curator.version>
         <zookeeper.version>3.5.5.7.1.1.0-SNAPSHOT</zookeeper.version>
-        <hive.group>org.apache.hive</hive.group>
-        <hive.classifier>core</hive.classifier>
-        <hive.version>${hive23.version}</hive.version>
-        <hive.version.short>2.3.5</hive.version.short>
         <!-- Do not need parquet-hadoop-bundle because we already have
           parquet-common, parquet-column and parquet-hadoop -->
         <hive.parquet.scope>provided</hive.parquet.scope>
@@ -3060,7 +3118,7 @@
         <dependency>
           <groupId>org.apache.hive</groupId>
           <artifactId>hive-storage-api</artifactId>
-          <version>2.6.0</version>
+          <version>${hive.version}</version>
         </dependency>
       </dependencies>
       <modules>

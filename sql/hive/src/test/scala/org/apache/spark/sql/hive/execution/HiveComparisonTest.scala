@@ -197,6 +197,7 @@ abstract class HiveComparisonTest
     "Owner:",
     // The following are hive specific schema parameters which we do not need to match exactly.
     "totalNumberFiles",
+    "numFilesErasureCoded",
     "maxFileSize",
     "minFileSize"
   )

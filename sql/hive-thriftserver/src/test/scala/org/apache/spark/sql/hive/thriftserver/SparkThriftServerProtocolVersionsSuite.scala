@@ -25,7 +25,9 @@ import org.apache.hive.service.auth.PlainSaslHelper
 import org.apache.hive.service.cli.GetInfoType
 import org.apache.thrift.protocol.TBinaryProtocol
 import org.apache.thrift.transport.TSocket
+import org.scalatest.Ignore
 
+@Ignore
 class SparkThriftServerProtocolVersionsSuite extends HiveThriftJdbcTest {
 
   override def mode: ServerMode.Value = ServerMode.binary

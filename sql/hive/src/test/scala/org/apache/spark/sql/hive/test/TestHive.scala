@@ -65,6 +65,8 @@ object TestHive
         // Hive changed the default of hive.metastore.disallow.incompatible.col.type.changes
         // from false to true. For details, see the JIRA HIVE-12320 and HIVE-17764.
         .set("spark.hadoop.hive.metastore.disallow.incompatible.col.type.changes", "false")
+        // We need to set this after CDPD-6712.
+        .set("spark.hadoop.hive.avro.proleptic.gregorian", "false")
         // Disable ConvertToLocalRelation for better test coverage. Test cases built on
         // LocalRelation will exercise the optimization rules better by disabling it as
         // this rule may potentially block testing of other optimization rules such as
@@ -84,7 +86,7 @@ private[hive] class TestHiveExternalCatalog(
 
   override lazy val client: HiveClient =
     hiveClient.getOrElse {
-      val (sconf, hconf) = TestHiveUtils.newCatalogConfig(conf, hadoopConf)
+      val (sconf, hconf) = TestHiveUtils.newCatalogConfig(conf, hadoopConf, true)
       HiveUtils.newClientForMetadata(sconf, hconf)
     }
 }
@@ -119,9 +121,9 @@ class TestHiveContext(
     @transient override val sparkSession: TestHiveSparkSession)
   extends SQLContext(sparkSession) {
  /**
-   * If loadTestTables is false, no test tables are loaded. Note that this flag can only be true
-   * when running in the JVM, i.e. it needs to be false when calling from Python.
-   */
+  * If loadTestTables is false, no test tables are loaded. Note that this flag can only be true
+  * when running in the JVM, i.e. it needs to be false when calling from Python.
+  */
   def this(sc: SparkContext, loadTestTables: Boolean = true) {
     this(new TestHiveSparkSession(HiveUtils.withHiveExternalCatalog(sc), loadTestTables))
   }
@@ -657,9 +659,14 @@ object TestHiveUtils {
       val _hconf = new Configuration(hadoopConf)
       _hconf.set("hive.metastore.schema.verification", "false")
       _hconf.set("datanucleus.schema.autoCreateAll", "true")
+      _hconf.set("datanucleus.schema.autoCreateTables", "true")
+      _hconf.set("hive.execution.engine", "mr")
+      _hconf.set("datanucleus.autoCreateSchema", "true")
+      _hconf.set("datanucleus.autoCreateColumns", "true")
+      _hconf.set("datanucleus.autoCreateConstraints", "true")
 
       val _sconf = conf.clone()
-        .set(HiveUtils.HIVE_METASTORE_VERSION, "2.3")
+        .set(HiveUtils.HIVE_METASTORE_VERSION, "3.1.0")
         .set(HiveUtils.HIVE_METASTORE_JARS, "maven")
 
       (_sconf, _hconf)
@@ -681,7 +688,7 @@ object TestHiveUtils {
 }
 
 private[hive] object HiveTestJars {
-  private val repository = SQLConf.ADDITIONAL_REMOTE_REPOSITORIES.defaultValueString
+  private val repository = "https://nexus-private.hortonworks.com/nexus/content/groups/public/"
   private val hiveTestJarsDir = Utils.createTempDir()
 
   def getHiveContribJar(version: String = HiveUtils.builtinHiveVersion): File =

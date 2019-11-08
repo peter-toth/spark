@@ -22,24 +22,23 @@ import java.util.{ArrayList => JArrayList, Arrays, List => JList}
 import scala.collection.JavaConverters._
 
 import org.apache.commons.lang3.exception.ExceptionUtils
+import org.apache.hadoop.hive.conf.HiveConf
 import org.apache.hadoop.hive.metastore.api.{FieldSchema, Schema}
 import org.apache.hadoop.hive.ql.Driver
-import org.apache.hadoop.hive.ql.processors.CommandProcessorResponse
+import org.apache.hadoop.hive.ql.processors.{CommandProcessorException, CommandProcessorResponse}
 
 import org.apache.spark.internal.Logging
-import org.apache.spark.sql.{AnalysisException, SQLContext}
+import org.apache.spark.sql.{AnalysisException, SparkSession, SQLContext}
 import org.apache.spark.sql.execution.{QueryExecution, SQLExecution}
+import org.apache.spark.sql.hive.HiveUtils
 
 
 private[hive] class SparkSQLDriver(val context: SQLContext = SparkSQLEnv.sqlContext)
-  extends Driver
+  extends Driver (new HiveConf)
   with Logging {
 
   private[hive] var tableSchema: Schema = _
   private[hive] var hiveResponse: Seq[String] = _
-
-  override def init(): Unit = {
-  }
 
   private def getResultSetSchema(query: QueryExecution): Schema = {
     val analyzed = query.analyzed
@@ -64,21 +63,20 @@ private[hive] class SparkSQLDriver(val context: SQLContext = SparkSQLEnv.sqlCont
         execution.hiveResultString()
       }
       tableSchema = getResultSetSchema(execution)
-      new CommandProcessorResponse(0)
+      new CommandProcessorResponse()
     } catch {
         case ae: AnalysisException =>
           logDebug(s"Failed in [$command]", ae)
-          new CommandProcessorResponse(1, ExceptionUtils.getStackTrace(ae), null, ae)
+          throw new CommandProcessorException(1);
         case cause: Throwable =>
           logError(s"Failed in [$command]", cause)
-          new CommandProcessorResponse(1, ExceptionUtils.getStackTrace(cause), null, cause)
+          throw new CommandProcessorException(1)
     }
   }
 
-  override def close(): Int = {
+  override def close(): Unit = {
     hiveResponse = null
     tableSchema = null
-    0
   }
 
   override def getResults(res: JList[_]): Boolean = {

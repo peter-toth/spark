@@ -97,13 +97,13 @@
     <dependency>
       <groupId>${hive.group}</groupId>
       <artifactId>hive-exec</artifactId>
-      <version>${hive23.version}</version>
+      <version>${hive.version}</version>
       <classifier>${hive.classifier}</classifier>
     </dependency>
     <dependency>
       <groupId>${hive.group}</groupId>
       <artifactId>hive-metastore</artifactId>
-      <version>${hive23.version}</version>
+      <version>${hive.version}</version>
     </dependency>
     <!--
         <dependency>
@@ -130,6 +130,14 @@
     <dependency>
       <groupId>commons-httpclient</groupId>
       <artifactId>commons-httpclient</artifactId>
+    </dependency>
+    <dependency>
+       <groupId>org.apache.calcite</groupId>
+       <artifactId>calcite-avatica</artifactId>
+    </dependency>
+    <dependency>
+       <groupId>org.apache.calcite</groupId>
+       <artifactId>calcite-core</artifactId>
     </dependency>
     <dependency>
       <groupId>org.apache.httpcomponents</groupId>

@@ -416,7 +416,7 @@ class HiveOrcFilterSuite extends OrcTest with TestHiveSingleton {
     )).isEmpty)
 
     // Safely remove unsupported `StringContains` predicate and push down `LessThan`
-    assertResult(
+    assertResultWithDiffHiveVersion(
       """leaf-0 = (LESS_THAN a 10)
         |expr = leaf-0
       """.stripMargin.trim
@@ -430,7 +430,7 @@ class HiveOrcFilterSuite extends OrcTest with TestHiveSingleton {
     }
 
     // Safely remove unsupported `StringContains` predicate, push down `LessThan` and `GreaterThan`.
-    assertResult(
+    assertResultWithDiffHiveVersion(
       """leaf-0 = (LESS_THAN a 10)
         |leaf-1 = (LESS_THAN_EQUALS a 1)
         |expr = (and leaf-0 (not leaf-1))

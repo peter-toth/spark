@@ -28,6 +28,7 @@ import java.util.concurrent.TimeUnit;
 import org.apache.hadoop.hive.conf.HiveConf;
 import org.apache.hadoop.hive.ql.QueryState;
 import org.apache.hadoop.hive.ql.processors.CommandProcessorResponse;
+import org.apache.hadoop.hive.ql.processors.CommandProcessorException;
 import org.apache.hadoop.hive.ql.session.OperationLog;
 import org.apache.hive.service.cli.FetchOrientation;
 import org.apache.hive.service.cli.HiveSQLException;
@@ -84,7 +85,8 @@ public abstract class Operation {
     lastAccessTime = System.currentTimeMillis();
     operationTimeout = HiveConf.getTimeVar(parentSession.getHiveConf(),
         HiveConf.ConfVars.HIVE_SERVER2_IDLE_OPERATION_TIMEOUT, TimeUnit.MILLISECONDS);
-    queryState = new QueryState(parentSession.getHiveConf(), confOverlay, runInBackground);
+    // HIVE-16607 made QueryState's constructor private
+    queryState = new QueryState.Builder().withHiveConf(parentSession.getHiveConf()).build();
   }
 
   public Future<?> getBackgroundHandle() {
@@ -227,23 +229,27 @@ public abstract class Operation {
       }
 
       // create OperationLog object with above log file
-      try {
+      operationLog = new OperationLog(opHandle.toString(), operationLogFile, parentSession.getHiveConf());
+
+      // HIVE-16902 changed OperationLog to not throw FileNotFoundException
+      /* try {
         operationLog = new OperationLog(opHandle.toString(), operationLogFile, parentSession.getHiveConf());
       } catch (FileNotFoundException e) {
         LOG.warn("Unable to instantiate OperationLog object for operation: " +
             opHandle, e);
         isOperationLogEnabled = false;
         return;
-      }
-
+      } */
+      // Method is removed in HIVE-16061
       // register this operationLog to current thread
-      OperationLog.setCurrentOperationLog(operationLog);
+      // OperationLog.setCurrentOperationLog(operationLog);
     }
   }
 
   protected void unregisterOperationLog() {
     if (isOperationLogEnabled) {
-      OperationLog.removeCurrentOperationLog();
+      // Method is removed in HIVE-16061
+      // OperationLog.removeCurrentOperationLog();
     }
   }
 
@@ -329,9 +335,9 @@ public abstract class Operation {
     }
   }
 
-  protected HiveSQLException toSQLException(String prefix, CommandProcessorResponse response) {
+  protected HiveSQLException toSQLException(String prefix, CommandProcessorException response) {
     HiveSQLException ex = new HiveSQLException(prefix + ": " + response.getErrorMessage(),
-        response.getSQLState(), response.getResponseCode());
+        response.getSqlState(), response.getResponseCode());
     if (response.getException() != null) {
       ex.initCause(response.getException());
     }

@@ -19,6 +19,9 @@ package org.apache.spark.sql.hive.thriftserver
 
 import java.sql.{DatabaseMetaData, ResultSet}
 
+import org.scalatest.Ignore
+
+@Ignore
 class SparkMetadataOperationSuite extends HiveThriftJdbcTest {
 
   override def mode: ServerMode.Value = ServerMode.binary

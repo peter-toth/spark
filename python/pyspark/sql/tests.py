@@ -3617,6 +3617,8 @@ class HiveSparkSubmitTests(SparkSubmitTests):
         if not self.hive_available:
             self.skipTest("Hive is not available.")
 
+    # Skip this until we resolve CDPD-8431, since the test will hang for the same reason
+    @unittest.skip("CDPD-8431")
     def test_hivecontext(self):
         # This test checks that HiveContext is using Hive metastore (SPARK-16224).
         # It sets a metastore url and checks if there is a derby dir created by

@@ -1331,8 +1331,9 @@ class SparkSqlAstBuilder(conf: SQLConf) extends AstBuilder(conf) {
       entry("field.delim", ctx.fieldsTerminatedBy) ++
         entry("serialization.format", ctx.fieldsTerminatedBy) ++
         entry("escape.delim", ctx.escapedBy) ++
-        // The following typo is inherited from Hive...
-        entry("colelction.delim", ctx.collectionItemsTerminatedBy) ++
+        // CDPD-3881: The below property used to be different, due to a typo.
+        // Hive has since fixed the typo.
+        entry("collection.delim", ctx.collectionItemsTerminatedBy) ++
         entry("mapkey.delim", ctx.keysTerminatedBy) ++
         Option(ctx.linesSeparatedBy).toSeq.map { token =>
           val value = string(token)

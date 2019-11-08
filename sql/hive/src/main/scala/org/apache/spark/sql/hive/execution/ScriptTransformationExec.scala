@@ -32,7 +32,8 @@ import org.apache.hadoop.hive.serde2.AbstractSerDe
 import org.apache.hadoop.hive.serde2.objectinspector._
 import org.apache.hadoop.io.Writable
 
-import org.apache.spark.{SparkException, TaskContext}
+import org.apache.spark.{SparkEnv, SparkException, TaskContext}
+import org.apache.spark.deploy.SparkHadoopUtil
 import org.apache.spark.internal.Logging
 import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.catalyst.{CatalystTypeConverters, InternalRow}
@@ -415,7 +416,7 @@ case class HiveScriptIOSchema (
     // Can not use properties.putAll(propsMap.asJava) in scala-2.12
     // See https://github.com/scala/bug/issues/10418
     propsMap.foreach { case (k, v) => properties.put(k, v) }
-    serde.initialize(null, properties)
+    serde.initialize(SparkHadoopUtil.get.newConfiguration(SparkEnv.get.conf), properties)
 
     serde
   }

@@ -189,14 +189,23 @@ private[hive] object SparkSQLCLIDriver extends Logging {
     }
 
     if (sessionState.execString != null) {
-      System.exit(cli.processLine(sessionState.execString))
+      try {
+        cli.processLine(sessionState.execString)
+      } catch {
+        case e: CommandProcessorException =>
+          System.exit(1)
+      }
+      System.exit(0)
     }
 
     try {
       if (sessionState.fileName != null) {
-        System.exit(cli.processFile(sessionState.fileName))
+        cli.processFile(sessionState.fileName)
+        System.exit(0)
       }
     } catch {
+      case e: CommandProcessorException =>
+        System.exit(1)
       case e: FileNotFoundException =>
         logError(s"Could not open input file for reading. (${e.getMessage})")
         System.exit(3)
@@ -270,7 +279,12 @@ private[hive] object SparkSQLCLIDriver extends Logging {
 
         if (line.trim().endsWith(";") && !line.trim().endsWith("\\;")) {
           line = prefix + line
-          ret = cli.processLine(line, true)
+          ret = try {
+            cli.processLine(line, true)
+            0
+          } catch {
+            case e: CommandProcessorException => 1
+          }
           prefix = ""
           currentPrompt = promptWithCurrentDB
         } else {
@@ -328,11 +342,13 @@ private[hive] class SparkSQLCLIDriver extends CliDriver with Logging {
     console.printInfo(s"Spark master: $master, Application Id: $appId")
   }
 
-  override def processCmd(cmd: String): Int = {
+  override def processCmd(cmd: String): CommandProcessorResponse = {
     val cmd_trimmed: String = cmd.trim()
     val cmd_lower = cmd_trimmed.toLowerCase(Locale.ROOT)
     val tokens: Array[String] = cmd_trimmed.split("\\s+")
     val cmd_1: String = cmd_trimmed.substring(tokens(0).length()).trim()
+    val out = sessionState.out
+    val err = sessionState.err
     if (cmd_lower.equals("quit") ||
       cmd_lower.equals("exit")) {
       sessionState.close()
@@ -341,13 +357,20 @@ private[hive] class SparkSQLCLIDriver extends CliDriver with Logging {
     if (tokens(0).toLowerCase(Locale.ROOT).equals("source") ||
       cmd_trimmed.startsWith("!") || isRemoteMode) {
       val start = System.currentTimeMillis()
-      super.processCmd(cmd)
-      val end = System.currentTimeMillis()
-      val timeTaken: Double = (end - start) / 1000.0
-      console.printInfo(s"Time taken: $timeTaken seconds")
-      0
+      try {
+        val r = super.processCmd(cmd)
+        val end = System.currentTimeMillis()
+        val timeTaken: Double = (end - start) / 1000.0
+        console.printInfo(s"Time taken: $timeTaken seconds")
+        return r
+      } catch {
+        case e: CommandProcessorException =>
+          // scalastyle:off println
+          err.println(s"""Error in query: ${e.getMessage}""")
+          // scalastyle:on println
+          throw e
+      }
     } else {
-      var ret = 0
       val hconf = conf.asInstanceOf[HiveConf]
       val proc: CommandProcessor = CommandProcessorFactory.get(tokens, hconf)
 
@@ -358,27 +381,24 @@ private[hive] class SparkSQLCLIDriver extends CliDriver with Logging {
           proc.isInstanceOf[ResetProcessor] ) {
           val driver = new SparkSQLDriver
 
-          driver.init()
-          val out = sessionState.out
-          val err = sessionState.err
           val start: Long = System.currentTimeMillis()
           if (sessionState.getIsVerbose) {
             out.println(cmd)
           }
-          val rc = driver.run(cmd)
-          val end = System.currentTimeMillis()
-          val timeTaken: Double = (end - start) / 1000.0
-
-          ret = rc.getResponseCode
-          if (ret != 0) {
-            // For analysis exception, only the error is printed out to the console.
-            rc.getException() match {
-              case e : AnalysisException =>
-                err.println(s"""Error in query: ${e.getMessage}""")
-              case _ => err.println(rc.getErrorMessage())
-            }
+          var end = 0L
+          var timeTaken: Double = 0
+          try{
+            val r = driver.run(cmd)
+            end = System.currentTimeMillis()
+            timeTaken = (end - start) / 1000.0
             driver.close()
-            return ret
+            return r
+          } catch {
+            case e : AnalysisException =>
+              err.println(s"""Error in query: ${e.getMessage}""")
+              throw new CommandProcessorException(e)
+            case e2: Exception => err.println(e2.getMessage)
+              throw new CommandProcessorException(e2)
           }
 
           val res = new JArrayList[String]()
@@ -405,13 +425,10 @@ private[hive] class SparkSQLCLIDriver extends CliDriver with Logging {
                 s"""Failed with exception ${e.getClass.getName}: ${e.getMessage}
                    |${org.apache.hadoop.util.StringUtils.stringifyException(e)}
                  """.stripMargin)
-              ret = 1
+              throw e
           }
 
-          val cret = driver.close()
-          if (ret == 0) {
-            ret = cret
-          }
+          driver.close()
 
           var responseMsg = s"Time taken: $timeTaken seconds"
           if (counter != 0) {
@@ -424,11 +441,11 @@ private[hive] class SparkSQLCLIDriver extends CliDriver with Logging {
           if (sessionState.getIsVerbose) {
             sessionState.out.println(tokens(0) + " " + cmd_1)
           }
-          ret = proc.run(cmd_1).getResponseCode
+           return proc.run(cmd_1)
         }
         // scalastyle:on println
       }
-      ret
+      return new CommandProcessorResponse()
     }
   }
 }

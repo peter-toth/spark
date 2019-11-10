@@ -1536,17 +1536,43 @@ class SubquerySuite extends QueryTest with SharedSparkSession {
 
         val plan = df.queryExecution.executedPlan
 
-        val countExchange = plan.collectInPlanAndSubqueries({ case _: Exchange => 1 }).sum
-        val countReusedExchange =
-          plan.collectInPlanAndSubqueries({ case _: ReusedExchangeExec => 1 }).sum
+        val exchangeIds = plan.collectInPlanAndSubqueries { case e: Exchange => e.id }
+        val reusedExchangeIds = plan.collectInPlanAndSubqueries {
+          case re: ReusedExchangeExec => re.child.id
+        }
 
         if (reuse) {
-          assert(countExchange == 2, "Exchange reusing not working correctly")
-          assert(countReusedExchange == 3, "Exchange reusing not working correctly")
+          assert(exchangeIds.size == 2, "Exchange reusing not working correctly")
+          assert(reusedExchangeIds.size == 3, "Exchange reusing not working correctly")
+          assert(reusedExchangeIds.forall(exchangeIds.contains(_)),
+            "ReusedExchangeExec should reuse an existing exchange")
         } else {
-          assert(countExchange == 5, "expect 5 Exchange when not reusing")
-          assert(countReusedExchange == 0,
-            "expect 0 ReusedExchangeExec when not reusing")
+          assert(exchangeIds.size == 5, "expect 5 Exchange when not reusing")
+          assert(reusedExchangeIds.size == 0, "expect 0 ReusedExchangeExec when not reusing")
+        }
+
+        val df2 = sql(
+          """
+            SELECT
+              (SELECT min(a.key) FROM testData AS a JOIN testData AS b ON b.key = a.key),
+              (SELECT max(a.key) FROM testData AS a JOIN testData AS b ON b.key = a.key)
+          """.stripMargin)
+
+        val plan2 = df2.queryExecution.executedPlan
+
+        val exchangeIds2 = plan2.collectInPlanAndSubqueries { case e: Exchange => e.id }
+        val reusedExchangeIds2 = plan2.collectInPlanAndSubqueries {
+          case re: ReusedExchangeExec => re.child.id
+        }
+
+        if (reuse) {
+          assert(exchangeIds2.size == 3, "Exchange reusing not working correctly")
+          assert(reusedExchangeIds2.size == 3, "Exchange reusing not working correctly")
+          assert(reusedExchangeIds2.forall(exchangeIds2.contains(_)),
+            "ReusedExchangeExec should reuse an existing exchange")
+        } else {
+          assert(exchangeIds2.size == 6, "expect 6 Exchange when not reusing")
+          assert(reusedExchangeIds2.size == 0, "expect 0 ReusedExchangeExec when not reusing")
         }
       }
     }

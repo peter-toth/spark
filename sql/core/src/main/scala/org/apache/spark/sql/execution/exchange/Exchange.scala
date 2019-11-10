@@ -17,8 +17,9 @@
 
 package org.apache.spark.sql.execution.exchange
 
+import java.util.Objects
+
 import scala.collection.mutable
-import scala.collection.mutable.ArrayBuffer
 
 import org.apache.spark.broadcast
 import org.apache.spark.rdd.RDD
@@ -26,6 +27,7 @@ import org.apache.spark.sql.catalyst.InternalRow
 import org.apache.spark.sql.catalyst.expressions.{Attribute, AttributeMap, Expression, SortOrder}
 import org.apache.spark.sql.catalyst.plans.physical.Partitioning
 import org.apache.spark.sql.catalyst.rules.Rule
+import org.apache.spark.sql.catalyst.trees.TreeNodeRef
 import org.apache.spark.sql.execution._
 import org.apache.spark.sql.internal.SQLConf
 import org.apache.spark.sql.types.StructType
@@ -51,6 +53,13 @@ abstract class Exchange extends UnaryExecNode {
  */
 case class ReusedExchangeExec(override val output: Seq[Attribute], child: Exchange)
   extends LeafExecNode {
+
+  override def equals(that: Any): Boolean = that match {
+    case ReusedExchangeExec(output, child) => this.child == output && this.child.eq(child)
+    case _ => false
+  }
+
+  override def hashCode: Int = Objects.hash(output, child)
 
   override def supportsColumnar: Boolean = child.supportsColumnar
 
@@ -113,27 +122,38 @@ case class ReuseExchange(conf: SQLConf) extends Rule[SparkPlan] {
     //   have the same schema
     val exchanges = mutable.Map[StructType, (Exchange, mutable.Map[SparkPlan, Exchange])]()
 
-    def reuse(plan: SparkPlan): SparkPlan = plan.transform {
-      case exchange: Exchange =>
-        val (firstSameSchemaExchange, sameResultExchanges) =
-          exchanges.getOrElseUpdate(exchange.schema, (exchange, mutable.Map()))
-        if (firstSameSchemaExchange.ne(exchange)) {
-          if (sameResultExchanges.isEmpty) {
-            sameResultExchanges += firstSameSchemaExchange.canonicalized -> firstSameSchemaExchange
-          }
-          val sameResultExchange =
-            sameResultExchanges.getOrElseUpdate(exchange.canonicalized, exchange)
-          if (sameResultExchange.ne(exchange)) {
-            ReusedExchangeExec(exchange.output, sameResultExchange)
+    def reuse(plan: SparkPlan): SparkPlan = {
+      // Track exchanges that are replaced to reused exchanges to be able to fix ReusedExchangeExec
+      // nodes referencing to them
+      val reuseExchanges = mutable.Map[TreeNodeRef, Exchange]()
+
+      plan.transform {
+        case exchange: Exchange =>
+          val (firstSameSchemaExchange, sameResultExchanges) =
+            exchanges.getOrElseUpdate(exchange.schema, (exchange, mutable.Map()))
+          if (firstSameSchemaExchange.ne(exchange)) {
+            if (sameResultExchanges.isEmpty) {
+              sameResultExchanges +=
+                firstSameSchemaExchange.canonicalized -> firstSameSchemaExchange
+            }
+            val sameResultExchange =
+              sameResultExchanges.getOrElseUpdate(exchange.canonicalized, exchange)
+            if (sameResultExchange.ne(exchange)) {
+              reuseExchanges += new TreeNodeRef(exchange) -> sameResultExchange
+              ReusedExchangeExec(exchange.output, sameResultExchange)
+            } else {
+              exchange
+            }
           } else {
             exchange
           }
-        } else {
-          exchange
+        case reuseExchange @ ReusedExchangeExec(output, child) =>
+          reuseExchanges.get(new TreeNodeRef(child)).map(ReusedExchangeExec(output, _))
+            .getOrElse(reuseExchange)
+        case other => other.transformExpressions {
+          case sub: ExecSubqueryExpression =>
+            sub.withNewPlan(reuse(sub.plan).asInstanceOf[BaseSubqueryExec])
         }
-      case other => other.transformExpressions {
-        case sub: ExecSubqueryExpression =>
-          sub.withNewPlan(reuse(sub.plan).asInstanceOf[BaseSubqueryExec])
       }
     }
 

@@ -18,6 +18,7 @@
 package org.apache.spark.sql.execution.exchange
 
 import scala.collection.mutable
+import scala.collection.mutable.ArrayBuffer
 
 import org.apache.spark.broadcast
 import org.apache.spark.rdd.RDD
@@ -106,6 +107,48 @@ case class ReuseExchange(conf: SQLConf) extends Rule[SparkPlan] {
     if (!conf.exchangeReuseEnabled) {
       return plan
     }
+
+    if (conf.getConfString("originalReuseExchangeVersion", "false").toBoolean) {
+      original(plan)
+    } else {
+      modified(plan)
+    }
+  }
+
+  private def original(plan: SparkPlan) = {
+    // Build a hash map using schema of exchanges to avoid O(N*N) sameResult calls.
+    val exchanges = mutable.HashMap[StructType, ArrayBuffer[Exchange]]()
+
+    // Replace a Exchange duplicate with a ReusedExchange
+    def reuse: PartialFunction[Exchange, SparkPlan] = {
+      case exchange: Exchange =>
+        val sameSchema = exchanges.getOrElseUpdate(exchange.schema, ArrayBuffer[Exchange]())
+        val samePlan = sameSchema.find { e =>
+          exchange.sameResult(e)
+        }
+        if (samePlan.isDefined) {
+          // Keep the output of this exchange, the following plans require that to resolve
+          // attributes.
+          ReusedExchangeExec(exchange.output, samePlan.get)
+        } else {
+          sameSchema += exchange
+          exchange
+        }
+    }
+
+    plan transformUp {
+      case exchange: Exchange => reuse(exchange)
+    } transformAllExpressions {
+      // Lookup inside subqueries for duplicate exchanges
+      case in: InSubqueryExec =>
+        val newIn = in.plan.transformUp {
+          case exchange: Exchange => reuse(exchange)
+        }
+        in.copy(plan = newIn.asInstanceOf[BaseSubqueryExec])
+    }
+  }
+
+  private def modified(plan: SparkPlan) = {
     // To avoid costly canonicalization of an exchange:
     // - we use its schema first to check if it can be replaced to a reused exchange at all
     // - we insert an exchange into the map of canonicalized plans only when at least 2 exchange

@@ -84,9 +84,11 @@ class HiveParquetSuite extends QueryTest with ParquetTest with TestHiveSingleton
     withTempView("p") {
       val targetTable = "targetTable"
       withTable(targetTable) {
-        sql(s"CREATE TABLE $targetTable STORED AS PARQUET AS SELECT m FROM p")
-        checkAnswer(sql(s"SELECT m FROM $targetTable"),
-          Row(Map(1 -> "a")) :: Row(Map.empty[Int, String]) :: Nil)
+        withSQLConf(HiveUtils.CONVERT_METASTORE_CTAS.key -> "true") {
+          sql(s"CREATE TABLE $targetTable STORED AS PARQUET AS SELECT m FROM p")
+          checkAnswer(sql(s"SELECT m FROM $targetTable"),
+            Row(Map(1 -> "a")) :: Row(Map.empty[Int, String]) :: Nil)
+        }
       }
     }
   }

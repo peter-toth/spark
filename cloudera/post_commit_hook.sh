@@ -18,6 +18,17 @@ MVN_REPO_LOCAL=$HOME/.m2/repository
 
 export MAVEN_OPTS="-XX:ReservedCodeCacheSize=512m"
 
+# Build machines seem to have a CDH-based settings.xml in their maven config directory,
+# which breaks CDPD builds. If that file is found, override it with an empty one.
+if [ -f "$HOME/.m2/settings.xml" ]; then
+  mkdir -p target
+  cat > target/settings.xml <<EOF
+<settings></settings>
+EOF
+  MAVEN_ARGS="-s target/settings.xml"
+else
+  MAVEN_ARGS=""
+fi
 export APACHE_MIRROR=http://mirror.infra.cloudera.com/apache
 export SPARK_TESTING=1
-./build/mvn -B -Dcdpd.build=true package -fae -Dmaven.repo.local="$MVN_REPO_LOCAL" $EXTRA_MAVEN_ARGS
+./build/mvn -B $MAVEN_ARGS -Dcdpd.build=true package -fae -Dmaven.repo.local="$MVN_REPO_LOCAL" $EXTRA_MAVEN_ARGS

@@ -69,6 +69,10 @@ while (( "$#" )); do
       NAME="$2"
       shift
       ;;
+    --target)
+      MVN_TARGET="$2"
+      shift
+      ;;
     --help)
       exit_with_usage
       ;;
@@ -125,10 +129,8 @@ if [ ! "$(command -v "$MVN")" ] ; then
     exit -1;
 fi
 
-VERSION=$("$MVN" help:evaluate -Dexpression=project.version $@ 2>/dev/null\
-    | grep -v "INFO"\
-    | grep -v "WARNING"\
-    | tail -n 1)
+cat $MVN
+VERSION=$("$MVN" help:evaluate -Dexpression=project.version $@ 2>/dev/null | grep -v "INFO" | tail -n 1)
 SCALA_VERSION=$("$MVN" help:evaluate -Dexpression=scala.binary.version $@ 2>/dev/null\
     | grep -v "INFO"\
     | grep -v "WARNING"\
@@ -165,7 +167,13 @@ export MAVEN_OPTS="${MAVEN_OPTS:--Xmx3g -XX:MaxPermSize=512M -XX:ReservedCodeCac
 # Store the command as an array because $MVN variable might have spaces in it.
 # Normal quoting tricks don't work.
 # See: http://mywiki.wooledge.org/BashFAQ/050
-BUILD_COMMAND=("$MVN" clean package -DskipTests $@)
+
+
+# VERIFY THIS.
+# \/ In CDPD-master
+# BUILD_COMMAND=("$MVN" -T 1C clean install -DskipTests $@)
+BUILD_COMMAND=("$MVN" clean "$MVN_TARGET"  -DskipTests $@)
+
 
 # Actually build the jar
 echo -e "\nBuilding with..."
@@ -176,11 +184,20 @@ echo -e "\$ ${BUILD_COMMAND[@]}\n"
 # Make directories
 rm -rf "$DISTDIR"
 mkdir -p "$DISTDIR/jars"
+
+# VERIFY THIS
+mkdir -p "$DISTDIR/kafka-0.10"
+
 echo "Spark $VERSION$GITREVSTRING built for Hadoop $SPARK_HADOOP_VERSION" > "$DISTDIR/RELEASE"
 echo "Build flags: $@" >> "$DISTDIR/RELEASE"
 
 # Copy jars
 cp "$SPARK_HOME"/assembly/target/scala*/jars/* "$DISTDIR/jars/"
+
+# VERIFY THIS
+# cp "$SPARK_HOME"/external/kafka-0-10-assembly/target/scala*/jars/* "$DISTDIR/kafka-0.10/"
+# cp: cannot stat '/home/droiz/~/workspace/spark-ds/external/kafka-0-10-assembly/target/scala*/jars/*': No such file or directory
+
 
 # Only create the standalone metastore directory if metastore artifact were copied.
 if [ -f "$SPARK_HOME"/standalone-metastore/target/standalone-metastore-*.jar ]; then
@@ -216,6 +233,9 @@ done
 # Copy example sources (needed for python and SQL)
 mkdir -p "$DISTDIR/examples/src/main"
 cp -r "$SPARK_HOME/examples/src/main" "$DISTDIR/examples/src/"
+
+
+# PROBABLY SOMETHING IS NOT RIGHT HERE
 
 # Copy license and ASF files
 if [ -e "$SPARK_HOME/LICENSE-binary" ]; then
@@ -286,6 +306,14 @@ if [ -d "$SPARK_HOME/R/lib/SparkR" ]; then
   cp -r "$SPARK_HOME/R/lib/SparkR" "$DISTDIR/R/lib"
   cp "$SPARK_HOME/R/lib/sparkr.zip" "$DISTDIR/R/lib"
 fi
+
+
+# CDH: remove scripts for which the actual code is not included.
+rm "$DISTDIR/bin/spark-sql"
+rm "$DISTDIR/bin/beeline"
+rm "$DISTDIR/bin/sparkR"
+rm "$DISTDIR/sbin/start-thriftserver.sh"
+rm "$DISTDIR/sbin/stop-thriftserver.sh"
 
 if [ "$MAKE_TGZ" == "true" ]; then
   TARDIR_NAME=spark-$VERSION-bin-$NAME

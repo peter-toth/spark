@@ -66,8 +66,14 @@ private[spark] object CoarseGrainedClusterMessages {
       logUrls: Map[String, String])
     extends CoarseGrainedClusterMessage
 
-  case class StatusUpdate(executorId: String, taskId: Long, state: TaskState,
-    data: SerializableBuffer) extends CoarseGrainedClusterMessage
+  case class LaunchedExecutor(executorId: String) extends CoarseGrainedClusterMessage
+
+  case class StatusUpdate(
+      executorId: String,
+      taskId: Long,
+      state: TaskState,
+      data: SerializableBuffer)
+    extends CoarseGrainedClusterMessage
 
   object StatusUpdate {
     /** Alternate factory method that takes a ByteBuffer directly for the data field */

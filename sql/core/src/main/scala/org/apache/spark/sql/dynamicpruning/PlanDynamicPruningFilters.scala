@@ -55,7 +55,7 @@ case class PlanDynamicPruningFilters(sparkSession: SparkSession)
     plan transformAllExpressions {
       case DynamicPruningSubquery(
           value, buildPlan, buildKeys, broadcastKeyIndex, onlyInBroadcast, exprId) =>
-        val qe = new QueryExecution(sparkSession, buildPlan)
+        val qe = new QueryExecution(sparkSession, buildPlan, subQuery = true)
         // Using `sparkPlan` is a little hacky as it is based on the assumption that this rule is
         // the first to be applied (apart from `InsertAdaptiveSparkPlan`).
         val canReuseExchange = reuseBroadcast && buildKeys.nonEmpty &&

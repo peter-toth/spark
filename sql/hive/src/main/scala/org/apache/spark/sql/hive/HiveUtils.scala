@@ -154,7 +154,7 @@ private[spark] object HiveUtils extends Logging {
     .doc("The list of Hive capabilities that Spark supports.")
     .stringConf
     .toSequence
-    .createWithDefault(Seq("SPARKSQL", "EXTREAD", "EXTWRITE", "HIVESQL", "HIVEBUCKET2"))
+    .createWithDefault(Seq("SPARKSQL", "EXTREAD", "EXTWRITE", "HIVESQL"))
 
   /**
    * The version of the hive client that will be used to communicate with the metastore.  Note that

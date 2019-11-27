@@ -296,7 +296,7 @@ object CatalogUtils {
     if (SQLConf.get.checkTranslationLayer) {
       throwIfNoAccess(table)
       if (table.accessInfo.accessType == ACCESSTYPE_READONLY) {
-        val requiredCapabilities = table.accessInfo.requiredReadCapabilities.mkString(",")
+        val requiredCapabilities = table.accessInfo.requiredWriteCapabilities.mkString(",")
         throw new AnalysisException(s"""
           |Spark has only read access to table ${table.identifier}. Clients can modify this table
           |only if they have the following capabilities: ${requiredCapabilities}.

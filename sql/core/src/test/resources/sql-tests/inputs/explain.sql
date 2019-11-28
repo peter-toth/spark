@@ -90,6 +90,14 @@ EXPLAIN FORMATTED
   CREATE VIEW explain_view AS
     SELECT key, val FROM explain_temp1;
 
+EXPLAIN FORMATTED
+  WITH RECURSIVE r(level) AS (
+    VALUES (0)
+    UNION ALL
+    SELECT level + 1 FROM r WHERE level < 10
+  )
+  SELECT * FROM r;
+
 -- cleanup
 DROP TABLE explain_temp1;
 DROP TABLE explain_temp2;

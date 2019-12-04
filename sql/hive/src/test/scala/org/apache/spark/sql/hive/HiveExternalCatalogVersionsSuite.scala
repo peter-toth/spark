@@ -26,6 +26,7 @@ import scala.util.control.NonFatal
 
 import org.apache.commons.lang3.{JavaVersion, SystemUtils}
 import org.apache.hadoop.conf.Configuration
+import org.scalatest.Ignore
 
 import org.apache.spark.{SecurityManager, SparkConf, TestUtils}
 import org.apache.spark.sql.{QueryTest, Row, SparkSession}
@@ -42,6 +43,7 @@ import org.apache.spark.util.Utils
  * expected version under this local directory, e.g. `/tmp/spark-test/spark-2.0.3`, we will skip the
  * downloading for this spark version.
  */
+@Ignore
 class HiveExternalCatalogVersionsSuite extends SparkSubmitTestUtils {
   private val isTestAtLeastJava9 = SystemUtils.isJavaVersionAtLeast(JavaVersion.JAVA_9)
   private val wareHousePath = Utils.createTempDir(namePrefix = "warehouse")

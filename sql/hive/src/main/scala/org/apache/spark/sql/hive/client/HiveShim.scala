@@ -28,6 +28,7 @@ import scala.util.control.NonFatal
 
 import org.apache.hadoop.fs.Path
 import org.apache.hadoop.hive.conf.HiveConf
+import org.apache.hadoop.hive.metastore.IMetaStoreClient
 import org.apache.hadoop.hive.metastore.api.{EnvironmentContext, Function => HiveFunction, FunctionType}
 import org.apache.hadoop.hive.metastore.api.{MetaException, PrincipalType, ResourceType, ResourceUri}
 import org.apache.hadoop.hive.metastore.api.{Table => TTable}
@@ -177,6 +178,8 @@ private[client] sealed abstract class Shim {
     method
   }
 
+  def getMSC(hive: Hive): IMetaStoreClient
+
   protected def findMethod(klass: Class[_], name: String, args: Class[_]*): Method = {
     klass.getMethod(name, args: _*)
   }
@@ -187,6 +190,17 @@ private[client] class Shim_v0_12 extends Shim with Logging {
   protected lazy val holdDDLTime = JBoolean.FALSE
   // deletes the underlying data along with metadata
   protected lazy val deleteDataInDropIndex = JBoolean.TRUE
+
+  protected lazy val getMSCMethod = {
+    // Since getMSC() in Hive 0.12 is private, findMethod() could not work here
+    val msc = classOf[Hive].getDeclaredMethod("getMSC")
+    msc.setAccessible(true)
+    msc
+  }
+
+  override def getMSC(hive: Hive): IMetaStoreClient = {
+    getMSCMethod.invoke(hive).asInstanceOf[IMetaStoreClient]
+  }
 
   private lazy val startMethod =
     findStaticMethod(
@@ -555,7 +569,7 @@ private[client] class Shim_v0_13 extends Shim_v0_12 {
       f.className,
       null,
       PrincipalType.USER,
-      (System.currentTimeMillis / 1000).toInt,
+      TimeUnit.MILLISECONDS.toSeconds(System.currentTimeMillis).toInt,
       FunctionType.JAVA,
       resourceUris.asJava)
   }
@@ -718,7 +732,7 @@ private[client] class Shim_v0_13 extends Shim_v0_12 {
         expr match {
           case attr: Attribute => Some(attr)
           case Cast(child @ AtomicType(), dt: AtomicType, _)
-              if Cast.canSafeCast(child.dataType.asInstanceOf[AtomicType], dt) => unapply(child)
+              if Cast.canUpCast(child.dataType.asInstanceOf[AtomicType], dt) => unapply(child)
           case _ => None
         }
       }
@@ -1027,7 +1041,7 @@ private[client] class Shim_v1_2 extends Shim_v1_1 {
       part: JList[String],
       deleteData: Boolean,
       purge: Boolean): Unit = {
-    val dropOptions = dropOptionsClass.newInstance().asInstanceOf[Object]
+    val dropOptions = dropOptionsClass.getConstructor().newInstance().asInstanceOf[Object]
     dropOptionsDeleteData.setBoolean(dropOptions, deleteData)
     dropOptionsPurge.setBoolean(dropOptions, purge)
     dropPartitionMethod.invoke(hive, dbName, tableName, part, dropOptions)
@@ -1520,3 +1534,5 @@ private[client] class Shim_v3_0 extends Shim_v2_3 {
     renamePartitionMethod.invoke(hive, hiveTable, oldSpec, hivePart, -1L: JLong)
   }
 }
+
+private[client] class Shim_v3_1 extends Shim_v3_0

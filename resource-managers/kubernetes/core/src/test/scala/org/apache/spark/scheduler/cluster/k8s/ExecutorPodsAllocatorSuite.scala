@@ -19,7 +19,7 @@ package org.apache.spark.scheduler.cluster.k8s
 import io.fabric8.kubernetes.api.model.{DoneablePod, Pod, PodBuilder}
 import io.fabric8.kubernetes.client.KubernetesClient
 import io.fabric8.kubernetes.client.dsl.PodResource
-import org.mockito.{ArgumentMatcher, Matchers, Mock, MockitoAnnotations}
+import org.mockito.{Mock, MockitoAnnotations}
 import org.mockito.ArgumentMatchers.{any, eq => meq}
 import org.mockito.Mockito.{never, times, verify, when}
 import org.mockito.invocation.InvocationOnMock
@@ -27,7 +27,7 @@ import org.mockito.stubbing.Answer
 import org.scalatest.BeforeAndAfter
 
 import org.apache.spark.{SecurityManager, SparkConf, SparkFunSuite}
-import org.apache.spark.deploy.k8s.{KubernetesExecutorConf, KubernetesTestConf, SparkPod}
+import org.apache.spark.deploy.k8s.{KubernetesExecutorConf, SparkPod}
 import org.apache.spark.deploy.k8s.Config._
 import org.apache.spark.deploy.k8s.Constants._
 import org.apache.spark.deploy.k8s.Fabric8Aliases._
@@ -140,15 +140,6 @@ class ExecutorPodsAllocatorSuite extends SparkFunSuite with BeforeAndAfter {
     podsAllocatorUnderTest.setTotalExpectedExecutors(1)
     verify(podOperations).create(podWithAttachedContainerForId(1))
     waitForExecutorPodsClock.setTime(podCreationTimeout + 1)
-    when(podOperations
-      .withLabel(SPARK_APP_ID_LABEL, TEST_SPARK_APP_ID))
-      .thenReturn(podOperations)
-    when(podOperations
-      withLabel(SPARK_ROLE_LABEL, SPARK_POD_EXECUTOR_ROLE))
-      .thenReturn(podOperations)
-    when(podOperations
-      .withLabel(SPARK_EXECUTOR_ID_LABEL, "1"))
-      .thenReturn(labeledPods)
     snapshotsStore.notifySubscribers()
     verify(labeledPods).delete()
     verify(podOperations).create(podWithAttachedContainerForId(2))
@@ -165,7 +156,7 @@ class ExecutorPodsAllocatorSuite extends SparkFunSuite with BeforeAndAfter {
       .withLabel(SPARK_ROLE_LABEL, SPARK_POD_EXECUTOR_ROLE))
       .thenReturn(podOperations)
     when(podOperations
-      .withLabelIn(meq(SPARK_EXECUTOR_ID_LABEL), any(), any()))
+      .withLabelIn(meq(SPARK_EXECUTOR_ID_LABEL), any()))
       .thenReturn(podOperations)
 
     // Target 1 executor, make sure it's requested, even with an empty initial snapshot.
@@ -200,12 +191,9 @@ class ExecutorPodsAllocatorSuite extends SparkFunSuite with BeforeAndAfter {
     verify(podOperations).delete()
   }
 
-  private def executorPodAnswer(): Answer[SparkPod] = {
-    new Answer[SparkPod] {
-      override def answer(invocation: InvocationOnMock): SparkPod = {
-        val k8sConf: KubernetesExecutorConf = invocation.getArgument(0)
-        executorPodWithId(k8sConf.executorId.toInt)
-      }
-    }
+  private def executorPodAnswer(): Answer[SparkPod] =
+    (invocation: InvocationOnMock) => {
+      val k8sConf: KubernetesExecutorConf = invocation.getArgument(0)
+      executorPodWithId(k8sConf.executorId.toInt)
   }
 }

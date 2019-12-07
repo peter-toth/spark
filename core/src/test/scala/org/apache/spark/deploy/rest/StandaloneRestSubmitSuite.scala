@@ -42,7 +42,7 @@ class StandaloneRestSubmitSuite extends SparkFunSuite with BeforeAndAfterEach {
   private var rpcEnv: Option[RpcEnv] = None
   private var server: Option[RestSubmissionServer] = None
 
-  override def afterEach() {
+  override def afterEach(): Unit = {
     try {
       rpcEnv.foreach(_.shutdown())
       server.foreach(_.stop())
@@ -75,6 +75,26 @@ class StandaloneRestSubmitSuite extends SparkFunSuite with BeforeAndAfterEach {
     assert(request.appArgs === appArgs)
     assert(request.sparkProperties("spark.master") === masterUrl)
     val response = new RestSubmissionClient(masterUrl).createSubmission(request)
+    val submitResponse = getSubmitResponse(response)
+    assert(submitResponse.action === Utils.getFormattedClassName(submitResponse))
+    assert(submitResponse.serverSparkVersion === SPARK_VERSION)
+    assert(submitResponse.message === submitMessage)
+    assert(submitResponse.submissionId === submittedDriverId)
+    assert(submitResponse.success)
+  }
+
+  test("create submission with multiple masters") {
+    val submittedDriverId = "your-driver-id"
+    val submitMessage = "my driver is submitted"
+    val masterUrl = startDummyServer(submitId = submittedDriverId, submitMessage = submitMessage)
+    val conf = new SparkConf(loadDefaults = false)
+    val RANDOM_PORT = 9000
+    val allMasters = s"$masterUrl,${Utils.localHostName()}:$RANDOM_PORT"
+    conf.set("spark.master", allMasters)
+    conf.set("spark.app.name", "dreamer")
+    val appArgs = Array("one", "two", "six")
+    // main method calls this
+    val response = new RestSubmissionClientApp().run("app-resource", "main-class", appArgs, conf)
     val submitResponse = getSubmitResponse(response)
     assert(submitResponse.action === Utils.getFormattedClassName(submitResponse))
     assert(submitResponse.serverSparkVersion === SPARK_VERSION)

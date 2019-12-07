@@ -23,17 +23,13 @@ import java.lang.reflect.InvocationTargetException
 import org.apache.hadoop.conf.Configuration
 import org.apache.hadoop.fs.Path
 import org.apache.hadoop.io.IOUtils
+import org.apache.hadoop.mapreduce.{Job, JobStatus, MRJobConfig, TaskAttemptID}
 import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat
 import org.apache.hadoop.mapreduce.task.TaskAttemptContextImpl
-import org.apache.hadoop.mapreduce.{Job, JobStatus, MRJobConfig, TaskAttemptID}
 
-import org.apache.spark.{SparkConf, SparkFunSuite}
-import org.apache.spark.internal.io.{FileCommitProtocol, cloud}
-import org.apache.spark.internal.io.cloud.PathCommitterConstants._
+import org.apache.spark.SparkFunSuite
+import org.apache.spark.internal.io.FileCommitProtocol
 
-/**
- * Test committer binding logic.
- */
 class CommitterBindingSuite extends SparkFunSuite {
 
   private val jobId = "2007071202143_0101"
@@ -41,11 +37,20 @@ class CommitterBindingSuite extends SparkFunSuite {
   private val taskAttemptId0 = TaskAttemptID.forName(taskAttempt0)
 
   /**
+   * The classname to use when referring to the path output committer.
+   */
+  private val pathCommitProtocolClassname: String = classOf[PathOutputCommitProtocol].getName
+
+  /** hadoop-mapreduce option to enable the _SUCCESS marker. */
+  private val successMarker = "mapreduce.fileoutputcommitter.marksuccessfuljobs"
+
+  /**
    * Does the
    * [[BindingParquetOutputCommitter]] committer bind to the schema-specific
-   * committer declared for the destination path?
+   * committer declared for the destination path? And that lifecycle events
+   * are correctly propagated?
    */
-  test("BindingParquetOutputCommitter lifecycle") {
+  test("BindingParquetOutputCommitter binds to the inner committer") {
     val path = new Path("http://example/data")
     val job = newJob(path)
     val conf = job.getConfiguration
@@ -55,7 +60,7 @@ class CommitterBindingSuite extends SparkFunSuite {
     StubPathOutputCommitterFactory.bind(conf, "http")
     val tContext = new TaskAttemptContextImpl(conf, taskAttemptId0)
     val parquet = new BindingParquetOutputCommitter(path, tContext)
-    val inner = parquet.boundCommitter().asInstanceOf[StubPathOutputCommitter]
+    val inner = parquet.boundCommitter.asInstanceOf[StubPathOutputCommitter]
     parquet.setupJob(tContext)
     assert(inner.jobSetup, s"$inner job not setup")
     parquet.setupTask(tContext)
@@ -73,36 +78,25 @@ class CommitterBindingSuite extends SparkFunSuite {
     assert(inner.jobAborted, s"$inner job not aborted")
   }
 
-  test("cloud binding to SparkConf") {
-    val sc = new SparkConf()
-    cloud.bind(sc)
-  }
-
   /**
    * Create a a new job. Sets the task attempt ID.
    *
    * @return the new job
-   * @throws IOException failure
    */
-  @throws[IOException]
   def newJob(outDir: Path): Job = {
     val job = Job.getInstance(new Configuration())
     val conf = job.getConfiguration
     conf.set(MRJobConfig.TASK_ATTEMPT_ID, taskAttempt0)
-    conf.setBoolean(CREATE_SUCCESSFUL_JOB_OUTPUT_DIR_MARKER, true)
+    conf.setBoolean(successMarker, true)
     FileOutputFormat.setOutputPath(job, outDir)
     job
   }
 
-  /**
-   * Verify that the committer protocol can be serialized and that
-   * round trips work.
-   */
-  test("CommitterSerialization") {
+  test("committer protocol can be serialized and deserialized") {
     val tempDir = File.createTempFile("ser", ".bin")
 
-    tempDir.delete();
-    val committer = new PathOutputCommitProtocol(jobId, tempDir.toURI.toString,false)
+    tempDir.delete()
+    val committer = new PathOutputCommitProtocol(jobId, tempDir.toURI.toString, false)
 
     val serData = File.createTempFile("ser", ".bin")
     var out: ObjectOutputStream = null
@@ -117,7 +111,7 @@ class CommitterBindingSuite extends SparkFunSuite {
 
       val committer2 = result.asInstanceOf[PathOutputCommitProtocol]
 
-      assert(committer.getDestination() === committer2.getDestination,
+      assert(committer.destination === committer2.destination,
         "destination mismatch on round trip")
       assert(committer.destPath === committer2.destPath,
         "destPath mismatch on round trip")
@@ -127,27 +121,26 @@ class CommitterBindingSuite extends SparkFunSuite {
     }
   }
 
-  test("Instantiate") {
+  test("local filesystem instantiation") {
     val instance = FileCommitProtocol.instantiate(
-      cloud.PATH_COMMIT_PROTOCOL_CLASSNAME,
+      pathCommitProtocolClassname,
       jobId, "file:///tmp", false)
 
     val protocol = instance.asInstanceOf[PathOutputCommitProtocol]
-    assert("file:///tmp"=== protocol.getDestination())
+    assert("file:///tmp" === protocol.destination)
   }
 
-  test("InstantiateNoDynamicPartitioning") {
-    val ex = intercept[InvocationTargetException] {
+  test("reject dynamic partitioning") {
+    val cause = intercept[InvocationTargetException] {
       FileCommitProtocol.instantiate(
-        cloud.PATH_COMMIT_PROTOCOL_CLASSNAME,
+        pathCommitProtocolClassname,
         jobId, "file:///tmp", true)
+    }.getCause
+    if (cause == null || !cause.isInstanceOf[IOException]
+        || !cause.getMessage.contains(PathOutputCommitProtocol.UNSUPPORTED)) {
+      throw cause
     }
-    val cause = ex.getCause
-    if (cause == null || !cause.isInstanceOf[IOException]) {
-      // very unexpected: throw the exception and its full stack.
-      throw ex
-    }
-    assert(cause.getMessage.contains(PathOutputCommitProtocol.UNSUPPORTED))
   }
 
 }
+

@@ -46,7 +46,8 @@ private[spark] trait PythonTestsSuite { k8sSuite: KubernetesSuite =>
       mainClass = "",
       expectedLogOnCompletion = Seq(
         "Python runtime version check is: True",
-        "Python environment version check is: True"),
+        "Python environment version check is: True",
+        "Python runtime version check for executor is: True"),
       appArgs = Array("python"),
       driverPodChecker = doBasicDriverPyPodCheck,
       executorPodChecker = doBasicExecutorPyPodCheck,
@@ -64,7 +65,8 @@ private[spark] trait PythonTestsSuite { k8sSuite: KubernetesSuite =>
       mainClass = "",
       expectedLogOnCompletion = Seq(
         "Python runtime version check is: True",
-        "Python environment version check is: True"),
+        "Python environment version check is: True",
+        "Python runtime version check for executor is: True"),
       appArgs = Array("python3"),
       driverPodChecker = doBasicDriverPyPodCheck,
       executorPodChecker = doBasicExecutorPyPodCheck,

@@ -56,7 +56,7 @@ private[hive] object IsolatedClientLoader extends Logging {
       sharesHadoopClasses: Boolean = true): IsolatedClientLoader = synchronized {
     val resolvedVersion = hiveVersion(hiveMetastoreVersion)
     // We will first try to share Hadoop classes. If we cannot resolve the Hadoop artifact
-    // with the given version, we will use Hadoop 2.6 and then will not share Hadoop classes.
+    // with the given version, we will use Hadoop 2.7 and then will not share Hadoop classes.
     var _sharesHadoopClasses = sharesHadoopClasses
     val files = if (resolvedVersions.contains((resolvedVersion, hadoopVersion))) {
       resolvedVersions((resolvedVersion, hadoopVersion))
@@ -69,13 +69,15 @@ private[hive] object IsolatedClientLoader extends Logging {
           case e: RuntimeException if e.getMessage.contains("hadoop") =>
             // If the error message contains hadoop, it is probably because the hadoop
             // version cannot be resolved.
-            logWarning(s"Failed to resolve Hadoop artifacts for the version $hadoopVersion. " +
-              s"We will change the hadoop version from $hadoopVersion to 2.6.0 and try again. " +
-              "Hadoop classes will not be shared between Spark and Hive metastore client. " +
+            val fallbackVersion = "2.7.4"
+            logWarning(s"Failed to resolve Hadoop artifacts for the version $hadoopVersion. We " +
+              s"will change the hadoop version from $hadoopVersion to $fallbackVersion and try " +
+              "again. Hadoop classes will not be shared between Spark and Hive metastore client. " +
               "It is recommended to set jars used by Hive metastore client through " +
               "spark.sql.hive.metastore.jars in the production environment.")
             _sharesHadoopClasses = false
-            (downloadVersion(resolvedVersion, "2.6.5", ivyPath, remoteRepos), "2.6.5")
+            (downloadVersion(
+              resolvedVersion, fallbackVersion, ivyPath, remoteRepos), fallbackVersion)
         }
       resolvedVersions.put((resolvedVersion, actualHadoopVersion), downloadedFiles)
       resolvedVersions((resolvedVersion, actualHadoopVersion))
@@ -96,14 +98,18 @@ private[hive] object IsolatedClientLoader extends Logging {
     case "12" | "0.12" | "0.12.0" => hive.v12
     case "13" | "0.13" | "0.13.0" | "0.13.1" => hive.v13
     case "14" | "0.14" | "0.14.0" => hive.v14
-    case "1.0" | "1.0.0" => hive.v1_0
-    case "1.1" | "1.1.0" => hive.v1_1
+    case "1.0" | "1.0.0" | "1.0.1" => hive.v1_0
+    case "1.1" | "1.1.0" | "1.1.1" => hive.v1_1
     case "1.2" | "1.2.0" | "1.2.1" | "1.2.2" => hive.v1_2
     case "2.0" | "2.0.0" | "2.0.1" => hive.v2_0
     case "2.1" | "2.1.0" | "2.1.1" => hive.v2_1
     case "2.2" | "2.2.0" => hive.v2_2
-    case "2.3" | "2.3.0" | "2.3.1" | "2.3.2" | "2.3.3" => hive.v2_3
+    case "2.3" | "2.3.0" | "2.3.1" | "2.3.2" | "2.3.3" | "2.3.4" | "2.3.5" | "2.3.6" => hive.v2_3
     case "3.0" | "3.0.0" => hive.v3_0
+    case "3.1" | "3.1.0" | "3.1.1" | "3.1.2" => hive.v3_1
+    case version =>
+      throw new UnsupportedOperationException(s"Unsupported Hive Metastore version ($version). " +
+        s"Please set ${HiveUtils.HIVE_METASTORE_VERSION.key} with a valid version.")
   }
 
   private def downloadVersion(
@@ -117,10 +123,6 @@ private[hive] object IsolatedClientLoader extends Logging {
       Seq("com.google.guava:guava:14.0.1",
         s"org.apache.hadoop:hadoop-client:$hadoopVersion")
 
-    var remoteRepos = "https://maven-central.storage-download.googleapis.com/repos/central/data/"
-    if (Utils.isTesting) {
-      remoteRepos += ",http://nexus-private.hortonworks.com/nexus/content/groups/public"
-    }
     val classpath = quietly {
       SparkSubmitUtils.resolveMavenCoordinates(
         hiveArtifacts.mkString(","),
@@ -160,7 +162,7 @@ private[hive] object IsolatedClientLoader extends Logging {
  * @param execJars A collection of jar files that must include hive and hadoop.
  * @param config   A set of options that will be added to the HiveConf of the constructed client.
  * @param isolationOn When true, custom versions of barrier classes will be constructed.  Must be
- *                    true unless loading the version of hive that is on Sparks classloader.
+ *                    true unless loading the version of hive that is on Spark's classloader.
  * @param sharesHadoopClasses When true, we will share Hadoop classes between Spark and
  * @param baseClassLoader The spark classloader that is used to load shared classes.
  */
@@ -182,10 +184,7 @@ private[hive] class IsolatedClientLoader(
 
   protected def isSharedClass(name: String): Boolean = {
     val isHadoopClass =
-      name.startsWith("org.apache.hadoop.") && !name.startsWith("org.apache.hadoop.hive.") ||
-      // Also, includes configuration2 as a min fix for Hadoop 3+ for now. This is failed
-      // during class resolution. It is fine when 'sharesHadoopClasses' is disabled.
-      name.startsWith("org.apache.commons.configuration2.")
+      name.startsWith("org.apache.hadoop.") && !name.startsWith("org.apache.hadoop.hive.")
 
     name.startsWith("org.slf4j") ||
     name.startsWith("org.apache.log4j") || // log4j1.x

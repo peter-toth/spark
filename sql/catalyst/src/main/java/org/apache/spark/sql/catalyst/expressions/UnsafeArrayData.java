@@ -64,7 +64,6 @@ import static org.apache.spark.unsafe.Platform.BYTE_ARRAY_OFFSET;
  */
 
 public final class UnsafeArrayData extends ArrayData implements Externalizable, KryoSerializable {
-
   public static int calculateHeaderPortionInBytes(int numFields) {
     return (int)calculateHeaderPortionInBytes((long)numFields);
   }
@@ -231,9 +230,10 @@ public final class UnsafeArrayData extends ArrayData implements Externalizable, 
     if (isNullAt(ordinal)) return null;
     final long offsetAndSize = getLong(ordinal);
     final int offset = (int) (offsetAndSize >> 32);
-    final int months = (int) Platform.getLong(baseObject, baseOffset + offset);
+    final int months = Platform.getInt(baseObject, baseOffset + offset);
+    final int days = Platform.getInt(baseObject, baseOffset + offset + 4);
     final long microseconds = Platform.getLong(baseObject, baseOffset + offset + 8);
-    return new CalendarInterval(months, microseconds);
+    return new CalendarInterval(months, days, microseconds);
   }
 
   @Override
@@ -272,6 +272,7 @@ public final class UnsafeArrayData extends ArrayData implements Externalizable, 
   @Override
   public void update(int ordinal, Object value) { throw new UnsupportedOperationException(); }
 
+  @Override
   public void setNullAt(int ordinal) {
     assertIndexIsValid(ordinal);
     BitSetMethods.set(baseObject, baseOffset + 8, ordinal);
@@ -280,43 +281,44 @@ public final class UnsafeArrayData extends ArrayData implements Externalizable, 
        will be set to 0 later by the caller side */
   }
 
+  @Override
   public void setBoolean(int ordinal, boolean value) {
     assertIndexIsValid(ordinal);
     Platform.putBoolean(baseObject, getElementOffset(ordinal, 1), value);
   }
 
+  @Override
   public void setByte(int ordinal, byte value) {
     assertIndexIsValid(ordinal);
     Platform.putByte(baseObject, getElementOffset(ordinal, 1), value);
   }
 
+  @Override
   public void setShort(int ordinal, short value) {
     assertIndexIsValid(ordinal);
     Platform.putShort(baseObject, getElementOffset(ordinal, 2), value);
   }
 
+  @Override
   public void setInt(int ordinal, int value) {
     assertIndexIsValid(ordinal);
     Platform.putInt(baseObject, getElementOffset(ordinal, 4), value);
   }
 
+  @Override
   public void setLong(int ordinal, long value) {
     assertIndexIsValid(ordinal);
     Platform.putLong(baseObject, getElementOffset(ordinal, 8), value);
   }
 
+  @Override
   public void setFloat(int ordinal, float value) {
-    if (Float.isNaN(value)) {
-      value = Float.NaN;
-    }
     assertIndexIsValid(ordinal);
     Platform.putFloat(baseObject, getElementOffset(ordinal, 4), value);
   }
 
+  @Override
   public void setDouble(int ordinal, double value) {
-    if (Double.isNaN(value)) {
-      value = Double.NaN;
-    }
     assertIndexIsValid(ordinal);
     Platform.putDouble(baseObject, getElementOffset(ordinal, 8), value);
   }

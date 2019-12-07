@@ -28,7 +28,7 @@ import org.mockito.ArgumentMatchers.{any, eq => meq}
 import org.mockito.Mockito.{mock, times, verify, when}
 
 import org.apache.spark._
-import org.apache.spark.internal.config._
+import org.apache.spark.internal.config.UI._
 
 class HttpSecurityFilterSuite extends SparkFunSuite {
 
@@ -84,9 +84,9 @@ class HttpSecurityFilterSuite extends SparkFunSuite {
 
   test("perform access control") {
     val conf = new SparkConf(false)
-      .set("spark.ui.acls.enable", "true")
-      .set("spark.admin.acls", "admin")
-      .set("spark.ui.view.acls", "alice")
+      .set(ACLS_ENABLE, true)
+      .set(ADMIN_ACLS, Seq("admin"))
+      .set(UI_VIEW_ACLS, Seq("alice"))
     val secMgr = new SecurityManager(conf)
 
     val req = mockRequest()
@@ -115,7 +115,7 @@ class HttpSecurityFilterSuite extends SparkFunSuite {
 
   test("set security-related headers") {
     val conf = new SparkConf(false)
-      .set("spark.ui.allowFramingFrom", "example.com")
+      .set(UI_ALLOW_FRAMING_FROM, "example.com")
       .set(UI_X_XSS_PROTECTION, "xssProtection")
       .set(UI_X_CONTENT_TYPE_OPTIONS, true)
       .set(UI_STRICT_TRANSPORT_SECURITY, "tsec")
@@ -141,9 +141,9 @@ class HttpSecurityFilterSuite extends SparkFunSuite {
 
   test("doAs impersonation") {
     val conf = new SparkConf(false)
-      .set("spark.acls.enable", "true")
-      .set("spark.admin.acls", "admin")
-      .set("spark.ui.view.acls", "proxy")
+      .set(ACLS_ENABLE, true)
+      .set(ADMIN_ACLS, Seq("admin"))
+      .set(UI_VIEW_ACLS, Seq("proxy"))
 
     val secMgr = new SecurityManager(conf)
     val req = mockRequest()

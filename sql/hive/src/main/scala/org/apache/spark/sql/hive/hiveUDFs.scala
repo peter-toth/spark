@@ -17,6 +17,7 @@
 
 package org.apache.spark.sql.hive
 
+import java.lang.{Boolean => JBoolean}
 import java.nio.ByteBuffer
 
 import scala.collection.JavaConverters._
@@ -38,7 +39,7 @@ import org.apache.spark.sql.catalyst.expressions.aggregate._
 import org.apache.spark.sql.catalyst.expressions.codegen.CodegenFallback
 import org.apache.spark.sql.hive.HiveShim._
 import org.apache.spark.sql.types._
-
+import org.apache.spark.util.Utils
 
 private[hive] case class HiveSimpleUDF(
     name: String, funcWrapper: HiveFunctionWrapper, children: Seq[Expression])
@@ -246,7 +247,7 @@ private[hive] case class HiveGenericUDTF(
   protected class UDTFCollector extends Collector {
     var collected = new ArrayBuffer[InternalRow]
 
-    override def collect(input: java.lang.Object) {
+    override def collect(input: java.lang.Object): Unit = {
       // We need to clone the input here because implementations of
       // GenericUDTF reuse the same object. Luckily they are always an array, so
       // it is easy to clone.
@@ -343,8 +344,20 @@ private[hive] case class HiveUDAFFunction(
       funcWrapper.createFunction[AbstractGenericUDAFResolver]()
     }
 
-    val parameterInfo = new SimpleGenericUDAFParameterInfo(inputInspectors, false, false)
-    resolver.getEvaluator(parameterInfo)
+    val clazz = Utils.classForName(classOf[SimpleGenericUDAFParameterInfo].getName)
+    if (HiveUtils.isHive23) {
+      val ctor = clazz.getDeclaredConstructor(
+        classOf[Array[ObjectInspector]], JBoolean.TYPE, JBoolean.TYPE, JBoolean.TYPE)
+      val args = Array[AnyRef](inputInspectors, JBoolean.FALSE, JBoolean.FALSE, JBoolean.FALSE)
+      val parameterInfo = ctor.newInstance(args: _*).asInstanceOf[SimpleGenericUDAFParameterInfo]
+      resolver.getEvaluator(parameterInfo)
+    } else {
+      val ctor = clazz.getDeclaredConstructor(
+        classOf[Array[ObjectInspector]], JBoolean.TYPE, JBoolean.TYPE)
+      val args = Array[AnyRef](inputInspectors, JBoolean.FALSE, JBoolean.FALSE)
+      val parameterInfo = ctor.newInstance(args: _*).asInstanceOf[SimpleGenericUDAFParameterInfo]
+      resolver.getEvaluator(parameterInfo)
+    }
   }
 
   private case class HiveEvaluator(

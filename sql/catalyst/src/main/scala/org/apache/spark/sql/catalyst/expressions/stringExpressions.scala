@@ -24,12 +24,15 @@ import java.util.regex.Pattern
 
 import scala.collection.mutable.ArrayBuffer
 
+import org.apache.commons.codec.binary.{Base64 => CommonsBase64}
+
 import org.apache.spark.sql.catalyst.InternalRow
 import org.apache.spark.sql.catalyst.analysis.TypeCheckResult
 import org.apache.spark.sql.catalyst.expressions.codegen._
 import org.apache.spark.sql.catalyst.expressions.codegen.Block._
 import org.apache.spark.sql.catalyst.util.{ArrayData, GenericArrayData, TypeUtils}
 import org.apache.spark.sql.types._
+import org.apache.spark.unsafe.UTF8StringBuilder
 import org.apache.spark.unsafe.types.{ByteArray, UTF8String}
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -333,7 +336,9 @@ trait String2StringExpression extends ImplicitCastInputTypes {
 case class Upper(child: Expression)
   extends UnaryExpression with String2StringExpression {
 
+  // scalastyle:off caselocale
   override def convert(v: UTF8String): UTF8String = v.toUpperCase
+  // scalastyle:on caselocale
 
   override def doGenCode(ctx: CodegenContext, ev: ExprCode): ExprCode = {
     defineCodeGen(ctx, ev, c => s"($c).toUpperCase()")
@@ -353,7 +358,9 @@ case class Upper(child: Expression)
   since = "1.0.1")
 case class Lower(child: Expression) extends UnaryExpression with String2StringExpression {
 
+  // scalastyle:off caselocale
   override def convert(v: UTF8String): UTF8String = v.toLowerCase
+  // scalastyle:on caselocale
 
   override def doGenCode(ctx: CodegenContext, ev: ExprCode): ExprCode = {
     defineCodeGen(ctx, ev, c => s"($c).toLowerCase()")
@@ -446,6 +453,113 @@ case class StringReplace(srcExpr: Expression, searchExpr: Expression, replaceExp
   override def inputTypes: Seq[DataType] = Seq(StringType, StringType, StringType)
   override def children: Seq[Expression] = srcExpr :: searchExpr :: replaceExpr :: Nil
   override def prettyName: String = "replace"
+}
+
+object Overlay {
+
+  def calculate(input: UTF8String, replace: UTF8String, pos: Int, len: Int): UTF8String = {
+    val builder = new UTF8StringBuilder
+    builder.append(input.substringSQL(1, pos - 1))
+    builder.append(replace)
+    // If you specify length, it must be a positive whole number or zero.
+    // Otherwise it will be ignored.
+    // The default value for length is the length of replace.
+    val length = if (len >= 0) {
+      len
+    } else {
+      replace.numChars
+    }
+    builder.append(input.substringSQL(pos + length, Int.MaxValue))
+    builder.build()
+  }
+
+  def calculate(input: Array[Byte], replace: Array[Byte], pos: Int, len: Int): Array[Byte] = {
+    // If you specify length, it must be a positive whole number or zero.
+    // Otherwise it will be ignored.
+    // The default value for length is the length of replace.
+    val length = if (len >= 0) {
+      len
+    } else {
+      replace.length
+    }
+    ByteArray.concat(ByteArray.subStringSQL(input, 1, pos - 1),
+      replace, ByteArray.subStringSQL(input, pos + length, Int.MaxValue))
+  }
+}
+
+// scalastyle:off line.size.limit
+@ExpressionDescription(
+  usage = "_FUNC_(input, replace, pos[, len]) - Replace `input` with `replace` that starts at `pos` and is of length `len`.",
+  examples = """
+    Examples:
+      > SELECT _FUNC_('Spark SQL' PLACING '_' FROM 6);
+       Spark_SQL
+      > SELECT _FUNC_('Spark SQL' PLACING 'CORE' FROM 7);
+       Spark CORE
+      > SELECT _FUNC_('Spark SQL' PLACING 'ANSI ' FROM 7 FOR 0);
+       Spark ANSI SQL
+      > SELECT _FUNC_('Spark SQL' PLACING 'tructured' FROM 2 FOR 4);
+       Structured SQL
+      > SELECT _FUNC_(encode('Spark SQL', 'utf-8') PLACING encode('_', 'utf-8') FROM 6);
+       Spark_SQL
+      > SELECT _FUNC_(encode('Spark SQL', 'utf-8') PLACING encode('CORE', 'utf-8') FROM 7);
+       Spark CORE
+      > SELECT _FUNC_(encode('Spark SQL', 'utf-8') PLACING encode('ANSI ', 'utf-8') FROM 7 FOR 0);
+       Spark ANSI SQL
+      > SELECT _FUNC_(encode('Spark SQL', 'utf-8') PLACING encode('tructured', 'utf-8') FROM 2 FOR 4);
+       Structured SQL
+  """)
+// scalastyle:on line.size.limit
+case class Overlay(input: Expression, replace: Expression, pos: Expression, len: Expression)
+  extends QuaternaryExpression with ImplicitCastInputTypes with NullIntolerant {
+
+  def this(str: Expression, replace: Expression, pos: Expression) = {
+    this(str, replace, pos, Literal.create(-1, IntegerType))
+  }
+
+  override def dataType: DataType = input.dataType
+
+  override def inputTypes: Seq[AbstractDataType] = Seq(TypeCollection(StringType, BinaryType),
+    TypeCollection(StringType, BinaryType), IntegerType, IntegerType)
+
+  override def children: Seq[Expression] = input :: replace :: pos :: len :: Nil
+
+  override def checkInputDataTypes(): TypeCheckResult = {
+    val inputTypeCheck = super.checkInputDataTypes()
+    if (inputTypeCheck.isSuccess) {
+      TypeUtils.checkForSameTypeInputExpr(
+        input.dataType :: replace.dataType :: Nil, s"function $prettyName")
+    } else {
+      inputTypeCheck
+    }
+  }
+
+  private lazy val replaceFunc = input.dataType match {
+    case StringType =>
+      (inputEval: Any, replaceEval: Any, posEval: Int, lenEval: Int) => {
+        Overlay.calculate(
+          inputEval.asInstanceOf[UTF8String],
+          replaceEval.asInstanceOf[UTF8String],
+          posEval, lenEval)
+      }
+    case BinaryType =>
+      (inputEval: Any, replaceEval: Any, posEval: Int, lenEval: Int) => {
+        Overlay.calculate(
+          inputEval.asInstanceOf[Array[Byte]],
+          replaceEval.asInstanceOf[Array[Byte]],
+          posEval, lenEval)
+      }
+  }
+
+  override def nullSafeEval(inputEval: Any, replaceEval: Any, posEval: Any, lenEval: Any): Any = {
+    replaceFunc(inputEval, replaceEval, posEval.asInstanceOf[Int], lenEval.asInstanceOf[Int])
+  }
+
+  override def doGenCode(ctx: CodegenContext, ev: ExprCode): ExprCode = {
+    defineCodeGen(ctx, ev, (input, replace, pos, len) =>
+      "org.apache.spark.sql.catalyst.expressions.Overlay" +
+        s".calculate($input, $replace, $pos, $len);")
+  }
 }
 
 object StringTranslate {
@@ -599,11 +713,21 @@ object StringTrim {
   usage = """
     _FUNC_(str) - Removes the leading and trailing space characters from `str`.
 
-    _FUNC_(BOTH trimStr FROM str) - Remove the leading and trailing `trimStr` characters from `str`
+    _FUNC_(BOTH FROM str) - Removes the leading and trailing space characters from `str`.
 
-    _FUNC_(LEADING trimStr FROM str) - Remove the leading `trimStr` characters from `str`
+    _FUNC_(LEADING FROM str) - Removes the leading space characters from `str`.
 
-    _FUNC_(TRAILING trimStr FROM str) - Remove the trailing `trimStr` characters from `str`
+    _FUNC_(TRAILING FROM str) - Removes the trailing space characters from `str`.
+
+    _FUNC_(str, trimStr) - Remove the leading and trailing `trimStr` characters from `str`.
+
+    _FUNC_(trimStr FROM str) - Remove the leading and trailing `trimStr` characters from `str`.
+
+    _FUNC_(BOTH trimStr FROM str) - Remove the leading and trailing `trimStr` characters from `str`.
+
+    _FUNC_(LEADING trimStr FROM str) - Remove the leading `trimStr` characters from `str`.
+
+    _FUNC_(TRAILING trimStr FROM str) - Remove the trailing `trimStr` characters from `str`.
   """,
   arguments = """
     Arguments:
@@ -620,7 +744,15 @@ object StringTrim {
     Examples:
       > SELECT _FUNC_('    SparkSQL   ');
        SparkSQL
-      > SELECT _FUNC_('SL', 'SSparkSQLS');
+      > SELECT _FUNC_(BOTH FROM '    SparkSQL   ');
+       SparkSQL
+      > SELECT _FUNC_(LEADING FROM '    SparkSQL   ');
+       SparkSQL
+      > SELECT _FUNC_(TRAILING FROM '    SparkSQL   ');
+           SparkSQL
+      > SELECT _FUNC_('SSparkSQLS', 'SL');
+       parkSQ
+      > SELECT _FUNC_('SL' FROM 'SSparkSQLS');
        parkSQ
       > SELECT _FUNC_(BOTH 'SL' FROM 'SSparkSQLS');
        parkSQ
@@ -635,7 +767,7 @@ case class StringTrim(
     trimStr: Option[Expression] = None)
   extends String2TrimExpression {
 
-  def this(trimStr: Expression, srcStr: Expression) = this(srcStr, Option(trimStr))
+  def this(srcStr: Expression, trimStr: Expression) = this(srcStr, Option(trimStr))
 
   def this(srcStr: Expression) = this(srcStr, None)
 
@@ -715,7 +847,7 @@ object StringTrimLeft {
   usage = """
     _FUNC_(str) - Removes the leading space characters from `str`.
 
-    _FUNC_(trimStr, str) - Removes the leading string contains the characters from the trim string
+    _FUNC_(str, trimStr) - Removes the leading string contains the characters from the trim string
   """,
   arguments = """
     Arguments:
@@ -726,7 +858,7 @@ object StringTrimLeft {
     Examples:
       > SELECT _FUNC_('    SparkSQL   ');
        SparkSQL
-      > SELECT _FUNC_('Sp', 'SSparkSQLS');
+      > SELECT _FUNC_('SparkSQLS', 'Sp');
        arkSQLS
   """,
   since = "1.5.0")
@@ -735,7 +867,7 @@ case class StringTrimLeft(
     trimStr: Option[Expression] = None)
   extends String2TrimExpression {
 
-  def this(trimStr: Expression, srcStr: Expression) = this(srcStr, Option(trimStr))
+  def this(srcStr: Expression, trimStr: Expression) = this(srcStr, Option(trimStr))
 
   def this(srcStr: Expression) = this(srcStr, None)
 
@@ -817,7 +949,7 @@ object StringTrimRight {
   usage = """
     _FUNC_(str) - Removes the trailing space characters from `str`.
 
-    _FUNC_(trimStr, str) - Removes the trailing string which contains the characters from the trim string from the `str`
+    _FUNC_(str, trimStr) - Removes the trailing string which contains the characters from the trim string from the `str`
   """,
   arguments = """
     Arguments:
@@ -828,7 +960,7 @@ object StringTrimRight {
     Examples:
       > SELECT _FUNC_('    SparkSQL   ');
        SparkSQL
-      > SELECT _FUNC_('LQSa', 'SSparkSQLS');
+      > SELECT _FUNC_('SSparkSQLS', 'SQLS');
        SSpark
   """,
   since = "1.5.0")
@@ -838,7 +970,7 @@ case class StringTrimRight(
     trimStr: Option[Expression] = None)
   extends String2TrimExpression {
 
-  def this(trimStr: Expression, srcStr: Expression) = this(srcStr, Option(trimStr))
+  def this(srcStr: Expression, trimStr: Expression) = this(srcStr, Option(trimStr))
 
   def this(srcStr: Expression) = this(srcStr, None)
 
@@ -1070,8 +1202,9 @@ case class StringLocate(substr: Expression, str: Expression, start: Expression)
  */
 @ExpressionDescription(
   usage = """
-    _FUNC_(str, len, pad) - Returns `str`, left-padded with `pad` to a length of `len`.
+    _FUNC_(str, len[, pad]) - Returns `str`, left-padded with `pad` to a length of `len`.
       If `str` is longer than `len`, the return value is shortened to `len` characters.
+      If `pad` is not specified, `str` will be padded to the left with space characters.
   """,
   examples = """
     Examples:
@@ -1079,10 +1212,16 @@ case class StringLocate(substr: Expression, str: Expression, start: Expression)
        ???hi
       > SELECT _FUNC_('hi', 1, '??');
        h
+      > SELECT _FUNC_('hi', 5);
+          hi
   """,
   since = "1.5.0")
-case class StringLPad(str: Expression, len: Expression, pad: Expression)
+case class StringLPad(str: Expression, len: Expression, pad: Expression = Literal(" "))
   extends TernaryExpression with ImplicitCastInputTypes {
+
+  def this(str: Expression, len: Expression) = {
+    this(str, len, Literal(" "))
+  }
 
   override def children: Seq[Expression] = str :: len :: pad :: Nil
   override def dataType: DataType = StringType
@@ -1104,8 +1243,9 @@ case class StringLPad(str: Expression, len: Expression, pad: Expression)
  */
 @ExpressionDescription(
   usage = """
-    _FUNC_(str, len, pad) - Returns `str`, right-padded with `pad` to a length of `len`.
+    _FUNC_(str, len[, pad]) - Returns `str`, right-padded with `pad` to a length of `len`.
       If `str` is longer than `len`, the return value is shortened to `len` characters.
+      If `pad` is not specified, `str` will be padded to the right with space characters.
   """,
   examples = """
     Examples:
@@ -1113,10 +1253,16 @@ case class StringLPad(str: Expression, len: Expression, pad: Expression)
        hi???
       > SELECT _FUNC_('hi', 1, '??');
        h
+      > SELECT _FUNC_('hi', 5);
+       hi
   """,
   since = "1.5.0")
-case class StringRPad(str: Expression, len: Expression, pad: Expression)
+case class StringRPad(str: Expression, len: Expression, pad: Expression = Literal(" "))
   extends TernaryExpression with ImplicitCastInputTypes {
+
+  def this(str: Expression, len: Expression) = {
+    this(str, len, Literal(" "))
+  }
 
   override def children: Seq[Expression] = str :: len :: pad :: Nil
   override def dataType: DataType = StringType
@@ -1153,11 +1299,11 @@ object ParseUrl {
   usage = "_FUNC_(url, partToExtract[, key]) - Extracts a part from a URL.",
   examples = """
     Examples:
-      > SELECT _FUNC_('http://spark.apache.org/path?query=1', 'HOST')
+      > SELECT _FUNC_('http://spark.apache.org/path?query=1', 'HOST');
        spark.apache.org
-      > SELECT _FUNC_('http://spark.apache.org/path?query=1', 'QUERY')
+      > SELECT _FUNC_('http://spark.apache.org/path?query=1', 'QUERY');
        query=1
-      > SELECT _FUNC_('http://spark.apache.org/path?query=1', 'QUERY', 'query')
+      > SELECT _FUNC_('http://spark.apache.org/path?query=1', 'QUERY', 'query');
        1
   """,
   since = "2.0.0")
@@ -1407,7 +1553,9 @@ case class InitCap(child: Expression) extends UnaryExpression with ImplicitCastI
   override def dataType: DataType = StringType
 
   override def nullSafeEval(string: Any): Any = {
+    // scalastyle:off caselocale
     string.asInstanceOf[UTF8String].toLowerCase.toTitleCase
+    // scalastyle:on caselocale
   }
   override def doGenCode(ctx: CodegenContext, ev: ExprCode): ExprCode = {
     defineCodeGen(ctx, ev, str => s"$str.toLowerCase().toTitleCase()")
@@ -1823,15 +1971,13 @@ case class Base64(child: Expression) extends UnaryExpression with ImplicitCastIn
   override def inputTypes: Seq[DataType] = Seq(BinaryType)
 
   protected override def nullSafeEval(bytes: Any): Any = {
-    UTF8String.fromBytes(
-      org.apache.commons.codec.binary.Base64.encodeBase64(
-        bytes.asInstanceOf[Array[Byte]]))
+    UTF8String.fromBytes(CommonsBase64.encodeBase64(bytes.asInstanceOf[Array[Byte]]))
   }
 
   override def doGenCode(ctx: CodegenContext, ev: ExprCode): ExprCode = {
     nullSafeCodeGen(ctx, ev, (child) => {
       s"""${ev.value} = UTF8String.fromBytes(
-            org.apache.commons.codec.binary.Base64.encodeBase64($child));
+            ${classOf[CommonsBase64].getName}.encodeBase64($child));
        """})
   }
 }
@@ -1853,12 +1999,12 @@ case class UnBase64(child: Expression) extends UnaryExpression with ImplicitCast
   override def inputTypes: Seq[DataType] = Seq(StringType)
 
   protected override def nullSafeEval(string: Any): Any =
-    org.apache.commons.codec.binary.Base64.decodeBase64(string.asInstanceOf[UTF8String].toString)
+    CommonsBase64.decodeBase64(string.asInstanceOf[UTF8String].toString)
 
   override def doGenCode(ctx: CodegenContext, ev: ExprCode): ExprCode = {
     nullSafeCodeGen(ctx, ev, (child) => {
       s"""
-         ${ev.value} = org.apache.commons.codec.binary.Base64.decodeBase64($child.toString());
+         ${ev.value} = ${classOf[CommonsBase64].getName}.decodeBase64($child.toString());
        """})
   }
 }

@@ -227,8 +227,8 @@ object OptimizeIn extends Rule[LogicalPlan] {
         if (newList.length == 1
           // TODO: `EqualTo` for structural types are not working. Until SPARK-24443 is addressed,
           // TODO: we exclude them in this rule.
-          && !v.isInstanceOf[CreateNamedStructLike]
-          && !newList.head.isInstanceOf[CreateNamedStructLike]) {
+          && !v.isInstanceOf[CreateNamedStruct]
+          && !newList.head.isInstanceOf[CreateNamedStruct]) {
           EqualTo(v, newList.head)
         } else if (newList.length > SQLConf.get.optimizerInSetConversionThreshold) {
           val hSet = newList.map(e => e.eval(EmptyRow))
@@ -373,6 +373,9 @@ object BooleanSimplification extends Rule[LogicalPlan] with PredicateHelper {
       case Not(a And b) => Or(Not(a), Not(b))
 
       case Not(Not(e)) => e
+
+      case Not(IsNull(e)) => IsNotNull(e)
+      case Not(IsNotNull(e)) => IsNull(e)
     }
   }
 }
@@ -600,7 +603,7 @@ object FoldablePropagation extends Rule[LogicalPlan] {
         // propagating the foldable expressions.
         // TODO(cloud-fan): It seems more reasonable to use new attributes as the output attributes
         // of outer join.
-        case j @ Join(left, right, joinType, _) if foldableMap.nonEmpty =>
+        case j @ Join(left, right, joinType, _, _) if foldableMap.nonEmpty =>
           val newJoin = j.transformExpressions(replaceFoldable)
           val missDerivedAttrsSet: AttributeSet = AttributeSet(joinType match {
             case _: InnerLike | LeftExistence(_) => Nil
@@ -648,7 +651,6 @@ object FoldablePropagation extends Rule[LogicalPlan] {
     case _: Distinct => true
     case _: AppendColumns => true
     case _: AppendColumnsWithObject => true
-    case _: ResolvedHint => true
     case _: RepartitionByExpression => true
     case _: Repartition => true
     case _: Sort => true

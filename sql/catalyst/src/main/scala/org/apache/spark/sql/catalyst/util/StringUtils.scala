@@ -65,11 +65,17 @@ object StringUtils extends Logging {
     "(?s)" + out.result() // (?s) enables dotall mode, causing "." to match new lines
   }
 
-  private[this] val trueStrings = Set("t", "true", "y", "yes", "1").map(UTF8String.fromString)
-  private[this] val falseStrings = Set("f", "false", "n", "no", "0").map(UTF8String.fromString)
+  private[this] val trueStrings =
+    Set("t", "true", "y", "yes", "1").map(UTF8String.fromString)
 
+  private[this] val falseStrings =
+    Set("f", "false", "n", "no", "0").map(UTF8String.fromString)
+
+  // scalastyle:off caselocale
   def isTrueString(s: UTF8String): Boolean = trueStrings.contains(s.toLowerCase)
+
   def isFalseString(s: UTF8String): Boolean = falseStrings.contains(s.toLowerCase)
+  // scalastyle:on caselocale
 
   /**
    * This utility can be used for filtering pattern in the "Like" of "Show Tables / Functions" DDL
@@ -142,7 +148,7 @@ object StringUtils extends Logging {
         logWarning(
           "Truncated the string representation of a plan since it was too long. The " +
             s"plan had length ${length} and the maximum is ${maxLength}. This behavior " +
-            "can be adjusted by setting '${SQLConf.MAX_PLAN_STRING_LENGTH.key}'.")
+            s"can be adjusted by setting '${SQLConf.MAX_PLAN_STRING_LENGTH.key}'.")
         val truncateMsg = if (maxLength == 0) {
           s"Truncated plan of $length characters"
         } else {

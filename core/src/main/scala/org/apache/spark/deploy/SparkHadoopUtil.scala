@@ -21,7 +21,7 @@ import java.io.{ByteArrayInputStream, ByteArrayOutputStream, DataInputStream, Da
 import java.lang.reflect.Method
 import java.security.PrivilegedExceptionAction
 import java.text.DateFormat
-import java.util.{Arrays, Comparator, Date, Locale}
+import java.util.{Arrays, Date, Locale}
 
 import scala.collection.JavaConverters._
 import scala.collection.immutable.Map
@@ -38,17 +38,14 @@ import org.apache.hadoop.security.token.{Token, TokenIdentifier}
 import org.apache.hadoop.security.token.delegation.AbstractDelegationTokenIdentifier
 
 import org.apache.spark.{SparkConf, SparkException}
-import org.apache.spark.annotation.DeveloperApi
 import org.apache.spark.internal.Logging
-import org.apache.spark.internal.config._
+import org.apache.spark.internal.config.BUFFER_SIZE
 import org.apache.spark.util.Utils
 
 /**
- * :: DeveloperApi ::
  * Contains util methods to interact with Hadoop from Spark.
  */
-@DeveloperApi
-class SparkHadoopUtil extends Logging {
+private[spark] class SparkHadoopUtil extends Logging {
   private val sparkConf = new SparkConf(false).loadFromSystemProperties(true)
   val conf: Configuration = newConfiguration(sparkConf)
   UserGroupInformation.setConfiguration(conf)
@@ -61,7 +58,7 @@ class SparkHadoopUtil extends Logging {
    * you need to look https://issues.apache.org/jira/browse/HDFS-3545 and possibly
    * do a FileSystem.closeAllForUGI in order to avoid leaking Filesystems
    */
-  def runAsSparkUser(func: () => Unit) {
+  def runAsSparkUser(func: () => Unit): Unit = {
     createSparkUser().doAs(new PrivilegedExceptionAction[Unit] {
       def run: Unit = func()
     })
@@ -75,7 +72,7 @@ class SparkHadoopUtil extends Logging {
     ugi
   }
 
-  def transferCredentials(source: UserGroupInformation, dest: UserGroupInformation) {
+  def transferCredentials(source: UserGroupInformation, dest: UserGroupInformation): Unit = {
     dest.addCredentials(source.getCredentials())
   }
 
@@ -83,8 +80,10 @@ class SparkHadoopUtil extends Logging {
    * Appends S3-specific, spark.hadoop.*, and spark.buffer.size configurations to a Hadoop
    * configuration.
    */
-  def appendS3AndSparkHadoopConfigurations(conf: SparkConf, hadoopConf: Configuration): Unit = {
-    SparkHadoopUtil.appendS3AndSparkHadoopConfigurations(conf, hadoopConf)
+  def appendS3AndSparkHadoopHiveConfigurations(
+      conf: SparkConf,
+      hadoopConf: Configuration): Unit = {
+    SparkHadoopUtil.appendS3AndSparkHadoopHiveConfigurations(conf, hadoopConf)
   }
 
   /**
@@ -104,6 +103,15 @@ class SparkHadoopUtil extends Logging {
     // Copy any "spark.hadoop.foo=bar" system properties into destMap as "foo=bar"
     for ((key, value) <- srcMap if key.startsWith("spark.hadoop.")) {
       destMap.put(key.substring("spark.hadoop.".length), value)
+    }
+  }
+
+  def appendSparkHiveConfigs(
+      srcMap: Map[String, String],
+      destMap: HashMap[String, String]): Unit = {
+    // Copy any "spark.hive.foo=bar" system properties into destMap as "hive.foo=bar"
+    for ((key, value) <- srcMap if key.startsWith("spark.hive.")) {
+      destMap.put(key.substring("spark.".length), value)
     }
   }
 
@@ -144,7 +152,7 @@ class SparkHadoopUtil extends Logging {
    * Add or overwrite current user's credentials with serialized delegation tokens,
    * also confirms correct hadoop configuration is set.
    */
-  private[spark] def addDelegationTokens(tokens: Array[Byte], sparkConf: SparkConf) {
+  private[spark] def addDelegationTokens(tokens: Array[Byte], sparkConf: SparkConf): Unit = {
     UserGroupInformation.setConfiguration(newConfiguration(sparkConf))
     val creds = deserialize(tokens)
     logInfo("Updating delegation tokens for current user.")
@@ -274,11 +282,8 @@ class SparkHadoopUtil extends Logging {
             name.startsWith(prefix) && !name.endsWith(exclusionSuffix)
           }
         })
-      Arrays.sort(fileStatuses, new Comparator[FileStatus] {
-        override def compare(o1: FileStatus, o2: FileStatus): Int = {
-          Longs.compare(o1.getModificationTime, o2.getModificationTime)
-        }
-      })
+      Arrays.sort(fileStatuses, (o1: FileStatus, o2: FileStatus) =>
+        Longs.compare(o1.getModificationTime, o2.getModificationTime))
       fileStatuses
     } catch {
       case NonFatal(e) =>
@@ -388,7 +393,7 @@ class SparkHadoopUtil extends Logging {
 
 }
 
-object SparkHadoopUtil {
+private[spark] object SparkHadoopUtil {
 
   private lazy val instance = new SparkHadoopUtil
 
@@ -420,11 +425,11 @@ object SparkHadoopUtil {
    */
   private[spark] def newConfiguration(conf: SparkConf): Configuration = {
     val hadoopConf = new Configuration()
-    appendS3AndSparkHadoopConfigurations(conf, hadoopConf)
+    appendS3AndSparkHadoopHiveConfigurations(conf, hadoopConf)
     hadoopConf
   }
 
-  private def appendS3AndSparkHadoopConfigurations(
+  private def appendS3AndSparkHadoopHiveConfigurations(
       conf: SparkConf,
       hadoopConf: Configuration): Unit = {
     // Note: this null check is around more than just access to the "conf" object to maintain
@@ -447,7 +452,8 @@ object SparkHadoopUtil {
         }
       }
       appendSparkHadoopConfigs(conf, hadoopConf)
-      val bufferSize = conf.get("spark.buffer.size", "65536")
+      appendSparkHiveConfigs(conf, hadoopConf)
+      val bufferSize = conf.get(BUFFER_SIZE).toString
       hadoopConf.set("io.file.buffer.size", bufferSize)
       // Workaround for timeline client Jersey conflicts.
       hadoopConf.set("yarn.timeline-service.enabled", "false")
@@ -458,6 +464,13 @@ object SparkHadoopUtil {
     // Copy any "spark.hadoop.foo=bar" spark properties into conf as "foo=bar"
     for ((key, value) <- conf.getAll if key.startsWith("spark.hadoop.")) {
       hadoopConf.set(key.substring("spark.hadoop.".length), value)
+    }
+  }
+
+  private def appendSparkHiveConfigs(conf: SparkConf, hadoopConf: Configuration): Unit = {
+    // Copy any "spark.hive.foo=bar" spark properties into conf as "hive.foo=bar"
+    for ((key, value) <- conf.getAll if key.startsWith("spark.hive.")) {
+      hadoopConf.set(key.substring("spark.".length), value)
     }
   }
 

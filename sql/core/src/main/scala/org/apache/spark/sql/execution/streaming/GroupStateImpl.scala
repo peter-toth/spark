@@ -18,8 +18,10 @@
 package org.apache.spark.sql.execution.streaming
 
 import java.sql.Date
+import java.util.concurrent.TimeUnit
 
 import org.apache.spark.sql.catalyst.plans.logical.{EventTimeTimeout, ProcessingTimeTimeout}
+import org.apache.spark.sql.catalyst.util.IntervalUtils
 import org.apache.spark.sql.execution.streaming.GroupStateImpl._
 import org.apache.spark.sql.streaming.{GroupState, GroupStateTimeout}
 import org.apache.spark.unsafe.types.CalendarInterval
@@ -158,13 +160,12 @@ private[sql] class GroupStateImpl[S] private(
   def getTimeoutTimestamp: Long = timeoutTimestamp
 
   private def parseDuration(duration: String): Long = {
-    val cal = CalendarInterval.fromCaseInsensitiveString(duration)
-    if (cal.milliseconds < 0 || cal.months < 0) {
-      throw new IllegalArgumentException(s"Provided duration ($duration) is not positive")
+    val cal = IntervalUtils.fromString(duration)
+    if (IntervalUtils.isNegative(cal)) {
+      throw new IllegalArgumentException(s"Provided duration ($duration) is negative")
     }
 
-    val millisPerMonth = CalendarInterval.MICROS_PER_DAY / 1000 * 31
-    cal.milliseconds + cal.months * millisPerMonth
+    IntervalUtils.getDuration(cal, TimeUnit.MILLISECONDS)
   }
 
   private def checkTimeoutTimestampAllowed(): Unit = {

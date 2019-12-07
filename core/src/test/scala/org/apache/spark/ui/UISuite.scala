@@ -32,6 +32,7 @@ import org.scalatest.time.SpanSugar._
 
 import org.apache.spark._
 import org.apache.spark.LocalSparkContext._
+import org.apache.spark.internal.config.UI.UI_ENABLED
 import org.apache.spark.util.Utils
 
 class UISuite extends SparkFunSuite {
@@ -44,7 +45,7 @@ class UISuite extends SparkFunSuite {
     val conf = new SparkConf()
       .setMaster("local")
       .setAppName("test")
-      .set("spark.ui.enabled", "true")
+      .set(UI_ENABLED, true)
     val sc = new SparkContext(conf)
     assert(sc.ui.isDefined)
     sc
@@ -74,7 +75,7 @@ class UISuite extends SparkFunSuite {
   ignore("basic ui visibility") {
     withSpark(newSparkContext()) { sc =>
       // test if the ui is visible, and all the expected tabs are visible
-      eventually(timeout(10 seconds), interval(50 milliseconds)) {
+      eventually(timeout(10.seconds), interval(50.milliseconds)) {
         val html = Source.fromURL(sc.ui.get.webUrl).mkString
         assert(!html.contains("random data that should not be present"))
         assert(html.toLowerCase(Locale.ROOT).contains("stages"))
@@ -88,7 +89,7 @@ class UISuite extends SparkFunSuite {
   ignore("visibility at localhost:4040") {
     withSpark(newSparkContext()) { sc =>
       // test if visible from http://localhost:4040
-      eventually(timeout(10 seconds), interval(50 milliseconds)) {
+      eventually(timeout(10.seconds), interval(50.milliseconds)) {
         val html = Source.fromURL("http://localhost:4040").mkString
         assert(html.toLowerCase(Locale.ROOT).contains("stages"))
       }

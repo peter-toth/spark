@@ -63,11 +63,6 @@ class HiveTranslationLayerSuite extends QueryTest with SQLTestUtils with TestHiv
       assert(message.contains(expectedMessage))
 
       message = intercept[AnalysisException] {
-        sql("ALTER TABLE transtbl CHANGE employeeID employeeID2 INT")
-      }.getMessage
-      assert(message.contains(expectedMessage))
-
-      message = intercept[AnalysisException] {
         sql("ALTER TABLE transtbl ADD COLUMNS (e INT)")
       }.getMessage
       assert(message.contains(expectedMessage))

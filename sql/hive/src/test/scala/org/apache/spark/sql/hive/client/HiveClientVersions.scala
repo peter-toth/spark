@@ -19,7 +19,7 @@ package org.apache.spark.sql.hive.client
 
 import scala.collection.immutable.IndexedSeq
 
-import org.apache.spark.SparkFunSuite
+import org.apache.commons.lang3.{JavaVersion, SystemUtils}
 
 private[client] trait HiveClientVersions {
   protected val versions = IndexedSeq()

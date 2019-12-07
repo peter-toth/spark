@@ -30,7 +30,7 @@ import org.apache.spark.storage.RDDInfo
 @DeveloperApi
 class StageInfo(
     val stageId: Int,
-    @deprecated("Use attemptNumber instead", "2.3.0") val attemptId: Int,
+    private val attemptId: Int,
     val name: String,
     val numTasks: Int,
     val rddInfos: Seq[RDDInfo],
@@ -52,11 +52,13 @@ class StageInfo(
    */
   val accumulables = HashMap[Long, AccumulableInfo]()
 
-  def stageFailed(reason: String) {
+  def stageFailed(reason: String): Unit = {
     failureReason = Some(reason)
     completionTime = Some(System.currentTimeMillis)
   }
 
+  // This would just be the second constructor arg, except we need to maintain this method
+  // with parentheses for compatibility
   def attemptNumber(): Int = attemptId
 
   private[spark] def getStatusString: String = {

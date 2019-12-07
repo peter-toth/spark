@@ -106,7 +106,7 @@ sealed trait Vector extends Serializable {
    */
   @Since("2.0.0")
   def copy: Vector = {
-    throw new NotImplementedError(s"copy is not implemented for ${this.getClass}.")
+    throw new UnsupportedOperationException(s"copy is not implemented for ${this.getClass}.")
   }
 
   /**
@@ -178,6 +178,14 @@ sealed trait Vector extends Serializable {
    */
   @Since("2.0.0")
   def argmax: Int
+
+  /**
+   * Calculate the dot product of this vector with another.
+   *
+   * If `size` does not match an [[IllegalArgumentException]] is thrown.
+   */
+  @Since("3.0.0")
+  def dot(v: Vector): Double = BLAS.dot(this, v)
 }
 
 /**

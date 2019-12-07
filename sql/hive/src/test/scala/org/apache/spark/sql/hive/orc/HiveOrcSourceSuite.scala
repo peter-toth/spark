@@ -129,7 +129,7 @@ class HiveOrcSourceSuite extends OrcSuite with TestHiveSingleton {
         spark.udf.register("testType", () => new IntervalData())
         sql("select testType()").write.mode("overwrite").orc(orcDir)
       }.getMessage
-      assert(msg.contains("ORC data source does not support calendarinterval data type."))
+      assert(msg.contains("ORC data source does not support interval data type."))
 
       // read path
       msg = intercept[AnalysisException] {
@@ -137,20 +137,18 @@ class HiveOrcSourceSuite extends OrcSuite with TestHiveSingleton {
         spark.range(1).write.mode("overwrite").orc(orcDir)
         spark.read.schema(schema).orc(orcDir).collect()
       }.getMessage
-      assert(msg.contains("ORC data source does not support calendarinterval data type."))
+      assert(msg.contains("ORC data source does not support interval data type."))
 
       msg = intercept[AnalysisException] {
         val schema = StructType(StructField("a", new IntervalUDT(), true) :: Nil)
         spark.range(1).write.mode("overwrite").orc(orcDir)
         spark.read.schema(schema).orc(orcDir).collect()
       }.getMessage
-      assert(msg.contains("ORC data source does not support calendarinterval data type."))
+      assert(msg.contains("ORC data source does not support interval data type."))
     }
   }
 
   test("Check BloomFilter creation") {
-    // CDPD-4216: disabled in JDK11; possibly fixed upstream as part of SPARK-27737.
-    assume(!SystemUtils.isJavaVersionAtLeast(JavaVersion.JAVA_9))
     Seq(true, false).foreach { convertMetastore =>
       withSQLConf(HiveUtils.CONVERT_METASTORE_ORC.key -> s"$convertMetastore") {
         if (HiveUtils.isHive23) {
@@ -161,5 +159,17 @@ class HiveOrcSourceSuite extends OrcSuite with TestHiveSingleton {
         }
       }
     }
+  }
+
+  test("Enforce direct encoding column-wise selectively") {
+    Seq(true, false).foreach { convertMetastore =>
+      withSQLConf(HiveUtils.CONVERT_METASTORE_ORC.key -> s"$convertMetastore") {
+        testSelectiveDictionaryEncoding(isSelective = false, isHive23 = HiveUtils.isHive23)
+      }
+    }
+  }
+
+  test("SPARK-11412 read and merge orc schemas in parallel") {
+    testMergeSchemasInParallel(OrcFileOperator.readOrcSchemasInParallel)
   }
 }

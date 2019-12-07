@@ -31,4 +31,4 @@ else
 fi
 
 export APACHE_MIRROR=http://mirror.infra.cloudera.com/apache
-./build/mvn -B $MAVEN_ARGS -Dcdpd.build=true package -fae -Dmaven.repo.local="$MVN_REPO_LOCAL"
+./build/mvn -B $MAVEN_ARGS -Dcdpd.build=true  -Phive-thriftserver package -fae -Dmaven.repo.local="$MVN_REPO_LOCAL"

@@ -2,6 +2,21 @@
 layout: global
 title: Parquet Files
 displayTitle: Parquet Files
+license: |
+  Licensed to the Apache Software Foundation (ASF) under one or more
+  contributor license agreements.  See the NOTICE file distributed with
+  this work for additional information regarding copyright ownership.
+  The ASF licenses this file to You under the Apache License, Version 2.0
+  (the "License"); you may not use this file except in compliance with
+  the License.  You may obtain a copy of the License at
+ 
+     http://www.apache.org/licenses/LICENSE-2.0
+ 
+  Unless required by applicable law or agreed to in writing, software
+  distributed under the License is distributed on an "AS IS" BASIS,
+  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  See the License for the specific language governing permissions and
+  limitations under the License.
 ---
 
 * Table of contents
@@ -9,7 +24,7 @@ displayTitle: Parquet Files
 
 [Parquet](http://parquet.io) is a columnar format that is supported by many other data processing systems.
 Spark SQL provides support for both reading and writing Parquet files that automatically preserves the schema
-of the original data. When writing Parquet files, all columns are automatically converted to be nullable for
+of the original data. When reading Parquet files, all columns are automatically converted to be nullable for
 compatibility reasons.
 
 ### Loading Data Programmatically
@@ -157,9 +172,10 @@ turned it off by default starting from 1.5.0. You may enable it by
 
 ### Hive metastore Parquet table conversion
 
-When reading from and writing to Hive metastore Parquet tables, Spark SQL will try to use its own
-Parquet support instead of Hive SerDe for better performance. This behavior is controlled by the
-`spark.sql.hive.convertMetastoreParquet` configuration, and is turned on by default.
+When reading from Hive metastore Parquet tables and writing to non-partitioned Hive metastore
+Parquet tables, Spark SQL will try to use its own Parquet support instead of Hive SerDe for
+better performance. This behavior is controlled by the `spark.sql.hive.convertMetastoreParquet`
+configuration, and is turned on by default.
 
 #### Hive/Parquet Schema Reconciliation
 
@@ -264,12 +280,12 @@ Configuration of Parquet can be done using the `setConf` method on `SparkSession
   <td><code>spark.sql.parquet.compression.codec</code></td>
   <td>snappy</td>
   <td>
-    Sets the compression codec used when writing Parquet files. If either `compression` or
-    `parquet.compression` is specified in the table-specific options/properties, the precedence would be
-    `compression`, `parquet.compression`, `spark.sql.parquet.compression.codec`. Acceptable values include:
+    Sets the compression codec used when writing Parquet files. If either <code>compression</code> or
+    <code>parquet.compression</code> is specified in the table-specific options/properties, the precedence would be
+    <code>compression</code>, <code>parquet.compression</code>, <code>spark.sql.parquet.compression.codec</code>. Acceptable values include:
     none, uncompressed, snappy, gzip, lzo, brotli, lz4, zstd.
-    Note that `zstd` requires `ZStandardCodec` to be installed before Hadoop 2.9.0, `brotli` requires
-    `BrotliCodec` to be installed.
+    Note that <code>zstd</code> requires <code>ZStandardCodec</code> to be installed before Hadoop 2.9.0, <code>brotli</code> requires
+    <code>BrotliCodec</code> to be installed.
   </td>
 </tr>
 <tr>

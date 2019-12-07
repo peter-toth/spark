@@ -19,19 +19,24 @@ package org.apache.spark.sql.hive.client
 
 import org.apache.hadoop.conf.Configuration
 import org.apache.hadoop.hive.conf.HiveConf
+import org.apache.hadoop.hive.ql.io.HiveIgnoreKeyTextOutputFormat
+import org.apache.hadoop.hive.serde2.`lazy`.LazySimpleSerDe
+import org.apache.hadoop.mapred.TextInputFormat
 import org.scalatest.BeforeAndAfterAll
 
+import org.apache.spark.sql.catalyst.TableIdentifier
 import org.apache.spark.sql.catalyst.catalog._
 import org.apache.spark.sql.catalyst.dsl.expressions._
 import org.apache.spark.sql.catalyst.expressions._
-import org.apache.spark.sql.types.{BooleanType, IntegerType, LongType}
+import org.apache.spark.sql.types.{BooleanType, IntegerType, LongType, StructType}
+import org.apache.spark.util.Utils
 
 class HivePartitionFilteringSuite(version: String)
     extends HiveVersionSuite(version) with BeforeAndAfterAll {
 
   private val tryDirectSqlKey = HiveConf.ConfVars.METASTORE_TRY_DIRECT_SQL.varname
 
-  private val testPartitionCount = 3 * 24 * 4
+  private val testPartitionCount = 3 * 5 * 4
 
   private def init(tryDirectSql: Boolean): HiveClient = {
     val storageFormat = CatalogStorageFormat(
@@ -44,13 +49,29 @@ class HivePartitionFilteringSuite(version: String)
 
     val hadoopConf = new Configuration()
     hadoopConf.setBoolean(tryDirectSqlKey, tryDirectSql)
+    hadoopConf.set("hive.metastore.warehouse.dir", Utils.createTempDir().toURI().toString())
     val client = buildClient(hadoopConf)
-    client.runSqlHive("CREATE TABLE test (value INT) PARTITIONED BY (ds INT, h INT, chunk STRING)")
+    val tableSchema =
+      new StructType().add("value", "int").add("ds", "int").add("h", "int").add("chunk", "string")
+    val table = CatalogTable(
+      identifier = TableIdentifier("test", Some("default")),
+      tableType = CatalogTableType.MANAGED,
+      schema = tableSchema,
+      partitionColumnNames = Seq("ds", "h", "chunk"),
+      storage = CatalogStorageFormat(
+        locationUri = None,
+        inputFormat = Some(classOf[TextInputFormat].getName),
+        outputFormat = Some(classOf[HiveIgnoreKeyTextOutputFormat[_, _]].getName),
+        serde = Some(classOf[LazySimpleSerDe].getName()),
+        compressed = false,
+        properties = Map.empty
+      ))
+    client.createTable(table, ignoreIfExists = false)
 
     val partitions =
       for {
         ds <- 20170101 to 20170103
-        h <- 0 to 23
+        h <- 0 to 4
         chunk <- Seq("aa", "ab", "ba", "bb")
       } yield CatalogTablePartition(Map(
         "ds" -> ds.toString,
@@ -73,7 +94,7 @@ class HivePartitionFilteringSuite(version: String)
     }
   }
 
-  override def beforeAll() {
+  override def beforeAll(): Unit = {
     super.beforeAll()
     client = init(true)
   }
@@ -91,7 +112,7 @@ class HivePartitionFilteringSuite(version: String)
     testMetastorePartitionFiltering(
       attr("ds") <=> 20170101,
       20170101 to 20170103,
-      0 to 23,
+      0 to 4,
       "aa" :: "ab" :: "ba" :: "bb" :: Nil)
   }
 
@@ -99,7 +120,7 @@ class HivePartitionFilteringSuite(version: String)
     testMetastorePartitionFiltering(
       attr("ds") === 20170101,
       20170101 to 20170101,
-      0 to 23,
+      0 to 4,
       "aa" :: "ab" :: "ba" :: "bb" :: Nil)
   }
 
@@ -117,7 +138,7 @@ class HivePartitionFilteringSuite(version: String)
     testMetastorePartitionFiltering(
       attr("chunk") === "aa",
       20170101 to 20170103,
-      0 to 23,
+      0 to 4,
       "aa" :: Nil)
   }
 
@@ -125,7 +146,7 @@ class HivePartitionFilteringSuite(version: String)
     testMetastorePartitionFiltering(
       attr("chunk").cast(IntegerType) === 1,
       20170101 to 20170103,
-      0 to 23,
+      0 to 4,
       "aa" :: "ab" :: "ba" :: "bb" :: Nil)
   }
 
@@ -133,7 +154,7 @@ class HivePartitionFilteringSuite(version: String)
     testMetastorePartitionFiltering(
       attr("chunk").cast(BooleanType) === true,
       20170101 to 20170103,
-      0 to 23,
+      0 to 4,
       "aa" :: "ab" :: "ba" :: "bb" :: Nil)
   }
 
@@ -141,23 +162,23 @@ class HivePartitionFilteringSuite(version: String)
     testMetastorePartitionFiltering(
       Literal(20170101) === attr("ds"),
       20170101 to 20170101,
-      0 to 23,
+      0 to 4,
       "aa" :: "ab" :: "ba" :: "bb" :: Nil)
   }
 
-  test("getPartitionsByFilter: ds=20170101 and h=10") {
+  test("getPartitionsByFilter: ds=20170101 and h=2") {
     testMetastorePartitionFiltering(
-      attr("ds") === 20170101 && attr("h") === 10,
+      attr("ds") === 20170101 && attr("h") === 2,
       20170101 to 20170101,
-      10 to 10,
+      2 to 2,
       "aa" :: "ab" :: "ba" :: "bb" :: Nil)
   }
 
-  test("getPartitionsByFilter: cast(ds as long)=20170101L and h=10") {
+  test("getPartitionsByFilter: cast(ds as long)=20170101L and h=2") {
     testMetastorePartitionFiltering(
-      attr("ds").cast(LongType) === 20170101L && attr("h") === 10,
+      attr("ds").cast(LongType) === 20170101L && attr("h") === 2,
       20170101 to 20170101,
-      10 to 10,
+      2 to 2,
       "aa" :: "ab" :: "ba" :: "bb" :: Nil)
   }
 
@@ -165,7 +186,7 @@ class HivePartitionFilteringSuite(version: String)
     testMetastorePartitionFiltering(
       attr("ds") === 20170101 || attr("ds") === 20170102,
       20170101 to 20170102,
-      0 to 23,
+      0 to 4,
       "aa" :: "ab" :: "ba" :: "bb" :: Nil)
   }
 
@@ -173,7 +194,7 @@ class HivePartitionFilteringSuite(version: String)
     testMetastorePartitionFiltering(
       attr("ds").in(20170102, 20170103),
       20170102 to 20170103,
-      0 to 23,
+      0 to 4,
       "aa" :: "ab" :: "ba" :: "bb" :: Nil)
   }
 
@@ -181,7 +202,7 @@ class HivePartitionFilteringSuite(version: String)
     testMetastorePartitionFiltering(
       attr("ds").cast(LongType).in(20170102L, 20170103L),
       20170102 to 20170103,
-      0 to 23,
+      0 to 4,
       "aa" :: "ab" :: "ba" :: "bb" :: Nil)
   }
 
@@ -189,7 +210,7 @@ class HivePartitionFilteringSuite(version: String)
     testMetastorePartitionFiltering(
       attr("ds").in(20170102, 20170103),
       20170102 to 20170103,
-      0 to 23,
+      0 to 4,
       "aa" :: "ab" :: "ba" :: "bb" :: Nil, {
         case expr @ In(v, list) if expr.inSetConvertible =>
           InSet(v, list.map(_.eval(EmptyRow)).toSet)
@@ -201,7 +222,7 @@ class HivePartitionFilteringSuite(version: String)
     testMetastorePartitionFiltering(
       attr("ds").cast(LongType).in(20170102L, 20170103L),
       20170102 to 20170103,
-      0 to 23,
+      0 to 4,
       "aa" :: "ab" :: "ba" :: "bb" :: Nil, {
         case expr @ In(v, list) if expr.inSetConvertible =>
           InSet(v, list.map(_.eval(EmptyRow)).toSet)
@@ -212,7 +233,7 @@ class HivePartitionFilteringSuite(version: String)
     testMetastorePartitionFiltering(
       attr("chunk").in("ab", "ba"),
       20170101 to 20170103,
-      0 to 23,
+      0 to 4,
       "ab" :: "ba" :: Nil)
   }
 
@@ -220,34 +241,34 @@ class HivePartitionFilteringSuite(version: String)
     testMetastorePartitionFiltering(
       attr("chunk").in("ab", "ba"),
       20170101 to 20170103,
-      0 to 23,
+      0 to 4,
       "ab" :: "ba" :: Nil, {
         case expr @ In(v, list) if expr.inSetConvertible =>
           InSet(v, list.map(_.eval(EmptyRow)).toSet)
       })
   }
 
-  test("getPartitionsByFilter: (ds=20170101 and h>=8) or (ds=20170102 and h<8)") {
-    val day1 = (20170101 to 20170101, 8 to 23, Seq("aa", "ab", "ba", "bb"))
-    val day2 = (20170102 to 20170102, 0 to 7, Seq("aa", "ab", "ba", "bb"))
-    testMetastorePartitionFiltering((attr("ds") === 20170101 && attr("h") >= 8) ||
-        (attr("ds") === 20170102 && attr("h") < 8), day1 :: day2 :: Nil)
+  test("getPartitionsByFilter: (ds=20170101 and h>=2) or (ds=20170102 and h<2)") {
+    val day1 = (20170101 to 20170101, 2 to 4, Seq("aa", "ab", "ba", "bb"))
+    val day2 = (20170102 to 20170102, 0 to 1, Seq("aa", "ab", "ba", "bb"))
+    testMetastorePartitionFiltering((attr("ds") === 20170101 && attr("h") >= 2) ||
+        (attr("ds") === 20170102 && attr("h") < 2), day1 :: day2 :: Nil)
   }
 
-  test("getPartitionsByFilter: (ds=20170101 and h>=8) or (ds=20170102 and h<(7+1))") {
-    val day1 = (20170101 to 20170101, 8 to 23, Seq("aa", "ab", "ba", "bb"))
+  test("getPartitionsByFilter: (ds=20170101 and h>=2) or (ds=20170102 and h<(1+1))") {
+    val day1 = (20170101 to 20170101, 2 to 4, Seq("aa", "ab", "ba", "bb"))
     // Day 2 should include all hours because we can't build a filter for h<(7+1)
-    val day2 = (20170102 to 20170102, 0 to 23, Seq("aa", "ab", "ba", "bb"))
-    testMetastorePartitionFiltering((attr("ds") === 20170101 && attr("h") >= 8) ||
-        (attr("ds") === 20170102 && attr("h") < (Literal(7) + 1)), day1 :: day2 :: Nil)
+    val day2 = (20170102 to 20170102, 0 to 4, Seq("aa", "ab", "ba", "bb"))
+    testMetastorePartitionFiltering((attr("ds") === 20170101 && attr("h") >= 2) ||
+        (attr("ds") === 20170102 && attr("h") < (Literal(1) + 1)), day1 :: day2 :: Nil)
   }
 
   test("getPartitionsByFilter: " +
-      "chunk in ('ab', 'ba') and ((ds=20170101 and h>=8) or (ds=20170102 and h<8))") {
-    val day1 = (20170101 to 20170101, 8 to 23, Seq("ab", "ba"))
-    val day2 = (20170102 to 20170102, 0 to 7, Seq("ab", "ba"))
+      "chunk in ('ab', 'ba') and ((ds=20170101 and h>=2) or (ds=20170102 and h<2))") {
+    val day1 = (20170101 to 20170101, 2 to 4, Seq("ab", "ba"))
+    val day2 = (20170102 to 20170102, 0 to 1, Seq("ab", "ba"))
     testMetastorePartitionFiltering(attr("chunk").in("ab", "ba") &&
-        ((attr("ds") === 20170101 && attr("h") >= 8) || (attr("ds") === 20170102 && attr("h") < 8)),
+        ((attr("ds") === 20170101 && attr("h") >= 2) || (attr("ds") === 20170102 && attr("h") < 2)),
       day1 :: day2 :: Nil)
   }
 

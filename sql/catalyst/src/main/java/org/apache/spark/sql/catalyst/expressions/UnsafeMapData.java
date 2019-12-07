@@ -39,6 +39,9 @@ import static org.apache.spark.unsafe.Platform.BYTE_ARRAY_OFFSET;
  * Currently we just use 2 UnsafeArrayData to represent UnsafeMapData, with extra 8 bytes at head
  * to indicate the number of bytes of the unsafe key array.
  * [unsafe key array numBytes] [unsafe key array] [unsafe value array]
+ *
+ * Note that, user is responsible to guarantee that the key array does not have duplicated
+ * elements, otherwise the behavior is undefined.
  */
 // TODO: Use a more efficient format which doesn't depend on unsafe array.
 public final class UnsafeMapData extends MapData implements Externalizable, KryoSerializable {
@@ -140,7 +143,7 @@ public final class UnsafeMapData extends MapData implements Externalizable, Kryo
   }
 
   @Override
-  public void readExternal(ObjectInput in) throws IOException, ClassNotFoundException {
+  public void readExternal(ObjectInput in) throws IOException {
     this.baseOffset = BYTE_ARRAY_OFFSET;
     this.sizeInBytes = in.readInt();
     this.baseObject = new byte[sizeInBytes];

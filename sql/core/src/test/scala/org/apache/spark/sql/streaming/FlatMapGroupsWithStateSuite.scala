@@ -45,18 +45,12 @@ case class RunningCount(count: Long)
 
 case class Result(key: Long, count: Int)
 
-class FlatMapGroupsWithStateSuite extends StateStoreMetricsTest
-    with BeforeAndAfterAll {
+class FlatMapGroupsWithStateSuite extends StateStoreMetricsTest {
 
   import testImplicits._
   import GroupStateImpl._
   import GroupStateTimeout._
   import FlatMapGroupsWithStateSuite._
-
-  override def afterAll(): Unit = {
-    super.afterAll()
-    StateStore.stop()
-  }
 
   test("GroupState - get, exists, update, remove") {
     var state: GroupStateImpl[String] = null
@@ -131,6 +125,8 @@ class FlatMapGroupsWithStateSuite extends StateStoreMetricsTest
     var state: GroupStateImpl[Int] = GroupStateImpl.createForStreaming(
       None, 1000, 1000, ProcessingTimeTimeout, hasTimedOut = false, watermarkPresent = false)
     assert(state.getTimeoutTimestamp === NO_TIMESTAMP)
+    state.setTimeoutDuration("-1 month 31 days 1 second")
+    assert(state.getTimeoutTimestamp === 2000)
     state.setTimeoutDuration(500)
     assert(state.getTimeoutTimestamp === 1500) // can be set without initializing state
     testTimeoutTimestampNotAllowed[UnsupportedOperationException](state)
@@ -231,8 +227,9 @@ class FlatMapGroupsWithStateSuite extends StateStoreMetricsTest
     testIllegalTimeout {
       state.setTimeoutDuration("-1 month")
     }
+
     testIllegalTimeout {
-      state.setTimeoutDuration("1 month -1 day")
+      state.setTimeoutDuration("1 month -31 day")
     }
 
     state = GroupStateImpl.createForStreaming(
@@ -247,7 +244,7 @@ class FlatMapGroupsWithStateSuite extends StateStoreMetricsTest
       state.setTimeoutTimestamp(10000, "-1 month")
     }
     testIllegalTimeout {
-      state.setTimeoutTimestamp(10000, "1 month -1 day")
+      state.setTimeoutTimestamp(10000, "1 month -32 day")
     }
     testIllegalTimeout {
       state.setTimeoutTimestamp(new Date(-10000))
@@ -259,7 +256,7 @@ class FlatMapGroupsWithStateSuite extends StateStoreMetricsTest
       state.setTimeoutTimestamp(new Date(-10000), "-1 month")
     }
     testIllegalTimeout {
-      state.setTimeoutTimestamp(new Date(-10000), "1 month -1 day")
+      state.setTimeoutTimestamp(new Date(-10000), "1 month -32 day")
     }
   }
 
@@ -273,7 +270,7 @@ class FlatMapGroupsWithStateSuite extends StateStoreMetricsTest
 
         val state2 = GroupStateImpl.createForStreaming(
           initState, 1000, 1000, timeoutConf, hasTimedOut = true, watermarkPresent = false)
-        assert(state2.hasTimedOut === true)
+        assert(state2.hasTimedOut)
       }
 
       // for batch queries
@@ -1168,7 +1165,7 @@ class FlatMapGroupsWithStateSuite extends StateStoreMetricsTest
 
     test(s"InputProcessor - process timed out state - $testName") {
       val mapGroupsFunc = (key: Int, values: Iterator[Int], state: GroupState[Int]) => {
-        assert(state.hasTimedOut === true, "hasTimedOut not true")
+        assert(state.hasTimedOut, "hasTimedOut not true")
         assert(values.isEmpty, "values not empty")
         stateUpdates(state)
         Iterator.empty

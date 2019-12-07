@@ -37,8 +37,12 @@ import org.mockito.ArgumentMatchers.{any, anyBoolean, anyShort, eq => meq}
 import org.mockito.Mockito.{spy, verify}
 import org.scalatest.Matchers
 
-import org.apache.spark.{SparkConf, SparkFunSuite, TestUtils}
+import org.apache.spark.{SparkConf, SparkException, SparkFunSuite, TestUtils}
+import org.apache.spark.deploy.yarn.ResourceRequestHelper._
 import org.apache.spark.deploy.yarn.config._
+import org.apache.spark.internal.config._
+import org.apache.spark.resource.ResourceID
+import org.apache.spark.resource.ResourceUtils.AMOUNT
 import org.apache.spark.util.{SparkConfWithEnv, Utils}
 
 class ClientSuite extends SparkFunSuite with Matchers {
@@ -177,13 +181,14 @@ class ClientSuite extends SparkFunSuite with Matchers {
       .set(MAX_APP_ATTEMPTS, 42)
       .set("spark.app.name", "foo-test-app")
       .set(QUEUE_NAME, "staging-queue")
+      .set(APPLICATION_PRIORITY, 1)
     val args = new ClientArguments(Array())
 
     val appContext = Records.newRecord(classOf[ApplicationSubmissionContext])
     val getNewApplicationResponse = Records.newRecord(classOf[GetNewApplicationResponse])
     val containerLaunchContext = Records.newRecord(classOf[ContainerLaunchContext])
 
-    val client = new Client(args, sparkConf)
+    val client = new Client(args, sparkConf, null)
     client.createApplicationSubmissionContext(
       new YarnClientApplication(getNewApplicationResponse, appContext),
       containerLaunchContext)
@@ -198,6 +203,7 @@ class ClientSuite extends SparkFunSuite with Matchers {
       tags.asScala.count(_.nonEmpty) should be (4)
     }
     appContext.getMaxAppAttempts should be (42)
+    appContext.getPriority.getPriority should be (1)
   }
 
   test("spark.yarn.jars with multiple paths and globs") {
@@ -358,6 +364,115 @@ class ClientSuite extends SparkFunSuite with Matchers {
     sparkConf.get(SECONDARY_JARS) should be (Some(Seq(new File(jar2.toURI).getName)))
   }
 
+  Seq(
+    "client" -> YARN_AM_RESOURCE_TYPES_PREFIX,
+    "cluster" -> YARN_DRIVER_RESOURCE_TYPES_PREFIX
+  ).foreach { case (deployMode, prefix) =>
+    test(s"custom resource request ($deployMode mode)") {
+      assume(ResourceRequestHelper.isYarnResourceTypesAvailable())
+      val resources = Map("fpga" -> 2, "gpu" -> 3)
+      ResourceRequestTestHelper.initializeResourceTypes(resources.keys.toSeq)
+
+      val conf = new SparkConf().set(SUBMIT_DEPLOY_MODE, deployMode)
+      resources.foreach { case (name, v) =>
+        conf.set(s"${prefix}${name}.${AMOUNT}", v.toString)
+      }
+
+      val appContext = Records.newRecord(classOf[ApplicationSubmissionContext])
+      val getNewApplicationResponse = Records.newRecord(classOf[GetNewApplicationResponse])
+      val containerLaunchContext = Records.newRecord(classOf[ContainerLaunchContext])
+
+      val client = new Client(new ClientArguments(Array()), conf, null)
+      client.createApplicationSubmissionContext(
+        new YarnClientApplication(getNewApplicationResponse, appContext),
+        containerLaunchContext)
+
+      resources.foreach { case (name, value) =>
+        ResourceRequestTestHelper.getRequestedValue(appContext.getResource, name) should be (value)
+      }
+    }
+  }
+
+  test("custom driver resource request yarn config and spark config fails") {
+    assume(ResourceRequestHelper.isYarnResourceTypesAvailable())
+    val resources = Map(YARN_GPU_RESOURCE_CONFIG -> "gpu", YARN_FPGA_RESOURCE_CONFIG -> "fpga")
+    ResourceRequestTestHelper.initializeResourceTypes(resources.keys.toSeq)
+
+    val conf = new SparkConf().set(SUBMIT_DEPLOY_MODE, "cluster")
+    resources.keys.foreach { yarnName =>
+      conf.set(s"${YARN_DRIVER_RESOURCE_TYPES_PREFIX}${yarnName}.${AMOUNT}", "2")
+    }
+    resources.values.foreach { rName =>
+      conf.set(ResourceID(SPARK_DRIVER_PREFIX, rName).amountConf, "3")
+    }
+
+    val error = intercept[SparkException] {
+      ResourceRequestHelper.validateResources(conf)
+    }.getMessage()
+
+    assert(error.contains("Do not use spark.yarn.driver.resource.yarn.io/fpga.amount," +
+      " please use spark.driver.resource.fpga.amount"))
+    assert(error.contains("Do not use spark.yarn.driver.resource.yarn.io/gpu.amount," +
+      " please use spark.driver.resource.gpu.amount"))
+  }
+
+  test("custom executor resource request yarn config and spark config fails") {
+    assume(ResourceRequestHelper.isYarnResourceTypesAvailable())
+    val resources = Map(YARN_GPU_RESOURCE_CONFIG -> "gpu", YARN_FPGA_RESOURCE_CONFIG -> "fpga")
+    ResourceRequestTestHelper.initializeResourceTypes(resources.keys.toSeq)
+
+    val conf = new SparkConf().set(SUBMIT_DEPLOY_MODE, "cluster")
+    resources.keys.foreach { yarnName =>
+      conf.set(s"${YARN_EXECUTOR_RESOURCE_TYPES_PREFIX}${yarnName}.${AMOUNT}", "2")
+    }
+    resources.values.foreach { rName =>
+      conf.set(ResourceID(SPARK_EXECUTOR_PREFIX, rName).amountConf, "3")
+    }
+
+    val error = intercept[SparkException] {
+      ResourceRequestHelper.validateResources(conf)
+    }.getMessage()
+
+    assert(error.contains("Do not use spark.yarn.executor.resource.yarn.io/fpga.amount," +
+      " please use spark.executor.resource.fpga.amount"))
+    assert(error.contains("Do not use spark.yarn.executor.resource.yarn.io/gpu.amount," +
+      " please use spark.executor.resource.gpu.amount"))
+  }
+
+
+  test("custom resources spark config mapped to yarn config") {
+    assume(ResourceRequestHelper.isYarnResourceTypesAvailable())
+    val yarnMadeupResource = "yarn.io/madeup"
+    val resources = Map(YARN_GPU_RESOURCE_CONFIG -> "gpu",
+      YARN_FPGA_RESOURCE_CONFIG -> "fpga",
+      yarnMadeupResource -> "madeup")
+    ResourceRequestTestHelper.initializeResourceTypes(resources.keys.toSeq)
+
+    val conf = new SparkConf().set(SUBMIT_DEPLOY_MODE, "cluster")
+    resources.values.foreach { rName =>
+      conf.set(ResourceID(SPARK_DRIVER_PREFIX, rName).amountConf, "3")
+    }
+    // also just set yarn one that we don't convert
+    conf.set(s"${YARN_DRIVER_RESOURCE_TYPES_PREFIX}${yarnMadeupResource}.${AMOUNT}", "5")
+    val appContext = Records.newRecord(classOf[ApplicationSubmissionContext])
+    val getNewApplicationResponse = Records.newRecord(classOf[GetNewApplicationResponse])
+    val containerLaunchContext = Records.newRecord(classOf[ContainerLaunchContext])
+
+    val client = new Client(new ClientArguments(Array()), conf, null)
+    val newContext = client.createApplicationSubmissionContext(
+      new YarnClientApplication(getNewApplicationResponse, appContext),
+      containerLaunchContext)
+
+    val yarnRInfo = ResourceRequestTestHelper.getResources(newContext.getResource)
+    val allResourceInfo = yarnRInfo.map(rInfo => (rInfo.name -> rInfo.value)).toMap
+    assert(allResourceInfo.get(YARN_GPU_RESOURCE_CONFIG).nonEmpty)
+    assert(allResourceInfo.get(YARN_GPU_RESOURCE_CONFIG).get === 3)
+    assert(allResourceInfo.get(YARN_FPGA_RESOURCE_CONFIG).nonEmpty)
+    assert(allResourceInfo.get(YARN_FPGA_RESOURCE_CONFIG).get === 3)
+    assert(allResourceInfo.get(yarnMadeupResource).nonEmpty)
+    assert(allResourceInfo.get(yarnMadeupResource).get === 5)
+  }
+
   private val matching = Seq(
     ("files URI match test1", "file:///file1", "file:///file2"),
     ("files URI match test2", "file:///c:file1", "file://c:file2"),
@@ -410,7 +525,7 @@ class ClientSuite extends SparkFunSuite with Matchers {
     val mapAppConf = mapYARNAppConf ++ mapMRAppConf
   }
 
-  def withAppConf(m: Map[String, String] = Map())(testCode: (Configuration) => Any) {
+  def withAppConf(m: Map[String, String] = Map())(testCode: (Configuration) => Any): Unit = {
     val conf = new Configuration
     m.foreach { case (k, v) => conf.set(k, v, "ClientSpec") }
     testCode(conf)
@@ -425,7 +540,7 @@ class ClientSuite extends SparkFunSuite with Matchers {
       sparkConf: SparkConf,
       args: Array[String] = Array()): Client = {
     val clientArgs = new ClientArguments(args)
-    spy(new Client(clientArgs, sparkConf))
+    spy(new Client(clientArgs, sparkConf, null))
   }
 
   private def classpath(client: Client): Array[String] = {
@@ -433,5 +548,4 @@ class ClientSuite extends SparkFunSuite with Matchers {
     populateClasspath(null, new Configuration(), client.sparkConf, env)
     classpath(env)
   }
-
 }

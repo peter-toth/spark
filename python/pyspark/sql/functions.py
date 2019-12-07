@@ -30,18 +30,40 @@ if sys.version >= '3':
 
 from pyspark import since, SparkContext
 from pyspark.rdd import ignore_unicode_prefix, PythonEvalType
-from pyspark.sql.column import Column, _to_java_column, _to_seq, _create_column_from_literal
+from pyspark.sql.column import Column, _to_java_column, _to_seq, _create_column_from_literal, \
+    _create_column_from_name
 from pyspark.sql.dataframe import DataFrame
 from pyspark.sql.types import StringType, DataType
 # Keep UserDefinedFunction import for backwards compatible import; moved in SPARK-22409
 from pyspark.sql.udf import UserDefinedFunction, _create_udf
+from pyspark.sql.utils import to_str
+
+# Note to developers: all of PySpark functions here take string as column names whenever possible.
+# Namely, if columns are referred as arguments, they can be always both Column or string,
+# even though there might be few exceptions for legacy or inevitable reasons.
+# If you are fixing other language APIs together, also please note that Scala side is not the case
+# since it requires to make every single overridden definition.
 
 
 def _create_function(name, doc=""):
-    """ Create a function for aggregator by name"""
+    """Create a PySpark function by its name"""
     def _(col):
         sc = SparkContext._active_spark_context
         jc = getattr(sc._jvm.functions, name)(col._jc if isinstance(col, Column) else col)
+        return Column(jc)
+    _.__name__ = name
+    _.__doc__ = doc
+    return _
+
+
+def _create_function_over_column(name, doc=""):
+    """Similar with `_create_function` but creates a PySpark function that takes a column
+    (as string as well). This is mainly for PySpark functions to take strings as
+    column names.
+    """
+    def _(col):
+        sc = SparkContext._active_spark_context
+        jc = getattr(sc._jvm.functions, name)(_to_java_column(col))
         return Column(jc)
     _.__name__ = name
     _.__doc__ = doc
@@ -60,9 +82,23 @@ def _create_binary_mathfunction(name, doc=""):
     """ Create a binary mathfunction by name"""
     def _(col1, col2):
         sc = SparkContext._active_spark_context
-        # users might write ints for simplicity. This would throw an error on the JVM side.
-        jc = getattr(sc._jvm.functions, name)(col1._jc if isinstance(col1, Column) else float(col1),
-                                              col2._jc if isinstance(col2, Column) else float(col2))
+        # For legacy reasons, the arguments here can be implicitly converted into floats,
+        # if they are not columns or strings.
+        if isinstance(col1, Column):
+            arg1 = col1._jc
+        elif isinstance(col1, basestring):
+            arg1 = _create_column_from_name(col1)
+        else:
+            arg1 = float(col1)
+
+        if isinstance(col2, Column):
+            arg2 = col2._jc
+        elif isinstance(col2, basestring):
+            arg2 = _create_column_from_name(col2)
+        else:
+            arg2 = float(col2)
+
+        jc = getattr(sc._jvm.functions, name)(arg1, arg2)
         return Column(jc)
     _.__name__ = name
     _.__doc__ = doc
@@ -79,6 +115,10 @@ def _create_window_function(name, doc=''):
     _.__doc__ = 'Window function: ' + doc
     return _
 
+
+def _options_to_str(options):
+    return {key: to_str(value) for (key, value) in options.items()}
+
 _lit_doc = """
     Creates a :class:`Column` of literal value.
 
@@ -91,9 +131,9 @@ _functions = {
     'column': 'Returns a :class:`Column` based on the given column name.',
     'asc': 'Returns a sort expression based on the ascending order of the given column name.',
     'desc': 'Returns a sort expression based on the descending order of the given column name.',
+}
 
-    'upper': 'Converts a string expression to upper case.',
-    'lower': 'Converts a string expression to upper case.',
+_functions_over_column = {
     'sqrt': 'Computes the square root of the specified float value.',
     'abs': 'Computes the absolute value.',
 
@@ -106,7 +146,7 @@ _functions = {
     'sumDistinct': 'Aggregate function: returns the sum of distinct values in the expression.',
 }
 
-_functions_1_4 = {
+_functions_1_4_over_column = {
     # unary math functions
     'acos': ':return: inverse cosine of `col`, as if computed by `java.lang.Math.acos()`',
     'asin': ':return: inverse sine of `col`, as if computed by `java.lang.Math.asin()`',
@@ -172,7 +212,7 @@ _collect_set_doc = """
     >>> df2.agg(collect_set('age')).collect()
     [Row(collect_set(age)=[5, 2])]
     """
-_functions_1_6 = {
+_functions_1_6_over_column = {
     # unary math functions
     'stddev': 'Aggregate function: alias for stddev_samp.',
     'stddev_samp': 'Aggregate function: returns the unbiased sample standard deviation of' +
@@ -189,7 +229,7 @@ _functions_1_6 = {
     'collect_set': _collect_set_doc
 }
 
-_functions_2_1 = {
+_functions_2_1_over_column = {
     # unary math functions
     'degrees': """
                Converts an angle measured in radians to an approximately equivalent angle
@@ -252,36 +292,27 @@ _window_functions = {
 
 # Wraps deprecated functions (keys) with the messages (values).
 _functions_deprecated = {
-    'toDegrees': 'Deprecated in 2.1, use degrees instead.',
-    'toRadians': 'Deprecated in 2.1, use radians instead.',
 }
 
 for _name, _doc in _functions.items():
     globals()[_name] = since(1.3)(_create_function(_name, _doc))
-for _name, _doc in _functions_1_4.items():
-    globals()[_name] = since(1.4)(_create_function(_name, _doc))
+for _name, _doc in _functions_over_column.items():
+    globals()[_name] = since(1.3)(_create_function_over_column(_name, _doc))
+for _name, _doc in _functions_1_4_over_column.items():
+    globals()[_name] = since(1.4)(_create_function_over_column(_name, _doc))
 for _name, _doc in _binary_mathfunctions.items():
     globals()[_name] = since(1.4)(_create_binary_mathfunction(_name, _doc))
 for _name, _doc in _window_functions.items():
     globals()[_name] = since(1.6)(_create_window_function(_name, _doc))
-for _name, _doc in _functions_1_6.items():
-    globals()[_name] = since(1.6)(_create_function(_name, _doc))
-for _name, _doc in _functions_2_1.items():
-    globals()[_name] = since(2.1)(_create_function(_name, _doc))
+for _name, _doc in _functions_1_6_over_column.items():
+    globals()[_name] = since(1.6)(_create_function_over_column(_name, _doc))
+for _name, _doc in _functions_2_1_over_column.items():
+    globals()[_name] = since(2.1)(_create_function_over_column(_name, _doc))
 for _name, _message in _functions_deprecated.items():
     globals()[_name] = _wrap_deprecated_function(globals()[_name], _message)
 for _name, _doc in _functions_2_4.items():
     globals()[_name] = since(2.4)(_create_function(_name, _doc))
 del _name, _doc
-
-
-@since(1.3)
-def approxCountDistinct(col, rsd=None):
-    """
-    .. note:: Deprecated in 2.1, use :func:`approx_count_distinct` instead.
-    """
-    warnings.warn("Deprecated in 2.1, use approx_count_distinct instead.", DeprecationWarning)
-    return approx_count_distinct(col, rsd)
 
 
 @since(2.1)
@@ -558,8 +589,8 @@ def rand(seed=None):
     .. note:: The function is non-deterministic in general case.
 
     >>> df.withColumn('rand', rand(seed=42) * 3).collect()
-    [Row(age=2, name=u'Alice', rand=1.1568609015300986),
-     Row(age=5, name=u'Bob', rand=1.403379671529166)]
+    [Row(age=2, name=u'Alice', rand=2.4052597283576684),
+     Row(age=5, name=u'Bob', rand=2.3913904055683974)]
     """
     sc = SparkContext._active_spark_context
     if seed is not None:
@@ -578,8 +609,8 @@ def randn(seed=None):
     .. note:: The function is non-deterministic in general case.
 
     >>> df.withColumn('randn', randn(seed=42)).collect()
-    [Row(age=2, name=u'Alice', randn=-0.7556247885860078),
-    Row(age=5, name=u'Bob', randn=-0.0861619008451133)]
+    [Row(age=2, name=u'Alice', randn=1.1027054481455365),
+    Row(age=5, name=u'Bob', randn=0.7400395449950132)]
     """
     sc = SparkContext._active_spark_context
     if seed is not None:
@@ -809,7 +840,7 @@ def factorial(col):
 # ---------------  Window functions ------------------------
 
 @since(1.4)
-def lag(col, count=1, default=None):
+def lag(col, offset=1, default=None):
     """
     Window function: returns the value that is `offset` rows before the current row, and
     `defaultValue` if there is less than `offset` rows before the current row. For example,
@@ -818,15 +849,15 @@ def lag(col, count=1, default=None):
     This is equivalent to the LAG function in SQL.
 
     :param col: name of column or expression
-    :param count: number of row to extend
+    :param offset: number of row to extend
     :param default: default value
     """
     sc = SparkContext._active_spark_context
-    return Column(sc._jvm.functions.lag(_to_java_column(col), count, default))
+    return Column(sc._jvm.functions.lag(_to_java_column(col), offset, default))
 
 
 @since(1.4)
-def lead(col, count=1, default=None):
+def lead(col, offset=1, default=None):
     """
     Window function: returns the value that is `offset` rows after the current row, and
     `defaultValue` if there is less than `offset` rows after the current row. For example,
@@ -835,11 +866,11 @@ def lead(col, count=1, default=None):
     This is equivalent to the LEAD function in SQL.
 
     :param col: name of column or expression
-    :param count: number of row to extend
+    :param offset: number of row to extend
     :param default: default value
     """
     sc = SparkContext._active_spark_context
-    return Column(sc._jvm.functions.lead(_to_java_column(col), count, default))
+    return Column(sc._jvm.functions.lead(_to_java_column(col), offset, default))
 
 
 @since(1.4)
@@ -885,7 +916,7 @@ def date_format(date, format):
     format given by the second argument.
 
     A pattern could be for instance `dd.MM.yyyy` and could return a string like '18.03.1993'. All
-    pattern letters of the Java class `java.text.SimpleDateFormat` can be used.
+    pattern letters of the Java class `java.time.format.DateTimeFormatter` can be used.
 
     .. note:: Use when ever possible specialized functions like `year`. These benefit from a
         specialized implementation.
@@ -1105,7 +1136,7 @@ def to_date(col, format=None):
     """Converts a :class:`Column` of :class:`pyspark.sql.types.StringType` or
     :class:`pyspark.sql.types.TimestampType` into :class:`pyspark.sql.types.DateType`
     using the optionally specified format. Specify formats according to
-    `SimpleDateFormats <http://docs.oracle.com/javase/tutorial/i18n/format/simpleDateFormat.html>`_.
+    `DateTimeFormatter <https://docs.oracle.com/javase/8/docs/api/java/time/format/DateTimeFormatter.html>`_. # noqa
     By default, it follows casting rules to :class:`pyspark.sql.types.DateType` if the format
     is omitted (equivalent to ``col.cast("date")``).
 
@@ -1130,7 +1161,7 @@ def to_timestamp(col, format=None):
     """Converts a :class:`Column` of :class:`pyspark.sql.types.StringType` or
     :class:`pyspark.sql.types.TimestampType` into :class:`pyspark.sql.types.DateType`
     using the optionally specified format. Specify formats according to
-    `SimpleDateFormats <http://docs.oracle.com/javase/tutorial/i18n/format/simpleDateFormat.html>`_.
+    `DateTimeFormatter <https://docs.oracle.com/javase/8/docs/api/java/time/format/DateTimeFormatter.html>`_. # noqa
     By default, it follows casting rules to :class:`pyspark.sql.types.TimestampType` if the format
     is omitted (equivalent to ``col.cast("timestamp")``).
 
@@ -1216,7 +1247,7 @@ def last_day(date):
 
 @ignore_unicode_prefix
 @since(1.5)
-def from_unixtime(timestamp, format="yyyy-MM-dd HH:mm:ss"):
+def from_unixtime(timestamp, format="uuuu-MM-dd HH:mm:ss"):
     """
     Converts the number of seconds from unix epoch (1970-01-01 00:00:00 UTC) to a string
     representing the timestamp of that moment in the current system time zone in the given
@@ -1233,9 +1264,9 @@ def from_unixtime(timestamp, format="yyyy-MM-dd HH:mm:ss"):
 
 
 @since(1.5)
-def unix_timestamp(timestamp=None, format='yyyy-MM-dd HH:mm:ss'):
+def unix_timestamp(timestamp=None, format='uuuu-MM-dd HH:mm:ss'):
     """
-    Convert time string with given pattern ('yyyy-MM-dd HH:mm:ss', by default)
+    Convert time string with given pattern ('uuuu-MM-dd HH:mm:ss', by default)
     to Unix time stamp (in seconds), using the default timezone and the default
     locale, return null if fail.
 
@@ -1280,7 +1311,10 @@ def from_utc_timestamp(timestamp, tz):
     [Row(local_time=datetime.datetime(1997, 2, 28, 2, 30))]
     >>> df.select(from_utc_timestamp(df.ts, df.tz).alias('local_time')).collect()
     [Row(local_time=datetime.datetime(1997, 2, 28, 19, 30))]
+
+    .. note:: Deprecated in 3.0. See SPARK-25496
     """
+    warnings.warn("Deprecated in 3.0. See SPARK-25496", DeprecationWarning)
     sc = SparkContext._active_spark_context
     if isinstance(tz, Column):
         tz = _to_java_column(tz)
@@ -1314,7 +1348,10 @@ def to_utc_timestamp(timestamp, tz):
     [Row(utc_time=datetime.datetime(1997, 2, 28, 18, 30))]
     >>> df.select(to_utc_timestamp(df.ts, df.tz).alias('utc_time')).collect()
     [Row(utc_time=datetime.datetime(1997, 2, 28, 1, 30))]
+
+    .. note:: Deprecated in 3.0. See SPARK-25496
     """
+    warnings.warn("Deprecated in 3.0. See SPARK-25496", DeprecationWarning)
     sc = SparkContext._active_spark_context
     if isinstance(tz, Column):
         tz = _to_java_column(tz)
@@ -1442,16 +1479,27 @@ def hash(*cols):
     return Column(jc)
 
 
+@since(3.0)
+def xxhash64(*cols):
+    """Calculates the hash code of given columns using the 64-bit variant of the xxHash algorithm,
+    and returns the result as a long column.
+
+    >>> spark.createDataFrame([('ABC',)], ['a']).select(xxhash64('a').alias('hash')).collect()
+    [Row(hash=4105715581806190027)]
+    """
+    sc = SparkContext._active_spark_context
+    jc = sc._jvm.functions.xxhash64(_to_seq(sc, cols, _to_java_column))
+    return Column(jc)
+
+
 # ---------------------- String/Binary functions ------------------------------
 
 _string_functions = {
+    'upper': 'Converts a string expression to upper case.',
+    'lower': 'Converts a string expression to lower case.',
     'ascii': 'Computes the numeric value of the first character of the string column.',
     'base64': 'Computes the BASE64 encoding of a binary column and returns it as a string column.',
     'unbase64': 'Decodes a BASE64 encoded string column and returns it as a binary column.',
-    'initcap': 'Returns a new string column by converting the first letter of each word to ' +
-               'uppercase. Words are delimited by whitespace.',
-    'lower': 'Converts a string column to lower case.',
-    'upper': 'Converts a string column to upper case.',
     'ltrim': 'Trim the spaces from left end for the specified string value.',
     'rtrim': 'Trim the spaces from right end for the specified string value.',
     'trim': 'Trim the spaces from both ends for the specified string column.',
@@ -1459,7 +1507,7 @@ _string_functions = {
 
 
 for _name, _doc in _string_functions.items():
-    globals()[_name] = since(1.5)(_create_function(_name, _doc))
+    globals()[_name] = since(1.5)(_create_function_over_column(_name, _doc))
 del _name, _doc
 
 
@@ -1665,18 +1713,32 @@ def repeat(col, n):
 
 @since(1.5)
 @ignore_unicode_prefix
-def split(str, pattern):
+def split(str, pattern, limit=-1):
     """
-    Splits str around pattern (pattern is a regular expression).
+    Splits str around matches of the given pattern.
 
-    .. note:: pattern is a string represent the regular expression.
+    :param str: a string expression to split
+    :param pattern: a string representing a regular expression. The regex string should be
+        a Java regular expression.
+    :param limit: an integer which controls the number of times `pattern` is applied.
 
-    >>> df = spark.createDataFrame([('ab12cd',)], ['s',])
-    >>> df.select(split(df.s, '[0-9]+').alias('s')).collect()
-    [Row(s=[u'ab', u'cd'])]
+        * ``limit > 0``: The resulting array's length will not be more than `limit`, and the
+                         resulting array's last entry will contain all input beyond the last
+                         matched pattern.
+        * ``limit <= 0``: `pattern` will be applied as many times as possible, and the resulting
+                          array can be of any size.
+
+    .. versionchanged:: 3.0
+       `split` now takes an optional `limit` field. If not provided, default limit value is -1.
+
+    >>> df = spark.createDataFrame([('oneAtwoBthreeC',)], ['s',])
+    >>> df.select(split(df.s, '[ABC]', 2).alias('s')).collect()
+    [Row(s=[u'one', u'twoBthreeC'])]
+    >>> df.select(split(df.s, '[ABC]', -1).alias('s')).collect()
+    [Row(s=[u'one', u'two', u'three', u''])]
     """
     sc = SparkContext._active_spark_context
-    return Column(sc._jvm.functions.split(_to_java_column(str), pattern))
+    return Column(sc._jvm.functions.split(_to_java_column(str), pattern, limit))
 
 
 @ignore_unicode_prefix
@@ -1878,13 +1940,16 @@ def array_contains(col, value):
     given value, and false otherwise.
 
     :param col: name of column containing array
-    :param value: value to check for in array
+    :param value: value or column to check for in array
 
     >>> df = spark.createDataFrame([(["a", "b", "c"],), ([],)], ['data'])
     >>> df.select(array_contains(df.data, "a")).collect()
     [Row(array_contains(data, a)=True), Row(array_contains(data, a)=False)]
+    >>> df.select(array_contains(df.data, lit("a"))).collect()
+    [Row(array_contains(data, a)=True), Row(array_contains(data, a)=False)]
     """
     sc = SparkContext._active_spark_context
+    value = value._jc if isinstance(value, Column) else value
     return Column(sc._jvm.functions.array_contains(_to_java_column(col), value))
 
 
@@ -1907,7 +1972,7 @@ def arrays_overlap(a1, a2):
 def slice(x, start, length):
     """
     Collection function: returns an array containing  all the elements in `x` from index `start`
-    (or starting from the end if `start` is negative) with the specified `length`.
+    (array indices start at 1, or from the end if `start` is negative) with the specified `length`.
     >>> df = spark.createDataFrame([([1, 2, 3],), ([4, 5],)], ['x'])
     >>> df.select(slice(df.x, 2, 2).alias("sliced")).collect()
     [Row(sliced=[2, 3]), Row(sliced=[5])]
@@ -1990,11 +2055,12 @@ def element_at(col, extraction):
     [Row(element_at(data, 1)=u'a'), Row(element_at(data, 1)=None)]
 
     >>> df = spark.createDataFrame([({"a": 1.0, "b": 2.0},), ({},)], ['data'])
-    >>> df.select(element_at(df.data, "a")).collect()
+    >>> df.select(element_at(df.data, lit("a"))).collect()
     [Row(element_at(data, a)=1.0), Row(element_at(data, a)=None)]
     """
     sc = SparkContext._active_spark_context
-    return Column(sc._jvm.functions.element_at(_to_java_column(col), extraction))
+    return Column(sc._jvm.functions.element_at(
+        _to_java_column(col), lit(extraction)._jc))  # noqa: F821 'lit' is dynamically defined.
 
 
 @since(2.4)
@@ -2086,7 +2152,10 @@ def array_except(col1, col2):
 
 @since(1.4)
 def explode(col):
-    """Returns a new row for each element in the given array or map.
+    """
+    Returns a new row for each element in the given array or map.
+    Uses the default column name `col` for elements in the array and
+    `key` and `value` for elements in the map unless specified otherwise.
 
     >>> from pyspark.sql import Row
     >>> eDF = spark.createDataFrame([Row(a=1, intlist=[1,2,3], mapfield={"a": "b"})])
@@ -2107,7 +2176,10 @@ def explode(col):
 
 @since(2.1)
 def posexplode(col):
-    """Returns a new row for each element with position in the given array or map.
+    """
+    Returns a new row for each element with position in the given array or map.
+    Uses the default column name `pos` for position, and `col` for elements in the
+    array and `key` and `value` for elements in the map unless specified otherwise.
 
     >>> from pyspark.sql import Row
     >>> eDF = spark.createDataFrame([Row(a=1, intlist=[1,2,3], mapfield={"a": "b"})])
@@ -2128,8 +2200,11 @@ def posexplode(col):
 
 @since(2.3)
 def explode_outer(col):
-    """Returns a new row for each element in the given array or map.
+    """
+    Returns a new row for each element in the given array or map.
     Unlike explode, if the array/map is null or empty then null is produced.
+    Uses the default column name `col` for elements in the array and
+    `key` and `value` for elements in the map unless specified otherwise.
 
     >>> df = spark.createDataFrame(
     ...     [(1, ["foo", "bar"], {"x": 1.0}), (2, [], {}), (3, None, None)],
@@ -2161,8 +2236,11 @@ def explode_outer(col):
 
 @since(2.3)
 def posexplode_outer(col):
-    """Returns a new row for each element with position in the given array or map.
+    """
+    Returns a new row for each element with position in the given array or map.
     Unlike posexplode, if the array/map is null or empty then the row (null, null) is produced.
+    Uses the default column name `pos` for position, and `col` for elements in the
+    array and `key` and `value` for elements in the map unless specified otherwise.
 
     >>> df = spark.createDataFrame(
     ...     [(1, ["foo", "bar"], {"x": 1.0}), (2, [], {}), (3, None, None)],
@@ -2262,7 +2340,7 @@ def from_json(col, schema, options={}):
     [Row(json=[Row(a=1)])]
     >>> schema = schema_of_json(lit('''{"a": 0}'''))
     >>> df.select(from_json(df.value, schema).alias("json")).collect()
-    [Row(json=Row(a=1))]
+    [Row(json=Row(a=None))]
     >>> data = [(1, '''[1, 2, 3]''')]
     >>> schema = ArrayType(IntegerType())
     >>> df = spark.createDataFrame(data, ("key", "value"))
@@ -2275,7 +2353,7 @@ def from_json(col, schema, options={}):
         schema = schema.json()
     elif isinstance(schema, Column):
         schema = _to_java_column(schema)
-    jc = sc._jvm.functions.from_json(_to_java_column(col), schema, options)
+    jc = sc._jvm.functions.from_json(_to_java_column(col), schema, _options_to_str(options))
     return Column(jc)
 
 
@@ -2287,7 +2365,9 @@ def to_json(col, options={}):
     into a JSON string. Throws an exception, in the case of an unsupported type.
 
     :param col: name of column containing a struct, an array or a map.
-    :param options: options to control converting. accepts the same options as the JSON datasource
+    :param options: options to control converting. accepts the same options as the JSON datasource.
+                    Additionally the function supports the `pretty` option which enables
+                    pretty JSON generation.
 
     >>> from pyspark.sql import Row
     >>> from pyspark.sql.types import *
@@ -2314,20 +2394,27 @@ def to_json(col, options={}):
     """
 
     sc = SparkContext._active_spark_context
-    jc = sc._jvm.functions.to_json(_to_java_column(col), options)
+    jc = sc._jvm.functions.to_json(_to_java_column(col), _options_to_str(options))
     return Column(jc)
 
 
 @ignore_unicode_prefix
 @since(2.4)
-def schema_of_json(json):
+def schema_of_json(json, options={}):
     """
     Parses a JSON string and infers its schema in DDL format.
 
     :param json: a JSON string or a string literal containing a JSON string.
+    :param options: options to control parsing. accepts the same options as the JSON datasource
+
+    .. versionchanged:: 3.0
+       It accepts `options` parameter to control schema inferring.
 
     >>> df = spark.range(1)
-    >>> df.select(schema_of_json('{"a": 0}').alias("json")).collect()
+    >>> df.select(schema_of_json(lit('{"a": 0}')).alias("json")).collect()
+    [Row(json=u'struct<a:bigint>')]
+    >>> schema = schema_of_json('{a: 1}', {'allowUnquotedFieldNames':'true'})
+    >>> df.select(schema.alias("json")).collect()
     [Row(json=u'struct<a:bigint>')]
     """
     if isinstance(json, basestring):
@@ -2338,7 +2425,56 @@ def schema_of_json(json):
         raise TypeError("schema argument should be a column or string")
 
     sc = SparkContext._active_spark_context
-    jc = sc._jvm.functions.schema_of_json(col)
+    jc = sc._jvm.functions.schema_of_json(col, _options_to_str(options))
+    return Column(jc)
+
+
+@ignore_unicode_prefix
+@since(3.0)
+def schema_of_csv(csv, options={}):
+    """
+    Parses a CSV string and infers its schema in DDL format.
+
+    :param col: a CSV string or a string literal containing a CSV string.
+    :param options: options to control parsing. accepts the same options as the CSV datasource
+
+    >>> df = spark.range(1)
+    >>> df.select(schema_of_csv(lit('1|a'), {'sep':'|'}).alias("csv")).collect()
+    [Row(csv=u'struct<_c0:int,_c1:string>')]
+    >>> df.select(schema_of_csv('1|a', {'sep':'|'}).alias("csv")).collect()
+    [Row(csv=u'struct<_c0:int,_c1:string>')]
+    """
+    if isinstance(csv, basestring):
+        col = _create_column_from_literal(csv)
+    elif isinstance(csv, Column):
+        col = _to_java_column(csv)
+    else:
+        raise TypeError("schema argument should be a column or string")
+
+    sc = SparkContext._active_spark_context
+    jc = sc._jvm.functions.schema_of_csv(col, _options_to_str(options))
+    return Column(jc)
+
+
+@ignore_unicode_prefix
+@since(3.0)
+def to_csv(col, options={}):
+    """
+    Converts a column containing a :class:`StructType` into a CSV string.
+    Throws an exception, in the case of an unsupported type.
+
+    :param col: name of column containing a struct.
+    :param options: options to control converting. accepts the same options as the CSV datasource.
+
+    >>> from pyspark.sql import Row
+    >>> data = [(1, Row(name='Alice', age=2))]
+    >>> df = spark.createDataFrame(data, ("key", "value"))
+    >>> df.select(to_csv(df.value).alias("csv")).collect()
+    [Row(csv=u'2,Alice')]
+    """
+
+    sc = SparkContext._active_spark_context
+    jc = sc._jvm.functions.to_csv(_to_java_column(col), _options_to_str(options))
     return Column(jc)
 
 
@@ -2516,6 +2652,26 @@ def map_values(col):
     return Column(sc._jvm.functions.map_values(_to_java_column(col)))
 
 
+@since(3.0)
+def map_entries(col):
+    """
+    Collection function: Returns an unordered array of all entries in the given map.
+
+    :param col: name of column or expression
+
+    >>> from pyspark.sql.functions import map_entries
+    >>> df = spark.sql("SELECT map(1, 'a', 2, 'b') as data")
+    >>> df.select(map_entries("data").alias("entries")).show()
+    +----------------+
+    |         entries|
+    +----------------+
+    |[[1, a], [2, b]]|
+    +----------------+
+    """
+    sc = SparkContext._active_spark_context
+    return Column(sc._jvm.functions.map_entries(_to_java_column(col)))
+
+
 @since(2.4)
 def map_from_entries(col):
     """
@@ -2547,7 +2703,10 @@ def array_repeat(col, count):
     [Row(r=[u'ab', u'ab', u'ab'])]
     """
     sc = SparkContext._active_spark_context
-    return Column(sc._jvm.functions.array_repeat(_to_java_column(col), count))
+    return Column(sc._jvm.functions.array_repeat(
+        _to_java_column(col),
+        _to_java_column(count) if isinstance(count, Column) else count
+    ))
 
 
 @since(2.4)
@@ -2576,11 +2735,11 @@ def map_concat(*cols):
     >>> from pyspark.sql.functions import map_concat
     >>> df = spark.sql("SELECT map(1, 'a', 2, 'b') as map1, map(3, 'c', 1, 'd') as map2")
     >>> df.select(map_concat("map1", "map2").alias("map3")).show(truncate=False)
-    +--------------------------------+
-    |map3                            |
-    +--------------------------------+
-    |[1 -> a, 2 -> b, 3 -> c, 1 -> d]|
-    +--------------------------------+
+    +------------------------+
+    |map3                    |
+    +------------------------+
+    |[1 -> d, 2 -> b, 3 -> c]|
+    +------------------------+
     """
     sc = SparkContext._active_spark_context
     if len(cols) == 1 and isinstance(cols[0], (list, set)):
@@ -2611,6 +2770,43 @@ def sequence(start, stop, step=None):
             _to_java_column(start), _to_java_column(stop), _to_java_column(step)))
 
 
+@ignore_unicode_prefix
+@since(3.0)
+def from_csv(col, schema, options={}):
+    """
+    Parses a column containing a CSV string to a row with the specified schema.
+    Returns `null`, in the case of an unparseable string.
+
+    :param col: string column in CSV format
+    :param schema: a string with schema in DDL format to use when parsing the CSV column.
+    :param options: options to control parsing. accepts the same options as the CSV datasource
+
+    >>> data = [("1,2,3",)]
+    >>> df = spark.createDataFrame(data, ("value",))
+    >>> df.select(from_csv(df.value, "a INT, b INT, c INT").alias("csv")).collect()
+    [Row(csv=Row(a=1, b=2, c=3))]
+    >>> value = data[0][0]
+    >>> df.select(from_csv(df.value, schema_of_csv(value)).alias("csv")).collect()
+    [Row(csv=Row(_c0=1, _c1=2, _c2=3))]
+    >>> data = [("   abc",)]
+    >>> df = spark.createDataFrame(data, ("value",))
+    >>> options = {'ignoreLeadingWhiteSpace': True}
+    >>> df.select(from_csv(df.value, "s string", options).alias("csv")).collect()
+    [Row(csv=Row(s=u'abc'))]
+    """
+
+    sc = SparkContext._active_spark_context
+    if isinstance(schema, basestring):
+        schema = _create_column_from_literal(schema)
+    elif isinstance(schema, Column):
+        schema = _to_java_column(schema)
+    else:
+        raise TypeError("schema argument should be a column or string")
+
+    jc = sc._jvm.functions.from_csv(_to_java_column(col), schema, _options_to_str(options))
+    return Column(jc)
+
+
 # ---------------------------- User Defined Function ----------------------------------
 
 class PandasUDFType(object):
@@ -2618,9 +2814,15 @@ class PandasUDFType(object):
     """
     SCALAR = PythonEvalType.SQL_SCALAR_PANDAS_UDF
 
+    SCALAR_ITER = PythonEvalType.SQL_SCALAR_PANDAS_ITER_UDF
+
     GROUPED_MAP = PythonEvalType.SQL_GROUPED_MAP_PANDAS_UDF
 
+    COGROUPED_MAP = PythonEvalType.SQL_COGROUPED_MAP_PANDAS_UDF
+
     GROUPED_AGG = PythonEvalType.SQL_GROUPED_AGG_PANDAS_UDF
+
+    MAP_ITER = PythonEvalType.SQL_MAP_PANDAS_ITER_UDF
 
 
 @since(1.3)
@@ -2666,6 +2868,38 @@ def udf(f=None, returnType=StringType()):
     |         8|      JOHN DOE|          22|
     +----------+--------------+------------+
     """
+
+    # The following table shows most of Python data and SQL type conversions in normal UDFs that
+    # are not yet visible to the user. Some of behaviors are buggy and might be changed in the near
+    # future. The table might have to be eventually documented externally.
+    # Please see SPARK-28131's PR to see the codes in order to generate the table below.
+    #
+    # +-----------------------------+--------------+----------+------+---------------+--------------------+-----------------------------+----------+----------------------+---------+--------------------+----------------------------+------------+--------------+------------------+----------------------+  # noqa
+    # |SQL Type \ Python Value(Type)|None(NoneType)|True(bool)|1(int)|         a(str)|    1970-01-01(date)|1970-01-01 00:00:00(datetime)|1.0(float)|array('i', [1])(array)|[1](list)|         (1,)(tuple)|bytearray(b'ABC')(bytearray)|  1(Decimal)|{'a': 1}(dict)|Row(kwargs=1)(Row)|Row(namedtuple=1)(Row)|  # noqa
+    # +-----------------------------+--------------+----------+------+---------------+--------------------+-----------------------------+----------+----------------------+---------+--------------------+----------------------------+------------+--------------+------------------+----------------------+  # noqa
+    # |                      boolean|          None|      True|  None|           None|                None|                         None|      None|                  None|     None|                None|                        None|        None|          None|                 X|                     X|  # noqa
+    # |                      tinyint|          None|      None|     1|           None|                None|                         None|      None|                  None|     None|                None|                        None|        None|          None|                 X|                     X|  # noqa
+    # |                     smallint|          None|      None|     1|           None|                None|                         None|      None|                  None|     None|                None|                        None|        None|          None|                 X|                     X|  # noqa
+    # |                          int|          None|      None|     1|           None|                None|                         None|      None|                  None|     None|                None|                        None|        None|          None|                 X|                     X|  # noqa
+    # |                       bigint|          None|      None|     1|           None|                None|                         None|      None|                  None|     None|                None|                        None|        None|          None|                 X|                     X|  # noqa
+    # |                       string|          None|    'true'|   '1'|            'a'|'java.util.Gregor...|         'java.util.Gregor...|     '1.0'|         '[I@66cbb73a'|    '[1]'|'[Ljava.lang.Obje...|               '[B@5a51eb1a'|         '1'|       '{a=1}'|                 X|                     X|  # noqa
+    # |                         date|          None|         X|     X|              X|datetime.date(197...|         datetime.date(197...|         X|                     X|        X|                   X|                           X|           X|             X|                 X|                     X|  # noqa
+    # |                    timestamp|          None|         X|     X|              X|                   X|         datetime.datetime...|         X|                     X|        X|                   X|                           X|           X|             X|                 X|                     X|  # noqa
+    # |                        float|          None|      None|  None|           None|                None|                         None|       1.0|                  None|     None|                None|                        None|        None|          None|                 X|                     X|  # noqa
+    # |                       double|          None|      None|  None|           None|                None|                         None|       1.0|                  None|     None|                None|                        None|        None|          None|                 X|                     X|  # noqa
+    # |                   array<int>|          None|      None|  None|           None|                None|                         None|      None|                   [1]|      [1]|                 [1]|                [65, 66, 67]|        None|          None|                 X|                     X|  # noqa
+    # |                       binary|          None|      None|  None|bytearray(b'a')|                None|                         None|      None|                  None|     None|                None|           bytearray(b'ABC')|        None|          None|                 X|                     X|  # noqa
+    # |                decimal(10,0)|          None|      None|  None|           None|                None|                         None|      None|                  None|     None|                None|                        None|Decimal('1')|          None|                 X|                     X|  # noqa
+    # |              map<string,int>|          None|      None|  None|           None|                None|                         None|      None|                  None|     None|                None|                        None|        None|      {'a': 1}|                 X|                     X|  # noqa
+    # |               struct<_1:int>|          None|         X|     X|              X|                   X|                            X|         X|                     X|Row(_1=1)|           Row(_1=1)|                           X|           X|  Row(_1=None)|         Row(_1=1)|             Row(_1=1)|  # noqa
+    # +-----------------------------+--------------+----------+------+---------------+--------------------+-----------------------------+----------+----------------------+---------+--------------------+----------------------------+------------+--------------+------------------+----------------------+  # noqa
+    #
+    # Note: DDL formatted string is used for 'SQL Type' for simplicity. This string can be
+    #       used in `returnType`.
+    # Note: The values inside of the table are generated by `repr`.
+    # Note: 'X' means it throws an exception during the conversion.
+    # Note: Python 3.7.3 is used.
+
     # decorator @udf, @udf(), @udf(dataType())
     if f is None or isinstance(f, (str, DataType)):
         # If DataType has been passed as a positional argument
@@ -2689,18 +2923,17 @@ def pandas_udf(f=None, returnType=None, functionType=None):
     :param functionType: an enum value in :class:`pyspark.sql.functions.PandasUDFType`.
                          Default: SCALAR.
 
-    .. note:: Experimental
-
     The function type of the UDF can be one of the following:
 
     1. SCALAR
 
        A scalar UDF defines a transformation: One or more `pandas.Series` -> A `pandas.Series`.
        The length of the returned `pandas.Series` must be of the same as the input `pandas.Series`.
+       If the return type is :class:`StructType`, the returned value should be a `pandas.DataFrame`.
 
-       :class:`MapType`, :class:`StructType` are currently not supported as output types.
+       :class:`MapType`, nested :class:`StructType` are currently not supported as output types.
 
-       Scalar UDFs are used with :meth:`pyspark.sql.DataFrame.withColumn` and
+       Scalar UDFs can be used with :meth:`pyspark.sql.DataFrame.withColumn` and
        :meth:`pyspark.sql.DataFrame.select`.
 
        >>> from pyspark.sql.functions import pandas_udf, PandasUDFType
@@ -2723,13 +2956,122 @@ def pandas_udf(f=None, returnType=None, functionType=None):
        +----------+--------------+------------+
        |         8|      JOHN DOE|          22|
        +----------+--------------+------------+
+       >>> @pandas_udf("first string, last string")  # doctest: +SKIP
+       ... def split_expand(n):
+       ...     return n.str.split(expand=True)
+       >>> df.select(split_expand("name")).show()  # doctest: +SKIP
+       +------------------+
+       |split_expand(name)|
+       +------------------+
+       |       [John, Doe]|
+       +------------------+
 
        .. note:: The length of `pandas.Series` within a scalar UDF is not that of the whole input
            column, but is the length of an internal batch used for each call to the function.
            Therefore, this can be used, for example, to ensure the length of each returned
            `pandas.Series`, and can not be used as the column length.
 
-    2. GROUPED_MAP
+    2. SCALAR_ITER
+
+       A scalar iterator UDF is semantically the same as the scalar Pandas UDF above except that the
+       wrapped Python function takes an iterator of batches as input instead of a single batch and,
+       instead of returning a single output batch, it yields output batches or explicitly returns an
+       generator or an iterator of output batches.
+       It is useful when the UDF execution requires initializing some state, e.g., loading a machine
+       learning model file to apply inference to every input batch.
+
+       .. note:: It is not guaranteed that one invocation of a scalar iterator UDF will process all
+           batches from one partition, although it is currently implemented this way.
+           Your code shall not rely on this behavior because it might change in the future for
+           further optimization, e.g., one invocation processes multiple partitions.
+
+       Scalar iterator UDFs are used with :meth:`pyspark.sql.DataFrame.withColumn` and
+       :meth:`pyspark.sql.DataFrame.select`.
+
+       >>> import pandas as pd  # doctest: +SKIP
+       >>> from pyspark.sql.functions import col, pandas_udf, struct, PandasUDFType
+       >>> pdf = pd.DataFrame([1, 2, 3], columns=["x"])  # doctest: +SKIP
+       >>> df = spark.createDataFrame(pdf)  # doctest: +SKIP
+
+       When the UDF is called with a single column that is not `StructType`, the input to the
+       underlying function is an iterator of `pd.Series`.
+
+       >>> @pandas_udf("long", PandasUDFType.SCALAR_ITER)  # doctest: +SKIP
+       ... def plus_one(batch_iter):
+       ...     for x in batch_iter:
+       ...         yield x + 1
+       ...
+       >>> df.select(plus_one(col("x"))).show()  # doctest: +SKIP
+       +-----------+
+       |plus_one(x)|
+       +-----------+
+       |          2|
+       |          3|
+       |          4|
+       +-----------+
+
+       When the UDF is called with more than one columns, the input to the underlying function is an
+       iterator of `pd.Series` tuple.
+
+       >>> @pandas_udf("long", PandasUDFType.SCALAR_ITER)  # doctest: +SKIP
+       ... def multiply_two_cols(batch_iter):
+       ...     for a, b in batch_iter:
+       ...         yield a * b
+       ...
+       >>> df.select(multiply_two_cols(col("x"), col("x"))).show()  # doctest: +SKIP
+       +-----------------------+
+       |multiply_two_cols(x, x)|
+       +-----------------------+
+       |                      1|
+       |                      4|
+       |                      9|
+       +-----------------------+
+
+       When the UDF is called with a single column that is `StructType`, the input to the underlying
+       function is an iterator of `pd.DataFrame`.
+
+       >>> @pandas_udf("long", PandasUDFType.SCALAR_ITER)  # doctest: +SKIP
+       ... def multiply_two_nested_cols(pdf_iter):
+       ...    for pdf in pdf_iter:
+       ...        yield pdf["a"] * pdf["b"]
+       ...
+       >>> df.select(
+       ...     multiply_two_nested_cols(
+       ...         struct(col("x").alias("a"), col("x").alias("b"))
+       ...     ).alias("y")
+       ... ).show()  # doctest: +SKIP
+       +---+
+       |  y|
+       +---+
+       |  1|
+       |  4|
+       |  9|
+       +---+
+
+       In the UDF, you can initialize some states before processing batches, wrap your code with
+       `try ... finally ...` or use context managers to ensure the release of resources at the end
+       or in case of early termination.
+
+       >>> y_bc = spark.sparkContext.broadcast(1)  # doctest: +SKIP
+       >>> @pandas_udf("long", PandasUDFType.SCALAR_ITER)  # doctest: +SKIP
+       ... def plus_y(batch_iter):
+       ...     y = y_bc.value  # initialize some state
+       ...     try:
+       ...         for x in batch_iter:
+       ...             yield x + y
+       ...     finally:
+       ...         pass  # release resources here, if any
+       ...
+       >>> df.select(plus_y(col("x"))).show()  # doctest: +SKIP
+       +---------+
+       |plus_y(x)|
+       +---------+
+       |        2|
+       |        3|
+       |        4|
+       +---------+
+
+    3. GROUPED_MAP
 
        A grouped map UDF defines transformation: A `pandas.DataFrame` -> A `pandas.DataFrame`
        The returnType should be a :class:`StructType` describing the schema of the returned
@@ -2808,7 +3150,7 @@ def pandas_udf(f=None, returnType=None, functionType=None):
 
        .. seealso:: :meth:`pyspark.sql.GroupedData.apply`
 
-    3. GROUPED_AGG
+    4. GROUPED_AGG
 
        A grouped aggregate UDF defines a transformation: One or more `pandas.Series` -> A scalar
        The `returnType` should be a primitive data type, e.g., :class:`DoubleType`.
@@ -2837,8 +3179,7 @@ def pandas_udf(f=None, returnType=None, functionType=None):
        |  2|        6.0|
        +---+-----------+
 
-       This example shows using grouped aggregated UDFs as window functions. Note that only
-       unbounded window frame is supported at the moment:
+       This example shows using grouped aggregated UDFs as window functions.
 
        >>> from pyspark.sql.functions import pandas_udf, PandasUDFType
        >>> from pyspark.sql import Window
@@ -2848,21 +3189,104 @@ def pandas_udf(f=None, returnType=None, functionType=None):
        >>> @pandas_udf("double", PandasUDFType.GROUPED_AGG)  # doctest: +SKIP
        ... def mean_udf(v):
        ...     return v.mean()
-       >>> w = Window \\
-       ...     .partitionBy('id') \\
-       ...     .rowsBetween(Window.unboundedPreceding, Window.unboundedFollowing)
+       >>> w = (Window.partitionBy('id')
+       ...            .orderBy('v')
+       ...            .rowsBetween(-1, 0))
        >>> df.withColumn('mean_v', mean_udf(df['v']).over(w)).show()  # doctest: +SKIP
        +---+----+------+
        | id|   v|mean_v|
        +---+----+------+
-       |  1| 1.0|   1.5|
+       |  1| 1.0|   1.0|
        |  1| 2.0|   1.5|
-       |  2| 3.0|   6.0|
-       |  2| 5.0|   6.0|
-       |  2|10.0|   6.0|
+       |  2| 3.0|   3.0|
+       |  2| 5.0|   4.0|
+       |  2|10.0|   7.5|
        +---+----+------+
 
+       .. note:: For performance reasons, the input series to window functions are not copied.
+            Therefore, mutating the input series is not allowed and will cause incorrect results.
+            For the same reason, users should also not rely on the index of the input series.
+
        .. seealso:: :meth:`pyspark.sql.GroupedData.agg` and :class:`pyspark.sql.Window`
+
+    5. MAP_ITER
+
+       A map iterator Pandas UDFs are used to transform data with an iterator of batches.
+       It can be used with :meth:`pyspark.sql.DataFrame.mapInPandas`.
+
+       It can return the output of arbitrary length in contrast to the scalar Pandas UDF.
+       It maps an iterator of batches in the current :class:`DataFrame` using a Pandas user-defined
+       function and returns the result as a :class:`DataFrame`.
+
+       The user-defined function should take an iterator of `pandas.DataFrame`\\s and return another
+       iterator of `pandas.DataFrame`\\s. All columns are passed together as an
+       iterator of `pandas.DataFrame`\\s to the user-defined function and the returned iterator of
+       `pandas.DataFrame`\\s are combined as a :class:`DataFrame`.
+
+       >>> df = spark.createDataFrame([(1, 21), (2, 30)],
+       ...                            ("id", "age"))  # doctest: +SKIP
+       >>> @pandas_udf(df.schema, PandasUDFType.MAP_ITER)  # doctest: +SKIP
+       ... def filter_func(batch_iter):
+       ...     for pdf in batch_iter:
+       ...         yield pdf[pdf.id == 1]
+       >>> df.mapInPandas(filter_func).show()  # doctest: +SKIP
+       +---+---+
+       | id|age|
+       +---+---+
+       |  1| 21|
+       +---+---+
+
+    6. COGROUPED_MAP
+
+       A cogrouped map UDF defines transformation: (`pandas.DataFrame`, `pandas.DataFrame`) ->
+       `pandas.DataFrame`. The `returnType` should be a :class:`StructType` describing the schema
+       of the returned `pandas.DataFrame`. The column labels of the returned `pandas.DataFrame`
+       must either match the field names in the defined `returnType` schema if specified as strings,
+       or match the field data types by position if not strings, e.g. integer indices. The length
+       of the returned `pandas.DataFrame` can be arbitrary.
+
+       CoGrouped map UDFs are used with :meth:`pyspark.sql.CoGroupedData.apply`.
+
+       >>> from pyspark.sql.functions import pandas_udf, PandasUDFType
+       >>> df1 = spark.createDataFrame(
+       ...     [(20000101, 1, 1.0), (20000101, 2, 2.0), (20000102, 1, 3.0), (20000102, 2, 4.0)],
+       ...     ("time", "id", "v1"))
+       >>> df2 = spark.createDataFrame(
+       ...     [(20000101, 1, "x"), (20000101, 2, "y")],
+       ...     ("time", "id", "v2"))
+       >>> @pandas_udf("time int, id int, v1 double, v2 string",
+       ...             PandasUDFType.COGROUPED_MAP)  # doctest: +SKIP
+       ... def asof_join(l, r):
+       ...     return pd.merge_asof(l, r, on="time", by="id")
+       >>> df1.groupby("id").cogroup(df2.groupby("id")).apply(asof_join).show()  # doctest: +SKIP
+       +---------+---+---+---+
+       |     time| id| v1| v2|
+       +---------+---+---+---+
+       | 20000101|  1|1.0|  x|
+       | 20000102|  1|3.0|  x|
+       | 20000101|  2|2.0|  y|
+       | 20000102|  2|4.0|  y|
+       +---------+---+---+---+
+
+       Alternatively, the user can define a function that takes three arguments.  In this case,
+       the grouping key(s) will be passed as the first argument and the data will be passed as the
+       second and third arguments.  The grouping key(s) will be passed as a tuple of numpy data
+       types, e.g., `numpy.int32` and `numpy.float64`. The data will still be passed in as two
+       `pandas.DataFrame` containing all columns from the original Spark DataFrames.
+       >>> @pandas_udf("time int, id int, v1 double, v2 string",
+       ...             PandasUDFType.COGROUPED_MAP)  # doctest: +SKIP
+       ... def asof_join(k, l, r):
+       ...     if k == (1,):
+       ...         return pd.merge_asof(l, r, on="time", by="id")
+       ...     else:
+       ...         return pd.DataFrame(columns=['time', 'id', 'v1', 'v2'])
+       >>> df1.groupby("id").cogroup(df2.groupby("id")).apply(asof_join).show()  # doctest: +SKIP
+       +---------+---+---+---+
+       |     time| id| v1| v2|
+       +---------+---+---+---+
+       | 20000101|  1|1.0|  x|
+       | 20000102|  1|3.0|  x|
+       +---------+---+---+---+
 
     .. note:: The user-defined functions are considered deterministic by default. Due to
         optimization, duplicate invocations may be eliminated or the function may even be invoked
@@ -2881,7 +3305,46 @@ def pandas_udf(f=None, returnType=None, functionType=None):
         can fail on special rows, the workaround is to incorporate the condition into the functions.
 
     .. note:: The user-defined functions do not take keyword arguments on the calling side.
+
+    .. note:: The data type of returned `pandas.Series` from the user-defined functions should be
+        matched with defined returnType (see :meth:`types.to_arrow_type` and
+        :meth:`types.from_arrow_type`). When there is mismatch between them, Spark might do
+        conversion on returned data. The conversion is not guaranteed to be correct and results
+        should be checked for accuracy by users.
     """
+
+    # The following table shows most of Pandas data and SQL type conversions in Pandas UDFs that
+    # are not yet visible to the user. Some of behaviors are buggy and might be changed in the near
+    # future. The table might have to be eventually documented externally.
+    # Please see SPARK-28132's PR to see the codes in order to generate the table below.
+    #
+    # +-----------------------------+----------------------+------------------+------------------+------------------+--------------------+--------------------+------------------+------------------+------------------+------------------+--------------+--------------+--------------+-----------------------------------+-----------------------------------------------------+-----------------+--------------------+-----------------------------+--------------+-----------------+------------------+-----------+--------------------------------+  # noqa
+    # |SQL Type \ Pandas Value(Type)|None(object(NoneType))|        True(bool)|           1(int8)|          1(int16)|            1(int32)|            1(int64)|          1(uint8)|         1(uint16)|         1(uint32)|         1(uint64)|  1.0(float16)|  1.0(float32)|  1.0(float64)|1970-01-01 00:00:00(datetime64[ns])|1970-01-01 00:00:00-05:00(datetime64[ns, US/Eastern])|a(object(string))|  1(object(Decimal))|[1 2 3](object(array[int32]))| 1.0(float128)|(1+0j)(complex64)|(1+0j)(complex128)|A(category)|1 days 00:00:00(timedelta64[ns])|  # noqa
+    # +-----------------------------+----------------------+------------------+------------------+------------------+--------------------+--------------------+------------------+------------------+------------------+------------------+--------------+--------------+--------------+-----------------------------------+-----------------------------------------------------+-----------------+--------------------+-----------------------------+--------------+-----------------+------------------+-----------+--------------------------------+  # noqa
+    # |                      boolean|                  None|              True|              True|              True|                True|                True|              True|              True|              True|              True|          True|          True|          True|                                  X|                                                    X|                X|                   X|                            X|             X|                X|                 X|          X|                               X|  # noqa
+    # |                      tinyint|                  None|                 1|                 1|                 1|                   1|                   1|                 1|                 1|                 1|                 1|             1|             1|             1|                                  X|                                                    X|                X|                   1|                            X|             X|                X|                 X|          0|                               X|  # noqa
+    # |                     smallint|                  None|                 1|                 1|                 1|                   1|                   1|                 1|                 1|                 1|                 1|             1|             1|             1|                                  X|                                                    X|                X|                   1|                            X|             X|                X|                 X|          X|                               X|  # noqa
+    # |                          int|                  None|                 1|                 1|                 1|                   1|                   1|                 1|                 1|                 1|                 1|             1|             1|             1|                                  X|                                                    X|                X|                   1|                            X|             X|                X|                 X|          X|                               X|  # noqa
+    # |                       bigint|                  None|                 1|                 1|                 1|                   1|                   1|                 1|                 1|                 1|                 1|             1|             1|             1|                                  0|                                       18000000000000|                X|                   1|                            X|             X|                X|                 X|          X|                               X|  # noqa
+    # |                        float|                  None|               1.0|               1.0|               1.0|                 1.0|                 1.0|               1.0|               1.0|               1.0|               1.0|           1.0|           1.0|           1.0|                                  X|                                                    X|                X|                   X|                            X|             X|                X|                 X|          X|                               X|  # noqa
+    # |                       double|                  None|               1.0|               1.0|               1.0|                 1.0|                 1.0|               1.0|               1.0|               1.0|               1.0|           1.0|           1.0|           1.0|                                  X|                                                    X|                X|                   X|                            X|             X|                X|                 X|          X|                               X|  # noqa
+    # |                         date|                  None|                 X|                 X|                 X|datetime.date(197...|                   X|                 X|                 X|                 X|                 X|             X|             X|             X|               datetime.date(197...|                                 datetime.date(197...|                X|datetime.date(197...|                            X|             X|                X|                 X|          X|                               X|  # noqa
+    # |                    timestamp|                  None|                 X|                 X|                 X|                   X|datetime.datetime...|                 X|                 X|                 X|                 X|             X|             X|             X|               datetime.datetime...|                                 datetime.datetime...|                X|datetime.datetime...|                            X|             X|                X|                 X|          X|                               X|  # noqa
+    # |                       string|                  None|                ''|                ''|                ''|              '\x01'|              '\x01'|                ''|                ''|            '\x01'|            '\x01'|            ''|            ''|            ''|                                  X|                                                    X|              'a'|                   X|                            X|            ''|                X|                ''|          X|                               X|  # noqa
+    # |                decimal(10,0)|                  None|                 X|                 X|                 X|                   X|                   X|                 X|                 X|                 X|                 X|             X|             X|             X|                                  X|                                                    X|                X|        Decimal('1')|                            X|             X|                X|                 X|          X|                               X|  # noqa
+    # |                   array<int>|                  None|                 X|                 X|                 X|                   X|                   X|                 X|                 X|                 X|                 X|             X|             X|             X|                                  X|                                                    X|                X|                   X|                    [1, 2, 3]|             X|                X|                 X|          X|                               X|  # noqa
+    # |              map<string,int>|                     X|                 X|                 X|                 X|                   X|                   X|                 X|                 X|                 X|                 X|             X|             X|             X|                                  X|                                                    X|                X|                   X|                            X|             X|                X|                 X|          X|                               X|  # noqa
+    # |               struct<_1:int>|                     X|                 X|                 X|                 X|                   X|                   X|                 X|                 X|                 X|                 X|             X|             X|             X|                                  X|                                                    X|                X|                   X|                            X|             X|                X|                 X|          X|                               X|  # noqa
+    # |                       binary|                  None|bytearray(b'\x01')|bytearray(b'\x01')|bytearray(b'\x01')|  bytearray(b'\x01')|  bytearray(b'\x01')|bytearray(b'\x01')|bytearray(b'\x01')|bytearray(b'\x01')|bytearray(b'\x01')|bytearray(b'')|bytearray(b'')|bytearray(b'')|                     bytearray(b'')|                                       bytearray(b'')|  bytearray(b'a')|                   X|                            X|bytearray(b'')|   bytearray(b'')|    bytearray(b'')|          X|                  bytearray(b'')|  # noqa
+    # +-----------------------------+----------------------+------------------+------------------+------------------+--------------------+--------------------+------------------+------------------+------------------+------------------+--------------+--------------+--------------+-----------------------------------+-----------------------------------------------------+-----------------+--------------------+-----------------------------+--------------+-----------------+------------------+-----------+--------------------------------+  # noqa
+    #
+    # Note: DDL formatted string is used for 'SQL Type' for simplicity. This string can be
+    #       used in `returnType`.
+    # Note: The values inside of the table are generated by `repr`.
+    # Note: Python 3.7.3, Pandas 0.24.2 and PyArrow 0.13.0 are used.
+    # Note: Timezone is KST.
+    # Note: 'X' means it throws an exception during the conversion.
+
     # decorator @pandas_udf(returnType, functionType)
     is_decorator = f is None or isinstance(f, (str, DataType))
 
@@ -2912,8 +3375,11 @@ def pandas_udf(f=None, returnType=None, functionType=None):
         raise ValueError("Invalid returnType: returnType can not be None")
 
     if eval_type not in [PythonEvalType.SQL_SCALAR_PANDAS_UDF,
+                         PythonEvalType.SQL_SCALAR_PANDAS_ITER_UDF,
                          PythonEvalType.SQL_GROUPED_MAP_PANDAS_UDF,
-                         PythonEvalType.SQL_GROUPED_AGG_PANDAS_UDF]:
+                         PythonEvalType.SQL_GROUPED_AGG_PANDAS_UDF,
+                         PythonEvalType.SQL_MAP_PANDAS_ITER_UDF,
+                         PythonEvalType.SQL_COGROUPED_MAP_PANDAS_UDF]:
         raise ValueError("Invalid functionType: "
                          "functionType must be one the values from PandasUDFType")
 
@@ -2943,9 +3409,13 @@ def _test():
     globs['sc'] = sc
     globs['spark'] = spark
     globs['df'] = spark.createDataFrame([Row(name='Alice', age=2), Row(name='Bob', age=5)])
+
+    spark.conf.set("spark.sql.legacy.utcTimestampFunc.enabled", "true")
     (failure_count, test_count) = doctest.testmod(
         pyspark.sql.functions, globs=globs,
         optionflags=doctest.ELLIPSIS | doctest.NORMALIZE_WHITESPACE)
+    spark.conf.unset("spark.sql.legacy.utcTimestampFunc.enabled")
+
     spark.stop()
     if failure_count:
         sys.exit(-1)

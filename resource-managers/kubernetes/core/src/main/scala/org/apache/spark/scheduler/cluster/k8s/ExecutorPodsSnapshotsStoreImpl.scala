@@ -68,7 +68,7 @@ private[spark] class ExecutorPodsSnapshotsStoreImpl(subscribersExecutor: Schedul
     }
     subscribers.add(newSubscriber)
     pollingTasks.add(subscribersExecutor.scheduleWithFixedDelay(
-      toRunnable(() => callSubscriber(newSubscriber)),
+      () => callSubscriber(newSubscriber),
       0L,
       processBatchIntervalMillis,
       TimeUnit.MILLISECONDS))
@@ -109,10 +109,6 @@ private[spark] class ExecutorPodsSnapshotsStoreImpl(subscribersExecutor: Schedul
       subscriber.snapshotsBuffer.drainTo(currentSnapshots)
       subscriber.onNewSnapshots(currentSnapshots.asScala)
     }
-  }
-
-  private def toRunnable[T](runnable: () => Unit): Runnable = new Runnable {
-    override def run(): Unit = runnable()
   }
 
   private case class SnapshotsSubscriber(

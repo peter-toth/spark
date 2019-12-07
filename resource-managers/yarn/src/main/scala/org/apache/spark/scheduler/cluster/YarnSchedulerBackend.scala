@@ -31,12 +31,12 @@ import org.eclipse.jetty.servlet.{FilterHolder, FilterMapping}
 
 import org.apache.spark.SparkContext
 import org.apache.spark.deploy.security.HadoopDelegationTokenManager
-import org.apache.spark.deploy.yarn.security.YARNHadoopDelegationTokenManager
 import org.apache.spark.internal.Logging
+import org.apache.spark.internal.config
+import org.apache.spark.internal.config.UI._
 import org.apache.spark.rpc._
 import org.apache.spark.scheduler._
 import org.apache.spark.scheduler.cluster.CoarseGrainedClusterMessages._
-import org.apache.spark.ui.JettyUtils
 import org.apache.spark.util.{RpcUtils, ThreadUtils}
 
 /**
@@ -51,7 +51,7 @@ private[spark] abstract class YarnSchedulerBackend(
   private val stopped = new AtomicBoolean(false)
 
   override val minRegisteredRatio =
-    if (conf.getOption("spark.scheduler.minRegisteredResourcesRatio").isEmpty) {
+    if (conf.get(config.SCHEDULER_MIN_REGISTERED_RESOURCES_RATIO).isEmpty) {
       0.8
     } else {
       super.minRegisteredRatio
@@ -73,10 +73,6 @@ private[spark] abstract class YarnSchedulerBackend(
   /** Attempt ID. This is unset for client-mode schedulers */
   private var attemptId: Option[ApplicationAttemptId] = None
 
-  /** Scheduler extension services. */
-  private val services: SchedulerExtensionServices = new SchedulerExtensionServices()
-
-
   /**
    * Bind to YARN. This *must* be done before calling [[start()]].
    *
@@ -90,8 +86,6 @@ private[spark] abstract class YarnSchedulerBackend(
 
   protected def startBindings(): Unit = {
     require(appId.isDefined, "application ID unset")
-    val binding = SchedulerExtensionServiceBinding(sc, appId.get, attemptId)
-    services.start(binding)
   }
 
   override def stop(): Unit = {
@@ -102,7 +96,6 @@ private[spark] abstract class YarnSchedulerBackend(
       super.stop()
     } finally {
       stopped.set(true)
-      services.stop()
     }
   }
 
@@ -173,7 +166,8 @@ private[spark] abstract class YarnSchedulerBackend(
       filterName != null && filterName.nonEmpty &&
       filterParams != null && filterParams.nonEmpty
     if (hasFilter) {
-      val allFilters = filterName + "," + conf.get("spark.ui.filters", "")
+      // SPARK-26255: Append user provided filters(spark.ui.filters) with yarn filter.
+      val allFilters = Seq(filterName) ++ conf.get(UI_FILTERS)
       logInfo(s"Add WebUI Filter. $filterName, $filterParams, $proxyBase")
 
       // For already installed handlers, prepend the filter.
@@ -184,7 +178,7 @@ private[spark] abstract class YarnSchedulerBackend(
           filterParams.foreach { case (k, v) =>
             conf.set(s"spark.$filterName.param.$k", v)
           }
-          conf.set("spark.ui.filters", allFilters)
+          conf.set(UI_FILTERS, allFilters)
 
           ui.getDelegatingHandlers.foreach { h =>
             h.addFilter(filterName, filterName, filterParams)
@@ -210,7 +204,7 @@ private[spark] abstract class YarnSchedulerBackend(
   }
 
   override protected def createTokenManager(): Option[HadoopDelegationTokenManager] = {
-    Some(new YARNHadoopDelegationTokenManager(sc.conf, sc.hadoopConfiguration, driverEndpoint))
+    Some(new HadoopDelegationTokenManager(sc.conf, sc.hadoopConfiguration, driverEndpoint))
   }
 
   /**

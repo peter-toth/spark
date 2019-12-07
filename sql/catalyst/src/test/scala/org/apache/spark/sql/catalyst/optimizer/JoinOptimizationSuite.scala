@@ -34,11 +34,12 @@ class JoinOptimizationSuite extends PlanTest {
         EliminateSubqueryAliases) ::
       Batch("Filter Pushdown", FixedPoint(100),
         CombineFilters,
-        PushDownPredicate,
+        PushPredicateThroughNonJoin,
         BooleanSimplification,
         ReorderJoin,
         PushPredicateThroughJoin,
         ColumnPruning,
+        RemoveNoopOperators,
         CollapseProject) :: Nil
 
   }
@@ -51,7 +52,8 @@ class JoinOptimizationSuite extends PlanTest {
     val y = testRelation1.subquery('y)
     val z = testRelation.subquery('z)
 
-    def testExtract(plan: LogicalPlan, expected: Option[(Seq[LogicalPlan], Seq[Expression])]) {
+    def testExtract(plan: LogicalPlan,
+        expected: Option[(Seq[LogicalPlan], Seq[Expression])]): Unit = {
       val expectedNoCross = expected map {
         seq_pair => {
           val plans = seq_pair._1
@@ -62,9 +64,10 @@ class JoinOptimizationSuite extends PlanTest {
       testExtractCheckCross(plan, expectedNoCross)
     }
 
-    def testExtractCheckCross
-        (plan: LogicalPlan, expected: Option[(Seq[(LogicalPlan, InnerLike)], Seq[Expression])]) {
-      assert(ExtractFiltersAndInnerJoins.unapply(plan) === expected)
+    def testExtractCheckCross(plan: LogicalPlan,
+        expected: Option[(Seq[(LogicalPlan, InnerLike)], Seq[Expression])]): Unit = {
+      assert(
+        ExtractFiltersAndInnerJoins.unapply(plan) === expected.map(e => (e._1, e._2)))
     }
 
     testExtract(x, None)
@@ -122,30 +125,5 @@ class JoinOptimizationSuite extends PlanTest {
       val optimized = Optimize.execute(queryAnswerPair._1.analyze)
       comparePlans(optimized, queryAnswerPair._2.analyze)
     }
-  }
-
-  test("broadcasthint sets relation statistics to smallest value") {
-    val input = LocalRelation('key.int, 'value.string)
-
-    val query =
-      Project(Seq($"x.key", $"y.key"),
-        Join(
-          SubqueryAlias("x", input),
-          ResolvedHint(SubqueryAlias("y", input)), Cross, None)).analyze
-
-    val optimized = Optimize.execute(query)
-
-    val expected =
-      Join(
-        Project(Seq($"x.key"), SubqueryAlias("x", input)),
-        ResolvedHint(Project(Seq($"y.key"), SubqueryAlias("y", input))),
-        Cross, None).analyze
-
-    comparePlans(optimized, expected)
-
-    val broadcastChildren = optimized.collect {
-      case Join(_, r, _, _) if r.stats.sizeInBytes == 1 => r
-    }
-    assert(broadcastChildren.size == 1)
   }
 }

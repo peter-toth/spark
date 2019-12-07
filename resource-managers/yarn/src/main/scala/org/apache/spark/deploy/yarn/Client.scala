@@ -21,7 +21,6 @@ import java.io.{FileSystem => _, _}
 import java.net.{InetAddress, UnknownHostException, URI}
 import java.nio.ByteBuffer
 import java.nio.charset.StandardCharsets
-import java.security.PrivilegedExceptionAction
 import java.util.{Locale, Properties, UUID}
 import java.util.zip.{ZipEntry, ZipOutputStream}
 
@@ -34,9 +33,9 @@ import com.google.common.io.Files
 import org.apache.hadoop.conf.Configuration
 import org.apache.hadoop.fs._
 import org.apache.hadoop.fs.permission.FsPermission
-import org.apache.hadoop.io.DataOutputBuffer
+import org.apache.hadoop.io.Text
 import org.apache.hadoop.mapreduce.MRJobConfig
-import org.apache.hadoop.security.{Credentials, UserGroupInformation}
+import org.apache.hadoop.security.UserGroupInformation
 import org.apache.hadoop.util.StringUtils
 import org.apache.hadoop.yarn.api._
 import org.apache.hadoop.yarn.api.ApplicationConstants.Environment
@@ -45,21 +44,26 @@ import org.apache.hadoop.yarn.api.records._
 import org.apache.hadoop.yarn.client.api.{YarnClient, YarnClientApplication}
 import org.apache.hadoop.yarn.conf.YarnConfiguration
 import org.apache.hadoop.yarn.exceptions.ApplicationNotFoundException
+import org.apache.hadoop.yarn.security.AMRMTokenIdentifier
 import org.apache.hadoop.yarn.util.Records
 
 import org.apache.spark.{SecurityManager, SparkConf, SparkException}
 import org.apache.spark.api.python.PythonUtils
 import org.apache.spark.deploy.{SparkApplication, SparkHadoopUtil}
+import org.apache.spark.deploy.security.HadoopDelegationTokenManager
+import org.apache.spark.deploy.yarn.ResourceRequestHelper._
 import org.apache.spark.deploy.yarn.config._
-import org.apache.spark.deploy.yarn.security.YARNHadoopDelegationTokenManager
 import org.apache.spark.internal.Logging
 import org.apache.spark.internal.config._
+import org.apache.spark.internal.config.Python._
 import org.apache.spark.launcher.{LauncherBackend, SparkAppHandle, YarnCommandBuilderUtils}
+import org.apache.spark.rpc.RpcEnv
 import org.apache.spark.util.{CallerContext, Utils}
 
 private[spark] class Client(
     val args: ClientArguments,
-    val sparkConf: SparkConf)
+    val sparkConf: SparkConf,
+    val rpcEnv: RpcEnv)
   extends Logging {
 
   import Client._
@@ -68,7 +72,11 @@ private[spark] class Client(
   private val yarnClient = YarnClient.createYarnClient
   private val hadoopConf = new YarnConfiguration(SparkHadoopUtil.newConfiguration(sparkConf))
 
-  private val isClusterMode = sparkConf.get("spark.submit.deployMode", "client") == "cluster"
+  private val isClusterMode = sparkConf.get(SUBMIT_DEPLOY_MODE) == "cluster"
+
+  private val isClientUnmanagedAMEnabled = sparkConf.get(YARN_UNMANAGED_AM) && !isClusterMode
+  private var appMaster: ApplicationMaster = _
+  private var stagingDirPath: Path = _
 
   // AM related configurations
   private val amMemory = if (isClusterMode) {
@@ -89,6 +97,8 @@ private[spark] class Client(
 
   // Executor related configurations
   private val executorMemory = sparkConf.get(EXECUTOR_MEMORY)
+  // Executor offHeap memory in MiB.
+  protected val executorOffHeapMemory = YarnSparkHadoopUtil.executorOffHeapMemorySizeAsMb(sparkConf)
   private val executorMemoryOverhead = sparkConf.get(EXECUTOR_MEMORY_OVERHEAD).getOrElse(
     math.max((MEMORY_OVERHEAD_FACTOR * executorMemory).toLong, MEMORY_OVERHEAD_MIN)).toInt
 
@@ -133,17 +143,14 @@ private[spark] class Client(
 
   private var appId: ApplicationId = null
 
-  // The app staging dir based on the STAGING_DIR configuration if configured
-  // otherwise based on the users home directory.
-  private val appStagingBaseDir = sparkConf.get(STAGING_DIR)
-    .map { new Path(_, UserGroupInformation.getCurrentUser.getShortUserName) }
-    .getOrElse(FileSystem.get(hadoopConf).getHomeDirectory())
-
   def reportLauncherState(state: SparkAppHandle.State): Unit = {
     launcherBackend.setState(state)
   }
 
   def stop(): Unit = {
+    if (appMaster != null) {
+      appMaster.stopUnmanaged(stagingDirPath)
+    }
     launcherBackend.close()
     yarnClient.stop()
   }
@@ -156,6 +163,8 @@ private[spark] class Client(
    * available in the alpha API.
    */
   def submitApplication(): ApplicationId = {
+    ResourceRequestHelper.validateResources(sparkConf)
+
     var appId: ApplicationId = null
     try {
       launcherBackend.connect()
@@ -169,6 +178,13 @@ private[spark] class Client(
       val newApp = yarnClient.createApplication()
       val newAppResponse = newApp.getNewApplicationResponse()
       appId = newAppResponse.getApplicationId()
+
+      // The app staging dir based on the STAGING_DIR configuration if configured
+      // otherwise based on the users home directory.
+      val appStagingBaseDir = sparkConf.get(STAGING_DIR)
+        .map { new Path(_, UserGroupInformation.getCurrentUser.getShortUserName) }
+        .getOrElse(FileSystem.get(hadoopConf).getHomeDirectory())
+      stagingDirPath = new Path(appStagingBaseDir, getAppStagingDir(appId))
 
       new CallerContext("CLIENT", sparkConf.get(APP_CALLER_CONTEXT),
         Option(appId.toString)).setCurrentContext()
@@ -189,8 +205,8 @@ private[spark] class Client(
       appId
     } catch {
       case e: Throwable =>
-        if (appId != null) {
-          cleanupStagingDir(appId)
+        if (stagingDirPath != null) {
+          cleanupStagingDir()
         }
         throw e
     }
@@ -199,13 +215,12 @@ private[spark] class Client(
   /**
    * Cleanup application staging directory.
    */
-  private def cleanupStagingDir(appId: ApplicationId): Unit = {
+  private def cleanupStagingDir(): Unit = {
     if (sparkConf.get(PRESERVE_STAGING_FILES)) {
       return
     }
 
     def cleanupStagingDirInternal(): Unit = {
-      val stagingDirPath = new Path(appStagingBaseDir, getAppStagingDir(appId))
       try {
         val fs = stagingDirPath.getFileSystem(hadoopConf)
         if (fs.delete(stagingDirPath, true)) {
@@ -227,6 +242,16 @@ private[spark] class Client(
   def createApplicationSubmissionContext(
       newApp: YarnClientApplication,
       containerContext: ContainerLaunchContext): ApplicationSubmissionContext = {
+
+    val componentName = if (isClusterMode) {
+      config.YARN_DRIVER_RESOURCE_TYPES_PREFIX
+    } else {
+      config.YARN_AM_RESOURCE_TYPES_PREFIX
+    }
+    val yarnAMResources = getYarnResourcesAndAmounts(sparkConf, componentName)
+    val amResources = yarnAMResources ++
+      getYarnResourcesFromSparkResources(SPARK_DRIVER_PREFIX, sparkConf)
+    logDebug(s"AM resources: $amResources")
     val appContext = newApp.getApplicationSubmissionContext
     appContext.setApplicationName(sparkConf.get("spark.app.name", "Spark"))
     appContext.setQueue(sparkConf.get(QUEUE_NAME))
@@ -249,6 +274,10 @@ private[spark] class Client(
     val capability = Records.newRecord(classOf[Resource])
     capability.setMemory(amMemory + amMemoryOverhead)
     capability.setVirtualCores(amCores)
+    if (amResources.nonEmpty) {
+      ResourceRequestHelper.setResourceRequests(amResources, capability)
+    }
+    logDebug(s"Created resource capability for AM request: $capability")
 
     sparkConf.get(AM_NODE_LABEL_EXPRESSION) match {
       case Some(expr) =>
@@ -266,19 +295,10 @@ private[spark] class Client(
     sparkConf.get(ROLLED_LOG_INCLUDE_PATTERN).foreach { includePattern =>
       try {
         val logAggregationContext = Records.newRecord(classOf[LogAggregationContext])
-
-        // These two methods were added in Hadoop 2.6.4, so we still need to use reflection to
-        // avoid compile error when building against Hadoop 2.6.0 ~ 2.6.3.
-        val setRolledLogsIncludePatternMethod =
-          logAggregationContext.getClass.getMethod("setRolledLogsIncludePattern", classOf[String])
-        setRolledLogsIncludePatternMethod.invoke(logAggregationContext, includePattern)
-
+        logAggregationContext.setRolledLogsIncludePattern(includePattern)
         sparkConf.get(ROLLED_LOG_EXCLUDE_PATTERN).foreach { excludePattern =>
-          val setRolledLogsExcludePatternMethod =
-            logAggregationContext.getClass.getMethod("setRolledLogsExcludePattern", classOf[String])
-          setRolledLogsExcludePatternMethod.invoke(logAggregationContext, excludePattern)
+          logAggregationContext.setRolledLogsExcludePattern(excludePattern)
         }
-
         appContext.setLogAggregationContext(logAggregationContext)
       } catch {
         case NonFatal(e) =>
@@ -286,7 +306,11 @@ private[spark] class Client(
             "does not support it", e)
       }
     }
+    appContext.setUnmanagedAM(isClientUnmanagedAMEnabled)
 
+    sparkConf.get(APPLICATION_PRIORITY).foreach { appPriority =>
+      appContext.setPriority(Priority.newInstance(appPriority))
+    }
     appContext
   }
 
@@ -302,7 +326,7 @@ private[spark] class Client(
     val credentials = currentUser.getCredentials()
 
     if (isClusterMode) {
-      val credentialManager = new YARNHadoopDelegationTokenManager(sparkConf, hadoopConf, null)
+      val credentialManager = new HadoopDelegationTokenManager(sparkConf, hadoopConf, null)
       credentialManager.obtainDelegationTokens(credentials)
     }
 
@@ -328,12 +352,14 @@ private[spark] class Client(
     val maxMem = newAppResponse.getMaximumResourceCapability().getMemory()
     logInfo("Verifying our application has not requested more than the maximum " +
       s"memory capability of the cluster ($maxMem MB per container)")
-    val executorMem = executorMemory + executorMemoryOverhead + pysparkWorkerMemory
+    val executorMem =
+      executorMemory + executorOffHeapMemory + executorMemoryOverhead + pysparkWorkerMemory
     if (executorMem > maxMem) {
-      throw new IllegalArgumentException(s"Required executor memory ($executorMemory), overhead " +
-        s"($executorMemoryOverhead MB), and PySpark memory ($pysparkWorkerMemory MB) is above " +
-        s"the max threshold ($maxMem MB) of this cluster! Please check the values of " +
-        s"'yarn.scheduler.maximum-allocation-mb' and/or 'yarn.nodemanager.resource.memory-mb'.")
+      throw new IllegalArgumentException(s"Required executor memory ($executorMemory MB), " +
+        s"offHeap memory ($executorOffHeapMemory) MB, overhead ($executorMemoryOverhead MB), " +
+        s"and PySpark memory ($pysparkWorkerMemory MB) is above the max threshold ($maxMem MB) " +
+        "of this cluster! Please check the values of 'yarn.scheduler.maximum-allocation-mb' " +
+        "and/or 'yarn.nodemanager.resource.memory-mb'.")
     }
     val amMem = amMemory + amMemoryOverhead
     if (amMem > maxMem) {
@@ -757,6 +783,7 @@ private[spark] class Client(
       new File(Utils.getLocalDir(sparkConf)))
     val confStream = new ZipOutputStream(new FileOutputStream(confArchive))
 
+    logDebug(s"Creating an archive with the config files for distribution at $confArchive.")
     try {
       confStream.setLevel(0)
 
@@ -800,15 +827,8 @@ private[spark] class Client(
       val props = confToProperties(sparkConf)
 
       // If propagating the keytab to the AM, override the keytab name with the name of the
-      // distributed file. Otherwise remove princpal/keytab from the conf, so they're not seen
-      // by the AM at all.
-      amKeytabFileName match {
-        case Some(kt) =>
-          props.setProperty(KEYTAB.key, kt)
-        case None =>
-          props.remove(PRINCIPAL.key)
-          props.remove(KEYTAB.key)
-      }
+      // distributed file.
+      amKeytabFileName.foreach { kt => props.setProperty(KEYTAB.key, kt) }
 
       writePropertiesToArchive(props, SPARK_CONF_FILE, confStream)
 
@@ -893,7 +913,6 @@ private[spark] class Client(
     : ContainerLaunchContext = {
     logInfo("Setting up container launch context for our AM")
     val appId = newAppResponse.getApplicationId
-    val appStagingDirPath = new Path(appStagingBaseDir, getAppStagingDir(appId))
     val pySparkArchives =
       if (sparkConf.get(IS_PYTHON_APP)) {
         findPySparkArchives()
@@ -901,8 +920,8 @@ private[spark] class Client(
         Nil
       }
 
-    val launchEnv = setupLaunchEnv(appStagingDirPath, pySparkArchives)
-    val localResources = prepareLocalResources(appStagingDirPath, pySparkArchives)
+    val launchEnv = setupLaunchEnv(stagingDirPath, pySparkArchives)
+    val localResources = prepareLocalResources(stagingDirPath, pySparkArchives)
 
     val amContainer = Records.newRecord(classOf[ContainerLaunchContext])
     amContainer.setLocalResources(localResources.asJava)
@@ -1011,7 +1030,8 @@ private[spark] class Client(
       } else {
         Utils.classForName("org.apache.spark.deploy.yarn.ExecutorLauncher").getName
       }
-    if (args.primaryRFile != null && args.primaryRFile.endsWith(".R")) {
+    if (args.primaryRFile != null &&
+        (args.primaryRFile.endsWith(".R") || args.primaryRFile.endsWith(".r"))) {
       args.userArgs = ArrayBuffer(args.primaryRFile) ++ args.userArgs
     }
     val userArgs = args.userArgs.flatMap { arg =>
@@ -1085,7 +1105,7 @@ private[spark] class Client(
         } catch {
           case e: ApplicationNotFoundException =>
             logError(s"Application $appId not found.")
-            cleanupStagingDir(appId)
+            cleanupStagingDir()
             return YarnAppReport(YarnApplicationState.KILLED, FinalApplicationStatus.KILLED, None)
           case NonFatal(e) =>
             val msg = s"Failed to contact YARN for application $appId."
@@ -1132,19 +1152,46 @@ private[spark] class Client(
       if (state == YarnApplicationState.FINISHED ||
           state == YarnApplicationState.FAILED ||
           state == YarnApplicationState.KILLED) {
-        cleanupStagingDir(appId)
+        cleanupStagingDir()
         return createAppReport(report)
       }
 
       if (returnOnRunning && state == YarnApplicationState.RUNNING) {
         return createAppReport(report)
       }
-
+      if (state == YarnApplicationState.ACCEPTED && isClientUnmanagedAMEnabled &&
+          appMaster == null && report.getAMRMToken != null) {
+        appMaster = startApplicationMasterService(report)
+      }
       lastState = state
     }
 
     // Never reached, but keeps compiler happy
     throw new SparkException("While loop is depleted! This should never happen...")
+  }
+
+  private def startApplicationMasterService(report: ApplicationReport): ApplicationMaster = {
+    // Add AMRMToken to establish connection between RM and AM
+    val token = report.getAMRMToken
+    val amRMToken: org.apache.hadoop.security.token.Token[AMRMTokenIdentifier] =
+      new org.apache.hadoop.security.token.Token[AMRMTokenIdentifier](
+        token.getIdentifier().array(), token.getPassword().array,
+        new Text(token.getKind()), new Text(token.getService()))
+    val currentUGI = UserGroupInformation.getCurrentUser
+    currentUGI.addToken(amRMToken)
+
+    // Start Application Service in a separate thread and continue with application monitoring
+    val appMaster = new ApplicationMaster(
+      new ApplicationMasterArguments(Array.empty), sparkConf, hadoopConf)
+    val amService = new Thread("Unmanaged Application Master Service") {
+      override def run(): Unit = {
+        appMaster.runUnmanaged(rpcEnv, report.getCurrentApplicationAttemptId,
+          stagingDirPath, cachedResourcesConf)
+      }
+    }
+    amService.setDaemon(true)
+    amService.start()
+    appMaster
   }
 
   private def formatReportDetails(report: ApplicationReport): String = {
@@ -1579,10 +1626,10 @@ private[spark] class YarnClusterApplication extends SparkApplication {
   override def start(args: Array[String], conf: SparkConf): Unit = {
     // SparkSubmit would use yarn cache to distribute files & jars in yarn mode,
     // so remove them from sparkConf here for yarn mode.
-    conf.remove("spark.jars")
-    conf.remove("spark.files")
+    conf.remove(JARS)
+    conf.remove(FILES)
 
-    new Client(new ClientArguments(args), conf).run()
+    new Client(new ClientArguments(args), conf, null).run()
   }
 
 }

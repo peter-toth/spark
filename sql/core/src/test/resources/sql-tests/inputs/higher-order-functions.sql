@@ -60,3 +60,35 @@ select zip_with(array('a', 'b', 'c'), array('d', 'e', 'f'), (x, y) -> concat(x, 
 
 -- Zip with array coalesce
 select zip_with(array('a'), array('d', null, 'f'), (x, y) -> coalesce(x, y)) as v;
+
+create or replace temporary view nested as values
+  (1, map(1, 1, 2, 2, 3, 3)),
+  (2, map(4, 4, 5, 5, 6, 6))
+  as t(x, ys);
+
+-- Identity Transform Keys in a map
+select transform_keys(ys, (k, v) -> k) as v from nested;
+
+-- Transform Keys in a map by adding constant
+select transform_keys(ys, (k, v) -> k + 1) as v from nested;
+
+-- Transform Keys in a map using values
+select transform_keys(ys, (k, v) -> k + v) as v from nested;
+
+-- Identity Transform values in a map
+select transform_values(ys, (k, v) -> v) as v from nested;
+
+-- Transform values in a map by adding constant
+select transform_values(ys, (k, v) -> v + 1) as v from nested;
+
+-- Transform values in a map using values
+select transform_values(ys, (k, v) -> k + v) as v from nested;
+
+-- use non reversed keywords: all is non reversed only if !ansi
+select transform(ys, all -> all * all) as v from values (array(32, 97)) as t(ys);
+select transform(ys, (all, i) -> all + i) as v from values (array(32, 97)) as t(ys);
+
+set spark.sql.ansi.enabled=true;
+select transform(ys, all -> all * all) as v from values (array(32, 97)) as t(ys);
+select transform(ys, (all, i) -> all + i) as v from values (array(32, 97)) as t(ys);
+set spark.sql.ansi.enabled=false;

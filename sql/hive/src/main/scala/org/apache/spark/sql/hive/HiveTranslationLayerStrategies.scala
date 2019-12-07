@@ -20,7 +20,7 @@ package org.apache.spark.sql.hive
 import org.apache.spark.sql._
 import org.apache.spark.sql.catalyst.TableIdentifier
 import org.apache.spark.sql.catalyst.catalog._
-import org.apache.spark.sql.catalyst.plans.logical.{InsertIntoTable, LogicalPlan}
+import org.apache.spark.sql.catalyst.plans.logical.{InsertIntoStatement, LogicalPlan}
 import org.apache.spark.sql.catalyst.rules.Rule
 import org.apache.spark.sql.execution.command._
 import org.apache.spark.sql.execution.datasources.{InsertIntoHadoopFsRelationCommand, LogicalRelation}
@@ -65,7 +65,7 @@ private object IsRunnableCommand {
       case AnalyzeTableCommand(tableName, _) =>
         Some(tableName)
 
-      case AnalyzeColumnCommand(tableName, _) =>
+      case AnalyzeColumnCommand(tableName, _, _) =>
         Some(tableName)
 
       case AnalyzePartitionCommand(tableName, _, _) =>
@@ -89,7 +89,7 @@ class HiveTranslationLayerCheck(session: SparkSession) extends Rule[LogicalPlan]
         }
         i
 
-      case i @ InsertIntoTable(r: HiveTableRelation, _, _, _, _) =>
+      case i @ InsertIntoStatement(r: HiveTableRelation, _, _, _, _) =>
         CatalogUtils.throwIfRO(r.tableMeta)
         i
 
@@ -105,7 +105,7 @@ class HiveTranslationLayerCheck(session: SparkSession) extends Rule[LogicalPlan]
         CatalogUtils.throwIfNoAccess(tableMeta)
         l
 
-      case h @ HiveTableRelation(tableMeta, _, _) =>
+      case h @ HiveTableRelation(tableMeta, _, _, _) =>
         CatalogUtils.throwIfNoAccess(tableMeta)
         h
 

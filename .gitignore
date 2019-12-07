@@ -71,6 +71,7 @@ scalastyle-on-compile.generated.xml
 scalastyle-output.xml
 scalastyle.txt
 spark-*-bin-*.tgz
+spark-resources/
 spark-tests.log
 src_managed/
 streaming-tests.log
@@ -78,7 +79,6 @@ target/
 unit-tests.log
 work/
 docs/.jekyll-metadata
-*.crc
 
 # For Hive
 TempStatsStore/
@@ -96,3 +96,6 @@ spark-warehouse/
 *.Rproj.*
 
 .Rproj.user
+
+# For SBT
+.jvmopts

@@ -1,3 +1,21 @@
+---
+license: |
+  Licensed to the Apache Software Foundation (ASF) under one or more
+  contributor license agreements.  See the NOTICE file distributed with
+  this work for additional information regarding copyright ownership.
+  The ASF licenses this file to You under the Apache License, Version 2.0
+  (the "License"); you may not use this file except in compliance with
+  the License.  You may obtain a copy of the License at
+ 
+     http://www.apache.org/licenses/LICENSE-2.0
+ 
+  Unless required by applicable law or agreed to in writing, software
+  distributed under the License is distributed on an "AS IS" BASIS,
+  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  See the License for the specific language governing permissions and
+  limitations under the License.
+---
+
 Welcome to the Spark documentation!
 
 This readme will walk you through navigating and building the Spark documentation, which is included
@@ -66,7 +84,7 @@ $ PRODUCTION=1 jekyll build
 
 ## API Docs (Scaladoc, Javadoc, Sphinx, roxygen2, MkDocs)
 
-You can build just the Spark scaladoc and javadoc by running `build/sbt unidoc` from the `$SPARK_HOME` directory.
+You can build just the Spark scaladoc and javadoc by running `./build/sbt unidoc` from the `$SPARK_HOME` directory.
 
 Similarly, you can build just the PySpark docs by running `make html` from the
 `$SPARK_HOME/python/docs` directory. Documentation is only generated for classes that are listed as
@@ -76,7 +94,7 @@ after [building Spark](https://github.com/apache/spark#building-spark) first.
 
 When you run `jekyll build` in the `docs` directory, it will also copy over the scaladoc and javadoc for the various
 Spark subprojects into the `docs` directory (and then also into the `_site` directory). We use a
-jekyll plugin to run `build/sbt unidoc` before building the site so if you haven't run it (recently) it
+jekyll plugin to run `./build/sbt unidoc` before building the site so if you haven't run it (recently) it
 may take some time as it generates all of the scaladoc and javadoc using [Unidoc](https://github.com/sbt/sbt-unidoc).
 The jekyll plugin also generates the PySpark docs using [Sphinx](http://sphinx-doc.org/), SparkR docs
 using [roxygen2](https://cran.r-project.org/web/packages/roxygen2/index.html) and SQL docs

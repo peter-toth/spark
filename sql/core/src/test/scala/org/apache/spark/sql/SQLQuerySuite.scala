@@ -3313,6 +3313,13 @@ class SQLQuerySuite extends QueryTest with SharedSparkSession {
       cubeDF.join(cubeDF, "nums"),
       Row(1, 0, 0) :: Row(2, 0, 0) :: Row(3, 0, 0) :: Nil)
   }
+
+  test("SPARK-xxx: test") {
+    withSQLConf(SQLConf.WHOLESTAGE_CODEGEN_ENABLED.key -> "false",
+      SQLConf.CODEGEN_FACTORY_MODE.key -> "CODEGEN_ONLY") {
+      sql("WITH RECURSIVE r(level) AS (VALUES (0) UNION ALL SELECT level + 1 FROM r WHERE level < 10) SELECT * FROM r").show
+    }
+  }
 }
 
 case class Foo(bar: Option[String])

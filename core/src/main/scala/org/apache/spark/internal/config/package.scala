@@ -765,4 +765,9 @@ package object config {
     .doc("Staging directory used while submitting applications.")
     .stringConf
     .createOptional
+
+  val PROXY_REDIRECT_URI = ConfigBuilder("spark.ui.proxyRedirectUri")
+    .doc("Proxy address to use when responding with HTTP redirects.")
+    .stringConf
+    .createOptional
 }

@@ -222,6 +222,13 @@ function prepare_spark_env {
     add_to_classpath "$CLASSPATH_FILE_TMP" "$HBASE_CP"
   fi
 
+  # Add spark-atlas-connector jar files to classpath
+  lineage_enabled=$(read_property "spark.lineage.enabled" "$SPARK_DEFAULTS")
+  if [ "$lineage_enabled" = "true" ]; then
+    ATLAS_CONNECTOR_PATH="$SPARK_HOME/../spark-atlas-connector/*"
+    add_to_classpath "$CLASSPATH_FILE_TMP" "$ATLAS_CONNECTOR_PATH"
+  fi
+
   # De-duplicate the classpath when creating the target file.
   cat "$CLASSPATH_FILE_TMP" | sort | uniq > "$CLASSPATH_FILE"
   rm -f "$CLASSPATH_FILE_TMP"
@@ -369,6 +376,49 @@ function start_history_server {
   run_spark_class "${ARGS[@]}"
 }
 
+function lineage_configuration() {
+    lineage_enabled=$(read_property "spark.lineage.enabled" "$SPARK_DEFAULTS")
+      # Update configs for spark-atlas-connector
+  if [ "$lineage_enabled" = "true" ]; then
+    # If there's an Atlas server file, copy its contents to the Atlas conf file.
+    ATLAS_SERVER_FILE="$CONF_DIR/atlas-conf/atlas-server.properties"
+    ATLAS_CONF_FILE="$SPARK_CONF_DIR/atlas-application.properties"
+    ATLAS_CLIENT_FILE="$CONF_DIR/atlas-conf/atlas-client.properties"
+    if [ -f "$ATLAS_SERVER_FILE" ]; then
+      # Copy the contents
+      . ${CONF_DIR}/scripts/generate_atlas_client_configs.sh ${ATLAS_SERVER_FILE} ${ATLAS_CONF_FILE} ${ATLAS_ZK_CONNECT} ${ATLAS_KAFKA_BROKERS_LIST} ${ATLAS_CLIENT_FILE}
+      # Update atlas-application.properties
+      echo "atlas.notification.hook.topic.name=ATLAS_SPARK_HOOK" >> "$ATLAS_CONF_FILE"
+      key="atlas.authentication.method.kerberos"
+      value=$(read_property "$key" "$ATLAS_CONF_FILE")
+      if [ "$value" = "true" ]; then
+        replace_conf_if_value "atlas.jaas.KafkaClient.option.useKeyTab" "true" "false" "$ATLAS_CONF_FILE"
+        replace_conf_if_value "atlas.jaas.KafkaClient.option.storeKey" "true" "false" "$ATLAS_CONF_FILE"
+        TICKET_CACHE_KEY="atlas.jaas.KafkaClient.option.useTicketCache"
+        replace_spark_conf "$TICKET_CACHE_KEY" "true" "$ATLAS_CONF_FILE"
+      fi
+      cp $ATLAS_CONF_FILE "$SPARK_CONF_DIR/yarn-conf/atlas-application.properties"
+    fi
+    if [ -f "$ATLAS_CONF_FILE" ]; then
+      # Add atlas connector listeners
+      local SC_LISTENERS_KEY="spark.extraListeners"
+      local SQL_LISTENERS_KEY="spark.sql.queryExecutionListeners"
+      local STR_LISTENERS_KEY="spark.sql.streaming.streamingQueryListeners"
+      local ATLAS_PKG="com.hortonworks.spark.atlas"
+      local LISTENERS=$(read_property "$SC_LISTENERS_KEY" "$SPARK_DEFAULTS")
+      LISTENERS=$(add_to_list "$LISTENERS" "$ATLAS_PKG.SparkAtlasEventTracker")
+      replace_spark_conf "$SC_LISTENERS_KEY" "$LISTENERS" "$SPARK_DEFAULTS"
+      local LISTENERS=$(read_property "$SQL_LISTENERS_KEY" "$SPARK_DEFAULTS")
+      LISTENERS=$(add_to_list "$LISTENERS" "$ATLAS_PKG.SparkAtlasEventTracker")
+      replace_spark_conf "$SQL_LISTENERS_KEY" "$LISTENERS" "$SPARK_DEFAULTS"
+      local LISTENERS=$(read_property "$STR_LISTENERS_KEY" "$SPARK_DEFAULTS")
+      LISTENERS=$(add_to_list "$LISTENERS" "$ATLAS_PKG.SparkAtlasStreamingQueryEventTracker")
+      replace_spark_conf "$STR_LISTENERS_KEY" "$LISTENERS" "$SPARK_DEFAULTS"
+    else
+      echo "ERROR: Lineage is enabled but unable to find atlas configuration at: $ATLAS_CONF_FILE"
+    fi
+  fi
+}
 function deploy_client_config {
   log "Deploying client configuration"
 
@@ -515,40 +565,9 @@ function deploy_client_config {
       echo "$key=\${shell.log.level}" >> "$LOG_CONFIG"
     fi
   done
-
-  local LINEAGE_ENABLED_KEY="spark.lineage.enabled"
-
-  # Detect whether a supported CM version for lineage is being used, otherwise disable the
-  # feature
-  local MIN_CM_VERSION=$(parse_version_string "5.14.0")
-  local LINEAGE_SUPPORTED=0
-  if [ -n "$CM_VERSION" ]; then
-    if [ $(parse_version_string "$CM_VERSION") -ge $MIN_CM_VERSION ]; then
-      LINEAGE_SUPPORTED=1
-    fi
-  fi
-
-  if [ $LINEAGE_SUPPORTED = 0 ]; then
-    log "Spark 2 lineage is not supported by CM, disabling."
-    replace_spark_conf "$LINEAGE_ENABLED_KEY" "false" "$SPARK_DEFAULTS"
-  fi
-
-  # If lineage is enabled, add the Navigator listeners to the client config.
-  local LINEAGE_ENABLED=$(read_property "$LINEAGE_ENABLED_KEY" "$SPARK_DEFAULTS")
-  if [ "$LINEAGE_ENABLED" = "true" ]; then
-    local SC_LISTENERS_KEY="spark.extraListeners"
-    local SQL_LISTENERS_KEY="spark.sql.queryExecutionListeners"
-    local LINEAGE_PKG="com.cloudera.spark.lineage"
-
-    local LISTENERS=$(read_property "$SC_LISTENERS_KEY" "$SPARK_DEFAULTS")
-    LISTENERS=$(add_to_list "$LISTENERS" "$LINEAGE_PKG.NavigatorAppListener")
-    replace_spark_conf "$SC_LISTENERS_KEY" "$LISTENERS" "$SPARK_DEFAULTS"
-
-    local LISTENERS=$(read_property "$SQL_LISTENERS_KEY" "$SPARK_DEFAULTS")
-    LISTENERS=$(add_to_list "$LISTENERS" "$LINEAGE_PKG.NavigatorQueryListener")
-    replace_spark_conf "$SQL_LISTENERS_KEY" "$LISTENERS" "$SPARK_DEFAULTS"
-  fi
+  lineage_configuration
 }
+
 
 function clean_history_cache {
   local STORAGE_DIR="$1"

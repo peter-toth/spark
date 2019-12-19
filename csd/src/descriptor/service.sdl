@@ -17,8 +17,8 @@
   "name" : "SPARK3_ON_YARN",
   "label" : "Spark 3",
   "description" : "Apache Spark is an open source cluster computing system. This service runs Spark 3 as an application on YARN. <span class=\"error\">Before adding this service, ensure that you have installed the Spark3 binaries, which are not included in CDH.</span>",
-  "version" : "3.0.0.cloudera-fake0001",
-  "compatibility" : { "cdhVersion" : { "min" : "5.0.0", "max" : "8.0.0" } },
+  "version" : "3.0.0.cloudera1-SNAPSHOT",
+  "compatibility" : { "cdhVersion" : { "min" : "7" } },
   "runAs" : {
     "user" : "spark",
     "group" : "spark",
@@ -131,10 +131,6 @@
       "required" : "true",
       "type" : "boolean",
       "default" : true
-    },
-    {
-        "name" : "navigator_lineage_enabled",
-        "type" : "provided"
     }
   ],
   "rolesWithExternalLinks" : ["SPARK3_YARN_HISTORY_SERVER"],
@@ -574,8 +570,19 @@
         "default" : true
       },
       {
-        "name" : "lineage_event_log_dir",
-        "type" : "provided"
+        "name" : "spark_lineage_enabled",
+        "label" : "Enable Spark Lineage",
+        "description" : "Whether to enable spark lineage support. If enabled, spark lineage is sent to Atlas.",
+        "configName" : "spark.lineage.enabled",
+        "required" : "false",
+        "type" : "boolean",
+        "default" : true
+      }
+    ],
+    "dependencyExtensions": [
+      {
+        "type" : "atlasDependency",
+        "extensionId": "atlas_dependency"
       }
     ],
     "scriptRunner" : {
@@ -584,7 +591,10 @@
       "environmentVariables" : {
         "DEPLOY_MODE" : "${spark_deploy_mode}",
         "PYTHON_PATH" : "${spark_python_path}",
-        "DEFAULT_SPARK_KAFKA_VERSION" : "${spark_kafka_version}"
+        "DEFAULT_SPARK_KAFKA_VERSION" : "${spark_kafka_version}",
+        "ATLAS_KAFKA_BROKERS_LIST" : "${atlas_kafka_bootstrap_servers}",
+        "ATLAS_ZK_CONNECT" : "${atlas_kafka_zk_connect}"
+
       },
       "referencedEnvironmentVariables" : {
         "CM_VERSION" : "${cm_version}"
@@ -606,15 +616,6 @@
         { "key" : "log4j.logger.org.apache.hadoop.hive.ql.exec.FunctionRegistry", "value" : "ERROR" }
       ]
     },
-    "dependencyExtensions": [
-      {
-        "extensionId" : "navigator_lineage_client",
-        "defaultDir" : "/var/log/spark3/lineage",
-        "permissions" : "1777",
-        "singleUserModeAllowed": false,
-        "type" : "lineage"
-      }
-    ],
     "configWriter" : {
       "generators" : [
         {
@@ -638,17 +639,8 @@
             "spark_gateway_ui_kill_enabled",
             "spark_network_encryption_enabled",
             "spark_io_encryption_enabled",
-            "spark_ui_enabled"
-          ],
-          "additionalConfigs" : [
-            {
-              "key" : "spark.lineage.log.dir",
-              "value" : "${lineage_event_log_dir}"
-            },
-            {
-              "key" : "spark.lineage.enabled",
-              "value" : "${navigator_lineage_enabled}"
-            }
+            "spark_ui_enabled",
+            "spark_lineage_enabled"
           ]
         }
       ],

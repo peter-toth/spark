@@ -388,8 +388,8 @@ class Version(object):
         self._release_version = release_version
         # Sometimes versions being sent have SNAPSHOT at their end, if so, let's get rid of
         # it because we don't want that showing up in parcel names, etc.
-        self._spark3_version = spark3_version.replace("-SNAPSHOT", "")
-        self._cdh_version = cdh_version.replace("-SNAPSHOT", "")
+        self._spark3_version = spark3_version.split("-")[0]
+        self._cdh_version = cdh_version.split("-")[0]
         self._patch_number = patch_number
         self._build_number = build_number
         self._distro = distro

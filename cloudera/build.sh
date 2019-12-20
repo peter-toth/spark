@@ -142,10 +142,11 @@ function do_build {
      fi
   fi
 
+  local MAVEN_VERSION=$(./build/mvn help:evaluate -Dexpression=maven.version | grep -e '^[^\[]')
   BUILD_OPTS="-Divy.home=${HOME}/.ivy2 -Dsbt.ivy.home=${HOME}/.ivy2 -Duser.home=${HOME} \
               -Drepo.maven.org=$IVY_MIRROR_PROP \
               -Dreactor.repo=file://${HOME}/.m2/repository${M2_REPO_SUFFIX} \
-              -DskipTests -DrecompileMode=all -s build/apache-maven-3.6.2/conf/settings.xml"
+              -DskipTests -DrecompileMode=all -s build/apache-maven-${MAVEN_VERSION}/conf/settings.xml"
   # this might be an issue at times
   # http://maven.40175.n5.nabble.com/Not-finding-artifact-in-local-repo-td3727753.html
   export MAVEN_OPTS="-Xmx2g -XX:ReservedCodeCacheSize=512m -XX:PermSize=1024m -XX:MaxPermSize=1024m"

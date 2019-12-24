@@ -42,7 +42,7 @@ function exit_with_usage {
   echo "make-distribution.sh - tool for making binary distributions of Spark"
   echo ""
   echo "usage:"
-  cl_options="[--name] [--tgz] [--pip] [--r] [--mvn <mvn-command>]"
+  cl_options="[--name] [--tgz] [--pip] [--r] [--mvn <mvn-command>] [--additional-jars <comma-separated-paths>]"
   echo "make-distribution.sh $cl_options <maven build options>"
   echo "See Spark's \"Building Spark\" doc for correct Maven options."
   echo ""
@@ -71,6 +71,10 @@ while (( "$#" )); do
       ;;
     --target)
       MVN_TARGET="$2"
+      shift
+      ;;
+    --additional-jars)
+      ADDITIONAL_JARS="$2"
       shift
       ;;
     --help)
@@ -198,6 +202,19 @@ cp "$SPARK_HOME"/assembly/target/scala*/jars/* "$DISTDIR/jars/"
 # cp "$SPARK_HOME"/external/kafka-0-10-assembly/target/scala*/jars/* "$DISTDIR/kafka-0.10/"
 # cp: cannot stat '/home/droiz/~/workspace/spark-ds/external/kafka-0-10-assembly/target/scala*/jars/*': No such file or directory
 
+
+# Only include additional jars if --additional-jars were specified.
+if [ -n "$ADDITIONAL_JARS" ]; then
+  # Loop over comma-separated list of additional jar paths.
+  for jar in ${ADDITIONAL_JARS//,/ }
+  do
+    if [ -f "$jar" ]; then
+      cp "$jar" "$DISTDIR/jars/"
+    else
+      echo "Could not find '$jar'. Skipping."
+    fi
+  done
+fi
 
 # Only create the standalone metastore directory if metastore artifact were copied.
 if [ -f "$SPARK_HOME"/standalone-metastore/target/standalone-metastore-*.jar ]; then

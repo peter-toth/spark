@@ -39,7 +39,7 @@ import subprocess
 import sys
 import time
 
-import util
+import parcel as putil
 import cauldron.osinfo as osinfo
 
 # This script requires Python 2.7 or later, so does the make_manifest.py script
@@ -109,7 +109,7 @@ class Extractor(object):
         # Insert some fixed up environment variables for Spark in wrapper script
         scripts = ["pyspark3", "spark3-shell", "spark3-submit"]
         lines = """export HADOOP_HOME=$CDH_LIB_DIR/hadoop\n"""
-        util.insert_lines_head(self._out_dir, scripts, lines)
+        putil.insert_lines_head(self._out_dir, scripts, lines)
 
     @timer_decorate
     def _fixup_global(self):
@@ -122,7 +122,7 @@ class Extractor(object):
         # Filter out not-files
         scripts = [x for x in scripts if os.path.isfile(x)]
         # Filter out ELF binaries
-        scripts = [x for x in scripts if not util.is_elf_binary(x)]
+        scripts = [x for x in scripts if not putil.is_elf_binary(x)]
         # Filter out bigtop-detect-javahome
         scripts = [x for x in scripts if not x.endswith("/bigtop-detect-javahome")]
 
@@ -142,7 +142,7 @@ class Extractor(object):
               CDH_LIB_DIR=$BIN_DIR/../../CDH/lib
               LIB_DIR=$BIN_DIR/../lib
             """
-        util.insert_lines_head(self._out_dir, scripts, lines)
+        putil.insert_lines_head(self._out_dir, scripts, lines)
 
         # Do regex find and replace to rewrite references to absolute paths
         replacements = [["/usr/lib/bigtop-utils", "$CDH_LIB_DIR/bigtop-utils"],
@@ -150,15 +150,15 @@ class Extractor(object):
                         ["/usr/lib/", "$LIB_DIR/"],
                         ["/etc/default", "$BIN_DIR/../etc/default"],
                         ["#!/bin/sh", "#!/bin/bash"]]
-        util.find_and_replace(scripts, replacements)
+        putil.find_and_replace(scripts, replacements)
 
         # Wipe out the debug packages
         debug_path = os.path.join(self._out_dir, "usr/lib/debug")
-        util.rmtree(debug_path)
+        putil.rmtree(debug_path)
         # Clean out man pages
-        util.rmtree(os.path.join(self._out_dir, "usr/share/man"))
+        putil.rmtree(os.path.join(self._out_dir, "usr/share/man"))
         # Clean out docs
-        util.rmtree(os.path.join(self._out_dir, "usr/share/doc"))
+        putil.rmtree(os.path.join(self._out_dir, "usr/share/doc"))
 
     @timer_decorate
     def _check_symlinks(self):
@@ -374,7 +374,7 @@ export CDH_SPARK3_HOME=$PARCELS_ROOT/$CDH_DIRNAME/lib/spark3
 
     @timer_decorate
     def write_metadata(self):
-        util.mkdirs_recursive(self._meta_dir)
+        putil.mkdirs_recursive(self._meta_dir)
 
         self._write_parcel_json()
         self._write_env_sh()
@@ -565,9 +565,9 @@ class Archiver(object):
     @timer_decorate
     def _cleanup(self):
         # Cleanup
-        util.rmtree(self._build_dir)
+        putil.rmtree(self._build_dir)
         if not self._skip_archive:
-            util.rmtree(self._parcel_dir)
+            putil.rmtree(self._parcel_dir)
 
     @timer_decorate
     def archive(self):
@@ -623,7 +623,7 @@ def parse_args():
 def main():
     global LOG
     LOG = logging.getLogger(__name__)
-    util.configure_logger(LOG)
+    putil.configure_logger(LOG)
 
     global SUPPORTED_OSES
     script_dir = os.path.dirname(os.path.abspath(__file__))
@@ -636,7 +636,7 @@ def main():
     args = parse_args()
 
     if args.verbose:
-        util.configure_debug_logger(LOG)
+        putil.configure_debug_logger(LOG)
 
     version = Version.build_from_args(args)
 
@@ -659,7 +659,7 @@ def main():
     if not os.path.isdir(out_dir):
         if not os.path.exists(out_dir):
             LOG.info("Creating output directory %s", out_dir)
-            util.mkdirs_recursive(out_dir)
+            putil.mkdirs_recursive(out_dir)
         else:
             LOG.error("Output path %s is not a directory", out_dir)
             sys.exit(1)

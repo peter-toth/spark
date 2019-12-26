@@ -37,7 +37,7 @@ SHORT_VERSION=$(echo "$VERSION" | cut -d . -f 1-3)
 # Commitish from github.mtv.cloudera.com/CDH/cdh.git repo
 # Taken from a point in time from cdh6.x branch of cdh.git, so someone doesn't pull the rug from underneath us
 # If specifying a branch here for testing, specify origin/<branch name>
-CDH_GIT_HASH=${CDH_GIT_HASH:-97600e529415428054edb09e210ef01c1ba5760e}
+CDH_GIT_HASH=${CDH_GIT_HASH:-f97b405392a71c5fff6066c28ccc8157dad57a4d}
 
 # Commitish from github.mtv.cloudera.com/Starship/cmf.git repo
 # Taken from a point in time from master branch of cmf.git, so so someone doesn't pull the rug from underneath us
@@ -49,7 +49,6 @@ CMF_GIT_HASH=${CMF_GIT_HASH:-2fd32459c94540e725b99ea5d6ea467fea529e79}
 BUILD_OUTPUT_DIR=$SPARK_HOME/dist/build_output
 # Directory where final repo with parcels and packages will exist
 REPO_OUTPUT_DIR=$SPARK_HOME/dist/repo_output
-REPO_NAME=spark3-repo
 VERSION_FOR_BUILD=${VERSION/-SNAPSHOT/}
 # Directory where cdh.git will get cloned
 # TODO: Fix this if CDH_GIT_HASH contains a slash.
@@ -288,12 +287,12 @@ function build_parcel {
     exit 1
   fi
 
-  # util.py needs to exist in $SPARK_HOME/cloudera directory because it's used by
+  # parcel.py needs to exist in $SPARK_HOME/cloudera directory because it's used by
   # a python module (build_parcel.py) from that directory as well. Let's force
   # overwrite to make sure we never the stale version
-  (cd $SPARK_HOME/cloudera; rm -f util.py; cp ${CDH_CLONE_DIR}/lib/python/cauldron/src/cauldron/tools/parcel/util.py .)
+  (cd $SPARK_HOME/cloudera; rm -f parcel.py; cp ${CDH_CLONE_DIR}/lib/python/cauldron/src/cauldron/util/parcel.py .)
   CMD="${SPARK_HOME}/cloudera/build_parcel.py --input-directory ${BUILD_OUTPUT_DIR} \
-          --output-directory ${OUTPUT_DIR}/parcels --release-version 1 \
+          --output-directory ${OUTPUT_DIR}/${VERSION_FOR_BUILD}/parcels --release-version 1 \
           --spark3-version $VERSION --cdh-version $CDH_VERSION --build-number $GBN \
           --patch-number ${PATCH_NUMBER} --verbose --force-clean"
 
@@ -302,11 +301,11 @@ function build_parcel {
   fi
   eval $CMD
 
-  mkdir -p ${OUTPUT_DIR}/csd
-  cp ${CSD_WILDCARD} ${OUTPUT_DIR}/csd
+  mkdir -p ${OUTPUT_DIR}/${VERSION_FOR_BUILD}/csd
+  cp ${CSD_WILDCARD} ${OUTPUT_DIR}/${VERSION_FOR_BUILD}/csd
 
   if [[ $PATCH_NUMBER -ne 0 ]] && [[ $ARCHIVE_SOURCE = true ]]; then
-    mv $SPARK_HOME/../${SOURCE_ARCHIVE_NAME} ${OUTPUT_DIR}/parcels
+    mv $SPARK_HOME/../${SOURCE_ARCHIVE_NAME} ${OUTPUT_DIR}/${VERSION_FOR_BUILD}/parcels
   fi
 }
 
@@ -314,20 +313,15 @@ function populate_manifest {
   # curl -O overwrites, if the file already exists, so we don't have to worry about that
   (cd $SPARK_HOME/target; curl -O $MAKE_MANIFEST_LOCATION)
   chmod 755 $SPARK_HOME/target/make_manifest.py
-  $SPARK_HOME/target/make_manifest.py ${OUTPUT_DIR}/parcels
+  $SPARK_HOME/target/make_manifest.py ${OUTPUT_DIR}/${VERSION_FOR_BUILD}/parcels
 }
 
 function populate_build_json {
   if [[ -z ${OS_ARGS} ]]; then
     for os in $(awk '{print $1}' $SPARK_HOME/cloudera/supported_oses.txt); do
-        OS_ARGS=$OS_ARGS" --os $os"
+        OS_ARGS=$OS_ARGS" --os_name $os"
     done
   fi
-
-  CSD_ARGS=""
-  for csd in ${CSD_WILDCARD}; do
-    CSD_ARGS=$CSD_ARGS" --csd $(basename $csd)"
-  done
 
   if date --date "+$EXPIRE_DAYS days" '+%Y%m%d-%H%M%S' > /dev/null 2>&1; then
     # Linux
@@ -339,18 +333,17 @@ function populate_build_json {
 
   $PYTHON_VE/bin/python ${CDH_CLONE_DIR}/lib/python/cauldron/src/cauldron/tools/buildjson.py \
     -o ${REPO_OUTPUT_DIR}/build.json \
-    --product-base spark3:${REPO_NAME} \
+    --build-environment ${HOSTNAME} \
+    --product spark3 \
     --version $VERSION_FOR_BUILD \
-    --parcel-patch-number $PATCH_NUMBER \
     --user $USER \
-    --repo ${SPARK_HOME} \
     --gbn $GBN \
     --expiry $EXPIRY \
     $OS_ARGS \
-    -s ${CDH_CLONE_DIR}/build-schema.json \
-    --build-environment ${HOSTNAME} \
-    --product-parcels spark3:${OUTPUT_DIR}/parcels \
-    $CSD_ARGS
+    add_parcels --product-parcels spark3 ${OUTPUT_DIR}/${VERSION_FOR_BUILD}/parcels \
+    add_source --repo ${SPARK_HOME} \
+    add_csd --files spark3 ${OUTPUT_DIR}/${VERSION_FOR_BUILD}/csd/ \
+    verify_schema --schema=${CDH_CLONE_DIR}/build-schema.json
 }
 
 function publish {
@@ -452,7 +445,7 @@ if [[ -n "$CUSTOM_VERSION" ]]; then
   VERSION_FOR_BUILD=$CUSTOM_VERSION
 fi
 
-OUTPUT_DIR=$REPO_OUTPUT_DIR/$REPO_NAME/$VERSION_FOR_BUILD
+OUTPUT_DIR=$REPO_OUTPUT_DIR/spark3
 
 clean
 setup

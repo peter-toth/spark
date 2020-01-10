@@ -42,7 +42,7 @@ function exit_with_usage {
   echo "make-distribution.sh - tool for making binary distributions of Spark"
   echo ""
   echo "usage:"
-  cl_options="[--name] [--tgz] [--pip] [--r] [--mvn <mvn-command>] [--additional-jars <comma-separated-paths>]"
+  cl_options="[--name] [--tgz] [--pip] [--r] [--mvn <mvn-command>] [--build-external-components]"
   echo "make-distribution.sh $cl_options <maven build options>"
   echo "See Spark's \"Building Spark\" doc for correct Maven options."
   echo ""
@@ -73,9 +73,8 @@ while (( "$#" )); do
       MVN_TARGET="$2"
       shift
       ;;
-    --additional-jars)
-      ADDITIONAL_JARS="$2"
-      shift
+    --build-external-components)
+      BUILD_EXTERNAL_COMPONENTS=true
       ;;
     --help)
       exit_with_usage
@@ -203,17 +202,14 @@ cp "$SPARK_HOME"/assembly/target/scala*/jars/* "$DISTDIR/jars/"
 # cp: cannot stat '/home/droiz/~/workspace/spark-ds/external/kafka-0-10-assembly/target/scala*/jars/*': No such file or directory
 
 
-# Only include additional jars if --additional-jars were specified.
-if [ -n "$ADDITIONAL_JARS" ]; then
-  # Loop over comma-separated list of additional jar paths.
-  for jar in ${ADDITIONAL_JARS//,/ }
-  do
-    if [ -f "$jar" ]; then
-      cp "$jar" "$DISTDIR/jars/"
-    else
-      echo "Could not find '$jar'. Skipping."
-    fi
-  done
+# Only include external components if --build-external-components was specified.
+if [ -n "$BUILD_EXTERNAL_COMPONENTS" ]; then
+  # Build external components after Spark build, since some of them may depend on Spark artifacts
+  "$SPARK_HOME"/cloudera/build-external-components.sh
+  if [ $? -ne 0 ]; then
+    echo "Error: Failed to build external components"
+    exit 1
+  fi
 fi
 
 # Only create the standalone metastore directory if metastore artifact were copied.

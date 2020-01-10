@@ -122,23 +122,6 @@ function setup {
   (cd $(dirname $SETUP_PY) && $PYTHON_VE/bin/python $SETUP_PY install)
 }
 
-# Builds external components and prints comma-separated list of jar paths to stdout
-function do_build_external_components {
-  # Build Spark Atlas connector
-  # TODO change defaults below
-  local ATLAS_OWNER=${ATLAS_OWNER:-vladglinsky}
-  local ATLAS_HASH=${ATLAS_HASH:-a39e2f722987df769964c5ce3a96f57995f49f02}
-  local ATLAS_DIR=${SPARK_HOME}/build/spark-atlas-"${ATLAS_HASH//\//\-}"
-  if [[ ! -d $ATLAS_DIR ]]; then
-    git clone "git://github.mtv.cloudera.com/${ATLAS_OWNER}/spark-atlas-connector.git" $ATLAS_DIR
-  fi
-  (cd $ATLAS_DIR; git fetch; git checkout $ATLAS_HASH; "$SPARK_HOME/$MYMVN" clean package -DskipTests > /dev/null 2>&1;)
-  local ATLAS_JAR=$(ls $ATLAS_DIR/spark-atlas-connector/target/spark-atlas-connector*.jar)
-
-  # Print result to stdout
-  echo $ATLAS_JAR
-}
-
 # Runs the make-distribution command, generates bits under SPARK_HOME/dist
 function do_build {
   # We want to cd to SPARK_HOME when calling this function. So, let's start a subshell
@@ -180,9 +163,8 @@ EOF
 # exec $SPARK_HOME/build/mvn --force "\$@"
   chmod 700 $MYMVN
 
-  local ADDITIONAL_JARS=$(do_build_external_components)
   my_echo "Building distribution ..."
-  ./dev/make-distribution.sh --tgz --mvn $MYMVN --additional-jars $ADDITIONAL_JARS --target $MAVEN_INST_DEPLOY \
+  ./dev/make-distribution.sh --tgz --mvn $MYMVN --build-external-components --target $MAVEN_INST_DEPLOY \
   -Dcdpd.build=true $BUILD_OPTS
 
   rm -f $MYMVN

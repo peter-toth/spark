@@ -273,7 +273,7 @@ class RollingEventLogFilesWriterSuite extends EventLogFileWritersSuite {
           expectedMaxSizeBytes: Long): Unit = {
         assert(eventLogFiles.forall(f => f.getLen <= expectedMaxSizeBytes))
         assert((1 to expectedLastIndex) ===
-          eventLogFiles.map(f => getIndex(f.getPath.getName)))
+          eventLogFiles.map(f => getEventLogFileIndex(f.getPath.getName)))
       }
 
       val appId = getUniqueApplicationId
@@ -355,6 +355,6 @@ class RollingEventLogFilesWriterSuite extends EventLogFileWritersSuite {
 
   private def listEventLogFiles(logDirPath: Path): Seq[FileStatus] = {
     fileSystem.listStatus(logDirPath).filter(isEventLogFile)
-      .sortBy { fs => getIndex(fs.getPath.getName) }
+      .sortBy { fs => getEventLogFileIndex(fs.getPath.getName) }
   }
 }

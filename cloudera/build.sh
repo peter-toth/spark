@@ -16,6 +16,7 @@
 
 # We shouldn't be skipping the build by default
 SKIP_BUILD=false
+WITH_DOCKER_IMAGES=false
 RUN_TESTS=false
 # To make some of the output quieter
 export AMPLAB_JENKINS=1
@@ -69,6 +70,7 @@ GBN=
 
 # Days after the build will expire if being published
 EXPIRE_DAYS=${EXPIRE_DAYS:-10}
+PUBLISH_DOCKER_REGISTRY=docker-sandbox.infra.cloudera.com/spark/spark
 
 function usage {
   set +x
@@ -82,6 +84,7 @@ Options:
  -p <patch number> or --patch-num <patch number>:  when building a patch
  --publish: for publishing to S3 with standard tags based on the version in the pom
  --adhoc-publish <tag>: for publishing to S3 with a custom tag
+ --with-docker-images: for building and publishing Docker images.
  --build-only: for only doing the build (i.e. only building distribution tar.gz, no parcel etc.)
  -t or --with-tests: run unit tests after the build (and optional publishing) is complete.
  --os <osname>: choose the os that the parcel should be built for. The OS name should be the long
@@ -141,7 +144,7 @@ function do_build {
      fi
   fi
 
-  local MAVEN_VERSION=$(./build/mvn help:evaluate -Dexpression=maven.version | grep -e '^[^\[]')
+  local MAVEN_VERSION=$(./build/mvn -q -Dexec.executable=echo -Dexec.args='${maven.version}' --non-recursive exec:exec)
   BUILD_OPTS="-Divy.home=${HOME}/.ivy2 -Dsbt.ivy.home=${HOME}/.ivy2 -Duser.home=${HOME} \
               -Drepo.maven.org=$IVY_MIRROR_PROP \
               -Dreactor.repo=file://${HOME}/.m2/repository${M2_REPO_SUFFIX} \
@@ -170,6 +173,34 @@ EOF
   rm -f $MYMVN
   my_echo "Build completed successfully. Distribution at $SPARK_HOME/dist"
   )
+}
+
+function do_build_docker_images {
+  my_echo "Building spark on k8s docker image"
+  (
+  cd $SPARK_HOME/dist
+  LANGUAGE_BINDING_BUILD_ARGS="-p kubernetes/dockerfiles/spark/bindings/python/Dockerfile"
+  bin/docker-image-tool.sh -r ${PUBLISH_DOCKER_REGISTRY} -t ${GBN} ${LANGUAGE_BINDING_BUILD_ARGS} build
+  )
+  my_echo "Spark on k8s docker build succeeded"
+}
+
+function publish_docker_images() {
+  my_echo "Publishing spark on k8s docker images"
+  if [ $? -ne 0 ]; then
+    my_echo "Error: Unable to login to the Docker registry: $PUBLISH_DOCKER_REGISTRY"
+    exit 1
+  fi
+  local FILTER=${PUBLISH_DOCKER_REGISTRY}/spark*:${GBN}
+  local SPARK_IMAGES=$(docker images --filter=reference=$FILTER --format {{.Repository\}}:{{.Tag}})
+  for image in $SPARK_IMAGES; do
+    my_echo "Publishing: $image"
+    docker push "$image"
+    if [ $? -ne 0 ]; then
+      my_echo "Error: Failed to push $image_name Docker image."
+      exit 1
+    fi
+  done
 }
 
 # Create binary wrappers, etc.
@@ -313,6 +344,16 @@ function populate_build_json {
     EXPIRY=$(date -v "+${EXPIRE_DAYS}d" '+%Y%m%d-%H%M%S')
   fi
 
+  DOCKER_IMAGES_ARGS=""
+  if [[ "$WITH_DOCKER_IMAGES" = true ]]; then
+    DOCKER_IMAGES_ARGS="add_docker_images -c spark "
+    local FILTER=${PUBLISH_DOCKER_REGISTRY}/spark*:${GBN}
+    local SPARK_IMAGES=$(docker images --filter=reference=$FILTER --format {{.Repository\}}:{{.Tag}})
+    for image in $SPARK_IMAGES; do
+      DOCKER_IMAGES_ARGS="$DOCKER_IMAGES_ARGS --images $image"
+    done
+  fi
+
   $PYTHON_VE/bin/python ${CDH_CLONE_DIR}/lib/python/cauldron/src/cauldron/tools/buildjson.py \
     -o ${REPO_OUTPUT_DIR}/build.json \
     --build-environment ${HOSTNAME} \
@@ -322,6 +363,7 @@ function populate_build_json {
     --gbn $GBN \
     --expiry $EXPIRY \
     $OS_ARGS \
+    $DOCKER_IMAGES_ARGS \
     add_parcels --product-parcels spark3 ${OUTPUT_DIR}/${VERSION_FOR_BUILD}/parcels \
     add_source --repo ${SPARK_HOME} \
     add_csd --files spark3 ${OUTPUT_DIR}/${VERSION_FOR_BUILD}/csd/ \
@@ -378,6 +420,9 @@ while [[ $# -ge 1 ]]; do
     ;;
     --publish)
     PUBLISH=true
+    ;;
+    --with-docker-images)
+    WITH_DOCKER_IMAGES=true
     ;;
     --adhoc-publish)
     AD_HOC_TAG="$2"
@@ -454,6 +499,11 @@ fi
 
 if [[ "$SKIP_BUILD" = false ]]; then
   do_build
+fi
+
+if [[ "$WITH_DOCKER_IMAGES" = true ]]; then
+  do_build_docker_images
+  publish_docker_images
 fi
 
 if [[ "$RUN_TESTS" = true ]]; then

@@ -222,6 +222,8 @@ fi
 if [ -f "$SPARK_HOME"/common/network-yarn/target/scala*/spark-*-yarn-shuffle.jar ]; then
   mkdir "$DISTDIR/yarn"
   cp "$SPARK_HOME"/common/network-yarn/target/scala*/spark-*-yarn-shuffle.jar "$DISTDIR/yarn"
+  # Create a version-independent link
+  (cd "$DISTDIR/yarn"; ln -s spark-*-yarn-shuffle.jar spark-yarn-shuffle.jar)
 fi
 
 # Only create and copy the dockerfiles directory if the kubernetes artifacts were built.

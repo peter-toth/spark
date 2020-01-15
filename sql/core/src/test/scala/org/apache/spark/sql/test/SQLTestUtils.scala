@@ -140,7 +140,6 @@ private[sql] trait SQLTestUtils extends SparkFunSuite with SQLTestUtilsBase with
     }
   }
 
-
   /**
    * Copy file in jar's resource to a temp file, then pass it to `f`.
    * This function is used to make `f` can use the path of temp file(e.g. file:/), instead of

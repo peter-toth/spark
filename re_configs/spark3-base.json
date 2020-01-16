@@ -1,0 +1,26 @@
+{
+  "apache": {
+    "spark3": {
+      "branch": "spark3-3.0.0",
+      "repo-url": "git@github.infra.cloudera.com:CDH/spark.git",
+      "version": "3.0.0"
+    },
+    "build-support": {
+      "internal-branch": "cdp-demo-master",
+      "cldr-infra-git": true,
+      "poll": false,
+      "branch": "cdp-demo-master",
+      "repo-url": "git@github.infra.cloudera.com:CDH/build-support.git"
+    }
+  },
+  "hwx": {
+    "platforms": [
+      "centos7"
+    ],
+    "poll-frequency": "15",
+    "stack-version": "3.0.0.0"
+  },
+  "remotes": {
+    "hwx": "git@github.infra.cloudera.com:CDH/%s.git"
+  }
+}

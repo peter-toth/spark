@@ -359,7 +359,6 @@ function populate_build_json {
     --build-environment ${HOSTNAME} \
     --product spark3 \
     --version $VERSION_FOR_BUILD \
-    --user $USER \
     --gbn $GBN \
     --expiry $EXPIRY \
     $OS_ARGS \

@@ -4,7 +4,7 @@
       "branch": "spark3-3.0.0",
       "internal-branch": "spark3-3.0.0",
       "repo-url": "git@github.infra.cloudera.com:CDH/spark.git",
-      "internal-repo-name": "spark",
+      "internal-repo-name": "spark3",
       "version": "3.0.0"
     },
     "build-support": {

@@ -82,9 +82,10 @@ Options:
  -h or --help:  print usage
  -s or --skip-build:  skip the build. The bits built from last time used to build the parcel.
  -p <patch number> or --patch-num <patch number>:  when building a patch
- --publish: for publishing to S3 with standard tags based on the version in the pom
+ --publish: for publishing to S3 with standard tags based on the version in the pom. Docker images are taged with GBN
+            and published to the registry.
  --adhoc-publish <tag>: for publishing to S3 with a custom tag
- --with-docker-images: for building and publishing Docker images.
+ --with-docker-images: for building Docker images.
  --build-only: for only doing the build (i.e. only building distribution tar.gz, no parcel etc.)
  -t or --with-tests: run unit tests after the build (and optional publishing) is complete.
  --os <osname>: choose the os that the parcel should be built for. The OS name should be the long
@@ -502,7 +503,6 @@ fi
 
 if [[ "$WITH_DOCKER_IMAGES" = true ]]; then
   do_build_docker_images
-  publish_docker_images
 fi
 
 if [[ "$RUN_TESTS" = true ]]; then
@@ -524,6 +524,9 @@ if [[ "$PUBLISH" = true ]] || [[ -n "$AD_HOC_TAG" ]]; then
   my_echo "Build published, GBN=$GBN."
   my_echo "Parcels available at the following location:"
   my_echo "https://${STORAGE_HOST}/${GBN}"
+  if [[ "$WITH_DOCKER_IMAGES" = true ]]; then
+    publish_docker_images
+  fi
 fi
 
 my_echo "Build completed. Success!"

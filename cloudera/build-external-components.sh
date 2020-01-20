@@ -20,7 +20,6 @@
 # Requirements: JAVA_HOME needs to be set, Python 2.7 or higher
 SPARK_HOME="$(cd "$(dirname "$0")"/..; pwd)"
 MVN="$SPARK_HOME/build/mvn"
-DISTDIR="$SPARK_HOME/dist"
 
 function log {
   echo "EXTERNAL_COMPONENTS: $1"
@@ -30,7 +29,7 @@ function log {
 function do_build_external_components {
   local MAVEN_VERSION=$("$MVN" help:evaluate -Dexpression=maven.version | grep -e '^[^\[]')
   BUILD_OPTS="-Divy.home=${HOME}/.ivy2 -Dsbt.ivy.home=${HOME}/.ivy2 -Duser.home=${HOME} \
-              -Drepo.maven.org=$IVY_MIRROR_PROP \
+              -Drepo.maven.org=$IVY_MIRROR_PROP -s $SPARK_HOME/build/apache-maven-${MAVEN_VERSION}/conf/settings.xml \
               -Dreactor.repo=file://${HOME}/.m2/repository${M2_REPO_SUFFIX} -DskipTests"
   # this might be an issue at times
   # http://maven.40175.n5.nabble.com/Not-finding-artifact-in-local-repo-td3727753.html
@@ -42,7 +41,7 @@ function do_build_external_components {
   if [[ ! -d $ATLAS_CONNECTOR_DIR ]]; then
     git clone "git://github.mtv.cloudera.com/${ATLAS_CONNECTOR_OWNER}/spark-atlas-connector.git" $ATLAS_CONNECTOR_DIR
   fi
-  local ATLAS_CONNECTOR_BUILD_LOG="$SPARK_HOME/sac-build-output.log"
+  ATLAS_CONNECTOR_BUILD_LOG="$SPARK_HOME/sac-build-output.log"
   (
   cd $ATLAS_CONNECTOR_DIR
   git fetch
@@ -50,15 +49,10 @@ function do_build_external_components {
   "$MVN" clean package -DskipTests $BUILD_OPTS > "$ATLAS_CONNECTOR_BUILD_LOG" 2>&1
   )
   ls $ATLAS_CONNECTOR_DIR/spark-atlas-connector/target/spark-atlas-connector*.jar
-  if [ $? -ne 0 ]; then
-    log "Error: Spark Atlas Connector jar not found"
-    log "Build output:"
-    cat "$ATLAS_CONNECTOR_BUILD_LOG"
-    exit 1
-  fi
   local ATLAS_CONNECTOR_JAR=$(ls $ATLAS_CONNECTOR_DIR/spark-atlas-connector/target/spark-atlas-connector*.jar)
+  local ATLAS_CONNECTOR_ASSEMBLY_JAR=$(ls $ATLAS_CONNECTOR_DIR/spark-atlas-connector-assembly/target/spark-atlas-*.jar)
   # Print result to stdout
-  echo $ATLAS_CONNECTOR_JAR
+  echo "$ATLAS_CONNECTOR_JAR,$ATLAS_CONNECTOR_ASSEMBLY_JAR"
 }
 
 ADDITIONAL_JARS=$(do_build_external_components)
@@ -66,10 +60,11 @@ ADDITIONAL_JARS=$(do_build_external_components)
 # Loop over comma-separated list of additional jar paths.
 for jar in ${ADDITIONAL_JARS//,/ }
 do
-  if [ -f "$jar" ]; then
-    cp "$jar" "$DISTDIR/jars/"
-  else
-    echo "Could not find '$jar'. Skipping."
+  if [ ! -f "$jar" ]; then
+    log "Error: Could not find '$jar'."
+    log "Build output:"
+    cat "$ATLAS_CONNECTOR_BUILD_LOG"
+    exit 1
   fi
 done
 

@@ -225,7 +225,7 @@ function prepare_spark_env {
   # Add spark-atlas-connector jar files to classpath
   lineage_enabled=$(read_property "spark.lineage.enabled" "$SPARK_DEFAULTS")
   if [ "$lineage_enabled" = "true" ]; then
-    ATLAS_CONNECTOR_PATH="$SPARK_HOME/../spark-atlas-connector/*"
+    ATLAS_CONNECTOR_PATH="$SPARK_HOME/atlas-connector/*"
     add_to_classpath "$CLASSPATH_FILE_TMP" "$ATLAS_CONNECTOR_PATH"
   fi
 

@@ -210,6 +210,15 @@ if [ -n "$BUILD_EXTERNAL_COMPONENTS" ]; then
     echo "Error: Failed to build external components"
     exit 1
   fi
+  # Only create Spark Atlas Connector directory if the artifacts were built.
+  SAC_JAR="$SPARK_HOME/build/spark-atlas-*/spark-atlas-connector/target/spark-atlas-connector*.jar"
+  SAC_ASSEMBLY_JAR="$SPARK_HOME/build/spark-atlas-*/spark-atlas-connector-assembly/target/spark-atlas-*.jar"
+  if [ -f $SAC_JAR ] && [ -f $SAC_ASSEMBLY_JAR ]; then
+    SAC_DIR="$DISTDIR/atlas-connector"
+    mkdir $SAC_DIR
+    cp $SAC_JAR $SAC_DIR
+    cp $SAC_ASSEMBLY_JAR $SAC_DIR
+  fi
 fi
 
 # Only create the standalone metastore directory if metastore artifact were copied.

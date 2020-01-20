@@ -2,7 +2,7 @@
   "apache": {
     "spark": {
       "branch": "spark3-3.0.0",
-      "internal-branch": "spark3-3.0.0",
+      "internal-branch": "CDPD-7150-spark3-3.0.0",
       "repo-url": "git@github.infra.cloudera.com:CDH/spark.git",
       "version": "3.0.0",
       "enable-merge": false,

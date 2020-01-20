@@ -81,6 +81,9 @@
                         <configuration>
                             <sourceDirectory>src</sourceDirectory>
                             <strictMode>true</strictMode>
+                            <addValidServiceTypes>
+                                <param>ATLAS</param>
+                            </addValidServiceTypes>
                         </configuration>
                     </execution>
                 </executions>

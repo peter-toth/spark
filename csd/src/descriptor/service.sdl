@@ -43,6 +43,10 @@
     {
       "name" : "HBASE",
       "required" : "false"
+    },
+    {
+       "name" : "ATLAS",
+       "required" : "false"
     }
   ],
   "dependencyExtensions" : [

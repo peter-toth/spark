@@ -388,8 +388,8 @@ class Version(object):
         self._release_version = release_version
         # Sometimes versions being sent have SNAPSHOT at their end, if so, let's get rid of
         # it because we don't want that showing up in parcel names, etc.
-        self._spark3_version = spark3_version.split("-")[0]
-        self._cdh_version = cdh_version.split("-")[0]
+        self._spark3_version = spark3_version.split("-SNAPSHOT")[0]
+        self._cdh_version = cdh_version.split("-SNAPSHOT")[0]
         self._patch_number = patch_number
         self._build_number = build_number
         self._distro = distro
@@ -402,10 +402,11 @@ class Version(object):
     def _validate(self):
         Version._validate_int(self._release_version, "release-version")
 
-        # Version is expected to be something like "3.0.0.cloudera[something here]".
+        # Version is expected to be something like "3.0.0.cloudera[something here]" or "3.0.0.3.0.0.0-564".
         version_re = re.compile(r"[0-9]+\.[0-9]+\.[0-9]+\.cloudera.+")
-        assert version_re.match(self._spark3_version), """Expected dotted version vector
-          (upstream.3digit.number.cloudera*), got %s""" % self._spark3_version
+        releng_version_re = re.compile(r"[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+\-[0-9]")
+        assert version_re.match(self._spark3_version) or releng_version_re.match(self._spark3_version), """Expected
+              dotted version vector (upstream.3digit.number.cloudera*) or RE build version, got %s""" % self._spark3_version
 
         # Now let's validate cdh_version
         splitted_cdh_version = self._cdh_version.split(".")
@@ -413,7 +414,8 @@ class Version(object):
             """Expected dotted version vector (major.minor.maintenance) or
             (major.minor) in cdh-version, got %s""" % self._cdh_version
         for v in splitted_cdh_version:
-            assert v == "x" or re.match("^\d+$", v), "%s is not a valid version component" % (v,)
+            assert v == "x" or re.match("^\d+$", v) or re.match("^[0-9]+\-[0-9]", v), \
+                "%s is not a valid version component" % (v,)
 
         Version._validate_int(self._patch_number, "patch-number")
         Version._validate_int(self._build_number, "build-number")

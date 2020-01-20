@@ -27,10 +27,11 @@ function log {
 
 # Builds external components and prints comma-separated list of jar paths to stdout
 function do_build_external_components {
-  local MAVEN_VERSION=$("$MVN" help:evaluate -Dexpression=maven.version | grep -e '^[^\[]')
+  local MAVEN_VERSION=$(./build/mvn -q -Dexec.executable=echo -Dexec.args='${maven.version}' --non-recursive exec:exec)
+  SPARK_VERSION=$(./build/mvn -q -Dexec.executable=echo -Dexec.args='${project.version}' --non-recursive exec:exec)
   BUILD_OPTS="-Divy.home=${HOME}/.ivy2 -Dsbt.ivy.home=${HOME}/.ivy2 -Duser.home=${HOME} \
               -Drepo.maven.org=$IVY_MIRROR_PROP -s $SPARK_HOME/build/apache-maven-${MAVEN_VERSION}/conf/settings.xml \
-              -Dreactor.repo=file://${HOME}/.m2/repository${M2_REPO_SUFFIX} -DskipTests"
+              -Dreactor.repo=file://${HOME}/.m2/repository${M2_REPO_SUFFIX} -Dspark.version=$SPARK_VERSION -DskipTests"
   # this might be an issue at times
   # http://maven.40175.n5.nabble.com/Not-finding-artifact-in-local-repo-td3727753.html
   export MAVEN_OPTS="-Xmx2g -XX:ReservedCodeCacheSize=512m -XX:PermSize=1024m -XX:MaxPermSize=1024m"
@@ -39,16 +40,20 @@ function do_build_external_components {
   local ATLAS_CONNECTOR_BRANCH=${ATLAS_CONNECTOR_BRANCH:-spark3-3.0.0}
   local ATLAS_CONNECTOR_DIR=${SPARK_HOME}/build/spark-atlas-"${ATLAS_CONNECTOR_BRANCH//\//\-}"
   if [[ ! -d $ATLAS_CONNECTOR_DIR ]]; then
-    git clone "git://github.mtv.cloudera.com/${ATLAS_CONNECTOR_OWNER}/spark-atlas-connector.git" $ATLAS_CONNECTOR_DIR
+    git clone "git://github.mtv.cloudera.com/${ATLAS_CONNECTOR_OWNER}/spark-atlas-connector.git" $ATLAS_CONNECTOR_DIR > /dev/null 2>&1
   fi
   ATLAS_CONNECTOR_BUILD_LOG="$SPARK_HOME/sac-build-output.log"
   (
   cd $ATLAS_CONNECTOR_DIR
-  git fetch
+  git fetch  > /dev/null 2>&1
   git checkout $ATLAS_CONNECTOR_BRANCH  > /dev/null 2>&1
-  "$MVN" clean package -DskipTests $BUILD_OPTS > "$ATLAS_CONNECTOR_BUILD_LOG" 2>&1
+  # Set specific SAC version if it's provided.
+  # This is used by the RE build system, setting versions like '3.0.0.3.0.0.0-188'.
+  if [ -n "$NEW_SAC_VERSION" ]; then
+    "$MVN" versions:set -DnewVersion=${NEW_SAC_VERSION} > "$ATLAS_CONNECTOR_BUILD_LOG" 2>&1
+  fi
+  "$MVN" clean package -DskipTests $BUILD_OPTS >> "$ATLAS_CONNECTOR_BUILD_LOG" 2>&1
   )
-  ls $ATLAS_CONNECTOR_DIR/spark-atlas-connector/target/spark-atlas-connector*.jar
   local ATLAS_CONNECTOR_JAR=$(ls $ATLAS_CONNECTOR_DIR/spark-atlas-connector/target/spark-atlas-connector*.jar)
   local ATLAS_CONNECTOR_ASSEMBLY_JAR=$(ls $ATLAS_CONNECTOR_DIR/spark-atlas-connector-assembly/target/spark-atlas-*.jar)
   # Print result to stdout

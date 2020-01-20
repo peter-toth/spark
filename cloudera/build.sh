@@ -70,7 +70,7 @@ GBN=
 
 # Days after the build will expire if being published
 EXPIRE_DAYS=${EXPIRE_DAYS:-10}
-PUBLISH_DOCKER_REGISTRY=docker-sandbox.infra.cloudera.com/spark/spark
+PUBLISH_DOCKER_REGISTRY=docker-private.infra.cloudera.com/spark/spark
 
 function usage {
   set +x
@@ -107,11 +107,14 @@ function clean {
 }
 
 function setup {
-# Let's get the Global Build Number before we do anything else
-  GBN=$(curl http://gbn.infra.cloudera.com/)
+  # Try to obtain GBN only if it's not provided
   if [[ -z "$GBN" ]]; then
-    >&2 my_echo "Unable to retrieve Global Build Number. Are you sure you are on VPN?"
-    exit 1
+    # Let's get the Global Build Number before we do anything else
+    GBN=$(curl http://gbn.infra.cloudera.com/)
+    if [[ -z "$GBN" ]]; then
+      >&2 my_echo "Unable to retrieve Global Build Number. Are you sure you are on VPN?"
+      exit 1
+    fi
   fi
   if [[ ! -d $CDH_CLONE_DIR ]]; then
     git clone git://github.mtv.cloudera.com/CDH/cdh.git $CDH_CLONE_DIR
@@ -144,7 +147,6 @@ function do_build {
          exit 1
      fi
   fi
-
   local MAVEN_VERSION=$(./build/mvn -q -Dexec.executable=echo -Dexec.args='${maven.version}' --non-recursive exec:exec)
   BUILD_OPTS="-Divy.home=${HOME}/.ivy2 -Dsbt.ivy.home=${HOME}/.ivy2 -Duser.home=${HOME} \
               -Drepo.maven.org=$IVY_MIRROR_PROP \
@@ -406,6 +408,10 @@ while [[ $# -ge 1 ]]; do
   case $arg in
     -p|--patch-num)
     PATCH_NUMBER="$2"
+    shift
+    ;;
+    --gbn)
+    GBN="$2"
     shift
     ;;
     --source)

@@ -218,7 +218,7 @@ function prepare_spark_env {
 
   # For client configs, add HBase jars if the service dependency is configured.
   if [ $client = 1 ] && [ -d "$HBASE_CONF_DIR" ]; then
-    local HBASE_CP="$(hbase --config $HBASE_CONF_DIR classpath)"
+    local HBASE_CP="$(hbase --config $HBASE_CONF_DIR mapredcp)"
     add_to_classpath "$CLASSPATH_FILE_TMP" "$HBASE_CP"
   fi
 

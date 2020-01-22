@@ -31,8 +31,8 @@ import org.scalatest.concurrent.Eventually._
 import org.scalatest.time.SpanSugar._
 
 import org.apache.spark._
-import org.apache.spark.internal.config._
 import org.apache.spark.LocalSparkContext._
+import org.apache.spark.internal.config._
 import org.apache.spark.util.Utils
 
 class UISuite extends SparkFunSuite {

@@ -47,7 +47,7 @@ case class HashAggregateExec(
     initialInputBufferOffset: Int,
     resultExpressions: Seq[NamedExpression],
     child: SparkPlan)
-  extends UnaryExecNode with CodegenSupport {
+  extends UnaryExecNode with CodegenSupport with AliasAwareOutputPartitioning {
 
   private[this] val aggregateBufferAttributes = {
     aggregateExpressions.flatMap(_.aggregateFunction.aggBufferAttributes)
@@ -68,7 +68,7 @@ case class HashAggregateExec(
 
   override def output: Seq[Attribute] = resultExpressions.map(_.toAttribute)
 
-  override def outputPartitioning: Partitioning = child.outputPartitioning
+  override protected def outputExpressions: Seq[NamedExpression] = resultExpressions
 
   override def producedAttributes: AttributeSet =
     AttributeSet(aggregateAttributes) ++

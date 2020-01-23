@@ -36,7 +36,7 @@ import org.apache.spark.util.random.{BernoulliCellSampler, PoissonSampler}
 
 /** Physical plan for Project. */
 case class ProjectExec(projectList: Seq[NamedExpression], child: SparkPlan)
-  extends UnaryExecNode with CodegenSupport {
+  extends UnaryExecNode with CodegenSupport with AliasAwareOutputPartitioning {
 
   override def output: Seq[Attribute] = projectList.map(_.toAttribute)
 
@@ -80,9 +80,8 @@ case class ProjectExec(projectList: Seq[NamedExpression], child: SparkPlan)
 
   override def outputOrdering: Seq[SortOrder] = child.outputOrdering
 
-  override def outputPartitioning: Partitioning = child.outputPartitioning
+  override protected def outputExpressions: Seq[NamedExpression] = projectList
 }
-
 
 /** Physical plan for Filter. */
 case class FilterExec(condition: Expression, child: SparkPlan)

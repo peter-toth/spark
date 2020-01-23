@@ -178,8 +178,9 @@ private[hive] class HiveClientImpl(
     // has hive-site.xml. So, HiveConf will use that to override its default values.
     // 2: we set all spark confs to this hiveConf.
     // 3: we set all entries in config to this hiveConf.
-    val confMap = (hadoopConf.iterator().asScala.map(kv => kv.getKey -> kv.getValue) ++
-      sparkConf.getAll.toMap ++ extraConfig).toMap
+    val confMap = (hadoopConf.iterator().asScala.map(kv => kv.getKey -> kv.getValue)
+      ++ (if (version == hive.v3_0) Seq("hive.execution.engine" -> "mr") else Nil)
+      ++ sparkConf.getAll.toMap ++ extraConfig).toMap
     confMap.foreach { case (k, v) => hiveConf.set(k, v) }
     SQLConf.get.redactOptions(confMap).foreach { case (k, v) =>
       logDebug(

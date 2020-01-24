@@ -168,6 +168,12 @@ private[hive] class HiveClientImpl(
     // this action explicit.
     hiveConf.setClassLoader(initClassLoader)
 
+    val hiveEngine = if (version == hive.v3_0 || version == hive.v3_1) {
+      Seq("hive.execution.engine" -> "mr")
+    } else {
+      Nil
+    }
+
     // 1: Take all from the hadoopConf to this hiveConf.
     // This hadoopConf contains user settings in Hadoop's core-site.xml file
     // and Hive's hive-site.xml file. Note, we load hive-site.xml file manually in
@@ -179,7 +185,7 @@ private[hive] class HiveClientImpl(
     // 2: we set all spark confs to this hiveConf.
     // 3: we set all entries in config to this hiveConf.
     val confMap = (hadoopConf.iterator().asScala.map(kv => kv.getKey -> kv.getValue)
-      ++ (if (version == hive.v3_0) Seq("hive.execution.engine" -> "mr") else Nil)
+      ++ hiveEngine
       ++ sparkConf.getAll.toMap ++ extraConfig).toMap
     confMap.foreach { case (k, v) => hiveConf.set(k, v) }
     SQLConf.get.redactOptions(confMap).foreach { case (k, v) =>

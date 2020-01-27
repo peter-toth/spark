@@ -135,6 +135,17 @@ function replace_spark_conf {
   mv "$temp" "$file"
 }
 
+function replace_conf_if_value {
+  local key="$1"
+  local original_value="$2"
+  local new_value="$3"
+  local file="$4"
+  local value=$(read_property "$key" "$file")
+  if [ "$value" = "$original_value" ]; then
+    replace_spark_conf "$key" "$new_value" "$file"
+  fi
+}
+
 # Prepend a given protocol string to the URL if it doesn't have a protocol.
 function prepend_protocol {
   local url="$1"

@@ -112,6 +112,12 @@
     <!--
       SPARK-10059: Explicitly add JSP dependencies for tests since the MiniYARN cluster needs them.
     -->
+    <!--
+      The following dependecies are commnedted, since they introduced class path conflicts
+      with jetty 9.4.26.v20200117. They are not fully removed, since these dependencies are
+      still existing in upstream code.
+     -->
+    <!--
     <dependency>
       <groupId>org.eclipse.jetty.orbit</groupId>
       <artifactId>javax.servlet.jsp</artifactId>
@@ -124,6 +130,7 @@
       <version>1.2.0.v201105211821</version>
       <scope>test</scope>
     </dependency>
+    -->
 
     <dependency>
       <groupId>org.apache.hadoop</groupId>

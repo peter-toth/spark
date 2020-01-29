@@ -19,7 +19,7 @@ package org.apache.spark.deploy.history
 
 import java.util.concurrent.TimeUnit
 
-import org.apache.spark.internal.config.ConfigBuilder
+import org.apache.spark.internal.config.{ConfigBuilder, EVENT_LOG_ROLLING_MAX_FILE_SIZE}
 import org.apache.spark.network.util.ByteUnit
 
 private[spark] object config {
@@ -76,6 +76,22 @@ private[spark] object config {
         "parts of event log files. It can be disabled by setting this config to 0.")
       .bytesConf(ByteUnit.BYTE)
       .createWithDefaultString("1m")
+
+  private[spark] val EVENT_LOG_ROLLING_MAX_FILES_TO_RETAIN =
+    ConfigBuilder("spark.history.fs.eventLog.rolling.maxFilesToRetain")
+      .doc("The maximum number of event log files which will be retained as non-compacted. " +
+        "By default, all event log files will be retained. Please set the configuration " +
+        s"and ${EVENT_LOG_ROLLING_MAX_FILE_SIZE.key} accordingly if you want to control " +
+        "the overall size of event log files.")
+      .intConf
+      .checkValue(_ > 0, "Max event log files to retain should be higher than 0.")
+      .createWithDefault(Integer.MAX_VALUE)
+
+  private[spark] val EVENT_LOG_COMPACTION_SCORE_THRESHOLD =
+    ConfigBuilder("spark.history.fs.eventLog.rolling.compaction.score.threshold")
+      .internal()
+      .doubleConf
+      .createWithDefault(0.7d)
 
   val DRIVER_LOG_CLEANER_ENABLED = ConfigBuilder("spark.history.fs.driverlog.cleaner.enabled")
     .fallbackConf(CLEANER_ENABLED)

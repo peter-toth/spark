@@ -33,6 +33,8 @@ import org.apache.spark.sql.catalyst.catalog._
 import org.apache.spark.sql.execution.CacheManager
 import org.apache.spark.sql.execution.ui.{SQLAppStatusListener, SQLAppStatusStore, SQLTab}
 import org.apache.spark.sql.internal.StaticSQLConf._
+import org.apache.spark.sql.streaming.StreamingQueryListener
+import org.apache.spark.sql.streaming.ui.{StreamingQueryStatusListener, StreamingQueryTab}
 import org.apache.spark.status.ElementTrackingStore
 import org.apache.spark.util.{MutableURLClassLoader, Utils}
 
@@ -114,6 +116,21 @@ private[sql] class SharedState(val sparkContext: SparkContext) extends Logging {
     val statusStore = new SQLAppStatusStore(kvStore, Some(listener))
     sparkContext.ui.foreach(new SQLTab(statusStore, _))
     statusStore
+  }
+
+  /**
+   * A [[StreamingQueryListener]] for structured streaming ui, it contains all streaming query ui
+   * data to show.
+   */
+  lazy val streamingQueryStatusListener: Option[StreamingQueryStatusListener] = {
+    val sqlConf = SQLConf.get
+    if (sqlConf.isStreamingUIEnabled) {
+      val statusListener = new StreamingQueryStatusListener(sqlConf)
+      sparkContext.ui.foreach(new StreamingQueryTab(statusListener, _))
+      Some(statusListener)
+    } else {
+      None
+    }
   }
 
   /**

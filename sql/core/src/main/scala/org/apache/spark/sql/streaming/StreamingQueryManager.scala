@@ -66,6 +66,9 @@ class StreamingQueryManager private[sql] (sparkSession: SparkSession) extends Lo
         logInfo(s"Registered listener ${listener.getClass.getName}")
       })
     }
+    sparkSession.sharedState.streamingQueryStatusListener.foreach { listener =>
+      addListener(listener)
+    }
   } catch {
     case e: Exception =>
       throw new SparkException("Exception when registering StreamingQueryListener", e)

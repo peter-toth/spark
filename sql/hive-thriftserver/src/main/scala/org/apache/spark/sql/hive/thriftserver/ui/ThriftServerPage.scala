@@ -125,20 +125,10 @@ private[ui] class ThriftServerPage(parent: ThriftServerTab) extends WebUIPage(""
       } else {
         errorMessage
       })
-    val details = if (isMultiline) {
-      // scalastyle:off
-      <span onclick="this.parentNode.querySelector('.stacktrace-details').classList.toggle('collapsed')"
-            class="expand-details">
-        + details
-      </span> ++
-      <div class="stacktrace-details collapsed">
-        <pre>{errorMessage}</pre>
-      </div>
-      // scalastyle:on
-    } else {
-      ""
-    }
-    <td>{errorSummary}{details}</td>
+    val details = detailsUINode(isMultiline, errorMessage)
+    <td>
+      {errorSummary}{details}
+    </td>
   }
 
   /** Generate stats of batch sessions of the thrift server program */

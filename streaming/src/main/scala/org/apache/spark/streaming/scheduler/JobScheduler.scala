@@ -31,6 +31,7 @@ import org.apache.spark.rdd.RDD
 import org.apache.spark.streaming._
 import org.apache.spark.streaming.api.python.PythonDStream
 import org.apache.spark.streaming.ui.UIUtils
+import org.apache.spark.ui.{UIUtils => SparkUIUtils}
 import org.apache.spark.util.{EventLoop, ThreadUtils}
 
 
@@ -231,7 +232,7 @@ class JobScheduler(val ssc: StreamingContext) extends Logging {
       val oldProps = ssc.sparkContext.getLocalProperties
       try {
         ssc.sparkContext.setLocalProperties(SerializationUtils.clone(ssc.savedProperties.get()))
-        val formattedTime = UIUtils.formatBatchTime(
+        val formattedTime = SparkUIUtils.formatBatchTime(
           job.time.milliseconds, ssc.graph.batchDuration.milliseconds, showYYYYMMSS = false)
         val batchUrl = s"/streaming/batch/?id=${job.time.milliseconds}"
         val batchLinkText = s"[output operation ${job.outputOpId}, batch time ${formattedTime}]"

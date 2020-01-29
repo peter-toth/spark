@@ -31,4 +31,6 @@ else
 fi
 
 export APACHE_MIRROR=http://mirror.infra.cloudera.com/apache
+# Testing first requires building Spark
+./build/mvn -B $MAVEN_ARGS -Dcdpd.build=true package -DskipTests -Dmaven.repo.local="$MVN_REPO_LOCAL"
 ./build/mvn -B $MAVEN_ARGS -Dcdpd.build=true package -fae -Dmaven.repo.local="$MVN_REPO_LOCAL"

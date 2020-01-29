@@ -42,9 +42,14 @@ fi
 echo "Building $os based spark ${SPARK_VERSION}"
 (
   cd $SPARK_HOME/dist
+  # Dockerfiles must be within the build context for Docker < 18.03
+  mkdir spark-base/
+  mkdir spark-python/
+  cp "$SPARK_HOME/cloudera/docker/slim/spark-base/Dockerfile" spark-base/
+  cp "$SPARK_HOME/cloudera/docker/slim/spark-python/Dockerfile" spark-python/
   ${DOCKER_IMAGE_TOOL_CMD} \
-           -f "$SPARK_HOME/cloudera/docker/slim/spark-base/Dockerfile" \
-           -p "$SPARK_HOME/cloudera/docker/slim/spark-python/Dockerfile" \
+           -f "spark-base/Dockerfile" \
+           -p "spark-python/Dockerfile" \
            -r "$repo" \
            -t "${SPARK_VERSION}-slim" \
            build

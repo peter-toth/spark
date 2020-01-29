@@ -1,4 +1,4 @@
-set -ex
+#!/bin/bash -ex
 
 PUBLISH_DOCKER_REGISTRY=docker-private.infra.cloudera.com/cloudera
 SPARK_HOME="$(cd "$(dirname "$0")"/../..; pwd)"

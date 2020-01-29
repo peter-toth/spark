@@ -38,6 +38,13 @@ if [[ -z "$CDH_VERSION" ]]; then
     exit 1
 fi
 
+TAG=${SPARK_VERSION}
+# Check if Spark version is populated by the RE built system (such as 3.0.0.2.99.0.0-8)
+if [[ "$SPARK_VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+-[0-9]+$ ]]; then
+  # RE build system assumes that images are tagged with relase version (such as 2.99.0.0-8)
+  TAG=$(echo $TAG | grep -oE "\b[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+-[0-9]+\b")
+fi
+
 # It's not possible to push multiple images with the same name and different tags via RE build system
 echo "Building $os based spark ${SPARK_VERSION}"
 (
@@ -51,12 +58,12 @@ echo "Building $os based spark ${SPARK_VERSION}"
            -f "spark-base/Dockerfile" \
            -p "spark-python/Dockerfile" \
            -r "$repo" \
-           -t "${SPARK_VERSION}-slim" \
+           -t "${TAG}" \
            build
 )
 
-docker tag cloudera/spark-py:"${SPARK_VERSION}"-slim "${PUBLISH_DOCKER_REGISTRY}"/spark-py:"${SPARK_VERSION}"-slim
-docker tag cloudera/spark:"${SPARK_VERSION}"-slim "${PUBLISH_DOCKER_REGISTRY}"/spark:"${SPARK_VERSION}"-slim
+docker tag cloudera/spark-py:"${TAG}" "${PUBLISH_DOCKER_REGISTRY}"/spark-py:"${TAG}"
+docker tag cloudera/spark:"${TAG}" "${PUBLISH_DOCKER_REGISTRY}"/spark:"${TAG}"
 
 echo "docker_images:" > $SPARK_HOME/cloudera/docker_images.yaml
 echo "  spark: $PUBLISH_DOCKER_REGISTRY/spark" >> $SPARK_HOME/cloudera/docker_images.yaml

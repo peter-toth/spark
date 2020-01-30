@@ -132,7 +132,8 @@
       "configName" : "spark.authenticate",
       "required" : "true",
       "type" : "boolean",
-      "default" : false
+      "default" : false,
+      "configurableInWizard": true
     },
     {
       "name" : "spark_shuffle_aes_enabled",

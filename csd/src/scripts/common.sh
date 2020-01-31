@@ -37,8 +37,8 @@ log "Detected CDH_VERSION of [$CDH_VERSION]"
 PATH_TO_JAVA="$JAVA_HOME/bin/java"
 JAVA_VER=$("$PATH_TO_JAVA" -version 2>&1 | awk -F '"' '/version/ {print $2}')
 JAVA_VER_SHORT=${JAVA_VER:0:3}
-if [[ "$JAVA_VER_SHORT" != "1.8" ]]; then
-  echo "Java version 1.8 is required for Spark 3."
+if [[ "$JAVA_VER_SHORT" != "1.8" && $JAVA_VER != 11* ]]; then
+  echo "Java version 8 or 11 is required for Spark 3."
   exit 1
 fi
 

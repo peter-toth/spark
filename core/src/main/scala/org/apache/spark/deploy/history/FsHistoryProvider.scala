@@ -659,6 +659,7 @@ private[history] class FsHistoryProvider(conf: SparkConf, clock: Clock)
       scanTime: Long,
       enableOptimizations: Boolean): Unit = {
     val rootPath = reader.rootPath
+    var succeeded = false
     try {
       val lastEvaluatedForCompaction: Option[Long] = try {
         listing.read(classOf[LogInfo], rootPath.toString).lastEvaluatedForCompaction
@@ -671,6 +672,8 @@ private[history] class FsHistoryProvider(conf: SparkConf, clock: Clock)
       if (conf.get(CLEANER_ENABLED)) {
         checkAndCleanLog(rootPath.toString)
       }
+
+      succeeded = true
     } catch {
       case e: InterruptedException =>
         throw e
@@ -687,10 +690,12 @@ private[history] class FsHistoryProvider(conf: SparkConf, clock: Clock)
       endProcessing(rootPath)
       pendingReplayTasksCount.decrementAndGet()
 
-      // triggering another task for compaction task
-      submitLogProcessTask(rootPath) {
-        new Runnable {
-          override def run(): Unit = compact(reader)
+      // triggering another task for compaction task only if it succeeds
+      if (succeeded) {
+        submitLogProcessTask(rootPath) {
+          new Runnable {
+            override def run(): Unit = compact(reader)
+          }
         }
       }
     }
@@ -841,6 +846,13 @@ private[history] class FsHistoryProvider(conf: SparkConf, clock: Clock)
 
         case None => // This is not applied to single event log file.
       }
+    } catch {
+      case e: InterruptedException =>
+        throw e
+      case e: AccessControlException =>
+        logWarning(s"Insufficient permission while compacting log for $rootPath", e)
+      case e: Exception =>
+        logError(s"Exception while compacting log for $rootPath", e)
     } finally {
       endProcessing(rootPath)
     }

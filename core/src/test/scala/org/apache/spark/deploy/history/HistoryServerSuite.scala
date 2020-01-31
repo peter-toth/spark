@@ -46,6 +46,7 @@ import org.scalatest.mockito.MockitoSugar
 import org.scalatest.selenium.WebBrowser
 
 import org.apache.spark._
+import org.apache.spark.internal.config._
 import org.apache.spark.deploy.history.config._
 import org.apache.spark.status.api.v1.ApplicationInfo
 import org.apache.spark.status.api.v1.JobData
@@ -83,8 +84,8 @@ class HistoryServerSuite extends SparkFunSuite with BeforeAndAfter with Matchers
       .set("spark.history.fs.update.interval", "0")
       .set("spark.testing", "true")
       .set(LOCAL_STORE_DIR, storeDir.getAbsolutePath())
-      .set("spark.eventLog.logStageExecutorMetrics.enabled", "true")
-      .set("spark.eventLog.logStageExecutorProcessTreeMetrics.enabled", "true")
+      .set(EVENT_LOG_STAGE_EXECUTOR_METRICS, true)
+      .set(EXECUTOR_PROCESS_TREE_METRICS_ENABLED, true)
     conf.setAll(extraConf)
     provider = new FsHistoryProvider(conf)
     provider.checkForLogs()

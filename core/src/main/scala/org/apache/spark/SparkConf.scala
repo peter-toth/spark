@@ -728,7 +728,9 @@ private[spark] object SparkConf extends Logging {
     EXECUTOR_MEMORY_OVERHEAD.key -> Seq(
       AlternateConfig("spark.yarn.executor.memoryOverhead", "2.3")),
     KERBEROS_FILESYSTEMS_TO_ACCESS.key -> Seq(
-      AlternateConfig("spark.yarn.access.namenodes", "2.2"))
+      AlternateConfig("spark.yarn.access.namenodes", "2.2")),
+    "spark.executor.processTreeMetrics.enabled" -> Seq(
+      AlternateConfig("spark.eventLog.logStageExecutorProcessTreeMetrics.enabled", "2.4"))
   )
 
   /**

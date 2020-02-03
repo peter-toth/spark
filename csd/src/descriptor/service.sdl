@@ -63,6 +63,10 @@
        {
          "key" : "yarn.nodemanager.aux-services.spark3_shuffle.classpath",
          "value" : "${spark3_parcel_dir}/lib/spark3/yarn/spark-yarn-shuffle.jar"
+       },
+       {
+         "key" : "spark3.authenticate",
+         "value" : "${spark3_authenticate}"
        }
      ]
     }
@@ -126,7 +130,7 @@
       "required" : "true"
     },
     {
-      "name" : "spark_authenticate",
+      "name" : "spark3_authenticate",
       "label" : "Spark Authentication",
       "description" : "Enable whether the Spark communication protocols do authentication using a shared secret. If using SPARK_ON_YARN service (i.e. Spark 1 based service), ensure that value of this property is the same in both services.",
       "configName" : "spark.authenticate",
@@ -633,7 +637,7 @@
           "filename" : "spark3-conf/spark-defaults.conf",
           "configFormat" : "properties",
           "includedParams" : [
-            "spark_authenticate",
+            "spark3_authenticate",
             "spark_history_enabled",
             "spark_history_log_dir",
             "spark_data_serializer",

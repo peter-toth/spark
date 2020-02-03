@@ -81,6 +81,7 @@ public class YarnShuffleService extends AuxiliaryService {
   private static final int DEFAULT_SPARK_SHUFFLE_SERVICE_PORT = 7447;
 
   // Whether the shuffle server should authenticate fetch requests
+  private static final String SPARK3_AUTHENTICATE_KEY = "spark3.authenticate";
   private static final String SPARK_AUTHENTICATE_KEY = "spark.authenticate";
   private static final boolean DEFAULT_SPARK_AUTHENTICATE = false;
 
@@ -175,7 +176,8 @@ public class YarnShuffleService extends AuxiliaryService {
       // If authentication is enabled, set up the shuffle server to use a
       // special RPC handler that filters out unauthenticated fetch requests
       List<TransportServerBootstrap> bootstraps = Lists.newArrayList();
-      boolean authEnabled = conf.getBoolean(SPARK_AUTHENTICATE_KEY, DEFAULT_SPARK_AUTHENTICATE);
+      boolean authDefault = conf.getBoolean(SPARK_AUTHENTICATE_KEY, DEFAULT_SPARK_AUTHENTICATE);
+      boolean authEnabled = conf.getBoolean(SPARK3_AUTHENTICATE_KEY, authDefault);
       if (authEnabled) {
         secretManager = new ShuffleSecretManager();
         if (_recoveryPath != null) {

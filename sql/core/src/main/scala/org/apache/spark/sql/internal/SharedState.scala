@@ -123,13 +123,14 @@ private[sql] class SharedState(val sparkContext: SparkContext) extends Logging {
    * data to show.
    */
   lazy val streamingQueryStatusListener: Option[StreamingQueryStatusListener] = {
-    val sqlConf = SQLConf.get
-    if (sqlConf.isStreamingUIEnabled) {
-      val statusListener = new StreamingQueryStatusListener(sqlConf)
-      sparkContext.ui.foreach(new StreamingQueryTab(statusListener, _))
-      Some(statusListener)
-    } else {
-      None
+    sparkContext.ui.flatMap { ui =>
+      if (ui.conf.get(STREAMING_UI_ENABLED)) {
+        val statusListener = new StreamingQueryStatusListener(ui.conf)
+        new StreamingQueryTab(statusListener, ui)
+        Some(statusListener)
+      } else {
+        None
+      }
     }
   }
 

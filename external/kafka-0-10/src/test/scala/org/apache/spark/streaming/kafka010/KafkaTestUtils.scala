@@ -27,14 +27,13 @@ import scala.annotation.tailrec
 import scala.collection.JavaConverters._
 import scala.util.control.NonFatal
 
+import kafka.admin.AdminUtils
 import kafka.api.Request
 import kafka.server.{KafkaConfig, KafkaServer}
-import kafka.zk.{AdminZkClient, KafkaZkClient}
+import kafka.utils.ZkUtils
 import org.apache.kafka.clients.producer.{KafkaProducer, ProducerRecord}
-import org.apache.kafka.common.TopicPartition
 import org.apache.kafka.common.network.ListenerName
 import org.apache.kafka.common.serialization.StringSerializer
-import org.apache.kafka.common.utils.SystemTime
 import org.apache.zookeeper.server.{NIOServerCnxnFactory, ZooKeeperServer}
 
 import org.apache.spark.{SparkConf, SparkException}
@@ -58,8 +57,7 @@ private[kafka010] class KafkaTestUtils extends Logging {
 
   private var zookeeper: EmbeddedZookeeper = _
 
-  private var zkClient: KafkaZkClient = _
-  private var admClient: AdminZkClient = _
+  private var zkUtils: ZkUtils = _
 
   // Kafka broker related configurations
   private val brokerHost = "127.0.0.1"
@@ -87,16 +85,10 @@ private[kafka010] class KafkaTestUtils extends Logging {
     s"$brokerHost:$brokerPort"
   }
 
-  def zookeeperClient: KafkaZkClient = {
+  def zookeeperClient: ZkUtils = {
     assert(zkReady, "Zookeeper not setup yet or already torn down, cannot get zookeeper client")
-    Option(zkClient).getOrElse(
+    Option(zkUtils).getOrElse(
       throw new IllegalStateException("Zookeeper client is not yet initialized"))
-  }
-
-  def adminClient: AdminZkClient = {
-    assert(zkReady, "Zookeeper not setup yet or already torn down, cannot get zookeeper client")
-    Option(admClient).getOrElse(
-      throw new IllegalStateException("Admin client is not yet initialized"))
   }
 
   // Set up the Embedded Zookeeper server and get the proper Zookeeper port
@@ -105,9 +97,7 @@ private[kafka010] class KafkaTestUtils extends Logging {
     zookeeper = new EmbeddedZookeeper(s"$zkHost:$zkPort")
     // Get the actual zookeeper binding port
     zkPort = zookeeper.actualPort
-    zkClient = KafkaZkClient(s"$zkHost:$zkPort", isSecure = false, zkSessionTimeout,
-      zkConnectionTimeout, 1, new SystemTime())
-    admClient = new AdminZkClient(zkClient)
+    zkUtils = ZkUtils(s"$zkHost:$zkPort", zkSessionTimeout, zkConnectionTimeout, false)
     zkReady = true
   }
 
@@ -172,9 +162,9 @@ private[kafka010] class KafkaTestUtils extends Logging {
       }
     }
 
-    if (zkClient != null) {
-      zkClient.close()
-      zkClient = null
+    if (zkUtils != null) {
+      zkUtils.close()
+      zkUtils = null
     }
 
     if (zookeeper != null) {
@@ -185,7 +175,7 @@ private[kafka010] class KafkaTestUtils extends Logging {
 
   /** Create a Kafka topic and wait until it is propagated to the whole cluster */
   def createTopic(topic: String, partitions: Int, config: Properties): Unit = {
-    adminClient.createTopic(topic, partitions, 1, config)
+    AdminUtils.createTopic(zkUtils, topic, partitions, 1, config)
     // wait until metadata is propagated
     (0 until partitions).foreach { p =>
       waitUntilMetadataIsPropagated(topic, p)
@@ -299,9 +289,9 @@ private[kafka010] class KafkaTestUtils extends Logging {
     def isPropagated = server.dataPlaneRequestProcessor.metadataCache
         .getPartitionInfo(topic, partition) match {
       case Some(partitionState) =>
-        val leader = partitionState.leader
-        val isr = partitionState.isr
-        zkClient.getLeaderForPartition(new TopicPartition(topic, partition)).isDefined &&
+        val leader = partitionState.basePartitionState.leader
+        val isr = partitionState.basePartitionState.isr
+        zkUtils.getLeaderForPartition(topic, partition).isDefined &&
           Request.isValidBrokerId(leader) && !isr.isEmpty
       case _ =>
         false

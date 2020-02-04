@@ -20,10 +20,10 @@
       ]
     },
     "build-support": {
-      "internal-branch": "cdpd-master",
+      "internal-branch": "cdp-demo-master",
       "cldr-infra-git": true,
       "poll": false,
-      "branch": "cdpd-master",
+      "branch": "cdp-demo-master",
       "repo-url": "git@github.infra.cloudera.com:CDH/build-support.git"
     }
   },

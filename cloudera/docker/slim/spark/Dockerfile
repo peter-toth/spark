@@ -4,12 +4,12 @@ FROM $BASE_IMAGE_ARG
 
 ENV BASE_IMAGE $BASE_IMAGE_ARG
 
-RUN echo $BASE_IMAGE_ARG
-
 ARG spark_jars=jars
 ARG example_jars=examples/jars
-ARG img_path=kubernetes/dockerfiles
 ARG k8s_tests=kubernetes/tests
+
+# Required
+ARG DOCKERFILE_PATH_ARG
 
 RUN set -ex && \
     apt-get update && \
@@ -26,10 +26,10 @@ RUN set -ex && \
     chgrp root /etc/passwd && chmod ug+rw /etc/passwd && \
     rm -rf /var/cache/apt/*
 
+COPY ${DOCKERFILE_PATH_ARG}/entrypoint.sh /opt/
 COPY ${spark_jars} /opt/spark/jars
 COPY bin /opt/spark/bin
 COPY sbin /opt/spark/sbin
-COPY ${img_path}/spark/entrypoint.sh /opt/
 COPY ${example_jars} /opt/spark/examples/jars
 COPY examples/src /opt/spark/examples/src
 COPY ${k8s_tests} /opt/spark/tests
@@ -39,5 +39,6 @@ COPY data /opt/spark/data
 ENV SPARK_HOME /opt/spark
 
 WORKDIR /opt/spark/work-dir
+RUN chmod +x /opt/*.sh
 
 ENTRYPOINT [ "/opt/entrypoint.sh" ]

@@ -46,14 +46,16 @@ if [[ -z "${HAS_F_FLAG}" ]]
 then
   # BASE IMAGE
   BUILD_TAG=${OS}-latest
-  DOCKERFILE="cloudera/docker/${OS}/spark/Dockerfile"
-  BASE_IMAGE_ARG=""
+  DOCKERFILE_PATH="cloudera/docker/${OS}/spark/"
+  DOCKERFILE="${DOCKERFILE_PATH}Dockerfile"
+  EXTRA_ARG=" -b DOCKERFILE_PATH_ARG=${DOCKERFILE_PATH} "
   IMAGE_REPO="$REPO/spark-${OS}"
 else
   # FLAVORED_IMAGE
   BUILD_TAG=${OS}-${FLAVOR}-latest
-  DOCKERFILE="cloudera/docker/${OS}/spark-${FLAVOR}/Dockerfile"
-  BASE_IMAGE_ARG="-b BASE_IMAGE_ARG=build/cloudera/spark:${OS}-latest"
+  DOCKERFILE_PATH="cloudera/docker/${OS}/spark-${FLAVOR}/"
+  DOCKERFILE="${DOCKERFILE_PATH}Dockerfile"
+  EXTRA_ARG=" -b BASE_IMAGE_ARG=build/cloudera/spark:${OS}-latest -b DOCKERFILE_PATH_ARG=${DOCKERFILE_PATH}"
   IMAGE_REPO="$REPO/spark-$FLAVOR-$OS"
 fi
 
@@ -80,7 +82,7 @@ done
            -r "build/cloudera" \
            -t "$BUILD_TAG" \
            -n \
-           "$BASE_IMAGE_ARG" \
+           $EXTRA_ARG \
            build
 )
 

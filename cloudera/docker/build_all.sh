@@ -1,10 +1,13 @@
+#!/bin/bash
+
 set -ex
 
 REPO=docker-private.infra.cloudera.com/cloudera
 while getopts "*r:" option
 do
  case "${option}" in
- r)  REPO=${OPTARG} ;;
+ r)  REPO=${OPTARG}
+     echo "Building for repo $REPO";;
  *)  echo "Usage  $0 [-r]"
      echo "Options:"
      echo "  -r Docker repo in format docker-private.infra.cloudera.com/cloudera"

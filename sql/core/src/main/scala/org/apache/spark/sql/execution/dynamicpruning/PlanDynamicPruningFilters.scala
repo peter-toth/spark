@@ -36,9 +36,6 @@ import org.apache.spark.sql.internal.SQLConf
 case class PlanDynamicPruningFilters(sparkSession: SparkSession)
     extends Rule[SparkPlan] with PredicateHelper {
 
-  private def reuseBroadcast: Boolean =
-    SQLConf.get.dynamicPartitionPruningReuseBroadcast && SQLConf.get.exchangeReuseEnabled
-
   /**
    * Identify the shape in which keys of a given plan are broadcasted.
    */
@@ -58,7 +55,7 @@ case class PlanDynamicPruningFilters(sparkSession: SparkSession)
         val qe = new QueryExecution(sparkSession, buildPlan)
         // Using `sparkPlan` is a little hacky as it is based on the assumption that this rule is
         // the first to be applied (apart from `InsertAdaptiveSparkPlan`).
-        val canReuseExchange = reuseBroadcast && buildKeys.nonEmpty &&
+        val canReuseExchange = SQLConf.get.exchangeReuseEnabled && buildKeys.nonEmpty &&
           plan.find {
             case BroadcastHashJoinExec(_, _, _, BuildLeft, _, left, _) =>
               left.sameResult(qe.sparkPlan)

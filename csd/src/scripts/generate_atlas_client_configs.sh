@@ -107,5 +107,7 @@ if [ "${ATLAS_KERBEROS_ENABLED}" == "true" ];then
   echo "atlas.jaas.ticketBased-KafkaClient.loginModuleName=com.sun.security.auth.module.Krb5LoginModule" >> ${ATLAS_APPLICATION_PROPERTIES}
   echo "atlas.jaas.ticketBased-KafkaClient.option.useTicketCache=true" >> ${ATLAS_APPLICATION_PROPERTIES}
 fi
+# remove empty configs from client config file CDPD-7459
+sed -i -E '/^[^=]+=\s*$/d' ${ATLAS_CLIENT_PROPERTIES}
 cat ${ATLAS_CLIENT_PROPERTIES} >> ${ATLAS_APPLICATION_PROPERTIES}
 #rm "${ATLAS_SERVER_PROPERTIES}"

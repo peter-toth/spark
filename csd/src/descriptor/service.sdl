@@ -25,9 +25,8 @@
     "principal" : "spark"
   },
   "inExpressWizard" : true,
-  "icon" : "images/icon.png",
+  "svgIcon": "images/icon.svg",
   "parcel" : {
-    "repoUrl" : "http://denisroyz-1.gce.cloudera.com/cloudera-repos/spark3/parcels/3.0.0.cloudera-fake0001/",
     "requiredTags" : ["spark3", "cdh"],
     "optionalTags" : ["spark-plugin", "spark3-plugin"]
   },
@@ -37,16 +36,12 @@
       "required" : "true"
     },
     {
-      "name" : "HIVE",
-      "required" : "false"
-    },
-    {
       "name" : "HBASE",
       "required" : "false"
     },
     {
-       "name" : "ATLAS",
-       "required" : "false"
+      "name" : "ATLAS",
+      "required" : "false"
     }
   ],
   "dependencyExtensions" : [
@@ -66,7 +61,7 @@
        },
        {
          "key" : "spark3.authenticate",
-         "value" : "${spark3_authenticate}"
+         "value" : "${spark_authenticate}"
        }
      ]
     }
@@ -87,6 +82,14 @@
       "directoryDescription" : "Spark Application History directory",
       "path" : "${spark_history_log_dir}",
       "permissions" : "1777"
+    },
+    {
+      "name" : "CreateSparkDriverLogDirCommand",
+      "label" : "Create Spark Driver Log Dir",
+      "description" : "Creates the directory in HDFS where driver logs in client mode will be stored.",
+      "directoryDescription" : "Spark Driver Logs directory",
+      "path" : "${spark_driver_log_dfs_dir}",
+      "permissions" : "1777"
     }
   ],
   "serviceInit" : {
@@ -96,6 +99,9 @@
       },
       {
         "commandName" : "CreateSparkHistoryDirCommand"
+      },
+      {
+        "commandName" : "CreateSparkDriverLogDirCommand"
       }
     ]
   },
@@ -118,7 +124,8 @@
       "default" : "/user/spark/spark3ApplicationHistory",
       "type" : "path",
       "pathType" : "serviceSpecific",
-      "required" : "true"
+      "required" : "true",
+      "translateToBaseHdfs" : "true"
     },
     {
       "name" : "spark_shuffle_service_port",
@@ -130,7 +137,7 @@
       "required" : "true"
     },
     {
-      "name" : "spark3_authenticate",
+      "name" : "spark_authenticate",
       "label" : "Spark Authentication",
       "description" : "Enable whether the Spark communication protocols do authentication using a shared secret. If using SPARK_ON_YARN service (i.e. Spark 1 based service), ensure that value of this property is the same in both services.",
       "configName" : "spark.authenticate",
@@ -140,12 +147,23 @@
       "configurableInWizard": true
     },
     {
-      "name" : "spark_shuffle_aes_enabled",
-      "label" : "Shuffle Service AES Encryption",
-      "description" : "Whether to enable AES-based authentication and encryption in the shuffle service. Requires authentication to be enabled to take effect.",
-      "required" : "true",
+      "name" : "spark_driver_log_dfs_dir",
+      "label" : "Spark Driver Log Location (HDFS)",
+      "description" : "The location of Spark driver logs in HDFS when Spark application runs in client mode. Changing this value will not move existing logs to the new location.",
+      "configName" : "spark.driver.log.dfsDir",
+      "default" : "/user/spark/driver3Logs",
+      "type" : "path",
+      "pathType" : "serviceSpecific",
+      "required" : "true"
+    },
+    {
+      "name" : "spark_driver_log_persist_to_dfs",
+      "label" : "Persist Driver Logs to Dfs",
+      "description" : "If enabled, driver logs in YARN client mode will be persisted to the configured Spark Driver Log Location (HDFS)",
+      "configName" : "spark.driver.log.persistToDfs.enabled",
+      "default" : "true",
       "type" : "boolean",
-      "default" : true
+      "required" : "true"
     }
   ],
   "rolesWithExternalLinks" : ["SPARK3_YARN_HISTORY_SERVER"],
@@ -275,7 +293,7 @@
           "label" : "Admin Users",
           "description" : "Comma-separated list of users who can view all applications when authentication is enabled.",
           "configName" : "spark.history.ui.admin.acls",
-          "default" : "",
+          "default" : "knox",
           "type" : "string",
           "required" : "false"
         },
@@ -338,7 +356,8 @@
         "enabledConfigName" : "spark.ssl.historyServer.enabled",
         "keystoreLocationConfigName" : "spark.ssl.historyServer.keyStore",
         "keystorePasswordCredentialProviderCompatible" : false,
-        "keystorePasswordScriptBased" : false
+        "keystorePasswordScriptBased" : false,
+        "autoTlsMode" : "auto"
       },
       "configWriter" : {
         "generators" : [
@@ -358,6 +377,7 @@
               "ssl_server_protocol",
               "ssl_server_algorithms",
               "ssl_server_port",
+              "spark_driver_log_dfs_dir",
               "local_storage_dir",
               "local_storage_max_usage"
             ],
@@ -401,6 +421,7 @@
   "gateway" : {
     "alternatives" : {
       "name" : "spark3-conf",
+      // The priority is set to be higher than Spark standalone by default
       "priority" : 51,
       "linkRoot" : "/etc/spark3"
     },
@@ -549,15 +570,6 @@
         "default" : true
       },
       {
-        "name" : "spark_kafka_version",
-        "label" : "Default Kafka Version",
-        "description" : "Default Kafka library version to add to Spark applications. This can be overridden by setting the SPARK_KAFKA_VERSION environment variable when launching Spark applications.",
-        "required" : "true",
-        "type" : "string_enum",
-        "validValues" : [ "0.9", "0.10", "None" ],
-        "default" : "0.9"
-      },
-      {
         "name" : "spark_network_encryption_enabled",
         "label" : "Enable Network Encryption",
         "description" : "Whether to encrypt communication between Spark processes belonging to the same application. Requires authentication (spark.authenticate) to be enabled.",
@@ -592,6 +604,15 @@
         "required" : "false",
         "type" : "boolean",
         "default" : true
+      },
+      {
+        "name" : "spark_optimized_s3_committers_enabled",
+        "label" : "Enable Optimized S3 Committers",
+        "description" : "Whether use optimized committers when writing data to S3.",
+        "configName" : "spark.cloudera.s3_committers.enabled",
+        "required" : "false",
+        "type" : "boolean",
+        "default" : true
       }
     ],
     "dependencyExtensions": [
@@ -606,13 +627,8 @@
       "environmentVariables" : {
         "DEPLOY_MODE" : "${spark_deploy_mode}",
         "PYTHON_PATH" : "${spark_python_path}",
-        "DEFAULT_SPARK_KAFKA_VERSION" : "${spark_kafka_version}",
         "ATLAS_KAFKA_BROKERS_LIST" : "${atlas_kafka_bootstrap_servers}",
         "ATLAS_ZK_CONNECT" : "${atlas_kafka_zk_connect}"
-
-      },
-      "referencedEnvironmentVariables" : {
-        "CM_VERSION" : "${cm_version}"
       }
     },
     "logging" : {
@@ -620,13 +636,11 @@
       "loggingType" : "log4j",
       "additionalConfigs" : [
         { "key" : "shell.log.level", "value" : "${spark_gateway_shell_logging_threshold}" },
-        { "key" : "log4j.logger.org.eclipse.jetty", "value" : "WARN" },
         { "key" : "log4j.logger.org.spark-project.jetty", "value" : "WARN" },
         { "key" : "log4j.logger.org.spark-project.jetty.util.component.AbstractLifeCycle", "value" : "ERROR" },
         { "key" : "log4j.logger.org.apache.spark.repl.SparkIMain$exprTyper", "value" : "INFO" },
         { "key" : "log4j.logger.org.apache.spark.repl.SparkILoop$SparkILoopInterpreter", "value" : "INFO" },
         { "key" : "log4j.logger.org.apache.parquet", "value" : "ERROR" },
-        { "key" : "log4j.logger.parquet", "value" : "ERROR" },
         { "key" : "log4j.logger.org.apache.hadoop.hive.metastore.RetryingHMSHandler", "value" : "FATAL" },
         { "key" : "log4j.logger.org.apache.hadoop.hive.ql.exec.FunctionRegistry", "value" : "ERROR" }
       ]
@@ -637,7 +651,7 @@
           "filename" : "spark3-conf/spark-defaults.conf",
           "configFormat" : "properties",
           "includedParams" : [
-            "spark3_authenticate",
+            "spark_authenticate",
             "spark_history_enabled",
             "spark_history_log_dir",
             "spark_data_serializer",
@@ -655,6 +669,9 @@
             "spark_network_encryption_enabled",
             "spark_io_encryption_enabled",
             "spark_ui_enabled",
+            "spark_driver_log_dfs_dir",
+            "spark_driver_log_persist_to_dfs",
+            "spark_optimized_s3_committers_enabled",
             "spark_lineage_enabled"
           ]
         }

@@ -21,51 +21,44 @@
 # Set of utility functions shared across different Spark CSDs.
 #
 
-set -ex
+[ -z $IN_BATS ] && set -x
+
+# simple wrapper around readlink to work with BATS, and also b/c
+# readlink -m doesn't work on macos.
+function m_readlink {
+  if [ -n $IN_BATS ]; then
+    echo $1
+  else
+    readlink -m $1
+  fi
+}
 
 function log {
   timestamp=$(date)
-  echo "$timestamp: $1"       #stdout
+  # stdout messes with BATS, so leave it out
+  [ -z $IN_BATS ] && echo "$timestamp: $1"       #stdout
   echo "$timestamp: $1" 1>&2; #stderr
 }
 
 # Time marker for both stderr and stdout
-log "Running Spark3 CSD control script..."
+log "Running Spark 3 CSD control script..."
 log "Detected CDH_VERSION of [$CDH_VERSION]"
-
-# Check whether JDK 1.8 is available for spark 3
-PATH_TO_JAVA="$JAVA_HOME/bin/java"
-JAVA_VER=$("$PATH_TO_JAVA" -version 2>&1 | awk -F '"' '/version/ {print $2}')
-JAVA_VER_SHORT=${JAVA_VER:0:3}
-if [[ "$JAVA_VER_SHORT" != "1.8" && $JAVA_VER != 11* ]]; then
-  echo "Java version 8 or 11 is required for Spark 3."
-  exit 1
-fi
 
 # Set this to not source defaults
 export BIGTOP_DEFAULTS_DIR=""
 
-export HADOOP_HOME=${HADOOP_HOME:-$(readlink -m "$CDH_HADOOP_HOME")}
-export HADOOP_BIN=$HADOOP_HOME/bin/hadoop
+export HADOOP_HOME=${HADOOP_HOME:-$(m_readlink "$CDH_HADOOP_HOME")}
 export HDFS_BIN=$HADOOP_HOME/../../bin/hdfs
 export HADOOP_CONF_DIR="$CONF_DIR/yarn-conf"
-export HIVE_CONF_DIR="$CONF_DIR/hive-conf"
-export HBASE_CONF_DIR="$CONF_DIR/hbase-conf"
+
+HBASE_CONF_DIR="$CONF_DIR/hbase-conf"
 
 # If SPARK3_HOME is not set, make it the default
-DEFAULT_SPARK3_HOME=/opt/cloudera/parcels/SPARK3/lib/spark3/
+DEFAULT_SPARK3_HOME=/opt/cloudera/parcels/SPARK3/lib/spark3
+SPARK_HOME=$(m_readlink "${SPARK3_HOME:-$CDH_SPARK3_HOME}")
+export SPARK_HOME=${SPARK_HOME:-$DEFAULT_SPARK3_HOME}
 
-#TODO FOLLOWING LINE RETURNS INCORRECT RESULTS. NEED TO FIX. Temporary using hardcoded value
-#SPARK_HOME=${SPARK3_HOME:-${CDH_SPARK3_HOME:-$DEFAULT_SPARK3_HOME}}
-SPARK_HOME="${CDH_SPARK3_HOME}"
-SPARK3_HOME="${CDH_SPARK3_HOME}"
-
-
-echo "SPARK_HOME is : ${SPARK_HOME}"
-echo "SPARK3_HOME is: ${SPARK3_HOME}"
-echo "CDH_SPARK3_HOME is: ${CDH_SPARK3_HOME}"
-
-export SPARK_HOME=$(readlink -m "${SPARK_HOME}")
+echo "SPARK_HOME is ${SPARK_HOME}"
 
 # We want to use a local conf dir
 export SPARK_CONF_DIR="$CONF_DIR/spark3-conf"
@@ -82,11 +75,7 @@ export SPARK_DEFAULTS="$SPARK_CONF_DIR/spark-defaults.conf"
 export SPARK_DAEMON_JAVA_OPTS="$SPARK_DAEMON_JAVA_OPTS -Djava.net.preferIPv4Stack=true"
 
 # Make sure PARCELS_ROOT is in the format we expect, canonicalized and without a trailing slash.
-export PARCELS_ROOT=$(readlink -m "$PARCELS_ROOT")
-
-# Make sure DEFAULT_SPARK_KAFKA_VERSION is set (since the config is only available for the gateway
-# role).
-DEFAULT_SPARK_KAFKA_VERSION=${DEFAULT_SPARK_KAFKA_VERSION:-None}
+export PARCELS_ROOT=$(m_readlink "$PARCELS_ROOT")
 
 # Reads a line in the format "$host:$key=$value", setting those variables.
 function readconf {
@@ -161,48 +150,44 @@ function prepend_protocol {
 # based on what HBase adds to the classpath, and avoids adding conflicting versions of libraries
 # that Spark needs. Also avoids adding duplicate jars to the classpath since that makes the JVM open
 # the same file multiple times.
-#
-# This also explicitly blacklists the "hbase-spark" jar since the C5 version does not work with
-# Spark 2.
 function is_blacklisted {
-  local JAR="$1"
-  if [[ -f "$SPARK_HOME/jars/$JAR" ]]; then
+  local JAR=$(basename "$1")
+  if [[ -f "$SPARK_HOME/$JAR" ]]; then
     return 0
   elif [[ "$JAR" =~ ^jetty.* ]]; then
     return 0
   elif [[ "$JAR" =~ ^jersey.* ]]; then
     return 0
+  elif [[ "$JAR" =~ ^jackson.* ]]; then
+    return 0
+  elif [[ "$JAR" =~ ^jackson.* ]]; then
+    return 0
+  elif [[ "$JAR" =~ .*slf4j.* ]]; then
+    return 0
   elif [[ "$JAR" =~ .*servlet.* ]]; then
     return 0
-  elif [[ "$JAR" =~ .*-tests.* ]]; then
+  elif [[ "$JAR" =~ .*-tests.jar ]]; then
     return 0
   elif [[ "$JAR" =~ ^junit-.* ]]; then
-    return 0
-  elif [[ "$JAR" =~ ^hbase-spark.* ]]; then
-    return 0
-  elif [[ "$JAR" =~ ^hbase-.*-it.* ]]; then
-    return 0
-  elif [[ "$JAR" =~ ^parquet.* ]]; then
     return 0
   fi
   return 1
 }
 
-# Adds jars in classpath entry $2 to the classpath file $1, resolving symlinks so that duplicates
-# can be removed. Jars already present in Spark's distribution are also ignored. See CDH-27596.
 function add_to_classpath {
   local CLASSPATH_FILE="$1"
   local CLASSPATH="$2"
-  local SPARK_JARS="$SPARK3_HOME/jars"
 
   # Break the classpath into individual entries
   IFS=: read -a CLASSPATH_ENTRIES <<< "$CLASSPATH"
 
+  # Expand each component of the classpath, resolve symlinks, and add
+  # entries to the classpath file, ignoring duplicates.
   for pattern in "${CLASSPATH_ENTRIES[@]}"; do
     for entry in $pattern; do
-      entry=$(readlink -m "$entry")
+      entry=$(m_readlink "$entry")
       name=$(basename "$entry")
-      if [ -f "$entry" ] && ! is_blacklisted "$name" && ! grep -q "/$name\$" "$CLASSPATH_FILE"
+      if [ -f "$entry" ] && ! is_blacklisted "$entry" && ! grep -q "/$name\$" "$CLASSPATH_FILE"
       then
         echo "$entry" >> "$CLASSPATH_FILE"
       fi
@@ -210,27 +195,58 @@ function add_to_classpath {
   done
 }
 
-# Prepare the spark-env.sh file specified in $1 for use.
+# prepare the spark-env.sh file for use.
 function prepare_spark_env {
-  local client="$1"
-  replace "{{HADOOP_HOME}}" "$HADOOP_HOME" "$SPARK_ENV"
-  replace "{{SPARK_HOME}}" "$SPARK_HOME" "$SPARK_ENV"
-  replace "{{SPARK_EXTRA_LIB_PATH}}" "$SPARK_LIBRARY_PATH" "$SPARK_ENV"
-  replace "{{PYTHON_PATH}}" "$PYTHON_PATH" "$SPARK_ENV"
-  replace "{{CDH_PYTHON}}" "$CDH_PYTHON" "$SPARK_ENV"
-  replace "{{DEFAULT_SPARK_KAFKA_VERSION}}" "$DEFAULT_SPARK_KAFKA_VERSION" "$SPARK_ENV"
+  replace "\{\{HADOOP_HOME}}" "$HADOOP_HOME" $SPARK_ENV
+  replace "\{\{SPARK_HOME}}" "$SPARK_HOME" $SPARK_ENV
+  replace "\{\{SPARK_EXTRA_LIB_PATH}}" "$SPARK_LIBRARY_PATH" $SPARK_ENV
+  replace "\{\{PYTHON_PATH}}" "$PYTHON_PATH" ""$SPARK_ENV""
+  replace "\{\{CDH_PYTHON}}" "$CDH_PYTHON" $SPARK_ENV
 
+  local HADOOP_CONF_DIR_NAME=$(basename "$HADOOP_CONF_DIR")
+  replace "\{\{HADOOP_CONF_DIR_NAME}}" "$HADOOP_CONF_DIR_NAME" $SPARK_ENV
+}
+
+# create a classpath.txt file in the client config dir with the jars needed by external
+# dependencies (such as HBase or parcel plugins).
+function prepare_external_classpath {
   local CLASSPATH_FILE="$(dirname $SPARK_ENV)/classpath.txt"
   local CLASSPATH_FILE_TMP="${CLASSPATH_FILE}.tmp"
+
   touch "$CLASSPATH_FILE_TMP"
+  add_to_classpath "$CLASSPATH_FILE_TMP" "$HADOOP_HOME/client/*.jar"
 
-  local HADOOP_CLASSPATH=$($HADOOP_BIN --config "$HADOOP_CONF_DIR" classpath)
-  add_to_classpath "$CLASSPATH_FILE_TMP" "$HADOOP_CLASSPATH"
-
-  # For client configs, add HBase jars if the service dependency is configured.
-  if [ $client = 1 ] && [ -d "$HBASE_CONF_DIR" ]; then
+  # If there's an HBase configuration directory, add the classpath for HBase's mapreduce and spark
+  # integration(s) after the Hadoop one.
+  if [ -d "$HBASE_CONF_DIR" ]; then
     local HBASE_CP="$(hbase --config $HBASE_CONF_DIR mapredcp)"
     add_to_classpath "$CLASSPATH_FILE_TMP" "$HBASE_CP"
+    # If HBASE_HOME is not set, make it the default
+    if [ ! -d "${HBASE_HOME}" ]; then
+      local DEFAULT_HBASE_HOME=/usr/lib/hbase
+      HBASE_HOME="${CDH_HBASE_HOME}"
+      HBASE_HOME=${HBASE_HOME:-$DEFAULT_HBASE_HOME}
+    fi
+    if [ -f "${HBASE_HOME}/hbase-spark.jar" ]; then
+      add_to_classpath "$CLASSPATH_FILE_TMP" "${HBASE_HOME}/hbase-spark.jar"
+    fi
+  fi
+
+  if [ -n "$HADOOP_CLASSPATH" ]; then
+    add_to_classpath "$CLASSPATH_FILE_TMP" "$HADOOP_CLASSPATH"
+  else
+    # $HADOOP_CLASSPATH is parcel only; for packages, we need to at least get
+    # the gpl extras, if available.  See CDH-70058
+    if [ -e "/usr/lib/hadoop/lib/hadoop-lzo.jar" ]; then
+      add_to_classpath "$CLASSPATH_FILE_TMP" "/usr/lib/hadoop/lib/hadoop-lzo.jar"
+    fi
+    if [ -d "/usr/lib/spark-netlib/lib" ];then
+      add_to_classpath "$CLASSPATH_FILE_TMP" "/usr/lib/spark-netlib/lib/*.jar"
+    fi
+  fi
+
+  if [ -n "$CDH_SPARK_CLASSPATH" ]; then
+    add_to_classpath "$CLASSPATH_FILE_TMP" "$CDH_SPARK_CLASSPATH"
   fi
 
   # Add spark-atlas-connector jar files to classpath
@@ -240,16 +256,35 @@ function prepare_spark_env {
     add_to_classpath "$CLASSPATH_FILE_TMP" "$ATLAS_CONNECTOR_PATH"
   fi
 
-  # De-duplicate the classpath when creating the target file.
-  cat "$CLASSPATH_FILE_TMP" | sort | uniq > "$CLASSPATH_FILE"
+  # Add ozone filesystem jar to classpath for
+  # integration with Ozone
+  if [[ -d "${CDH_OZONE_HOME}" ]]; then
+    add_to_classpath "${CLASSPATH_FILE_TMP}" "${CDH_OZONE_HOME}/share/ozone/lib/hadoop-ozone-filesystem-lib-current-*.jar"
+  fi
+
+  if [ -s "$CLASSPATH_FILE_TMP" ]; then
+    cat "$CLASSPATH_FILE_TMP" | sort | uniq > "$CLASSPATH_FILE"
+  fi
   rm -f "$CLASSPATH_FILE_TMP"
 }
 
-# Check whether the given config key ($1) exists in the given conf file ($2).
-function has_config {
-  local key="$1"
-  local file="$2"
-  grep -q "^$key=" "$file"
+function copy_client_config {
+  local source_dir="$1"
+  local target_dir="$2"
+  local dest_dir="$3"
+
+  # this fails weirdly if $source_dir doesn't exist or is empty
+  for i in "$source_dir"/*; do
+    if [ $(basename "$i") != log4j.properties ]; then
+      mv $i "$target_dir"
+      # CDH-28425. Because of OPSAPS-25695, we need to fix the YARN config ourselves.
+      target="$target_dir/$(basename $i)"
+      replace "\{\{CDH_MR2_HOME}}" "$CDH_MR2_HOME" "$target"
+      replace "\{\{HADOOP_CLASSPATH}}" "" "$target"
+      replace "\{\{JAVA_LIBRARY_PATH}}" "" "$target"
+      replace "\{\{CMF_CONF_DIR}}" "$dest_dir" "$target"
+    fi
+  done
 }
 
 # Appends an item ($2) to a comma-separated list ($1).
@@ -264,48 +299,10 @@ function add_to_list {
   echo "$list"
 }
 
-# Set a configuration key ($1) to a value ($2) in the file ($3) only if it hasn't already been
-# set by the user.
-function set_config {
-  local key="$1"
-  local value="$2"
-  local file="$3"
-  if ! has_config "$key" "$file"; then
-    echo "$key=$value" >> "$file"
-  fi
-}
-
-# Parse a x.y.z version into an integer.
-function parse_version_string {
-  echo "$1" | awk -F. '{ printf("%02d%02d%02d", $1, $2, $3) }'
-}
-
-# Copies config files from a source directory ($1) into the Spark client config dir ($2).
-# $3 should be the final location of the client config. Ignores logging configuration, and
-# does not overwrite files, so that multiple source config directories can be merged.
-function copy_client_config {
-  local source_dir="$1"
-  local target_dir="$2"
-  local dest_dir="$3"
-
-  for i in "$source_dir"/*; do
-    if [ $(basename "$i") != log4j.properties ]; then
-      mv $i "$target_dir"
-
-      # CDH-28425. Because of OPSAPS-25695, we need to fix the YARN config ourselves.
-      target="$target_dir/$(basename $i)"
-      replace "{{CDH_MR2_HOME}}" "$CDH_MR2_HOME" "$target"
-      replace "{{HADOOP_CLASSPATH}}" "" "$target"
-      replace "{{JAVA_LIBRARY_PATH}}" "" "$target"
-      replace "{{CMF_CONF_DIR}}" "$dest_dir" "$target"
-    fi
-  done
-}
-
 function run_spark_class {
   local ARGS=($@)
   ARGS+=($ADDITIONAL_ARGS)
-  prepare_spark_env 0
+  prepare_spark_env
   export SPARK_DAEMON_JAVA_OPTS="$CSD_JAVA_OPTS $SPARK_DAEMON_JAVA_OPTS"
   export SPARK_JAVA_OPTS="$CSD_JAVA_OPTS $SPARK_JAVA_OPTS"
   cmd="$SPARK_HOME/bin/spark-class ${ARGS[@]}"
@@ -366,10 +363,12 @@ function start_history_server {
     replace_spark_conf "$FILTERS_KEY" "$FILTERS" "$CONF_FILE"
   fi
 
-  # Write the keystore password to the config file. Disable logging while doing that.
+  # Disable logging while checking sensitive data.
   set +x
   if [ -n "$KEYSTORE_PASSWORD" ]; then
-    echo "spark.ssl.historyServer.keyStorePassword=$KEYSTORE_PASSWORD" >> "$CONF_FILE"
+    # This value cannot be declared in the descriptor, since the CSD framework will
+    # treat it as config reference and fail.
+    echo 'spark.ssl.historyServer.keyStorePassword=${env:KEYSTORE_PASSWORD}' >> "$CONF_FILE"
   fi
   set -x
 
@@ -387,53 +386,29 @@ function start_history_server {
   run_spark_class "${ARGS[@]}"
 }
 
-function lineage_configuration() {
-    lineage_enabled=$(read_property "spark.lineage.enabled" "$SPARK_DEFAULTS")
-      # Update configs for spark-atlas-connector
-  if [ "$lineage_enabled" = "true" ]; then
-    # If there's an Atlas server file, copy its contents to the Atlas conf file.
-    ATLAS_SERVER_FILE="$CONF_DIR/atlas-conf/atlas-server.properties"
-    ATLAS_CONF_FILE="$SPARK_CONF_DIR/atlas-application.properties"
-    ATLAS_CLIENT_FILE="$CONF_DIR/atlas-conf/atlas-client.properties"
-    if [ -f "$ATLAS_SERVER_FILE" ]; then
-      # Copy the contents
-      . ${CONF_DIR}/scripts/generate_atlas_client_configs.sh ${ATLAS_SERVER_FILE} ${ATLAS_CONF_FILE} ${ATLAS_ZK_CONNECT} ${ATLAS_KAFKA_BROKERS_LIST} ${ATLAS_CLIENT_FILE}
-      # Update atlas-application.properties
-      echo "atlas.notification.hook.topic.name=ATLAS_SPARK_HOOK" >> "$ATLAS_CONF_FILE"
-      key="atlas.authentication.method.kerberos"
-      value=$(read_property "$key" "$ATLAS_CONF_FILE")
-      if [ "$value" = "true" ]; then
-        replace_conf_if_value "atlas.jaas.KafkaClient.option.useKeyTab" "true" "false" "$ATLAS_CONF_FILE"
-        replace_conf_if_value "atlas.jaas.KafkaClient.option.storeKey" "true" "false" "$ATLAS_CONF_FILE"
-        TICKET_CACHE_KEY="atlas.jaas.KafkaClient.option.useTicketCache"
-        replace_spark_conf "$TICKET_CACHE_KEY" "true" "$ATLAS_CONF_FILE"
-      fi
-      cp $ATLAS_CONF_FILE "$SPARK_CONF_DIR/yarn-conf/atlas-application.properties"
-    fi
-    if [ -f "$ATLAS_CONF_FILE" ]; then
-      # Add atlas connector listeners
-      local SC_LISTENERS_KEY="spark.extraListeners"
-      local SQL_LISTENERS_KEY="spark.sql.queryExecutionListeners"
-      local STR_LISTENERS_KEY="spark.sql.streaming.streamingQueryListeners"
-      local ATLAS_PKG="com.hortonworks.spark.atlas"
-      local LISTENERS=$(read_property "$SC_LISTENERS_KEY" "$SPARK_DEFAULTS")
-      LISTENERS=$(add_to_list "$LISTENERS" "$ATLAS_PKG.SparkAtlasEventTracker")
-      replace_spark_conf "$SC_LISTENERS_KEY" "$LISTENERS" "$SPARK_DEFAULTS"
-      local LISTENERS=$(read_property "$SQL_LISTENERS_KEY" "$SPARK_DEFAULTS")
-      LISTENERS=$(add_to_list "$LISTENERS" "$ATLAS_PKG.SparkAtlasEventTracker")
-      replace_spark_conf "$SQL_LISTENERS_KEY" "$LISTENERS" "$SPARK_DEFAULTS"
-      local LISTENERS=$(read_property "$STR_LISTENERS_KEY" "$SPARK_DEFAULTS")
-      LISTENERS=$(add_to_list "$LISTENERS" "$ATLAS_PKG.SparkAtlasStreamingQueryEventTracker")
-      replace_spark_conf "$STR_LISTENERS_KEY" "$LISTENERS" "$SPARK_DEFAULTS"
-    else
-      echo "ERROR: Lineage is enabled but unable to find atlas configuration at: $ATLAS_CONF_FILE"
-    fi
+# Check whether the given config key ($1) exists in the given conf file ($2).
+function has_config {
+  local key="$1"
+  local file="$2"
+  grep -q "^$key=" "$file"
+}
+
+# Set a configuration key ($1) to a value ($2) in the file ($3) only if it hasn't already been
+# set by the user.
+function set_config {
+  local key="$1"
+  local value="$2"
+  local file="$3"
+  if ! has_config "$key" "$file"; then
+    echo "$key=$value" >> "$file"
   fi
 }
+
 function deploy_client_config {
   log "Deploying client configuration"
 
-  prepare_spark_env 1
+  prepare_spark_env
+  prepare_external_classpath
 
   set_config 'spark.master' 'yarn' "$SPARK_DEFAULTS"
   set_config 'spark.submit.deployMode' "$DEPLOY_MODE" "$SPARK_DEFAULTS"
@@ -450,19 +425,11 @@ function deploy_client_config {
   mkdir "$HADOOP_CLIENT_CONF_DIR"
   copy_client_config "$HADOOP_CONF_DIR" "$HADOOP_CLIENT_CONF_DIR" "$TARGET_HADOOP_CONF_DIR"
 
-  # If there is a Hive configuration directory, then copy all the extra files into the Hadoop
-  # conf dir - so that Spark automatically distributes them - and update the configuration to
-  # enable the use of the Hive metastore.
-  local catalog_impl='in-memory'
-  if [ -d "$HIVE_CONF_DIR" ]; then
-    local hive_metastore_jars="\${env:HADOOP_COMMON_HOME}/../hive/lib/*"
-    hive_metastore_jars="$hive_metastore_jars:\${env:HADOOP_COMMON_HOME}/client/*"
-    set_config 'spark.sql.hive.metastore.jars' "$hive_metastore_jars" "$SPARK_DEFAULTS"
-    set_config 'spark.sql.hive.metastore.version' '3.0' "$SPARK_DEFAULTS"
-    copy_client_config "$HIVE_CONF_DIR" "$HADOOP_CLIENT_CONF_DIR" "$TARGET_HADOOP_CONF_DIR"
-    catalog_impl='hive'
-  fi
-  set_config 'spark.sql.catalogImplementation' "$catalog_impl" "$SPARK_DEFAULTS"
+  # Point Spark to the correct Hive libraries for metastore access
+  local hive_metastore_jars="\${env:HADOOP_COMMON_HOME}/../hive/lib/*"
+  hive_metastore_jars="$hive_metastore_jars:\${env:HADOOP_COMMON_HOME}/client/*"
+  set_config 'spark.sql.hive.metastore.jars' "$hive_metastore_jars" "$SPARK_DEFAULTS"
+  set_config 'spark.sql.hive.metastore.version' '3.0' "$SPARK_DEFAULTS"
 
   # If there's an HBase configuration directory, copy its files to the Spark config dir.
   if [ -d "$HBASE_CONF_DIR" ]; then
@@ -483,7 +450,7 @@ function deploy_client_config {
 
   # If a history server is configured, set its address in the default config file so that
   # the Yarn RM web ui links to the history server for Spark apps.
-  HISTORY_PROPS="$SPARK_CONF_DIR/history2.properties"
+  HISTORY_PROPS="$SPARK_CONF_DIR/history3.properties"
   HISTORY_HOST=
   if [ -f "$HISTORY_PROPS" ]; then
     for line in $(cat "$HISTORY_PROPS")
@@ -503,25 +470,9 @@ function deploy_client_config {
     rm "$HISTORY_PROPS"
   fi
 
-  # If no Spark jars are defined, look for the location of jars on the local filesystem,
-  # which we assume will be the same across the cluster.
-  key="spark.yarn.jars"
-  value=$(read_property "$key" "$SPARK_DEFAULTS")
-  if [ -n "$value" ]; then
-    local prefixed_values=
-    # the value is a comma separated list of files (which can be globs)
-    # Where needed, let's prefix it with the FS scheme.
-    IFS=',' read -ra VALUES <<< "$value"
-    for i in "${VALUES[@]}"; do
-      # Add the new entry to it, and then add a comma too.
-      prefixed_values=${prefixed_values}$(prepend_protocol "$i" "$DEFAULT_FS")","
-    done
-    # Take out the last extra comma at the end, if it exists
-    prefixed_values=$(sed 's/,$//' <<< $prefixed_values)
-  else
-    value="local:$SPARK_HOME/jars/*"
-  fi
-  replace_spark_conf "$key" "$value" "$SPARK_DEFAULTS"
+  # Set the location of the YARN jars to point to the install directory on all nodes.
+  local jars="local:$SPARK_HOME/jars/*,local:$SPARK_HOME/hive/*"
+  replace_spark_conf "spark.yarn.jars" "$jars" "$SPARK_DEFAULTS"
 
   # Set the default library paths for drivers and executors.
   EXTRA_LIB_PATH="$HADOOP_HOME/lib/native"
@@ -539,11 +490,52 @@ function deploy_client_config {
     replace_spark_conf "$key" "$value" "$SPARK_DEFAULTS"
   done
 
-  # Override the YARN / MR classpath configs since we already include them when generating
-  # SPARK_DIST_CLASSPATH. This avoids having the same paths added to the classpath a second
-  # time and wasting file descriptors.
-  replace_spark_conf "spark.hadoop.mapreduce.application.classpath" "" "$SPARK_DEFAULTS"
-  replace_spark_conf "spark.hadoop.yarn.application.classpath" "" "$SPARK_DEFAULTS"
+  lineage_enabled=$(read_property "spark.lineage.enabled" "$SPARK_DEFAULTS")
+  # Update configs for spark-atlas-connector
+  if [ "$lineage_enabled" = "true" ]; then
+    # If there's an Atlas server file, copy its contents to the Atlas conf file.
+    ATLAS_SERVER_FILE="$CONF_DIR/atlas-conf/atlas-server.properties"
+    ATLAS_CONF_FILE="$SPARK_CONF_DIR/atlas-application.properties"
+    ATLAS_CLIENT_FILE="$CONF_DIR/atlas-conf/atlas-client.properties"
+    if [ -f "$ATLAS_SERVER_FILE" ]; then
+      # Copy the contents
+      . ${CONF_DIR}/scripts/generate_atlas_client_configs.sh ${ATLAS_SERVER_FILE} ${ATLAS_CONF_FILE} ${ATLAS_ZK_CONNECT} ${ATLAS_KAFKA_BROKERS_LIST} ${ATLAS_CLIENT_FILE}
+
+      # Update atlas-application.properties
+      echo "atlas.notification.hook.topic.name=ATLAS_SPARK_HOOK" >> "$ATLAS_CONF_FILE"
+      key="atlas.authentication.method.kerberos"
+      value=$(read_property "$key" "$ATLAS_CONF_FILE")
+      if [ "$value" = "true" ]; then
+        replace_conf_if_value "atlas.jaas.KafkaClient.option.useKeyTab" "true" "false" "$ATLAS_CONF_FILE"
+        replace_conf_if_value "atlas.jaas.KafkaClient.option.storeKey" "true" "false" "$ATLAS_CONF_FILE"
+        TICKET_CACHE_KEY="atlas.jaas.KafkaClient.option.useTicketCache"
+        replace_spark_conf "$TICKET_CACHE_KEY" "true" "$ATLAS_CONF_FILE"
+      fi
+      cp $ATLAS_CONF_FILE "$SPARK_CONF_DIR/yarn-conf/atlas-application.properties"
+    fi
+
+    if [ -f "$ATLAS_CONF_FILE" ]; then
+      # Add atlas connector listeners
+      local SC_LISTENERS_KEY="spark.extraListeners"
+      local SQL_LISTENERS_KEY="spark.sql.queryExecutionListeners"
+      local STR_LISTENERS_KEY="spark.sql.streaming.streamingQueryListeners"
+      local ATLAS_PKG="com.hortonworks.spark.atlas"
+
+      local LISTENERS=$(read_property "$SC_LISTENERS_KEY" "$SPARK_DEFAULTS")
+      LISTENERS=$(add_to_list "$LISTENERS" "$ATLAS_PKG.SparkAtlasEventTracker")
+      replace_spark_conf "$SC_LISTENERS_KEY" "$LISTENERS" "$SPARK_DEFAULTS"
+
+      local LISTENERS=$(read_property "$SQL_LISTENERS_KEY" "$SPARK_DEFAULTS")
+      LISTENERS=$(add_to_list "$LISTENERS" "$ATLAS_PKG.SparkAtlasEventTracker")
+      replace_spark_conf "$SQL_LISTENERS_KEY" "$LISTENERS" "$SPARK_DEFAULTS"
+
+      local LISTENERS=$(read_property "$STR_LISTENERS_KEY" "$SPARK_DEFAULTS")
+      LISTENERS=$(add_to_list "$LISTENERS" "$ATLAS_PKG.SparkAtlasStreamingQueryEventTracker")
+      replace_spark_conf "$STR_LISTENERS_KEY" "$LISTENERS" "$SPARK_DEFAULTS"
+    else
+      echo "ERROR: Lineage is enabled but unable to find atlas configuration at: $ATLAS_CONF_FILE"
+    fi
+  fi
 
   # If using parcels, write extra configuration that tells Spark to replace the parcel
   # path with references to the NM's environment instead, so that users can have different
@@ -554,14 +546,8 @@ function deploy_client_config {
   fi
 
   if [ -n "$CDH_PYTHON" ]; then
-    key="spark.yarn.appMasterEnv.PYSPARK_PYTHON"
-    if ! has_config "$key" "$SPARK_DEFAULTS"; then
-      echo "spark.yarn.appMasterEnv.PYSPARK_PYTHON=$CDH_PYTHON" >> "$SPARK_DEFAULTS"
-    fi
-    key="spark.yarn.appMasterEnv.PYSPARK_DRIVER_PYTHON"
-    if ! has_config "$key" "$SPARK_DEFAULTS"; then
-      echo "spark.yarn.appMasterEnv.PYSPARK_DRIVER_PYTHON=$CDH_PYTHON" >> "$SPARK_DEFAULTS"
-    fi
+    echo "spark.yarn.appMasterEnv.PYSPARK_PYTHON=$CDH_PYTHON" >> "$SPARK_DEFAULTS"
+    echo "spark.yarn.appMasterEnv.PYSPARK_DRIVER_PYTHON=$CDH_PYTHON" >> "$SPARK_DEFAULTS"
   fi
 
   # These values cannot be declared in the descriptor, since the CSD framework will
@@ -576,9 +562,51 @@ function deploy_client_config {
       echo "$key=\${shell.log.level}" >> "$LOG_CONFIG"
     fi
   done
-  lineage_configuration
-}
 
+  # Allow SHS to be used when UI is disabled.
+  local key="spark.yarn.historyServer.allowTracking"
+  if ! has_config "$key" "$SPARK_DEFAULTS"; then
+    echo "$key=true" >> "$SPARK_DEFAULTS"
+  fi
+
+  # Force single-threaded BLAS (CDH-58082).
+  local env_vars="MKL_NUM_THREADS OPENBLAS_NUM_THREADS"
+  local env_confs="spark.yarn.appMasterEnv spark.executorEnv"
+  for e in $env_vars; do
+    for conf in $env_confs; do
+      if ! has_config "$conf.$e" "$SPARK_DEFAULTS"; then
+        echo "$conf.$e=1" >> "$SPARK_DEFAULTS"
+      fi
+    done
+  done
+
+  # Enable optimized S3 committers. Note that even if enabled in CM, this will not change the
+  # configuration if the user has tried to configure the same config keys using safety valves.
+  #
+  # The flag is written in the Spark config file (instead of using a simpler env variable) because
+  # otherwise changing it in CM does not trigger staleness in services that depend on Spark; in
+  # fact it isn't even clear that CM sets the environment variable when running the other service's
+  # scripts. But it's not a real Spark configuration, so it is removed from the final config file.
+  local s3_committers_enabled_key="spark.cloudera.s3_committers.enabled"
+  local s3_committers_enabled=$(read_property "$s3_committers_enabled_key" "$SPARK_DEFAULTS")
+  replace_spark_conf "$s3_committers_enabled_key" "" "$SPARK_DEFAULTS"
+  if [ "$s3_committers_enabled" = "true" ]; then
+    local name_key="spark.hadoop.fs.s3a.committer.name"
+    local protocol_key="spark.sql.sources.commitProtocolClass"
+    local committer_key="spark.sql.parquet.output.committer.class"
+
+    local name=$(read_property "$name_key" "$SPARK_DEFAULTS")
+    local protocol_class=$(read_property "$protocol_key" "$SPARK_DEFAULTS")
+    local committer_class=$(read_property "$committer_key" "$SPARK_DEFAULTS")
+    if [ -z "$name" ] && [ -z "$protocol_class" ] && [ -z "$committer_class" ]; then
+      set_config "$name_key" "directory" "$SPARK_DEFAULTS"
+      set_config "$protocol_key" "org.apache.spark.internal.io.cloud.PathOutputCommitProtocol" "$SPARK_DEFAULTS"
+      set_config "$committer_key" "org.apache.spark.internal.io.cloud.BindingParquetOutputCommitter" "$SPARK_DEFAULTS"
+    else
+      log "Optimized S3 committers are enabled, but skipped because of conflicting configuration in safety valve."
+    fi
+  fi
+}
 
 function clean_history_cache {
   local STORAGE_DIR="$1"

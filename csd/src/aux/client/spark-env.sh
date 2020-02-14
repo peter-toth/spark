@@ -30,6 +30,10 @@ fi
 export LD_LIBRARY_PATH
 
 HADOOP_CONF_DIR=${HADOOP_CONF_DIR:-$SPARK_CONF_DIR/yarn-conf}
+HIVE_CONF_DIR=${HIVE_CONF_DIR:-/etc/hive/conf}
+if [ -d "$HIVE_CONF_DIR" ]; then
+  HADOOP_CONF_DIR="$HADOOP_CONF_DIR:$HIVE_CONF_DIR"
+fi
 export HADOOP_CONF_DIR
 
 PYLIB="$SPARK_HOME/python/lib"
@@ -45,6 +49,13 @@ if [ -f "$PYLIB/pyspark.zip" ]; then
   export PYSPARK_ARCHIVES_PATH
 fi
 
+if [ -f "$SELF/classpath.txt" ]; then
+  export SPARK_DIST_CLASSPATH=$(paste -sd: "$SELF/classpath.txt")
+fi
+
+# Force single-threaded BLAS (CDH-58082).
+export MKL_NUM_THREADS=${MKL_NUM_THREADS:-1}
+export OPENBLAS_NUM_THREADS=${OPENBLAS_NUM_THREADS:-1}
 
 # Spark uses `set -a` to export all variables created or modified in this
 # script as env vars. We use a temporary variables to avoid env var name
@@ -58,23 +69,3 @@ if [ -n "$TMP_PYSPARK_PYTHON" ] && [ -n "$TMP_PYSPARK_DRIVER_PYTHON" ]; then
   export PYSPARK_PYTHON="$TMP_PYSPARK_PYTHON"
   export PYSPARK_DRIVER_PYTHON="$TMP_PYSPARK_DRIVER_PYTHON"
 fi
-
-# Add the Kafka jars configured by the user to the classpath.
-SPARK_DIST_CLASSPATH=
-SPARK_KAFKA_VERSION=${SPARK_KAFKA_VERSION:-'{{DEFAULT_SPARK_KAFKA_VERSION}}'}
-case "$SPARK_KAFKA_VERSION" in
-  0.9)
-    SPARK_DIST_CLASSPATH="$SPARK_HOME/kafka-0.9/*"
-    ;;
-  0.10)
-    SPARK_DIST_CLASSPATH="$SPARK_HOME/kafka-0.10/*"
-    ;;
-  None)
-    ;;
-  *)
-    echo "Invalid Kafka version: $SPARK_KAFKA_VERSION"
-    exit 1
-    ;;
-esac
-
-export SPARK_DIST_CLASSPATH="$SPARK_DIST_CLASSPATH:$(paste -sd: "$SELF/classpath.txt")"

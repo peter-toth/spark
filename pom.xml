@@ -120,7 +120,7 @@
     <yarn.version>${hadoop.version}</yarn.version>
     <flume.version>1.6.0</flume.version>
     <zookeeper.version>3.5.5.7.1.1.0-SNAPSHOT</zookeeper.version>
-    <curator.version>4.2.0</curator.version>
+    <curator.version>2.6.0</curator.version>
     <hive.group>org.spark-project.hive</hive.group>
     <!-- Version used in Maven Hive dependency -->
     <hive.version>1.21.2.7.1.1.0-SNAPSHOT</hive.version>

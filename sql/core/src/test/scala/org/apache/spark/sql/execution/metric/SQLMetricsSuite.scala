@@ -242,13 +242,22 @@ class SQLMetricsSuite extends SharedSparkSession with SQLMetricsTestUtils {
       testSparkPlanMetrics(df, 1, Map(
         0L -> (("SortMergeJoin", Map(
           // It's 4 because we only read 3 rows in the first partition and 1 row in the second one
-          "number of output rows" -> 4L))),
+          "number of output rows" -> 4L, "number of matched pairs" -> 4L))),
         2L -> (("Exchange", Map(
           "records read" -> 4L,
           "local blocks read" -> 2L,
           "remote blocks read" -> 0L,
           "shuffle records written" -> 2L))))
       )
+
+      val df2 = spark.sql(
+        "SELECT * FROM testData2 JOIN testDataForJoin ON testData2.a = testDataForJoin.a " +
+          "AND testData2.b <= testDataForJoin.b")
+      testSparkPlanMetrics(df2, 1, Map(
+        0L -> (("SortMergeJoin", Map(
+          "number of output rows" -> 3L, "number of matched pairs" -> 4L))))
+      )
+
     }
   }
 
@@ -265,7 +274,7 @@ class SQLMetricsSuite extends SharedSparkSession with SQLMetricsTestUtils {
       testSparkPlanMetrics(df, 1, Map(
         0L -> (("SortMergeJoin", Map(
           // It's 8 because we read 6 rows in the left and 2 row in the right one
-          "number of output rows" -> 8L))))
+          "number of output rows" -> 8L, "number of matched pairs" -> 4L))))
       )
 
       val df2 = spark.sql(
@@ -273,8 +282,50 @@ class SQLMetricsSuite extends SharedSparkSession with SQLMetricsTestUtils {
       testSparkPlanMetrics(df2, 1, Map(
         0L -> (("SortMergeJoin", Map(
           // It's 8 because we read 6 rows in the left and 2 row in the right one
-          "number of output rows" -> 8L))))
+          "number of output rows" -> 8L, "number of matched pairs" -> 4L))))
       )
+
+      val df3 = spark.sql(
+        "SELECT * FROM testData2 LEFT JOIN testDataForJoin ON testData2.a = testDataForJoin.a " +
+          " AND testData2.b >= testDataForJoin.b ")
+
+      testSparkPlanMetrics(df3, 1, Map(
+        0L -> (("SortMergeJoin", Map(
+          // It's 4 because we only read 3 rows in the first partition and 1 row in the second one
+          "number of output rows" -> 7L, "number of matched pairs" -> 4L))))
+      )
+
+      val df4 = spark.sql(
+        "SELECT * FROM testData2 RIGHT JOIN testDataForJoin ON testData2.a = testDataForJoin.a " +
+          "AND testData2.a >= testDataForJoin.b")
+
+      testSparkPlanMetrics(df4, 1, Map(
+        0L -> (("SortMergeJoin", Map(
+          // It's 4 because we only read 3 rows in the first partition and 1 row in the second one
+          "number of output rows" -> 3L, "number of matched pairs" -> 4L))))
+      )
+
+      val df5 = spark.sql(
+        "SELECT * FROM testData2 FULL OUTER JOIN testDataForJoin ON " +
+          "testData2.a = testDataForJoin.a")
+
+      testSparkPlanMetrics(df5, 1, Map(
+        0L -> (("SortMergeJoin", Map(
+          // It's 4 because we only read 3 rows in the first partition and 1 row in the second one
+          "number of output rows" -> 8L, "number of matched pairs" -> 4L))))
+      )
+
+      val df6 = spark.sql(
+        "SELECT * FROM testData2 FULL OUTER JOIN testDataForJoin ON " +
+          "testData2.a = testDataForJoin.a AND testData2.b >= testDataForJoin.b ")
+
+      testSparkPlanMetrics(df6, 1, Map(
+        0L -> (("SortMergeJoin", Map(
+          // It's 4 because we only read 3 rows in the first partition and 1 row in the second one
+          "number of output rows" -> 7L, "number of matched pairs" -> 4L))))
+      )
+
+
     }
   }
 

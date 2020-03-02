@@ -27,6 +27,7 @@
   "inExpressWizard" : true,
   "svgIcon": "images/icon.svg",
   "parcel" : {
+    "repoUrl" : "http://dummy",
     "requiredTags" : ["spark3", "cdh"],
     "optionalTags" : ["spark-plugin", "spark3-plugin"]
   },

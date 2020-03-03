@@ -2,74 +2,74 @@
 Join Benchmark
 ================================================================================================
 
-OpenJDK 64-Bit Server VM 1.8.0_232-8u232-b09-0ubuntu1~18.04.1-b09 on Linux 4.15.0-1044-aws
-Intel(R) Xeon(R) CPU E5-2670 v2 @ 2.50GHz
+OpenJDK 64-Bit Server VM 1.8.0_212-b04 on Mac OS X 10.14.6
+Intel(R) Core(TM) i7-8750H CPU @ 2.20GHz
 Join w long:                              Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
 ------------------------------------------------------------------------------------------------------------------------
-Join w long wholestage off                         4531           4557          37          4.6         216.1       1.0X
-Join w long wholestage on                          1214           1310          95         17.3          57.9       3.7X
+Join w long wholestage off                         2956           3064         153          7.1         141.0       1.0X
+Join w long wholestage on                           170            184          17        123.6           8.1      17.4X
 
-OpenJDK 64-Bit Server VM 1.8.0_232-8u232-b09-0ubuntu1~18.04.1-b09 on Linux 4.15.0-1044-aws
-Intel(R) Xeon(R) CPU E5-2670 v2 @ 2.50GHz
+OpenJDK 64-Bit Server VM 1.8.0_212-b04 on Mac OS X 10.14.6
+Intel(R) Core(TM) i7-8750H CPU @ 2.20GHz
 Join w long duplicated:                   Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
 ------------------------------------------------------------------------------------------------------------------------
-Join w long duplicated wholestage off              5200           5239          55          4.0         248.0       1.0X
-Join w long duplicated wholestage on               1535           1547          11         13.7          73.2       3.4X
+Join w long duplicated wholestage off              4051           4126         106          5.2         193.2       1.0X
+Join w long duplicated wholestage on                187            195           9        112.4           8.9      21.7X
 
-OpenJDK 64-Bit Server VM 1.8.0_232-8u232-b09-0ubuntu1~18.04.1-b09 on Linux 4.15.0-1044-aws
-Intel(R) Xeon(R) CPU E5-2670 v2 @ 2.50GHz
+OpenJDK 64-Bit Server VM 1.8.0_212-b04 on Mac OS X 10.14.6
+Intel(R) Core(TM) i7-8750H CPU @ 2.20GHz
 Join w 2 ints:                            Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
 ------------------------------------------------------------------------------------------------------------------------
-Join w 2 ints wholestage off                     170776         170795          27          0.1        8143.2       1.0X
-Join w 2 ints wholestage on                      165134         165183          36          0.1        7874.2       1.0X
+Join w 2 ints wholestage off                     156970         159032        2917          0.1        7484.9       1.0X
+Join w 2 ints wholestage on                       96423          96809         383          0.2        4597.8       1.6X
 
-OpenJDK 64-Bit Server VM 1.8.0_232-8u232-b09-0ubuntu1~18.04.1-b09 on Linux 4.15.0-1044-aws
-Intel(R) Xeon(R) CPU E5-2670 v2 @ 2.50GHz
+OpenJDK 64-Bit Server VM 1.8.0_212-b04 on Mac OS X 10.14.6
+Intel(R) Core(TM) i7-8750H CPU @ 2.20GHz
 Join w 2 longs:                           Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
 ------------------------------------------------------------------------------------------------------------------------
-Join w 2 longs wholestage off                      6561           6595          48          3.2         312.8       1.0X
-Join w 2 longs wholestage on                       2999           3070          85          7.0         143.0       2.2X
+Join w 2 longs wholestage off                      6472           6595         173          3.2         308.6       1.0X
+Join w 2 longs wholestage on                       1871           2192         182         11.2          89.2       3.5X
 
-OpenJDK 64-Bit Server VM 1.8.0_232-8u232-b09-0ubuntu1~18.04.1-b09 on Linux 4.15.0-1044-aws
-Intel(R) Xeon(R) CPU E5-2670 v2 @ 2.50GHz
+OpenJDK 64-Bit Server VM 1.8.0_212-b04 on Mac OS X 10.14.6
+Intel(R) Core(TM) i7-8750H CPU @ 2.20GHz
 Join w 2 longs duplicated:                Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
 ------------------------------------------------------------------------------------------------------------------------
-Join w 2 longs duplicated wholestage off          15731          15757          38          1.3         750.1       1.0X
-Join w 2 longs duplicated wholestage on            8017           8112          80          2.6         382.3       2.0X
+Join w 2 longs duplicated wholestage off          12627          12677          70          1.7         602.1       1.0X
+Join w 2 longs duplicated wholestage on            1532           1589          90         13.7          73.0       8.2X
 
-OpenJDK 64-Bit Server VM 1.8.0_232-8u232-b09-0ubuntu1~18.04.1-b09 on Linux 4.15.0-1044-aws
-Intel(R) Xeon(R) CPU E5-2670 v2 @ 2.50GHz
+OpenJDK 64-Bit Server VM 1.8.0_212-b04 on Mac OS X 10.14.6
+Intel(R) Core(TM) i7-8750H CPU @ 2.20GHz
 outer join w long:                        Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
 ------------------------------------------------------------------------------------------------------------------------
-outer join w long wholestage off                   3573           3577           6          5.9         170.4       1.0X
-outer join w long wholestage on                    1310           1325          15         16.0          62.5       2.7X
+outer join w long wholestage off                   2330           2353          33          9.0         111.1       1.0X
+outer join w long wholestage on                     161            170          10        130.2           7.7      14.5X
 
-OpenJDK 64-Bit Server VM 1.8.0_232-8u232-b09-0ubuntu1~18.04.1-b09 on Linux 4.15.0-1044-aws
-Intel(R) Xeon(R) CPU E5-2670 v2 @ 2.50GHz
+OpenJDK 64-Bit Server VM 1.8.0_212-b04 on Mac OS X 10.14.6
+Intel(R) Core(TM) i7-8750H CPU @ 2.20GHz
 semi join w long:                         Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
 ------------------------------------------------------------------------------------------------------------------------
-semi join w long wholestage off                    1893           1916          33         11.1          90.3       1.0X
-semi join w long wholestage on                      819            842          30         25.6          39.0       2.3X
+semi join w long wholestage off                    1572           1614          59         13.3          75.0       1.0X
+semi join w long wholestage on                      154            162           9        136.0           7.4      10.2X
 
-OpenJDK 64-Bit Server VM 1.8.0_232-8u232-b09-0ubuntu1~18.04.1-b09 on Linux 4.15.0-1044-aws
-Intel(R) Xeon(R) CPU E5-2670 v2 @ 2.50GHz
+OpenJDK 64-Bit Server VM 1.8.0_212-b04 on Mac OS X 10.14.6
+Intel(R) Core(TM) i7-8750H CPU @ 2.20GHz
 sort merge join:                          Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
 ------------------------------------------------------------------------------------------------------------------------
-sort merge join wholestage off                     1302           1312          13          1.6         620.9       1.0X
-sort merge join wholestage on                      1168           1233          62          1.8         557.0       1.1X
+sort merge join wholestage off                      710            850         198          3.0         338.4       1.0X
+sort merge join wholestage on                       551            601          54          3.8         262.8       1.3X
 
-OpenJDK 64-Bit Server VM 1.8.0_232-8u232-b09-0ubuntu1~18.04.1-b09 on Linux 4.15.0-1044-aws
-Intel(R) Xeon(R) CPU E5-2670 v2 @ 2.50GHz
+OpenJDK 64-Bit Server VM 1.8.0_212-b04 on Mac OS X 10.14.6
+Intel(R) Core(TM) i7-8750H CPU @ 2.20GHz
 sort merge join with duplicates:          Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
 ------------------------------------------------------------------------------------------------------------------------
-sort merge join with duplicates wholestage off           1996           2005          12          1.1         951.7       1.0X
-sort merge join with duplicates wholestage on           1766           1803          42          1.2         842.0       1.1X
+sort merge join with duplicates wholestage off           1267           1277          13          1.7         604.3       1.0X
+sort merge join with duplicates wholestage on           1118           1155          52          1.9         533.2       1.1X
 
-OpenJDK 64-Bit Server VM 1.8.0_232-8u232-b09-0ubuntu1~18.04.1-b09 on Linux 4.15.0-1044-aws
-Intel(R) Xeon(R) CPU E5-2670 v2 @ 2.50GHz
+OpenJDK 64-Bit Server VM 1.8.0_212-b04 on Mac OS X 10.14.6
+Intel(R) Core(TM) i7-8750H CPU @ 2.20GHz
 shuffle hash join:                        Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
 ------------------------------------------------------------------------------------------------------------------------
-shuffle hash join wholestage off                   1298           1300           3          3.2         309.6       1.0X
-shuffle hash join wholestage on                    1201           1210          10          3.5         286.4       1.1X
+shuffle hash join wholestage off                    959           1036         110          4.4         228.5       1.0X
+shuffle hash join wholestage on                     851            884          56          4.9         203.0       1.1X
 
 

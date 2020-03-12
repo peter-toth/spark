@@ -241,6 +241,8 @@
      to name individual keyed test case methods. If unset: run all.
       -->
     <test.method.keys />
+
+    <gbn.repo.url>http://cloudera-build-us-west-1.vpc.cloudera.com/s3/build/${env.SPARK_DEV_BUILD_GBN}/cdh/7.x/maven-repository/</gbn.repo.url>
   </properties>
   <repositories>
     <repository>
@@ -3016,6 +3018,25 @@
       <properties>
 	<scala.maven.plugin.version>3.2.2</scala.maven.plugin.version>
       </properties>
+    </profile>
+
+    <profile>
+      <id>gbn-snapshot-repo</id>
+      <repositories>
+       <repository>
+         <id>gbnRepo</id>
+         <!-- GBN repo first, so we take all snapshots from a specific GBN, rather than whatever
+              nexus-private happens to have as a snapshot, which might be a mix of versions -->
+         <name>gbn repo</name>
+         <url>${gbn.repo.url}</url>
+         <releases>
+           <enabled>true</enabled>
+         </releases>
+         <snapshots>
+           <enabled>true</enabled>
+         </snapshots>
+       </repository>
+      </repositories>
     </profile>
 
     <!--

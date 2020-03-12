@@ -24,6 +24,10 @@ _CALLING_DIR="$(pwd)"
 # Options used during compilation
 _COMPILE_JVM_OPTS="-Xmx2g -XX:ReservedCodeCacheSize=1g"
 
+source "${_DIR}/cloudera_helpers.sh"
+
+load_conf_file || exit 1
+
 # Installs any application tarball given a URL, the expected tarball name,
 # and, optionally, a checkable binary path to determine if the binary has
 # already been installed
@@ -172,9 +176,12 @@ export MAVEN_OPTS=${MAVEN_OPTS:-"$_COMPILE_JVM_OPTS"}
 
 echo "Using \`mvn\` from path: $MVN_BIN" 1>&2
 
+GBN_REPO_ARGS=$(extra_gbn_repo_args "maven")
+
+
 # call the `mvn` command as usual
 # SPARK-25854
-"${MVN_BIN}" -DzincPort=${ZINC_PORT} "$@"
+"${MVN_BIN}" -DzincPort=${ZINC_PORT} "$@" $GBN_REPO_ARGS
 MVN_RETCODE=$?
 
 # Try to shut down zinc explicitly if the server is still running.

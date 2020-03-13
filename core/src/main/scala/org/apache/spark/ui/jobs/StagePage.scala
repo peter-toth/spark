@@ -137,7 +137,7 @@ private[ui] class StagePage(parent: StagesTab, store: AppStatusStore) extends We
 
     val summary =
       <div>
-        <ul class="unstyled">
+        <ul class="list-unstyled">
           <li>
             <strong>Total Time Across All Tasks: </strong>
             {UIUtils.formatDuration(stageData.executorRunTime)}
@@ -718,7 +718,7 @@ private[ui] class TaskPagedTable(
   override def tableId: String = "task-table"
 
   override def tableCssClass: String =
-    "table table-bordered table-condensed table-striped table-head-clickable"
+    "table table-bordered table-sm table-striped table-head-clickable"
 
   override def pageSizeFormField: String = "task.pageSize"
 

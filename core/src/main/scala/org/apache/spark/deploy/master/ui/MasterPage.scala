@@ -95,9 +95,9 @@ private[ui] class MasterPage(parent: MasterWebUI) extends WebUIPage("") {
     def hasDrivers: Boolean = activeDrivers.length > 0 || completedDrivers.length > 0
 
     val content =
-        <div class="row-fluid">
-          <div class="span12">
-            <ul class="unstyled">
+        <div class="row">
+          <div class="col-12">
+            <ul class="list-unstyled">
               <li><strong>URL:</strong> {state.uri}</li>
               {
                 state.restUri.map { uri =>
@@ -124,8 +124,8 @@ private[ui] class MasterPage(parent: MasterWebUI) extends WebUIPage("") {
           </div>
         </div>
 
-        <div class="row-fluid">
-          <div class="span12">
+        <div class="row">
+          <div class="col-12">
             <span class="collapse-aggregated-workers collapse-table"
                 onClick="collapseTable('collapse-aggregated-workers','aggregated-workers')">
               <h4>
@@ -139,8 +139,8 @@ private[ui] class MasterPage(parent: MasterWebUI) extends WebUIPage("") {
           </div>
         </div>
 
-        <div class="row-fluid">
-          <div class="span12">
+        <div class="row">
+          <div class="col-12">
             <span id="running-app" class="collapse-aggregated-activeApps collapse-table"
                 onClick="collapseTable('collapse-aggregated-activeApps','aggregated-activeApps')">
               <h4>
@@ -156,8 +156,8 @@ private[ui] class MasterPage(parent: MasterWebUI) extends WebUIPage("") {
 
         <div>
           {if (hasDrivers) {
-             <div class="row-fluid">
-               <div class="span12">
+             <div class="row">
+               <div class="col-12">
                  <span class="collapse-aggregated-activeDrivers collapse-table"
                      onClick="collapseTable('collapse-aggregated-activeDrivers',
                      'aggregated-activeDrivers')">
@@ -175,8 +175,8 @@ private[ui] class MasterPage(parent: MasterWebUI) extends WebUIPage("") {
           }
         </div>
 
-        <div class="row-fluid">
-          <div class="span12">
+        <div class="row">
+          <div class="col-12">
             <span id="completed-app" class="collapse-aggregated-completedApps collapse-table"
                 onClick="collapseTable('collapse-aggregated-completedApps',
                 'aggregated-completedApps')">
@@ -194,8 +194,8 @@ private[ui] class MasterPage(parent: MasterWebUI) extends WebUIPage("") {
         <div>
           {
             if (hasDrivers) {
-              <div class="row-fluid">
-                <div class="span12">
+              <div class="row">
+                <div class="col-12">
                   <span class="collapse-aggregated-completedDrivers collapse-table"
                       onClick="collapseTable('collapse-aggregated-completedDrivers',
                       'aggregated-completedDrivers')">

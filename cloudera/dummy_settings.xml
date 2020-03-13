@@ -1,0 +1,24 @@
+<!-- 
+Workaround for RELENG-8892, only needed on certain build machines
+
+If you dont' set the env variables below, then nothing is mirrored, and you'll
+download from original sources.
+
+Alternatively, you might want
+MIRROR_OF="*,!nexus"
+MIRROR_URL=http://maven.jenkins.cloudera.com:8081/artifactory/cloudera-mirrors
+
+Note that you might need to escape the "!" in your shell, so you'd use
+MIRROR_OF="*,\!nexus"
+-->
+   
+<settings>
+ <mirrors>
+  <mirror>
+   <mirrorOf>${env.MIRROR_OF}</mirrorOf>
+   <name>dummy_mirror</name>
+   <url>${env.MIRROR_URL}</url>
+   <id>dummy_mirror</id>
+  </mirror>
+ </mirrors>
+</settings>

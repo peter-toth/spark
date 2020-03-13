@@ -312,7 +312,7 @@ private[ui] class AllJobsPage(parent: JobsTab, store: AppStatusStore) extends We
 
     val summary: NodeSeq =
       <div>
-        <ul class="unstyled">
+        <ul class="list-unstyled">
           <li>
             <strong>User:</strong>
             {parent.getSparkUser}
@@ -405,7 +405,8 @@ private[ui] class AllJobsPage(parent: JobsTab, store: AppStatusStore) extends We
     val helpText = """A job is triggered by an action, like count() or saveAsTextFile().""" +
       " Click on a job to see information about the stages of tasks inside it."
 
-    UIUtils.headerSparkPage(request, "Spark Jobs", content, parent, helpText = Some(helpText))
+    UIUtils.headerSparkPage(request, "Spark Jobs", content, parent,
+      helpText = Some(helpText))
   }
 
 }
@@ -517,7 +518,7 @@ private[ui] class JobPagedTable(
   override def tableId: String = jobTag + "-table"
 
   override def tableCssClass: String =
-    "table table-bordered table-condensed table-striped " +
+    "table table-bordered table-sm table-striped " +
       "table-head-clickable table-cell-width-limited"
 
   override def pageSizeFormField: String = jobTag + ".pageSize"
@@ -603,7 +604,7 @@ private[ui] class JobPagedTable(
         }
       }
     }
-    <thead>{headerRow}</thead>
+    <thead><tr>{headerRow}</tr></thead>
   }
 
   override def row(jobTableRow: JobTableRowData): Seq[Node] = {

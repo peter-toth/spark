@@ -56,7 +56,7 @@ private[ui] class ThriftServerPage(parent: ThriftServerTab) extends WebUIPage(""
   /** Generate basic stats of the thrift server program */
   private def generateBasicStats(): Seq[Node] = {
     val timeSinceStart = System.currentTimeMillis() - startTime.getTime
-    <ul class ="unstyled">
+    <ul class ="list-unstyled">
       <li>
         <strong>Started at: </strong> {formatDate(startTime)}
       </li>

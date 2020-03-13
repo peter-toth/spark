@@ -425,11 +425,6 @@ function deploy_client_config {
   mkdir "$HADOOP_CLIENT_CONF_DIR"
   copy_client_config "$HADOOP_CONF_DIR" "$HADOOP_CLIENT_CONF_DIR" "$TARGET_HADOOP_CONF_DIR"
 
-  # Point Spark to the correct Hive libraries for metastore access
-  local hive_metastore_jars="\${env:HADOOP_COMMON_HOME}/../hive/lib/*"
-  hive_metastore_jars="$hive_metastore_jars:\${env:HADOOP_COMMON_HOME}/client/*"
-  set_config 'spark.sql.hive.metastore.jars' "$hive_metastore_jars" "$SPARK_DEFAULTS"
-  set_config 'spark.sql.hive.metastore.version' '3.0' "$SPARK_DEFAULTS"
 
   # If there's an HBase configuration directory, copy its files to the Spark config dir.
   if [ -d "$HBASE_CONF_DIR" ]; then

@@ -22,15 +22,15 @@ import java.io.IOException;
 import java.net.SocketAddress;
 import java.nio.ByteBuffer;
 import java.util.UUID;
-import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import javax.annotation.Nullable;
 
 import com.google.common.annotations.VisibleForTesting;
-import com.google.common.base.MoreObjects;
+import com.google.common.base.Objects;
 import com.google.common.base.Preconditions;
 import com.google.common.base.Throwables;
+import com.google.common.util.concurrent.SettableFuture;
 import io.netty.channel.Channel;
 import io.netty.util.concurrent.Future;
 import io.netty.util.concurrent.GenericFutureListener;
@@ -232,7 +232,7 @@ public class TransportClient implements Closeable {
    * a specified timeout for a response.
    */
   public ByteBuffer sendRpcSync(ByteBuffer message, long timeoutMs) {
-    final CompletableFuture<ByteBuffer> result = new CompletableFuture();
+    final SettableFuture<ByteBuffer> result = SettableFuture.create();
 
     sendRpc(message, new RpcResponseCallback() {
       @Override
@@ -242,16 +242,16 @@ public class TransportClient implements Closeable {
           copy.put(response);
           // flip "copy" to make it readable
           copy.flip();
-          result.complete(copy);
+          result.set(copy);
         } catch (Throwable t) {
           logger.warn("Error in responding PRC callback", t);
-          result.completeExceptionally(t);
+          result.setException(t);
         }
       }
 
       @Override
       public void onFailure(Throwable e) {
-        result.completeExceptionally(e);
+        result.setException(e);
       }
     });
 
@@ -301,7 +301,7 @@ public class TransportClient implements Closeable {
 
   @Override
   public String toString() {
-    return MoreObjects.toStringHelper(this)
+    return Objects.toStringHelper(this)
       .add("remoteAdress", channel.remoteAddress())
       .add("clientId", clientId)
       .add("isActive", isActive())

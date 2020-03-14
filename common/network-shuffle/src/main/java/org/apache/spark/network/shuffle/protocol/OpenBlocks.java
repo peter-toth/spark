@@ -19,7 +19,6 @@ package org.apache.spark.network.shuffle.protocol;
 
 import java.util.Arrays;
 
-import com.google.common.base.MoreObjects;
 import com.google.common.base.Objects;
 import io.netty.buffer.ByteBuf;
 
@@ -50,7 +49,7 @@ public class OpenBlocks extends BlockTransferMessage {
 
   @Override
   public String toString() {
-    return MoreObjects.toStringHelper(this)
+    return Objects.toStringHelper(this)
       .add("appId", appId)
       .add("execId", execId)
       .add("blockIds", Arrays.toString(blockIds))

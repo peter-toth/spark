@@ -17,7 +17,6 @@
 
 package org.apache.spark.network.shuffle.protocol;
 
-import com.google.common.base.MoreObjects;
 import com.google.common.base.Objects;
 import io.netty.buffer.ByteBuf;
 
@@ -54,7 +53,7 @@ public class RegisterExecutor extends BlockTransferMessage {
 
   @Override
   public String toString() {
-    return MoreObjects.toStringHelper(this)
+    return Objects.toStringHelper(this)
       .add("appId", appId)
       .add("execId", execId)
       .add("executorInfo", executorInfo)

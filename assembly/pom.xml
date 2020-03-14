@@ -92,20 +92,12 @@
 
     <!--
       Because we don't shade dependencies anymore, we need to restore Guava to compile scope so
-      that the libraries Spark depend on have it available.
-      We'll package the 28.0-jre version as other components (like hadoop) depend on that and it
-      has to be in sync with them.
+      that the libraries Spark depend on have it available. We'll package the version that Spark
+      uses (14.0.1) which is not the same as Hadoop dependencies, but works.
     -->
     <dependency>
       <groupId>com.google.guava</groupId>
       <artifactId>guava</artifactId>
-      <version>28.0-jre</version>
-      <scope>${hadoop.deps.scope}</scope>
-    </dependency>
-    <dependency>
-      <groupId>com.google.guava</groupId>
-      <artifactId>failureaccess</artifactId>
-      <version>1.0.1</version>
       <scope>${hadoop.deps.scope}</scope>
     </dependency>
   </dependencies>

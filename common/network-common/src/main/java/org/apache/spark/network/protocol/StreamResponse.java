@@ -17,7 +17,6 @@
 
 package org.apache.spark.network.protocol;
 
-import com.google.common.base.MoreObjects;
 import com.google.common.base.Objects;
 import io.netty.buffer.ByteBuf;
 
@@ -82,7 +81,7 @@ public final class StreamResponse extends AbstractResponseMessage {
 
   @Override
   public String toString() {
-    return MoreObjects.toStringHelper(this)
+    return Objects.toStringHelper(this)
       .add("streamId", streamId)
       .add("byteCount", byteCount)
       .add("body", body())

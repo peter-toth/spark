@@ -122,7 +122,7 @@
     <zookeeper.version>3.5.5.7.1.1.0-SNAPSHOT</zookeeper.version>
     <curator.version>4.2.0</curator.version>
     <hive.group>org.apache.hive</hive.group>
-    <hive.classifier></hive.classifier>
+    <hive.classifier />
     <!-- Version used in Maven Hive dependency -->
     <hive.version>3.1.3000.7.1.1.0-SNAPSHOT</hive.version>
     <!-- Version used for internal directory structure -->
@@ -3110,7 +3110,7 @@
         <!-- Do not need parquet-hadoop-bundle because we already have
           parquet-common, parquet-column and parquet-hadoop -->
         <hive.parquet.scope>provided</hive.parquet.scope>
-        <orc.classifier></orc.classifier>
+        <orc.classifier />
         <datanucleus-core.version>4.1.17</datanucleus-core.version>
       </properties>
       <dependencies>

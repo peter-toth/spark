@@ -33,7 +33,7 @@ import org.apache.hadoop.hive.metastore.api.{EnvironmentContext, Function => Hiv
 import org.apache.hadoop.hive.metastore.api.{MetaException, PrincipalType, ResourceType, ResourceUri}
 import org.apache.hadoop.hive.metastore.api.{Table => TTable}
 import org.apache.hadoop.hive.ql.Driver
-import org.apache.hadoop.hive.ql.ddl.table.partition.AlterTableAddPartitionDesc
+import org.apache.hadoop.hive.ql.ddl.table.partition.add.AlterTableAddPartitionDesc
 import org.apache.hadoop.hive.ql.io.AcidUtils
 import org.apache.hadoop.hive.ql.metadata.{Hive, HiveException, Partition, Table}
 import org.apache.hadoop.hive.ql.plan.LoadTableDesc
@@ -1389,9 +1389,9 @@ private[client] class Shim_v3_0 extends Shim_v2_3 {
       "getRequiredWriteCapabilities")
 
   private lazy val alterTableAddPartitionDescClazz = Utils.classForName(
-    "org.apache.hadoop.hive.ql.ddl.table.partition.AlterTableAddPartitionDesc")
+    "org.apache.hadoop.hive.ql.ddl.table.partition.add.AlterTableAddPartitionDesc")
   private lazy val partitionDescClazz = Utils.classForName(
-    "org.apache.hadoop.hive.ql.ddl.table.partition.AlterTableAddPartitionDesc$PartitionDesc")
+    "org.apache.hadoop.hive.ql.ddl.table.partition.add.AlterTableAddPartitionDesc$PartitionDesc")
   private lazy val partitionDescCtor = alterTableAddPartitionDescClazz.getConstructor(
     classOf[String],
     classOf[String],

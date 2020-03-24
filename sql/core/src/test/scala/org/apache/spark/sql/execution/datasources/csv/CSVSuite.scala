@@ -64,6 +64,7 @@ class CSVSuite extends QueryTest with SharedSQLContext with SQLTestUtils with Te
   private val datesFile = "test-data/dates.csv"
   private val unescapedQuotesFile = "test-data/unescaped-quotes.csv"
   private val valueMalformedFile = "test-data/value-malformed.csv"
+  private val malformedRowFile = "test-data/malformedRow.csv"
 
   /** Verifies data and schema. */
   private def verifyCars(
@@ -1904,6 +1905,46 @@ class CSVSuite extends QueryTest with SharedSQLContext with SQLTestUtils with Te
           .csv(path.getAbsoluteFile.toString)
         checkAnswer(readDF, Row(null, null, "0,2013-abc-11") :: Nil)
       }
+    }
+  }
+
+  test("SPARK-29101 test count with DROPMALFORMED mode") {
+    Seq((true, 4), (false, 3)).foreach { case (csvColumnPruning, expectedCount) =>
+      withSQLConf(SQLConf.CSV_PARSER_COLUMN_PRUNING.key -> csvColumnPruning.toString) {
+        val count = spark.read
+          .option("header", "true")
+          .option("mode", "DROPMALFORMED")
+          .csv(testFile(malformedRowFile))
+          .count()
+        assert(expectedCount == count)
+      }
+    }
+  }
+
+  test("parse timestamp in microsecond precision") {
+    withTempPath { path =>
+      val t = "2019-11-14 20:35:30.123456"
+      Seq(t).toDF("t").write.text(path.getAbsolutePath)
+      val readback = spark.read
+        .schema("t timestamp")
+        .option("timestampFormat", "yyyy-MM-dd HH:mm:ss.SSSSSS")
+        .csv(path.getAbsolutePath)
+      checkAnswer(readback, Row(Timestamp.valueOf(t)))
+    }
+  }
+
+  test("Roundtrip in reading and writing timestamps in microsecond precision") {
+    withTempPath { path =>
+      val timestamp = Timestamp.valueOf("2019-11-18 11:56:00.123456")
+      Seq(timestamp).toDF("t")
+        .write
+        .option("timestampFormat", "yyyy-MM-dd HH:mm:ss.SSSSSS")
+        .csv(path.getAbsolutePath)
+      val readback = spark.read
+        .schema("t timestamp")
+        .option("timestampFormat", "yyyy-MM-dd HH:mm:ss.SSSSSS")
+        .csv(path.getAbsolutePath)
+      checkAnswer(readback, Row(timestamp))
     }
   }
 }

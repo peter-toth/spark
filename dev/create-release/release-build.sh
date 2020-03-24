@@ -170,7 +170,6 @@ DEST_DIR_NAME="$SPARK_PACKAGE_VERSION"
 
 git clean -d -f -x
 rm .gitignore
-rm -rf .git
 cd ..
 
 if [[ "$1" == "package" ]]; then
@@ -185,7 +184,7 @@ if [[ "$1" == "package" ]]; then
     rm -r spark-$SPARK_VERSION/licenses-binary
   fi
 
-  tar cvzf spark-$SPARK_VERSION.tgz spark-$SPARK_VERSION
+  tar cvzf spark-$SPARK_VERSION.tgz --exclude spark-$SPARK_VERSION/.git spark-$SPARK_VERSION
   echo $GPG_PASSPHRASE | $GPG --passphrase-fd 0 --armour --output spark-$SPARK_VERSION.tgz.asc \
     --detach-sig spark-$SPARK_VERSION.tgz
   echo $GPG_PASSPHRASE | $GPG --passphrase-fd 0 --print-md \
@@ -425,13 +424,13 @@ if [[ "$1" == "publish-release" ]]; then
 
   $MVN -DzincPort=$ZINC_PORT -Dmaven.repo.local=$tmp_repo -DskipTests $SCALA_2_11_PROFILES $PUBLISH_PROFILES clean install
 
-  if ! is_dry_run && [[ $PUBLISH_SCALA_2_10 = 1 ]]; then
+  if [[ $PUBLISH_SCALA_2_10 = 1 ]]; then
     ./dev/change-scala-version.sh 2.10
     $MVN -DzincPort=$((ZINC_PORT + 1)) -Dmaven.repo.local=$tmp_repo -Dscala-2.10 \
       -DskipTests $PUBLISH_PROFILES $SCALA_2_10_PROFILES clean install
   fi
 
-  if ! is_dry_run && [[ $PUBLISH_SCALA_2_12 = 1 ]]; then
+  if [[ $PUBLISH_SCALA_2_12 = 1 ]]; then
     ./dev/change-scala-version.sh 2.12
     $MVN -DzincPort=$((ZINC_PORT + 2)) -Dmaven.repo.local=$tmp_repo -Dscala-2.12 \
       -DskipTests $PUBLISH_PROFILES $SCALA_2_12_PROFILES clean install

@@ -84,7 +84,13 @@ class QueryExecution(val sparkSession: SparkSession, val logical: LogicalPlan) {
   lazy val executedPlan: SparkPlan = prepareForExecution(sparkPlan)
 
   /** Internal version of the RDD. Avoids copies and has no schema */
-  lazy val toRdd: RDD[InternalRow] = executedPlan.execute()
+  lazy val toRdd: RDD[InternalRow] = {
+    if (sparkSession.sessionState.conf.getConf(SQLConf.USE_CONF_ON_RDD_OPERATION)) {
+      new SQLExecutionRDD(executedPlan.execute(), sparkSession.sessionState.conf)
+    } else {
+      executedPlan.execute()
+    }
+  }
 
   /**
    * Prepares a planned [[SparkPlan]] for execution by inserting shuffle operations and internal

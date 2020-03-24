@@ -149,4 +149,11 @@ object StaticSQLConf extends Logging {
       .intConf
       .createWithDefault(1000)
 
+  val SUBQUERY_MAX_THREAD_THRESHOLD =
+    buildStaticConf("spark.sql.subquery.maxThreadThreshold")
+      .internal()
+      .doc("The maximum degree of parallelism to execute the subquery.")
+      .intConf
+      .checkValue(thres => thres > 0 && thres <= 128, "The threshold must be in (0,128].")
+      .createWithDefault(16)
 }

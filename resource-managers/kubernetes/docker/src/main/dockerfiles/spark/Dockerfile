@@ -15,7 +15,7 @@
 # limitations under the License.
 #
 
-FROM openjdk:8-alpine
+FROM openjdk:8-jdk-slim
 
 ARG spark_jars=jars
 ARG example_jars=examples/jars
@@ -30,9 +30,9 @@ ARG k8s_tests=kubernetes/tests
 # docker build -t spark:latest -f kubernetes/dockerfiles/spark/Dockerfile .
 
 RUN set -ex && \
-    apk upgrade --no-cache && \
+    apt-get update && \
     ln -s /lib /lib64 && \
-    apk add --no-cache bash tini libc6-compat linux-pam krb5 krb5-libs && \
+    apt install -y bash tini libc6 libpam-modules libnss3 krb5 krb5-libs && \
     mkdir -p /opt/spark && \
     mkdir -p /opt/spark/examples && \
     mkdir -p /opt/spark/work-dir && \
@@ -40,7 +40,8 @@ RUN set -ex && \
     rm /bin/sh && \
     ln -sv /bin/bash /bin/sh && \
     echo "auth required pam_wheel.so use_uid" >> /etc/pam.d/su && \
-    chgrp root /etc/passwd && chmod ug+rw /etc/passwd
+    chgrp root /etc/passwd && chmod ug+rw /etc/passwd && \
+    rm -rf /var/cache/apt/*
 
 COPY ${spark_jars} /opt/spark/jars
 COPY bin /opt/spark/bin

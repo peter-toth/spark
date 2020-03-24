@@ -3034,6 +3034,50 @@ class SQLQuerySuite extends QueryTest with SharedSQLContext {
     }
 
   }
+
+  test("SPARK-29213: FilterExec should not throw NPE") {
+    withTempView("t1", "t2", "t3") {
+      sql("SELECT ''").as[String].map(identity).toDF("x").createOrReplaceTempView("t1")
+      sql("SELECT * FROM VALUES 0, CAST(NULL AS BIGINT)")
+        .as[java.lang.Long]
+        .map(identity)
+        .toDF("x")
+        .createOrReplaceTempView("t2")
+      sql("SELECT ''").as[String].map(identity).toDF("x").createOrReplaceTempView("t3")
+      sql(
+        """
+          |SELECT t1.x
+          |FROM t1
+          |LEFT JOIN (
+          |    SELECT x FROM (
+          |        SELECT x FROM t2
+          |        UNION ALL
+          |        SELECT SUBSTR(x,5) x FROM t3
+          |    ) a
+          |    WHERE LENGTH(x)>0
+          |) t3
+          |ON t1.x=t3.x
+        """.stripMargin).collect()
+    }
+  }
+
+  test("SPARK-29682: Conflicting attributes in Expand are resolved") {
+    val numsDF = Seq(1, 2, 3).toDF("nums")
+    val cubeDF = numsDF.cube("nums").agg(max(lit(0)).as("agcol"))
+
+    checkAnswer(
+      cubeDF.join(cubeDF, "nums"),
+      Row(1, 0, 0) :: Row(2, 0, 0) :: Row(3, 0, 0) :: Nil)
+  }
+
+  test("SPARK-30447: fix constant propagation inside NOT") {
+    withTempView("t") {
+      Seq[Integer](1, null).toDF("c").createOrReplaceTempView("t")
+      val df = sql("SELECT * FROM t WHERE NOT(c = 1 AND c + 1 = 1)")
+
+      checkAnswer(df, Row(1))
+    }
+  }
 }
 
 case class Foo(bar: Option[String])

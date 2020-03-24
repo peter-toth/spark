@@ -57,6 +57,20 @@ class JDBCSuite extends QueryTest
       Some(StringType)
   }
 
+  val testH2DialectTinyInt = new JdbcDialect {
+    override def canHandle(url: String): Boolean = url.startsWith("jdbc:h2")
+    override def getCatalystType(
+        sqlType: Int,
+        typeName: String,
+        size: Int,
+        md: MetadataBuilder): Option[DataType] = {
+      sqlType match {
+        case java.sql.Types.TINYINT => Some(ByteType)
+        case _ => None
+      }
+    }
+  }
+
   before {
     Utils.classForName("org.h2.Driver")
     // Extra properties that will be specified for our database. We need these to test
@@ -436,15 +450,6 @@ class JDBCSuite extends QueryTest
       urlWithUserAndPass, "TEST.PEOPLE", new Properties()).collect().length === 3)
   }
 
-  test("Basic API with illegal fetchsize") {
-    val properties = new Properties()
-    properties.setProperty(JDBCOptions.JDBC_BATCH_FETCH_SIZE, "-1")
-    val e = intercept[IllegalArgumentException] {
-      spark.read.jdbc(urlWithUserAndPass, "TEST.PEOPLE", properties).collect()
-    }.getMessage
-    assert(e.contains("Invalid value `-1` for parameter `fetchsize`"))
-  }
-
   test("Missing partition columns") {
     withView("tempPeople") {
       val e = intercept[IllegalArgumentException] {
@@ -694,6 +699,17 @@ class JDBCSuite extends QueryTest
     JdbcDialects.unregisterDialect(testH2Dialect)
   }
 
+  test("SPARK-26499: Map TINYINT to ByteType via JdbcDialects") {
+    JdbcDialects.registerDialect(testH2DialectTinyInt)
+    val df = spark.read.jdbc(urlWithUserAndPass, "test.inttypes", new Properties())
+    val rows = df.collect()
+    assert(rows.length === 2)
+    assert(rows(0).get(2).isInstanceOf[Byte])
+    assert(rows(0).getByte(2) === 3)
+    assert(rows(1).isNullAt(2))
+    JdbcDialects.unregisterDialect(testH2DialectTinyInt)
+  }
+
   test("Default jdbc dialect registration") {
     assert(JdbcDialects.get("jdbc:mysql://127.0.0.1/db") == MySQLDialect)
     assert(JdbcDialects.get("jdbc:postgresql://127.0.0.1/db") == PostgresDialect)
@@ -871,17 +887,37 @@ class JDBCSuite extends QueryTest
       "BIT")
     assert(msSqlServerDialect.getJDBCType(BinaryType).map(_.databaseTypeDefinition).get ==
       "VARBINARY(MAX)")
-    assert(msSqlServerDialect.getJDBCType(ShortType).map(_.databaseTypeDefinition).get ==
-      "SMALLINT")
+    Seq(true, false).foreach { flag =>
+      withSQLConf(SQLConf.LEGACY_MSSQLSERVER_NUMERIC_MAPPING_ENABLED.key -> s"$flag") {
+        if (SQLConf.get.legacyMsSqlServerNumericMappingEnabled) {
+          assert(msSqlServerDialect.getJDBCType(ShortType).map(_.databaseTypeDefinition).isEmpty)
+        } else {
+          assert(msSqlServerDialect.getJDBCType(ShortType).map(_.databaseTypeDefinition).get ==
+            "SMALLINT")
+        }
+      }
+    }
   }
 
   test("SPARK-28152 MsSqlServerDialect catalyst type mapping") {
     val msSqlServerDialect = JdbcDialects.get("jdbc:sqlserver")
     val metadata = new MetadataBuilder().putLong("scale", 1)
-    assert(msSqlServerDialect.getCatalystType(java.sql.Types.SMALLINT, "SMALLINT", 1,
-      metadata).get == ShortType)
-    assert(msSqlServerDialect.getCatalystType(java.sql.Types.REAL, "REAL", 1,
-      metadata).get == FloatType)
+
+    Seq(true, false).foreach { flag =>
+      withSQLConf(SQLConf.LEGACY_MSSQLSERVER_NUMERIC_MAPPING_ENABLED.key -> s"$flag") {
+        if (SQLConf.get.legacyMsSqlServerNumericMappingEnabled) {
+          assert(msSqlServerDialect.getCatalystType(java.sql.Types.SMALLINT, "SMALLINT", 1,
+            metadata).isEmpty)
+          assert(msSqlServerDialect.getCatalystType(java.sql.Types.REAL, "REAL", 1,
+            metadata).isEmpty)
+        } else {
+          assert(msSqlServerDialect.getCatalystType(java.sql.Types.SMALLINT, "SMALLINT", 1,
+            metadata).get == ShortType)
+          assert(msSqlServerDialect.getCatalystType(java.sql.Types.REAL, "REAL", 1,
+            metadata).get == FloatType)
+        }
+      }
+    }
   }
 
   test("table exists query by jdbc dialect") {

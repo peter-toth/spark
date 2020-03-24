@@ -526,7 +526,8 @@ class DataFrameReader(OptionUtils):
 
         :param url: a JDBC URL of the form ``jdbc:subprotocol:subname``
         :param table: the name of the table
-        :param column: the name of an integer column that will be used for partitioning;
+        :param column: the name of a column of numeric, date, or timestamp type
+                       that will be used for partitioning;
                        if this parameter is specified, then ``numPartitions``, ``lowerBound``
                        (inclusive), and ``upperBound`` (exclusive) will form partition strides
                        for generated WHERE clause expressions used to split the column
@@ -725,7 +726,7 @@ class DataFrameWriter(OptionUtils):
         :param partitionBy: names of partitioning columns
         :param options: all other string options
 
-        >>> df.write.mode('append').parquet(os.path.join(tempfile.mkdtemp(), 'data'))
+        >>> df.write.mode("append").save(os.path.join(tempfile.mkdtemp(), 'data'))
         """
         self.mode(mode).options(**options)
         if partitionBy is not None:

@@ -53,7 +53,7 @@ import org.apache.spark.sql.catalyst.catalog.CatalogUtils.TRANSLATION_LAYER_ACCE
 import org.apache.spark.sql.catalyst.expressions.Expression
 import org.apache.spark.sql.catalyst.parser.{CatalystSqlParser, ParseException}
 import org.apache.spark.sql.execution.QueryExecutionException
-import org.apache.spark.sql.execution.command.DDLUtils
+import org.apache.spark.sql.hive.HiveExternalCatalog
 import org.apache.spark.sql.hive.HiveExternalCatalog.{DATASOURCE_SCHEMA, DATASOURCE_SCHEMA_NUMPARTS, DATASOURCE_SCHEMA_PART_PREFIX}
 import org.apache.spark.sql.hive.HiveUtils
 import org.apache.spark.sql.hive.client.HiveClientImpl._
@@ -176,10 +176,9 @@ private[hive] class HiveClientImpl(
     // has hive-site.xml. So, HiveConf will use that to override its default values.
     // 2: we set all spark confs to this hiveConf.
     // 3: we set all entries in config to this hiveConf.
-    (hadoopConf.iterator().asScala.map(kv => kv.getKey -> kv.getValue)
-      ++ (if (version == hive.v3_0 || version == hive.v3_1 || version == hive.vcdpd) {
-            Seq(
-              "hive.execution.engine" -> "mr",
+    val confMap = (hadoopConf.iterator().asScala.map(kv => kv.getKey -> kv.getValue) ++
+      (if (version == hive.v3_0 || version == hive.v3_1 || version == hive.vcdpd) {
+          Seq("hive.execution.engine" -> "mr",
               "datanucleus.schema.autoCreateTables" -> "true",
               "hive.metastore.schema.verification" -> "false",
               "datanucleus.schema.autoCreateAll" -> "true",
@@ -188,14 +187,15 @@ private[hive] class HiveClientImpl(
               "datanucleus.autoCreateConstraints" -> "true",
               "hive.query.reexecution.enabled" -> "false",
               "metastore.metadata.transformer.class" -> "")
-          } else Nil)
-      ++ sparkConf.getAll.toMap ++ extraConfig).foreach { case (k, v) =>
+          } else Nil) ++
+      sparkConf.getAll.toMap ++ extraConfig).toMap
+    confMap.foreach { case (k, v) => hiveConf.set(k, v) }
+    SQLConf.get.redactOptions(confMap).foreach { case (k, v) =>
       logDebug(
         s"""
            |Applying Hadoop/Hive/Spark and extra properties to Hive Conf:
-           |$k=${if (k.toLowerCase(Locale.ROOT).contains("password")) "xxx" else v}
+           |$k=$v
          """.stripMargin)
-      hiveConf.set(k, v)
     }
     // Disable CBO because we removed the Calcite dependency.
     hiveConf.setBoolean("hive.cbo.enable", false)
@@ -1090,7 +1090,7 @@ private[hive] object HiveClientImpl {
     }
     hiveTable.setFields(schema.asJava)
     hiveTable.setPartCols(partCols.asJava)
-    userName.foreach(hiveTable.setOwner)
+    Option(table.owner).filter(_.nonEmpty).orElse(userName).foreach(hiveTable.setOwner)
     hiveTable.setCreateTime((table.createTime / 1000).toInt)
     hiveTable.setLastAccessTime((table.lastAccessTime / 1000).toInt)
     table.storage.locationUri.map(CatalogUtils.URIToString).foreach { loc =>
@@ -1111,7 +1111,7 @@ private[hive] object HiveClientImpl {
     }
 
     table.bucketSpec match {
-      case Some(bucketSpec) if DDLUtils.isHiveTable(table) =>
+      case Some(bucketSpec) if !HiveExternalCatalog.isDatasourceTable(table) =>
         hiveTable.setNumBuckets(bucketSpec.numBuckets)
         hiveTable.setBucketCols(bucketSpec.bucketColumnNames.toList.asJava)
 

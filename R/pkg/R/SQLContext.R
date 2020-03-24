@@ -254,7 +254,7 @@ createDataFrame.default <- function(data, schema = NULL, samplingRatio = 1.0,
       as.list(schema)
     }
     if (is.null(names)) {
-      names <- lapply(1:length(row), function(x) {
+      names <- lapply(seq_len(length(row)), function(x) {
         paste("_", as.character(x), sep = "")
       })
     }
@@ -270,7 +270,7 @@ createDataFrame.default <- function(data, schema = NULL, samplingRatio = 1.0,
     })
 
     types <- lapply(row, infer_type)
-    fields <- lapply(1:length(row), function(i) {
+    fields <- lapply(seq_len(length(row)), function(i) {
       structField(names[[i]], types[[i]], TRUE)
     })
     schema <- do.call(structType, fields)
@@ -655,7 +655,8 @@ loadDF <- function(x = NULL, ...) {
 #'
 #' @param url JDBC database url of the form \code{jdbc:subprotocol:subname}
 #' @param tableName the name of the table in the external database
-#' @param partitionColumn the name of a column of integral type that will be used for partitioning
+#' @param partitionColumn the name of a column of numeric, date, or timestamp type
+#'                        that will be used for partitioning.
 #' @param lowerBound the minimum value of \code{partitionColumn} used to decide partition stride
 #' @param upperBound the maximum value of \code{partitionColumn} used to decide partition stride
 #' @param numPartitions the number of partitions, This, along with \code{lowerBound} (inclusive),

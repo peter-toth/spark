@@ -101,7 +101,8 @@ private[ui] class ThriftServerSessionPage(parent: ThriftServerTab)
           <td>{formatDate(info.finishTimestamp)}</td>
           <td>{formatDate(info.closeTimestamp)}</td>
           <td>{formatDurationOption(Some(info.totalTime(info.finishTimestamp)))}</td>
-          <td>{formatDurationOption(Some(info.totalTime(info.closeTimestamp)))}</td>
+          <td sorttable_customkey={info.totalTime(info.closeTimestamp).toString}>
+            {formatDurationOption(Some(info.totalTime(info.closeTimestamp)))}</td>
           <td>{info.statement}</td>
           <td>{info.state}</td>
           {errorMessageCell(detail)}

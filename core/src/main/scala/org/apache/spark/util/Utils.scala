@@ -2800,6 +2800,13 @@ private[spark] object Utils extends Logging {
     if (str == null) 0 else str.length + fullWidthRegex.findAllIn(str).size
   }
 
+  /** Create a new properties object with the same values as `props` */
+  def cloneProperties(props: Properties): Properties = {
+    val resultProps = new Properties()
+    props.asScala.foreach(entry => resultProps.put(entry._1, entry._2))
+    resultProps
+  }
+
   /** Returns whether the URI is a "local:" URI. */
   def isLocalUri(uri: String): Boolean = {
     uri.startsWith(s"$LOCAL_SCHEME:")

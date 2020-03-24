@@ -21,7 +21,7 @@ import scala.collection.mutable
 
 import org.mockito.ArgumentMatchers.{any, eq => meq}
 import org.mockito.Mockito.{mock, never, verify, when}
-import org.scalatest.{BeforeAndAfterEach, PrivateMethodTester}
+import org.scalatest.PrivateMethodTester
 
 import org.apache.spark.internal.config
 import org.apache.spark.metrics.MetricsSystem
@@ -32,7 +32,9 @@ import org.apache.spark.util.{Clock, ManualClock, SystemClock}
 /**
  * Test add and remove behavior of ExecutorAllocationManager.
  */
-class ExecutorAllocationManagerSuite extends SparkFunSuite with BeforeAndAfterEach {
+class ExecutorAllocationManagerSuite
+  extends SparkFunSuite
+  with LocalSparkContext {
 
   import ExecutorAllocationManager._
   import ExecutorAllocationManagerSuite._
@@ -275,7 +277,7 @@ class ExecutorAllocationManagerSuite extends SparkFunSuite with BeforeAndAfterEa
     assert(totalRunningTasks(manager) === 0)
   }
 
-  test("cancel pending executors when no longer needed") {
+  testRetry("cancel pending executors when no longer needed") {
     val manager = createManager(createConf(0, 10, 0))
     post(SparkListenerStageSubmitted(createStageInfo(2, 5)))
 

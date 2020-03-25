@@ -183,7 +183,7 @@ object SQLConf {
     buildConf("spark.sql.optimizer.dynamicPartitionPruning.enabled")
       .doc("When true, we will generate predicate for partition column when it's used as join key")
       .booleanConf
-      .createWithDefault(true)
+      .createWithDefault(false)
 
   val DYNAMIC_PARTITION_PRUNING_USE_STATS =
     buildConf("spark.sql.optimizer.dynamicPartitionPruning.useStats")

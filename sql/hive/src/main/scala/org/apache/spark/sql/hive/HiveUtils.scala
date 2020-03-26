@@ -63,7 +63,7 @@ private[spark] object HiveUtils extends Logging {
   val isHive23: Boolean = hiveVersion.startsWith("2.3") || hiveVersion.startsWith("3")
 
   /** The version of hive used internally by Spark SQL. */
-  val builtinHiveVersion: String = "3.1.3000.7.1.1.0-SNAPSHOT"
+  val builtinHiveVersion: String = hiveVersion
   val HIVE_METASTORE_VERSION = buildConf("spark.sql.hive.metastore.version")
     .doc("Version of the Hive metastore. Available options are " +
         "<code>0.12.0</code> through <code>2.3.6</code> and " +

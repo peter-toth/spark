@@ -64,7 +64,7 @@ public class TransportRequestHandlerSuite {
 
     TransportClient reverseClient = mock(TransportClient.class);
     TransportRequestHandler requestHandler = new TransportRequestHandler(channel, reverseClient,
-      rpcHandler, 2L);
+      rpcHandler, 2L, null);
 
     RequestMessage request0 = new StreamRequest(String.format("%d_%d", streamId, 0));
     requestHandler.handle(request0);

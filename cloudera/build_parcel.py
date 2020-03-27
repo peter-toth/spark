@@ -17,7 +17,7 @@
 # Run like this:
 # build_parcel.py --input-directory ../dist/build_output --output-directory\
 # ../dist/repo_output/parcels --release-version 1\
-# --spark3-version 3.0.0.cloudera1-SNAPSHOT --cdh-version 5.7.0 --build-number\
+# --spark3-version 3.0.0.cloudera1-SNAPSHOT --build-number\
 # 106597 --patch-number 0 --verbose --force-clean
 
 from __future__ import with_statement
@@ -264,7 +264,6 @@ class Metadata(object):
             "name": "SPARK3",
             "version": self._version.version(),
             "extraVersionInfo": {
-                "baseVersion": self._version.base_version(),
                 "patchCount": str(self._version.patch_count()),
             },
             "replaces": "SPARK",
@@ -383,13 +382,11 @@ export CDH_SPARK3_HOME=$PARCELS_ROOT/$CDH_DIRNAME/lib/spark3
 
 class Version(object):
 
-    def __init__(self, release_version, spark3_version, cdh_version,
-                 patch_number, build_number, distro):
+    def __init__(self, release_version, spark3_version, patch_number, build_number, distro):
         self._release_version = release_version
         # Sometimes versions being sent have SNAPSHOT at their end, if so, let's get rid of
         # it because we don't want that showing up in parcel names, etc.
         self._spark3_version = spark3_version.split("-SNAPSHOT")[0]
-        self._cdh_version = cdh_version.split("-SNAPSHOT")[0]
         self._patch_number = patch_number
         self._build_number = build_number
         self._distro = distro
@@ -408,15 +405,6 @@ class Version(object):
         assert version_re.match(self._spark3_version) or releng_version_re.match(self._spark3_version), """Expected
               dotted version vector (upstream.3digit.number.cloudera*) or RE build version, got %s""" % self._spark3_version
 
-        # Now let's validate cdh_version
-        splitted_cdh_version = self._cdh_version.split(".")
-        assert len(splitted_cdh_version) >= 2, \
-            """Expected dotted version vector (major.minor.maintenance) or
-            (major.minor) in cdh-version, got %s""" % self._cdh_version
-        for v in splitted_cdh_version:
-            assert v == "x" or re.match("^\d+$", v) or re.match("^[0-9]+\-[0-9]", v), \
-                "%s is not a valid version component" % (v,)
-
         Version._validate_int(self._patch_number, "patch-number")
         Version._validate_int(self._build_number, "build-number")
         if self._distro:
@@ -429,17 +417,13 @@ class Version(object):
     def patch_count(self):
         return self._patch_number
 
-    def base_version(self):
-        # Ex. "cdh5.7.0"
-        return "cdh" + self._cdh_version
-
     def version(self):
-        # Ex. "3.0.0.cloudera1-1.cdh5.7.0.p593.106617"
-        fmt = "%s-%d.%s.p%d.%d"
-        return fmt % (self._spark3_version, self._release_version, self.base_version(), self._patch_number, self._build_number)
+        # Ex. "3.0.0.cloudera1-1.p593.106617"
+        fmt = "%s-%d.p%d.%d"
+        return fmt % (self._spark3_version, self._release_version, self._patch_number, self._build_number)
 
     def full_version(self):
-        # Ex. "3.0.0.cloudera1-1.cdh5.7.0.p593.106617-el6"
+        # Ex. "3.0.0.cloudera1-1.p593.106617-el6"
         fmt = "%s-%s"
         distro = osinfo.parse_name(self._distro[0]).parcel_label()
         return fmt % (self.version(), distro)
@@ -456,11 +440,6 @@ class Version(object):
                             dest="spark3_version",
                             required=True,
                             help="Spark3 version as a dotted version string e.g. 3.0.0.cloudera1")
-        parser.add_argument('--cdh-version',
-                            dest="cdh_version",
-                            required=True,
-                            help="CDH version that this version of spark3 was built with " + \
-                                 "(without 'cdh'), e.g. 5.7.0")
         parser.add_argument("--patch-number",
                             dest="patch_number",
                             type=int,
@@ -483,8 +462,7 @@ class Version(object):
 
     @staticmethod
     def build_from_args(args):
-        return Version(args.release_version, args.spark3_version, args.cdh_version,
-                       args.patch_number, args.build_number, args.distro)
+        return Version(args.release_version, args.spark3_version, args.patch_number, args.build_number, args.distro)
 
 class Archiver(object):
     def __init__(self, out_dir, build_dir, version, skip_archive, distro):

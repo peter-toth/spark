@@ -258,27 +258,13 @@ EOF
 }
 
 function build_parcel {
-  # The regex is complicated for grep that's the only one that easily worked
-  # with default modes on GNU grep and BSD grep (given that we have some mac
-  # users on the team)
-  CDH_VERSION=$(cd $SPARK_HOME;build/mvn -Dcdh.build=true \
-                help:evaluate -Dexpression=hadoop.version  \
-                |  grep -v "INFO" \
-                | tail -n 1 \
-                | cut -d'.' -f4-)
- if [[ -z "$CDH_VERSION" ]]; then
-    >&2 my_echo "Unable to find the version of CDPD, Spark3 was built against."
-    exit 1
-  fi
-
   # parcel.py needs to exist in $SPARK_HOME/cloudera directory because it's used by
   # a python module (build_parcel.py) from that directory as well. Let's force
   # overwrite to make sure we never the stale version
   (cd $SPARK_HOME/cloudera; rm -f parcel.py; cp ${CDH_CLONE_DIR}/lib/python/cauldron/src/cauldron/util/parcel.py .)
   CMD="${SPARK_HOME}/cloudera/build_parcel.py --input-directory ${BUILD_OUTPUT_DIR} \
           --output-directory ${OUTPUT_DIR}/${VERSION_FOR_BUILD}/parcels --release-version 1 \
-          --spark3-version $VERSION --cdh-version $CDH_VERSION --build-number $GBN \
-          --patch-number ${PATCH_NUMBER} --verbose --force-clean"
+          --spark3-version $VERSION --build-number $GBN --patch-number ${PATCH_NUMBER} --verbose --force-clean"
 
   if [[  ${OS_ARGS_PARCELS} ]]; then
     CMD="$CMD""$OS_ARGS_PARCELS"

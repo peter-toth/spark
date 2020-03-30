@@ -43,18 +43,13 @@ declare -a FLAVORS=("python")
 
 SPARK_VERSION_LC=$(echo "$SPARK_VERSION" | awk '{print tolower($0)}')
 
-printf "docker_images:\n" > cloudera/docker_images.yaml
 for OS in "${OSES[@]}"
 do
   echo "Building $REPO $OS-base based spark ${SPARK_VERSION_LC}"
   cloudera/docker/build.sh "$REPO" "$OS" "${SPARK_VERSION_LC}"
-	printf "  spark-%s: %s/spark-%s:%s\n" "$OS" "$REPO" "$OS" "$SPARK_VERSION_LC" >> cloudera/docker_images.yaml
-
   for FLAVOR in "${FLAVORS[@]}"
   do
     echo "Building $REPO $OS spark ${SPARK_VERSION_LC}" -f "$FLAVOR"
     cloudera/docker/build.sh "$REPO" "$OS" "${SPARK_VERSION_LC}" -f "$FLAVOR"
-	  printf "  spark-%s-%s: %s/spark-%s-%s:%s\n" "$OS" "$FLAVOR" "$REPO" "$FLAVOR" "$OS" "$SPARK_VERSION_LC" >> cloudera/docker_images.yaml
-
   done
 done

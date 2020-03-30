@@ -96,5 +96,3 @@ spark-warehouse/
 *.Rproj.*
 
 .Rproj.user
-
-cloudera/docker_images.yaml

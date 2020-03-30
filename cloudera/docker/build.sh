@@ -41,6 +41,7 @@ done
 
 DOCKER_IMAGE_TOOL_CMD="./bin/docker-image-tool.sh"
 TAG=${SPARK_VERSION}
+SPARK_MAJOR_MINOR=$(echo "$SPARK_VERSION" | cut -c -5)
 
 if [[ -z "${HAS_F_FLAG}" ]]
 then
@@ -49,14 +50,16 @@ then
   DOCKERFILE_PATH="cloudera/docker/${OS}/spark/"
   DOCKERFILE="${DOCKERFILE_PATH}Dockerfile"
   EXTRA_ARG=" -b DOCKERFILE_PATH_ARG=${DOCKERFILE_PATH} "
-  IMAGE_REPO="$REPO/spark-${OS}"
+  IMAGE_NO_REPO="spark-${OS}"
+  IMAGE_REPO="$REPO/$IMAGE_NO_REPO"
 else
   # FLAVORED_IMAGE
   BUILD_TAG=${OS}-${FLAVOR}-latest
   DOCKERFILE_PATH="cloudera/docker/${OS}/spark-${FLAVOR}/"
   DOCKERFILE="${DOCKERFILE_PATH}Dockerfile"
   EXTRA_ARG=" -b BASE_IMAGE_ARG=build/cloudera/spark:${OS}-latest -b DOCKERFILE_PATH_ARG=${DOCKERFILE_PATH}"
-  IMAGE_REPO="$REPO/spark-$FLAVOR-$OS"
+  IMAGE_NO_REPO="spark-$FLAVOR-$OS"
+  IMAGE_REPO="$REPO/$IMAGE_NO_REPO"
 fi
 
 ###############################################
@@ -90,5 +93,6 @@ done
 # Tag docker image
 ###############################################
 
-echo  "tag build/cloudera/spark:$BUILD_TAG" "$IMAGE_REPO:$TAG"
 docker tag "build/cloudera/spark:$BUILD_TAG" "$IMAGE_REPO:$TAG"
+docker tag "build/cloudera/spark:$BUILD_TAG" "$IMAGE_REPO:latest"
+docker tag "build/cloudera/spark:$BUILD_TAG" "$IMAGE_NO_REPO-$SPARK_MAJOR_MINOR:latest"

@@ -251,8 +251,7 @@ abstract class DDLSuite extends QueryTest with SQLTestUtils {
     new Path(CatalogUtils.URIToString(warehousePath), s"$dbName.db").toUri
   }
 
-  // CDPD-8900. Location of external table in cdp hive is prefixed with some default locations
-  ignore("alter table: set location (datasource table)") {
+  test("alter table: set location (datasource table)") {
     testSetLocation(isDatasourceTable = true)
   }
 
@@ -1386,6 +1385,13 @@ abstract class DDLSuite extends QueryTest with SQLTestUtils {
       // }
       assert(storageFormat.locationUri.map(_.getPath) === Some(expected.getPath))
     }
+
+    def verifyLocationEnding(expected: URI, spec: Option[TablePartitionSpec] = None): Unit = {
+      val storageFormat = spec
+        .map { s => catalog.getPartition(tableIdent, s).storage }
+        .getOrElse { catalog.getTableMetadata(tableIdent).storage }
+      assert(storageFormat.locationUri.map(_.getPath).getOrElse("").endsWith(expected.getPath))
+    }
     // set table location
     sql("ALTER TABLE dbx.tab1 SET LOCATION '/path/to/your/lovely/heart'")
     verifyLocation(new URI("/path/to/your/lovely/heart"))
@@ -1398,7 +1404,7 @@ abstract class DDLSuite extends QueryTest with SQLTestUtils {
     verifyLocation(new URI("/swanky/steak/place"))
     // set table partition location without explicitly specifying database
     sql("ALTER TABLE tab1 PARTITION (a='1', b='2') SET LOCATION 'vienna'")
-    verifyLocation(new URI("vienna"), Some(partSpec))
+    verifyLocationEnding(new URI("vienna"), Some(partSpec))
     // table to alter does not exist
     intercept[AnalysisException] {
       sql("ALTER TABLE dbx.does_not_exist SET LOCATION '/mister/spark'")

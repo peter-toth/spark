@@ -132,8 +132,7 @@ class HiveCatalogedDDLSuite extends DDLSuite with TestHiveSingleton with BeforeA
     )
   }
 
-  // CDPD-8900. Location of external table in cdp hive is prefixed with some default locations
-  ignore("alter table: set location") {
+  test("alter table: set location") {
     testSetLocation(isDatasourceTable = false)
   }
 

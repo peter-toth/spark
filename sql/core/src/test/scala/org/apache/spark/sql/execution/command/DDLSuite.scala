@@ -310,8 +310,7 @@ abstract class DDLSuite extends QueryTest with SQLTestUtils {
     new Path(CatalogUtils.URIToString(warehousePath), s"$dbName.db").toUri
   }
 
-  // CDPD-8900. Location of external table in cdp hive is prefixed with some default locations
-  ignore("alter table: set location (datasource table)") {
+  test("alter table: set location (datasource table)") {
     testSetLocation(isDatasourceTable = true)
   }
 

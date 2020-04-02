@@ -129,7 +129,7 @@
     <!-- The following is just used for distinguishing some source folders between hive 1.2 and newer versions -->
     <hive.version.short>2.3.5</hive.version.short>
     <!-- note that this should be compatible with Kafka brokers version 0.10 and up -->
-    <kafka.version>2.4.0.7.1.1.0-SNAPSHOT</kafka.version>
+    <kafka.version>2.4.1.7.1.1.0-SNAPSHOT</kafka.version>
     <derby.version>10.12.1.1</derby.version>
     <parquet.version>1.10.99.7.1.1.0-SNAPSHOT</parquet.version>
     <orc.version>1.5.1.7.1.1.0-SNAPSHOT</orc.version>

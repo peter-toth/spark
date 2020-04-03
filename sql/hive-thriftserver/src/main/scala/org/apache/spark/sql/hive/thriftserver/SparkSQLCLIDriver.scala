@@ -114,6 +114,15 @@ private[hive] object SparkSQLCLIDriver extends Logging {
     // Hive changed the class loader because of HIVE-11878, so it is required to use old
     // classLoader as sparks loaded all the jars in this classLoader
     conf.setClassLoader(Thread.currentThread().getContextClassLoader)
+    conf.set("hive.execution.engine", "spark")
+    conf.set("datanucleus.schema.autoCreateTables", "true")
+    conf.set("hive.metastore.schema.verification", "false")
+    conf.set("datanucleus.schema.autoCreateAll", "true")
+    conf.set("datanucleus.autoCreateSchema", "true")
+    conf.set("datanucleus.autoCreateColumns", "true")
+    conf.set("datanucleus.autoCreateConstraints", "true")
+    conf.set("hive.query.reexecution.enabled", "false")
+    conf.set("metastore.metadata.transformer.class", "")
     sessionState.cmdProperties.entrySet().asScala.foreach { item =>
       val key = item.getKey.toString
       val value = item.getValue.toString

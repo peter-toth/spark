@@ -122,7 +122,7 @@
     <sbt.project.name>spark</sbt.project.name>
     <slf4j.version>1.7.16</slf4j.version>
     <log4j.version>1.2.17</log4j.version>
-    <hadoop.version>3.1.1.7.0.3.0-79</hadoop.version>
+    <hadoop.version>3.1.1.7.1.1.0-194</hadoop.version>
     <protobuf.version>2.5.0</protobuf.version>
     <yarn.version>${hadoop.version}</yarn.version>
     <zookeeper.version>3.5.5.7.0.3.0-79</zookeeper.version>
@@ -257,6 +257,17 @@
     <test.method.keys />
   </properties>
   <repositories>
+    <repository>
+      <id>gbnRepo</id>
+      <name>gbn repo</name>
+      <url>http://cloudera-build-us-west-1.vpc.cloudera.com/s3/build/1984040/cdh/7.x/maven-repository/</url>
+      <releases>
+        <enabled>true</enabled>
+      </releases>
+      <snapshots>
+        <enabled>true</enabled>
+      </snapshots>
+    </repository>
     <repository>
       <id>central</id>
       <!-- This should be at top, it makes maven try the central repo first and then others and hence faster dep resolution -->
@@ -3019,7 +3030,7 @@
         </property>
       </activation>
       <properties>
-        <hadoop.version>3.1.1.7.0.3.0-79</hadoop.version>
+        <hadoop.version>3.1.1.7.1.1.0-194</hadoop.version>
         <curator.version>4.2.0</curator.version>
       </properties>
     </profile>

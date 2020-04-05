@@ -23,12 +23,12 @@ import java.lang.reflect.InvocationTargetException
 import org.apache.hadoop.conf.Configuration
 import org.apache.hadoop.fs.Path
 import org.apache.hadoop.io.IOUtils
+import org.apache.hadoop.mapreduce.{Job, JobStatus, MRJobConfig, TaskAttemptID}
 import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat
 import org.apache.hadoop.mapreduce.task.TaskAttemptContextImpl
-import org.apache.hadoop.mapreduce.{Job, JobStatus, MRJobConfig, TaskAttemptID}
 
 import org.apache.spark.{SparkConf, SparkFunSuite}
-import org.apache.spark.internal.io.{FileCommitProtocol, cloud}
+import org.apache.spark.internal.io.{cloud, FileCommitProtocol}
 import org.apache.spark.internal.io.cloud.PathCommitterConstants._
 
 /**
@@ -102,7 +102,7 @@ class CommitterBindingSuite extends SparkFunSuite {
     val tempDir = File.createTempFile("ser", ".bin")
 
     tempDir.delete();
-    val committer = new PathOutputCommitProtocol(jobId, tempDir.toURI.toString,false)
+    val committer = new PathOutputCommitProtocol(jobId, tempDir.toURI.toString, false)
 
     val serData = File.createTempFile("ser", ".bin")
     var out: ObjectOutputStream = null

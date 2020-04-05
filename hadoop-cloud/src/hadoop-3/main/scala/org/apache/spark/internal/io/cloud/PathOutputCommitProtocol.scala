@@ -63,7 +63,7 @@ class PathOutputCommitProtocol(
 
   require(destination != null, "Null destination specified")
 
-  val destPath: Path  = new Path(destination)
+  val destPath: Path = new Path(destination)
 
   logDebug(s"Instantiated committer with job ID=$jobId;" +
     s" destination=$destPath;" +

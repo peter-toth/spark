@@ -20,6 +20,7 @@ package org.apache.spark.internal.io
 import org.apache.spark.SparkConf
 import org.apache.spark.sql.internal.SQLConf
 
+// scalastyle:off line.size.limit
 /**
  * Package object to assist in switching to the Hadoop Hadoop 3
  * [[org.apache.hadoop.mapreduce.lib.output.PathOutputCommitterFactory]] factory
@@ -79,6 +80,7 @@ import org.apache.spark.sql.internal.SQLConf
  * spark configuration.
  */
 package object cloud {
+  // scalastyle:on line.size.limit
 
   /**
    * The classname to use when referring to the path output committer.

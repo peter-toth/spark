@@ -51,8 +51,9 @@ class OrcFilterSuite extends OrcTest with SharedSQLContext {
     val query = df
       .select(output.map(e => Column(e)): _*)
       .where(Column(predicate))
+
     // The following commented code is a result of partial backport of SPARK-23817
-    //  that has happened during conflict resolution of some other backports. Not commenting
+    // that has happened during conflict resolution of some other backports. Not commenting
     // will cause compilation failures since it relies on fully backporting
     // SPARK-23817. I will comment these codes here to avoid confusion. Some codes are
     // also added to make this file like before partially bringing SPARK-23817

@@ -19,8 +19,8 @@ package org.apache.spark.internal.io.cloud
 
 import org.apache.hadoop.conf.Configuration
 import org.apache.hadoop.fs.Path
-import org.apache.hadoop.mapreduce.lib.output.{PathOutputCommitter, PathOutputCommitterFactory}
 import org.apache.hadoop.mapreduce.{JobContext, JobStatus, TaskAttemptContext}
+import org.apache.hadoop.mapreduce.lib.output.{PathOutputCommitter, PathOutputCommitterFactory}
 
 /**
  * A local path output committer which tracks its state, for use in
@@ -79,8 +79,10 @@ class StubPathOutputCommitter(
     needsTaskCommit
   }
 
+  // scalastyle:off
   override def toString(): String  = s"StubPathOutputCommitter(setup=$jobSetup," +
     s" committed=$jobCommitted, aborted=$jobAborted)"
+  // scalastyle:on
 }
 
 /**

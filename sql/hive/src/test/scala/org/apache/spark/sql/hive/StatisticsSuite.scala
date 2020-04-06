@@ -1536,23 +1536,23 @@ class StatisticsSuite extends StatisticsCollectionTestBase with TestHiveSingleto
           // analyze table
           sql(s"ANALYZE TABLE $tblName COMPUTE STATISTICS NOSCAN")
           var tableStats = getTableStats(tblName)
-          assert(tableStats.sizeInBytes == 601)
+          assert(tableStats.sizeInBytes == 652)
           assert(tableStats.rowCount.isEmpty)
 
           sql(s"ANALYZE TABLE $tblName COMPUTE STATISTICS")
           tableStats = getTableStats(tblName)
-          assert(tableStats.sizeInBytes == 601)
+          assert(tableStats.sizeInBytes == 652)
           assert(tableStats.rowCount.get == 1)
 
           // analyze a single partition
           sql(s"ANALYZE TABLE $tblName PARTITION (ds='2019-12-13') COMPUTE STATISTICS NOSCAN")
           var partStats = getPartitionStats(tblName, Map("ds" -> "2019-12-13"))
-          assert(partStats.sizeInBytes == 601)
+          assert(partStats.sizeInBytes == 652)
           assert(partStats.rowCount.isEmpty)
 
           sql(s"ANALYZE TABLE $tblName PARTITION (ds='2019-12-13') COMPUTE STATISTICS")
           partStats = getPartitionStats(tblName, Map("ds" -> "2019-12-13"))
-          assert(partStats.sizeInBytes == 601)
+          assert(partStats.sizeInBytes == 652)
           assert(partStats.rowCount.get == 1)
         }
       }

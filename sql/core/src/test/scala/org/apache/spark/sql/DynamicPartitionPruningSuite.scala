@@ -1044,7 +1044,8 @@ class DynamicPartitionPruningSuite
           query.stop()
         }
         // search dynamic pruning predicates on the executed plan
-        val plan = query.asInstanceOf[StreamingQueryWrapper].streamingQuery.lastExecution.executedPlan
+        val plan = query.asInstanceOf[StreamingQueryWrapper]
+          .streamingQuery.lastExecution.executedPlan
         val ret = plan.find {
           case s: FileSourceScanExec => s.partitionFilters.exists {
             case _: DynamicPruningExpression => true

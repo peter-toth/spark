@@ -1381,23 +1381,25 @@ class StatisticsSuite extends StatisticsCollectionTestBase with TestHiveSingleto
           // analyze table
           sql(s"ANALYZE TABLE $tblName COMPUTE STATISTICS NOSCAN")
           var tableStats = getTableStats(tblName)
-          assert(tableStats.sizeInBytes == 623)
+          // CDPD-9907: Until Parquet SNAPSHOT and specific build jars
+          // can reliably be in sync, we will need to check for 2 values
+          assert(tableStats.sizeInBytes == 623 || tableStats.sizeInBytes == 618)
           assert(tableStats.rowCount.isEmpty)
 
           sql(s"ANALYZE TABLE $tblName COMPUTE STATISTICS")
           tableStats = getTableStats(tblName)
-          assert(tableStats.sizeInBytes == 623)
+          assert(tableStats.sizeInBytes == 623 || tableStats.sizeInBytes == 618)
           assert(tableStats.rowCount.get == 1)
 
           // analyze a single partition
           sql(s"ANALYZE TABLE $tblName PARTITION (ds='2019-12-13') COMPUTE STATISTICS NOSCAN")
           var partStats = getPartitionStats(tblName, Map("ds" -> "2019-12-13"))
-          assert(partStats.sizeInBytes == 623)
+          assert(partStats.sizeInBytes == 623 || partStats.sizeInBytes == 618)
           assert(partStats.rowCount.isEmpty)
 
           sql(s"ANALYZE TABLE $tblName PARTITION (ds='2019-12-13') COMPUTE STATISTICS")
           partStats = getPartitionStats(tblName, Map("ds" -> "2019-12-13"))
-          assert(partStats.sizeInBytes == 623)
+          assert(partStats.sizeInBytes == 623 || partStats.sizeInBytes == 618)
           assert(partStats.rowCount.get == 1)
         }
       }

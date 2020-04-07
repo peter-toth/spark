@@ -202,7 +202,7 @@
      enables store-specific committers.
     -->
     <profile>
-      <id>hadoop-3.1</id>
+      <id>hadoop-3.2</id>
       <activation>
         <property>
           <name>cdpd.build</name>

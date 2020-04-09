@@ -23,6 +23,7 @@ import scala.collection.JavaConverters._
 
 import org.apache.hadoop.conf.Configuration
 import org.apache.hadoop.fs.{Path, PathFilter}
+import org.apache.hadoop.hive.common.`type`.{Date => HiveDate, Timestamp => HiveTimestamp}
 import org.apache.hadoop.hive.metastore.api.hive_metastoreConstants._
 import org.apache.hadoop.hive.ql.exec.Utilities
 import org.apache.hadoop.hive.ql.metadata.{Partition => HivePartition, Table => HiveTable}
@@ -44,6 +45,7 @@ import org.apache.spark.sql.catalyst.analysis.CastSupport
 import org.apache.spark.sql.catalyst.expressions._
 import org.apache.spark.sql.catalyst.util.DateTimeUtils
 import org.apache.spark.sql.internal.SQLConf
+import org.apache.spark.sql.types._
 import org.apache.spark.unsafe.types.UTF8String
 import org.apache.spark.util.{SerializableConfiguration, Utils}
 
@@ -401,7 +403,6 @@ private[hive] object HadoopTableReader extends HiveInspectors with Logging {
     val bufferSize = System.getProperty("spark.buffer.size", "65536")
     jobConf.set("io.file.buffer.size", bufferSize)
   }
-
   /**
    * Transform all given raw `Writable`s into `Row`s.
    *
@@ -429,6 +430,12 @@ private[hive] object HadoopTableReader extends HiveInspectors with Logging {
     }
 
     logDebug(soi.toString)
+    val deserName = tableDeser.getClass.getName
+    val nonParts = if (deserName.equals("org.apache.hadoop.hive.serde2.OpenCSVSerde")) {
+      nonPartitionKeyAttrs.map { case (attr, ord) => ord -> attr.dataType }.toMap
+    } else {
+      null
+    }
 
     val (fieldRefs, fieldOrdinals) = nonPartitionKeyAttrs.map { case (attr, ordinal) =>
       soi.getStructFieldRef(attr.name) -> ordinal
@@ -438,45 +445,97 @@ private[hive] object HadoopTableReader extends HiveInspectors with Logging {
      * Builds specific unwrappers ahead of time according to object inspector
      * types to avoid pattern matching and branching costs per row.
      */
-    val unwrappers: Seq[(Any, InternalRow, Int) => Unit] = fieldRefs.map {
-      _.getFieldObjectInspector match {
-        case oi: BooleanObjectInspector =>
-          (value: Any, row: InternalRow, ordinal: Int) => row.setBoolean(ordinal, oi.get(value))
-        case oi: ByteObjectInspector =>
-          (value: Any, row: InternalRow, ordinal: Int) => row.setByte(ordinal, oi.get(value))
-        case oi: ShortObjectInspector =>
-          (value: Any, row: InternalRow, ordinal: Int) => row.setShort(ordinal, oi.get(value))
-        case oi: IntObjectInspector =>
-          (value: Any, row: InternalRow, ordinal: Int) => row.setInt(ordinal, oi.get(value))
-        case oi: LongObjectInspector =>
-          (value: Any, row: InternalRow, ordinal: Int) => row.setLong(ordinal, oi.get(value))
-        case oi: FloatObjectInspector =>
-          (value: Any, row: InternalRow, ordinal: Int) => row.setFloat(ordinal, oi.get(value))
-        case oi: DoubleObjectInspector =>
-          (value: Any, row: InternalRow, ordinal: Int) => row.setDouble(ordinal, oi.get(value))
-        case oi: HiveVarcharObjectInspector =>
-          (value: Any, row: InternalRow, ordinal: Int) =>
-            row.update(ordinal, UTF8String.fromString(oi.getPrimitiveJavaObject(value).getValue))
-        case oi: HiveCharObjectInspector =>
-          (value: Any, row: InternalRow, ordinal: Int) =>
-            row.update(ordinal, UTF8String.fromString(oi.getPrimitiveJavaObject(value).getValue))
-        case oi: HiveDecimalObjectInspector =>
-          (value: Any, row: InternalRow, ordinal: Int) =>
-            row.update(ordinal, HiveShim.toCatalystDecimal(oi, value))
-        case oi: TimestampObjectInspector =>
-          (value: Any, row: InternalRow, ordinal: Int) =>
-            row.setLong(ordinal, DateTimeUtils.fromHiveTimestamp(oi.getPrimitiveJavaObject(value)))
-        case oi: DateObjectInspector =>
-          (value: Any, row: InternalRow, ordinal: Int) =>
-            row.setInt(ordinal, DateTimeUtils.fromHiveDate(oi.getPrimitiveJavaObject(value)))
-        case oi: BinaryObjectInspector =>
-          (value: Any, row: InternalRow, ordinal: Int) =>
-            row.update(ordinal, oi.getPrimitiveJavaObject(value))
-        case oi =>
-          val unwrapper = unwrapperFor(oi)
-          (value: Any, row: InternalRow, ordinal: Int) => row(ordinal) = unwrapper(value)
+    val unwrappers: Seq[(Any, InternalRow, Int) => Unit] =
+      deserName match {
+        case "org.apache.hadoop.hive.serde2.OpenCSVSerde" =>
+          fieldRefs.map {
+            _.getFieldObjectInspector match {
+             case oi =>
+               val unwrapper = unwrapperFor(oi)
+               (value: Any, row: InternalRow, ordinal: Int) => {
+                 nonParts(ordinal) match {
+                   case aType: IntegerType =>
+                     row(ordinal) = unwrapper(value).asInstanceOf[UTF8String].toString.toInt
+                   case aType: FloatType =>
+                     row(ordinal) = unwrapper(value).asInstanceOf[UTF8String].toString.toFloat
+                   case aType: BooleanType =>
+                     row(ordinal) = unwrapper(value).asInstanceOf[UTF8String].toString.toBoolean
+                   case aType: DoubleType =>
+                     row(ordinal) = unwrapper(value).asInstanceOf[UTF8String].toString.toDouble
+                   case aType: ShortType =>
+                     row(ordinal) = unwrapper(value).asInstanceOf[UTF8String].toString.toShort
+                   case aType: LongType =>
+                     row(ordinal) = unwrapper(value).asInstanceOf[UTF8String].toString.toLong
+                   case aType: TimestampType =>
+                     row(ordinal) = DateTimeUtils.fromHiveTimestamp(
+                       HiveTimestamp.valueOf(unwrapper(value).asInstanceOf[UTF8String].toString))
+                   case aType: DateType =>
+                     row(ordinal) = DateTimeUtils.fromHiveDate(
+                       HiveDate.valueOf(unwrapper(value).asInstanceOf[UTF8String].toString))
+                   case aType: ByteType =>
+                     row(ordinal) = unwrapper(value).asInstanceOf[UTF8String].toString.toByte
+                   case aType: DecimalType =>
+                     row(ordinal) = Decimal(unwrapper(value).asInstanceOf[UTF8String].toString)
+                   case aType: BinaryType =>
+                     val binary = unwrapper(value).asInstanceOf[UTF8String].toString.getBytes
+                     val bytes = new Array[Byte](binary.length)
+                     System.arraycopy(binary, 0, bytes, 0, binary.length)
+                     row(ordinal) = bytes
+                   case _ =>
+                     row(ordinal) = unwrapper(value).asInstanceOf[UTF8String].toString
+                 }
+               }
+             }
+          }
+        case _ =>
+          fieldRefs.map {
+            _.getFieldObjectInspector match {
+              case oi: BooleanObjectInspector =>
+                (value: Any, row: InternalRow, ordinal: Int) =>
+                  row.setBoolean(ordinal, oi.get(value))
+              case oi: ByteObjectInspector =>
+                (value: Any, row: InternalRow, ordinal: Int) => row.setByte(ordinal, oi.get(value))
+              case oi: ShortObjectInspector =>
+                (value: Any, row: InternalRow, ordinal: Int) => row.setShort(ordinal, oi.get(value))
+              case oi: IntObjectInspector =>
+                (value: Any, row: InternalRow, ordinal: Int) => row.setInt(ordinal, oi.get(value))
+              case oi: LongObjectInspector =>
+                (value: Any, row: InternalRow, ordinal: Int) => row.setLong(ordinal, oi.get(value))
+              case oi: FloatObjectInspector =>
+                (value: Any, row: InternalRow, ordinal: Int) => row.setFloat(ordinal, oi.get(value))
+              case oi: DoubleObjectInspector =>
+                (value: Any, row: InternalRow, ordinal: Int) =>
+                  row.setDouble(ordinal, oi.get(value))
+              case oi: HiveVarcharObjectInspector =>
+                (value: Any, row: InternalRow, ordinal: Int) =>
+                  row.update(
+                    ordinal,
+                    UTF8String.fromString(oi.getPrimitiveJavaObject(value).getValue))
+              case oi: HiveCharObjectInspector =>
+                (value: Any, row: InternalRow, ordinal: Int) =>
+                  row.update(
+                    ordinal,
+                    UTF8String.fromString(oi.getPrimitiveJavaObject(value).getValue))
+              case oi: HiveDecimalObjectInspector =>
+                (value: Any, row: InternalRow, ordinal: Int) =>
+                  row.update(ordinal, HiveShim.toCatalystDecimal(oi, value))
+              case oi: TimestampObjectInspector =>
+                (value: Any, row: InternalRow, ordinal: Int) =>
+                  row.setLong(
+                    ordinal,
+                    DateTimeUtils.fromHiveTimestamp(oi.getPrimitiveJavaObject(value)))
+              case oi: DateObjectInspector =>
+                (value: Any, row: InternalRow, ordinal: Int) =>
+                  row.setInt(ordinal, DateTimeUtils.fromHiveDate(oi.getPrimitiveJavaObject(value)))
+              case oi: BinaryObjectInspector =>
+                (value: Any, row: InternalRow, ordinal: Int) =>
+                  row.update(ordinal, oi.getPrimitiveJavaObject(value))
+              case oi =>
+                val unwrapper = unwrapperFor(oi)
+                (value: Any, row: InternalRow, ordinal: Int) => row(ordinal) = unwrapper(value)
+            }
+          }
       }
-    }
 
     val converter = ObjectInspectorConverters.getConverter(rawDeser.getObjectInspector, soi)
 

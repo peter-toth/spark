@@ -278,7 +278,7 @@ private[hive] trait HiveInspectors {
       case _: StringObjectInspector if x.preferWritable() =>
         withNullSafe(o => getStringWritable(o))
       case _: StringObjectInspector =>
-        withNullSafe(o => o.asInstanceOf[UTF8String].toString())
+        withNullSafe(o => o.toString())
       case _: IntObjectInspector if x.preferWritable() =>
         withNullSafe(o => getIntWritable(o))
       case _: IntObjectInspector =>

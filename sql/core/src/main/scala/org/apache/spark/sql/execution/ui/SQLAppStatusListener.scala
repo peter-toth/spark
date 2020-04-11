@@ -237,6 +237,12 @@ class SQLAppStatusListener(
       if (metricTypes.contains(id)) {
         val prev = allMetrics.getOrElse(id, null)
         val updated = if (prev != null) {
+          // If the driver updates same metrics as tasks and has higher value then remove
+          // that entry from maxMetricsFromAllStage. This would make stringValue function default
+          // to "driver" that would be displayed on UI.
+          if (maxMetricsFromAllStages.contains(id) && value > maxMetricsFromAllStages(id)(0)) {
+            maxMetricsFromAllStages.remove(id)
+          }
           val _copy = Arrays.copyOf(prev, prev.length + 1)
           _copy(prev.length) = value
           _copy
@@ -338,6 +344,14 @@ class SQLAppStatusListener(
     update(exec)
   }
 
+  private def onAdaptiveSQLMetricUpdate(event: SparkListenerSQLAdaptiveSQLMetricUpdates): Unit = {
+    val SparkListenerSQLAdaptiveSQLMetricUpdates(executionId, sqlPlanMetrics) = event
+
+    val exec = getOrCreateExecution(executionId)
+    exec.metrics = exec.metrics ++ sqlPlanMetrics
+    update(exec)
+  }
+
   private def onExecutionEnd(event: SparkListenerSQLExecutionEnd): Unit = {
     val SparkListenerSQLExecutionEnd(executionId, time) = event
     Option(liveExecutions.get(executionId)).foreach { exec =>
@@ -377,6 +391,7 @@ class SQLAppStatusListener(
   override def onOtherEvent(event: SparkListenerEvent): Unit = event match {
     case e: SparkListenerSQLExecutionStart => onExecutionStart(e)
     case e: SparkListenerSQLAdaptiveExecutionUpdate => onAdaptiveExecutionUpdate(e)
+    case e: SparkListenerSQLAdaptiveSQLMetricUpdates => onAdaptiveSQLMetricUpdate(e)
     case e: SparkListenerSQLExecutionEnd => onExecutionEnd(e)
     case e: SparkListenerDriverAccumUpdates => onDriverAccumUpdates(e)
     case _ => // Ignore

@@ -40,7 +40,8 @@ import org.apache.spark.sql.test.SharedSparkSession
 import org.apache.spark.sql.types.{IntegerType, StructField, StructType}
 
 class DDLParserSuite extends AnalysisTest with SharedSparkSession {
-  private lazy val parser = new SparkSqlParser(new SQLConf)
+  private lazy val parser = new SparkSqlParser(new SQLConf().copy(
+    SQLConf.LEGACY_CREATE_HIVE_TABLE_BY_DEFAULT_ENABLED -> false))
 
   private def assertUnsupported(sql: String, containsThesePhrases: Seq[String] = Seq()): Unit = {
     val e = intercept[ParseException] {
@@ -85,89 +86,6 @@ class DDLParserSuite extends AnalysisTest with SharedSparkSession {
     assertUnsupported(
       sql = "ALTER DATABASE my_db SET DBPROPERTIES('key_without_value', 'key_with_value'='x')",
       containsThesePhrases = Seq("key_without_value"))
-  }
-
-  test("create function") {
-    val sql1 =
-      """
-       |CREATE TEMPORARY FUNCTION helloworld as
-       |'com.matthewrathbone.example.SimpleUDFExample' USING JAR '/path/to/jar1',
-       |JAR '/path/to/jar2'
-     """.stripMargin
-    val sql2 =
-      """
-        |CREATE FUNCTION hello.world as
-        |'com.matthewrathbone.example.SimpleUDFExample' USING ARCHIVE '/path/to/archive',
-        |FILE '/path/to/file'
-      """.stripMargin
-    val sql3 =
-      """
-        |CREATE OR REPLACE TEMPORARY FUNCTION helloworld3 as
-        |'com.matthewrathbone.example.SimpleUDFExample' USING JAR '/path/to/jar1',
-        |JAR '/path/to/jar2'
-      """.stripMargin
-    val sql4 =
-      """
-        |CREATE OR REPLACE FUNCTION hello.world1 as
-        |'com.matthewrathbone.example.SimpleUDFExample' USING ARCHIVE '/path/to/archive',
-        |FILE '/path/to/file'
-      """.stripMargin
-    val sql5 =
-      """
-        |CREATE FUNCTION IF NOT EXISTS hello.world2 as
-        |'com.matthewrathbone.example.SimpleUDFExample' USING ARCHIVE '/path/to/archive',
-        |FILE '/path/to/file'
-      """.stripMargin
-    val parsed1 = parser.parsePlan(sql1)
-    val parsed2 = parser.parsePlan(sql2)
-    val parsed3 = parser.parsePlan(sql3)
-    val parsed4 = parser.parsePlan(sql4)
-    val parsed5 = parser.parsePlan(sql5)
-    val expected1 = CreateFunctionCommand(
-      None,
-      "helloworld",
-      "com.matthewrathbone.example.SimpleUDFExample",
-      Seq(
-        FunctionResource(FunctionResourceType.fromString("jar"), "/path/to/jar1"),
-        FunctionResource(FunctionResourceType.fromString("jar"), "/path/to/jar2")),
-      isTemp = true, ignoreIfExists = false, replace = false)
-    val expected2 = CreateFunctionCommand(
-      Some("hello"),
-      "world",
-      "com.matthewrathbone.example.SimpleUDFExample",
-      Seq(
-        FunctionResource(FunctionResourceType.fromString("archive"), "/path/to/archive"),
-        FunctionResource(FunctionResourceType.fromString("file"), "/path/to/file")),
-      isTemp = false, ignoreIfExists = false, replace = false)
-    val expected3 = CreateFunctionCommand(
-      None,
-      "helloworld3",
-      "com.matthewrathbone.example.SimpleUDFExample",
-      Seq(
-        FunctionResource(FunctionResourceType.fromString("jar"), "/path/to/jar1"),
-        FunctionResource(FunctionResourceType.fromString("jar"), "/path/to/jar2")),
-      isTemp = true, ignoreIfExists = false, replace = true)
-    val expected4 = CreateFunctionCommand(
-      Some("hello"),
-      "world1",
-      "com.matthewrathbone.example.SimpleUDFExample",
-      Seq(
-        FunctionResource(FunctionResourceType.fromString("archive"), "/path/to/archive"),
-        FunctionResource(FunctionResourceType.fromString("file"), "/path/to/file")),
-      isTemp = false, ignoreIfExists = false, replace = true)
-    val expected5 = CreateFunctionCommand(
-      Some("hello"),
-      "world2",
-      "com.matthewrathbone.example.SimpleUDFExample",
-      Seq(
-        FunctionResource(FunctionResourceType.fromString("archive"), "/path/to/archive"),
-        FunctionResource(FunctionResourceType.fromString("file"), "/path/to/file")),
-      isTemp = false, ignoreIfExists = true, replace = false)
-    comparePlans(parsed1, expected1)
-    comparePlans(parsed2, expected2)
-    comparePlans(parsed3, expected3)
-    comparePlans(parsed4, expected4)
-    comparePlans(parsed5, expected5)
   }
 
   test("create hive table - table file format") {
@@ -504,7 +422,7 @@ class DDLParserSuite extends AnalysisTest with SharedSparkSession {
       assert(desc.comment == Some("This is the staging page view table"))
       // TODO will be SQLText
       assert(desc.viewText.isEmpty)
-      assert(desc.viewDefaultDatabase.isEmpty)
+      assert(desc.viewCatalogAndNamespace.isEmpty)
       assert(desc.viewQueryColumnNames.isEmpty)
       assert(desc.partitionColumnNames.isEmpty)
       assert(desc.storage.inputFormat == Some("org.apache.hadoop.hive.ql.io.RCFileInputFormat"))
@@ -556,7 +474,7 @@ class DDLParserSuite extends AnalysisTest with SharedSparkSession {
       // TODO will be SQLText
       assert(desc.comment == Some("This is the staging page view table"))
       assert(desc.viewText.isEmpty)
-      assert(desc.viewDefaultDatabase.isEmpty)
+      assert(desc.viewCatalogAndNamespace.isEmpty)
       assert(desc.viewQueryColumnNames.isEmpty)
       assert(desc.partitionColumnNames.isEmpty)
       assert(desc.storage.properties == Map())
@@ -575,7 +493,7 @@ class DDLParserSuite extends AnalysisTest with SharedSparkSession {
     assert(statement.partitioning.isEmpty)
     assert(statement.bucketSpec.isEmpty)
     assert(statement.properties.isEmpty)
-    assert(statement.provider == conf.defaultDataSourceName)
+    assert(statement.provider.isEmpty)
     assert(statement.options.isEmpty)
     assert(statement.location.isEmpty)
     assert(statement.comment.isEmpty)
@@ -609,7 +527,7 @@ class DDLParserSuite extends AnalysisTest with SharedSparkSession {
     assert(desc.storage.locationUri == None)
     assert(desc.schema.isEmpty)
     assert(desc.viewText == None) // TODO will be SQLText
-    assert(desc.viewDefaultDatabase.isEmpty)
+    assert(desc.viewCatalogAndNamespace.isEmpty)
     assert(desc.viewQueryColumnNames.isEmpty)
     assert(desc.storage.properties == Map(("serde_p1" -> "p1"), ("serde_p2" -> "p2")))
     assert(desc.storage.inputFormat == Some("org.apache.hadoop.hive.ql.io.RCFileInputFormat"))
@@ -745,7 +663,7 @@ class DDLParserSuite extends AnalysisTest with SharedSparkSession {
       assert(state.partitioning.isEmpty)
       assert(state.bucketSpec.isEmpty)
       assert(state.properties.isEmpty)
-      assert(state.provider == conf.defaultDataSourceName)
+      assert(state.provider.isEmpty)
       assert(state.options.isEmpty)
       assert(state.location.isEmpty)
       assert(state.comment.isEmpty)
@@ -921,7 +839,7 @@ class DDLParserSuite extends AnalysisTest with SharedSparkSession {
     assert(desc.partitionColumnNames == Seq("month"))
     assert(desc.bucketSpec.isEmpty)
     assert(desc.viewText.isEmpty)
-    assert(desc.viewDefaultDatabase.isEmpty)
+    assert(desc.viewCatalogAndNamespace.isEmpty)
     assert(desc.viewQueryColumnNames.isEmpty)
     assert(desc.storage.locationUri == Some(new URI("/path/to/mercury")))
     assert(desc.storage.inputFormat == Some("winput"))

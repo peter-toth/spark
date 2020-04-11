@@ -1174,6 +1174,62 @@ class FileStreamSourceSuite extends FileStreamSourceTest {
     }
   }
 
+  test("SPARK-30669: maxFilesPerTrigger - ignored when using Trigger.Once") {
+    withTempDirs { (src, target) =>
+      val checkpoint = new File(target, "chk").getCanonicalPath
+      val targetDir = new File(target, "data").getCanonicalPath
+      var lastFileModTime: Option[Long] = None
+
+      /** Create a text file with a single data item */
+      def createFile(data: Int): File = {
+        val file = stringToFile(new File(src, s"$data.txt"), data.toString)
+        if (lastFileModTime.nonEmpty) file.setLastModified(lastFileModTime.get + 1000)
+        lastFileModTime = Some(file.lastModified)
+        file
+      }
+
+      createFile(1)
+      createFile(2)
+      createFile(3)
+
+      // Set up a query to read text files one at a time
+      val df = spark
+        .readStream
+        .option("maxFilesPerTrigger", 1)
+        .text(src.getCanonicalPath)
+
+      def startQuery(): StreamingQuery = {
+        df.writeStream
+          .format("parquet")
+          .trigger(Trigger.Once)
+          .option("checkpointLocation", checkpoint)
+          .start(targetDir)
+      }
+      val q = startQuery()
+
+      try {
+        assert(q.awaitTermination(streamingTimeout.toMillis))
+        assert(q.recentProgress.count(_.numInputRows != 0) == 1) // only one trigger was run
+        checkAnswer(sql(s"SELECT * from parquet.`$targetDir`"), (1 to 3).map(_.toString).toDF)
+      } finally {
+        q.stop()
+      }
+
+      createFile(4)
+      createFile(5)
+
+      // run a second batch
+      val q2 = startQuery()
+      try {
+        assert(q2.awaitTermination(streamingTimeout.toMillis))
+        assert(q2.recentProgress.count(_.numInputRows != 0) == 1) // only one trigger was run
+        checkAnswer(sql(s"SELECT * from parquet.`$targetDir`"), (1 to 5).map(_.toString).toDF)
+      } finally {
+        q2.stop()
+      }
+    }
+  }
+
   test("explain") {
     withTempDirs { case (src, tmp) =>
       src.mkdirs()
@@ -1311,60 +1367,6 @@ class FileStreamSourceSuite extends FileStreamSourceTest {
           CheckAnswer("keep2", "keep3", "keep5", "keep6", "keep8", "keep9", "keep11", "keep13"),
           AssertOnQuery(verify(_, 4L, 5, 2))
         )
-      }
-    }
-  }
-
-  test("restore from file stream source log") {
-    def createEntries(batchId: Long, count: Int): Array[FileEntry] = {
-      (1 to count).map { idx =>
-        FileEntry(s"path_${batchId}_$idx", 10000 * batchId + count, batchId)
-      }.toArray
-    }
-
-    withSQLConf(SQLConf.FILE_SOURCE_LOG_COMPACT_INTERVAL.key -> "5") {
-      withTempDir { chk =>
-        val _fileEntryCache = PrivateMethod[java.util.LinkedHashMap[Long, Array[FileEntry]]](
-          Symbol("fileEntryCache"))
-
-        val metadata = new FileStreamSourceLog(FileStreamSourceLog.VERSION, spark,
-          chk.getCanonicalPath)
-        val fileEntryCache = metadata invokePrivate _fileEntryCache()
-
-        (0 to 4).foreach { batchId =>
-          metadata.add(batchId, createEntries(batchId, 100))
-        }
-        val allFiles = metadata.allFiles()
-
-        // batch 4 is a compact batch which logs would be cached in fileEntryCache
-        fileEntryCache.containsKey(4)
-
-        val metadata2 = new FileStreamSourceLog(FileStreamSourceLog.VERSION, spark,
-          chk.getCanonicalPath)
-        val fileEntryCache2 = metadata2 invokePrivate _fileEntryCache()
-
-        // allFiles() doesn't restore the logs for the latest compact batch into file entry cache
-        assert(metadata2.allFiles() === allFiles)
-        assert(!fileEntryCache2.containsKey(4L))
-
-        // restore() will restore the logs for the latest compact batch into file entry cache
-        assert(metadata2.restore() === allFiles)
-        assert(fileEntryCache2.containsKey(4L))
-
-        (5 to 5 + FileStreamSourceLog.PREV_NUM_BATCHES_TO_READ_IN_RESTORE).foreach { batchId =>
-          metadata2.add(batchId, createEntries(batchId, 100))
-        }
-        val allFiles2 = metadata2.allFiles()
-
-        val metadata3 = new FileStreamSourceLog(FileStreamSourceLog.VERSION, spark,
-          chk.getCanonicalPath)
-        val fileEntryCache3 = metadata3 invokePrivate _fileEntryCache()
-
-        // restore() will not restore the logs for the latest compact batch into file entry cache
-        // if the latest batch is too far from latest compact batch, because it's unlikely Spark
-        // will request the batch for the start point.
-        assert(metadata2.restore() === allFiles2)
-        assert(!fileEntryCache3.containsKey(4L))
       }
     }
   }
@@ -1690,7 +1692,8 @@ class FileStreamSourceSuite extends FileStreamSourceTest {
       withSQLConf(
         SQLConf.FILE_SOURCE_LOG_COMPACT_INTERVAL.key -> "2",
         // Force deleting the old logs
-        SQLConf.FILE_SOURCE_LOG_CLEANUP_DELAY.key -> "1"
+        SQLConf.FILE_SOURCE_LOG_CLEANUP_DELAY.key -> "1",
+        SQLConf.FILE_SOURCE_CLEANER_NUM_THREADS.key -> "0"
       ) {
         val option = Map("latestFirst" -> "false", "maxFilesPerTrigger" -> "1",
           "cleanSource" -> "delete")
@@ -1734,7 +1737,8 @@ class FileStreamSourceSuite extends FileStreamSourceTest {
       withSQLConf(
         SQLConf.FILE_SOURCE_LOG_COMPACT_INTERVAL.key -> "2",
         // Force deleting the old logs
-        SQLConf.FILE_SOURCE_LOG_CLEANUP_DELAY.key -> "1"
+        SQLConf.FILE_SOURCE_LOG_CLEANUP_DELAY.key -> "1",
+        SQLConf.FILE_SOURCE_CLEANER_NUM_THREADS.key -> "0"
       ) {
         val option = Map("latestFirst" -> "false", "maxFilesPerTrigger" -> "1",
           "cleanSource" -> "archive", "sourceArchiveDir" -> archiveDir.getAbsolutePath)
@@ -1803,7 +1807,8 @@ class FileStreamSourceSuite extends FileStreamSourceTest {
         withSQLConf(
           SQLConf.FILE_SOURCE_LOG_COMPACT_INTERVAL.key -> "2",
           // Force deleting the old logs
-          SQLConf.FILE_SOURCE_LOG_CLEANUP_DELAY.key -> "1"
+          SQLConf.FILE_SOURCE_LOG_CLEANUP_DELAY.key -> "1",
+          SQLConf.FILE_SOURCE_CLEANER_NUM_THREADS.key -> "0"
         ) {
           val option = Map("latestFirst" -> "false", "maxFilesPerTrigger" -> "1",
             "cleanSource" -> cleanOption, "sourceArchiveDir" -> archiveDir.getAbsolutePath)
@@ -1868,15 +1873,29 @@ class FileStreamSourceSuite extends FileStreamSourceTest {
     override def getFileStatus(f: Path): FileStatus = throw new NotImplementedError
   }
 
-  test("SourceFileArchiver - base archive path depth <= 2") {
+  test("SourceFileArchiver - fail when base archive path matches source pattern") {
     val fakeFileSystem = new FakeFileSystem("fake")
 
-    val sourcePatternPath = new Path("/hello*/h{e,f}ll?")
-    val baseArchiveDirPath = new Path("/hello")
-
-    intercept[IllegalArgumentException] {
-      new SourceFileArchiver(fakeFileSystem, sourcePatternPath, fakeFileSystem, baseArchiveDirPath)
+    def assertThrowIllegalArgumentException(sourcePatttern: Path, baseArchivePath: Path): Unit = {
+      intercept[IllegalArgumentException] {
+        new SourceFileArchiver(fakeFileSystem, sourcePatttern, fakeFileSystem, baseArchivePath)
+      }
     }
+
+    // 1) prefix of base archive path matches source pattern (baseArchiveDirPath has more depths)
+    val sourcePatternPath = new Path("/hello*/spar?")
+    val baseArchiveDirPath = new Path("/hello/spark/structured/streaming")
+    assertThrowIllegalArgumentException(sourcePatternPath, baseArchiveDirPath)
+
+    // 2) prefix of source pattern matches base archive path (source pattern has more depths)
+    val sourcePatternPath2 = new Path("/hello*/spar?/structured/streaming")
+    val baseArchiveDirPath2 = new Path("/hello/spark/structured")
+    assertThrowIllegalArgumentException(sourcePatternPath2, baseArchiveDirPath2)
+
+    // 3) source pattern matches base archive path (both have same depth)
+    val sourcePatternPath3 = new Path("/hello*/spar?/structured/*")
+    val baseArchiveDirPath3 = new Path("/hello/spark/structured/streaming")
+    assertThrowIllegalArgumentException(sourcePatternPath3, baseArchiveDirPath3)
   }
 
   test("SourceFileArchiver - different filesystems between source and archive") {

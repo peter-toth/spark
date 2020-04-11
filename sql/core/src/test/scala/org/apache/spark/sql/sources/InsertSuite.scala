@@ -521,6 +521,20 @@ class InsertSuite extends DataSourceTest with SharedSparkSession {
     }
   }
 
+  test("new partitions should be added to catalog after writing to catalog table") {
+    val table = "partitioned_catalog_table"
+    val numParts = 210
+    withTable(table) {
+      val df = (1 to numParts).map(i => (i, i)).toDF("part", "col1")
+      val tempTable = "partitioned_catalog_temp_table"
+      df.createOrReplaceTempView(tempTable)
+      sql(s"CREATE TABLE $table (part Int, col1 Int) USING parquet PARTITIONED BY (part)")
+      sql(s"INSERT INTO TABLE $table SELECT * from $tempTable")
+      val partitions = spark.sessionState.catalog.listPartitionNames(TableIdentifier(table))
+      assert(partitions.size == numParts)
+    }
+  }
+
   test("SPARK-20236: dynamic partition overwrite without catalog table") {
     withSQLConf(SQLConf.PARTITION_OVERWRITE_MODE.key -> PartitionOverwriteMode.DYNAMIC.toString) {
       withTempPath { path =>
@@ -735,6 +749,27 @@ class InsertSuite extends DataSourceTest with SharedSparkSession {
           sql(s"insert into t values(${outOfRangeValue})")
         }.getCause.getMessage
         assert(msg.contains("cannot be represented as Decimal(3, 2)"))
+      }
+    }
+  }
+
+  test("SPARK-30844: static partition should also follow StoreAssignmentPolicy") {
+    SQLConf.StoreAssignmentPolicy.values.foreach { policy =>
+      withSQLConf(
+        SQLConf.STORE_ASSIGNMENT_POLICY.key -> policy.toString) {
+        withTable("t") {
+          sql("create table t(a int, b string) using parquet partitioned by (a)")
+          policy match {
+            case SQLConf.StoreAssignmentPolicy.ANSI | SQLConf.StoreAssignmentPolicy.STRICT =>
+              val errorMsg = intercept[NumberFormatException] {
+                sql("insert into t partition(a='ansi') values('ansi')")
+              }.getMessage
+              assert(errorMsg.contains("invalid input syntax for type numeric: ansi"))
+            case SQLConf.StoreAssignmentPolicy.LEGACY =>
+              sql("insert into t partition(a='ansi') values('ansi')")
+              checkAnswer(sql("select * from t"), Row("ansi", null) :: Nil)
+          }
+        }
       }
     }
   }

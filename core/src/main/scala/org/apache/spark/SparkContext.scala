@@ -41,7 +41,6 @@ import org.apache.hadoop.mapreduce.lib.input.{FileInputFormat => NewFileInputFor
 import org.apache.spark.annotation.DeveloperApi
 import org.apache.spark.broadcast.Broadcast
 import org.apache.spark.deploy.{LocalSparkCluster, SparkHadoopUtil}
-import org.apache.spark.deploy.StandaloneResourceUtils._
 import org.apache.spark.executor.{ExecutorMetrics, ExecutorMetricsSource}
 import org.apache.spark.input.{FixedLengthBinaryInputFormat, PortableDataStream, StreamInputFormat, WholeTextFileInputFormat}
 import org.apache.spark.internal.Logging
@@ -250,15 +249,6 @@ class SparkContext(config: SparkConf) extends Logging {
 
   def isLocal: Boolean = Utils.isLocalMaster(_conf)
 
-  private def isClientStandalone: Boolean = {
-    val isSparkCluster = master match {
-      case SparkMasterRegex.SPARK_REGEX(_) => true
-      case SparkMasterRegex.LOCAL_CLUSTER_REGEX(_, _, _) => true
-      case _ => false
-    }
-    deployMode == "client" && isSparkCluster
-  }
-
   /**
    * @return true if context is stopped or in the midst of stopping.
    */
@@ -396,17 +386,7 @@ class SparkContext(config: SparkConf) extends Logging {
     _driverLogger = DriverLogger(_conf)
 
     val resourcesFileOpt = conf.get(DRIVER_RESOURCES_FILE)
-    val allResources = getOrDiscoverAllResources(_conf, SPARK_DRIVER_PREFIX, resourcesFileOpt)
-    _resources = {
-      // driver submitted in client mode under Standalone may have conflicting resources with
-      // other drivers/workers on this host. We should sync driver's resources info into
-      // SPARK_RESOURCES/SPARK_RESOURCES_COORDINATE_DIR/ to avoid collision.
-      if (isClientStandalone) {
-        acquireResources(_conf, SPARK_DRIVER_PREFIX, allResources, Utils.getProcessId)
-      } else {
-        allResources
-      }
-    }
+    _resources = getOrDiscoverAllResources(_conf, SPARK_DRIVER_PREFIX, resourcesFileOpt)
     logResourceInfo(SPARK_DRIVER_PREFIX, _resources)
 
     // log out spark.app.name in the Spark driver logs
@@ -542,7 +522,7 @@ class SparkContext(config: SparkConf) extends Logging {
       HeartbeatReceiver.ENDPOINT_NAME, new HeartbeatReceiver(this))
 
     // Initialize any plugins before the task scheduler is initialized.
-    _plugins = PluginContainer(this)
+    _plugins = PluginContainer(this, _resources.asJava)
 
     // Create and start the scheduler
     val (sched, ts) = SparkContext.createTaskScheduler(this, master, deployMode)
@@ -2019,9 +1999,6 @@ class SparkContext(config: SparkConf) extends Logging {
     Utils.tryLogNonFatalError {
       _progressBar.foreach(_.stop())
     }
-    if (isClientStandalone) {
-      releaseResources(_conf, SPARK_DRIVER_PREFIX, _resources, Utils.getProcessId)
-    }
     _taskScheduler = null
     // TODO: Cache.stop()?
     if (_env != null) {
@@ -2779,9 +2756,13 @@ object SparkContext extends Logging {
       } else {
         executorCores.get
       }
+      // some cluster managers don't set the EXECUTOR_CORES config by default (standalone
+      // and mesos coarse grained), so we can't rely on that config for those.
+      val shouldCheckExecCores = executorCores.isDefined || sc.conf.contains(EXECUTOR_CORES) ||
+        (master.equalsIgnoreCase("yarn") || master.startsWith("k8s"))
 
       // Number of cores per executor must meet at least one task requirement.
-      if (execCores < taskCores) {
+      if (shouldCheckExecCores && execCores < taskCores) {
         throw new SparkException(s"The number of cores per executor (=$execCores) has to be >= " +
           s"the task config: ${CPUS_PER_TASK.key} = $taskCores when run on $master.")
       }
@@ -2789,27 +2770,30 @@ object SparkContext extends Logging {
       // Calculate the max slots each executor can provide based on resources available on each
       // executor and resources required by each task.
       val taskResourceRequirements = parseResourceRequirements(sc.conf, SPARK_TASK_PREFIX)
-      val executorResourcesAndAmounts =
-        parseAllResourceRequests(sc.conf, SPARK_EXECUTOR_PREFIX)
+      val executorResourcesAndAmounts = parseAllResourceRequests(sc.conf, SPARK_EXECUTOR_PREFIX)
           .map(request => (request.id.resourceName, request.amount)).toMap
-      var numSlots = execCores / taskCores
-      var limitingResourceName = "CPU"
+
+      var (numSlots, limitingResourceName) = if (shouldCheckExecCores) {
+        (execCores / taskCores, "CPU")
+      } else {
+        (-1, "")
+      }
 
       taskResourceRequirements.foreach { taskReq =>
         // Make sure the executor resources were specified through config.
         val execAmount = executorResourcesAndAmounts.getOrElse(taskReq.resourceName,
           throw new SparkException("The executor resource config: " +
-            ResourceID(SPARK_EXECUTOR_PREFIX, taskReq.resourceName).amountConf +
+            new ResourceID(SPARK_EXECUTOR_PREFIX, taskReq.resourceName).amountConf +
             " needs to be specified since a task requirement config: " +
-            ResourceID(SPARK_TASK_PREFIX, taskReq.resourceName).amountConf +
+            new ResourceID(SPARK_TASK_PREFIX, taskReq.resourceName).amountConf +
             " was specified")
         )
         // Make sure the executor resources are large enough to launch at least one task.
         if (execAmount < taskReq.amount) {
           throw new SparkException("The executor resource config: " +
-            ResourceID(SPARK_EXECUTOR_PREFIX, taskReq.resourceName).amountConf +
+            new ResourceID(SPARK_EXECUTOR_PREFIX, taskReq.resourceName).amountConf +
             s" = $execAmount has to be >= the requested amount in task resource config: " +
-            ResourceID(SPARK_TASK_PREFIX, taskReq.resourceName).amountConf +
+            new ResourceID(SPARK_TASK_PREFIX, taskReq.resourceName).amountConf +
             s" = ${taskReq.amount}")
         }
         // Compare and update the max slots each executor can provide.
@@ -2818,12 +2802,28 @@ object SparkContext extends Logging {
         // multiple executor resources.
         val resourceNumSlots = Math.floor(execAmount * taskReq.numParts / taskReq.amount).toInt
         if (resourceNumSlots < numSlots) {
+          if (shouldCheckExecCores) {
+            throw new IllegalArgumentException("The number of slots on an executor has to be " +
+              "limited by the number of cores, otherwise you waste resources and " +
+              "dynamic allocation doesn't work properly. Your configuration has " +
+              s"core/task cpu slots = ${numSlots} and " +
+              s"${taskReq.resourceName} = ${resourceNumSlots}. " +
+              "Please adjust your configuration so that all resources require same number " +
+              "of executor slots.")
+          }
           numSlots = resourceNumSlots
           limitingResourceName = taskReq.resourceName
         }
       }
-      // There have been checks above to make sure the executor resources were specified and are
-      // large enough if any task resources were specified.
+      if(!shouldCheckExecCores && Utils.isDynamicAllocationEnabled(sc.conf)) {
+        // if we can't rely on the executor cores config throw a warning for user
+        logWarning("Please ensure that the number of slots available on your " +
+          "executors is limited by the number of cores to task cpus and not another " +
+          "custom resource. If cores is not the limiting resource then dynamic " +
+          "allocation will not work properly!")
+      }
+      // warn if we would waste any resources due to another resource limiting the number of
+      // slots on an executor
       taskResourceRequirements.foreach { taskReq =>
         val execAmount = executorResourcesAndAmounts(taskReq.resourceName)
         if ((numSlots * taskReq.amount / taskReq.numParts) < execAmount) {
@@ -2832,7 +2832,7 @@ object SparkContext extends Logging {
           } else {
             s"${taskReq.amount}"
           }
-          val resourceNumSlots = Math.floor(execAmount * taskReq.numParts/taskReq.amount).toInt
+          val resourceNumSlots = Math.floor(execAmount * taskReq.numParts / taskReq.amount).toInt
           val message = s"The configuration of resource: ${taskReq.resourceName} " +
             s"(exec = ${execAmount}, task = ${taskReqStr}, " +
             s"runnable tasks = ${resourceNumSlots}) will " +

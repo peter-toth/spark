@@ -81,11 +81,6 @@
     </dependency>
     <dependency>
       <groupId>org.apache.spark</groupId>
-      <artifactId>spark-graph_${scala.binary.version}</artifactId>
-      <version>${project.version}</version>
-    </dependency>
-    <dependency>
-      <groupId>org.apache.spark</groupId>
       <artifactId>spark-sql_${scala.binary.version}</artifactId>
       <version>${project.version}</version>
     </dependency>
@@ -137,7 +132,7 @@
           </executions>
           <configuration>
             <target>
-              <delete dir="${basedir}/../python/lib/pyspark.zip"/>
+              <delete file="${basedir}/../python/lib/pyspark.zip"/>
               <zip destfile="${basedir}/../python/lib/pyspark.zip">
                 <fileset dir="${basedir}/../python/" includes="pyspark/**/*"/>
               </zip>
@@ -163,7 +158,7 @@
                   <classifier>pyspark</classifier>
                 </artifact>
                 <artifact>
-                  <file>${basedir}/../python/lib/py4j-0.10.8.1-src.zip</file>
+                  <file>${basedir}/../python/lib/py4j-0.10.9-src.zip</file>
                   <type>zip</type>
                   <classifier>py4j</classifier>
                 </artifact>

@@ -105,7 +105,7 @@ class HiveTranslationLayerCheck(session: SparkSession) extends Rule[LogicalPlan]
         CatalogUtils.throwIfNoAccess(tableMeta)
         l
 
-      case h @ HiveTableRelation(tableMeta, _, _, _) =>
+      case h @ HiveTableRelation(tableMeta, _, _, _, _) =>
         CatalogUtils.throwIfNoAccess(tableMeta)
         h
 

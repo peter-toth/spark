@@ -1453,8 +1453,9 @@ class StatisticsSuite extends StatisticsCollectionTestBase with TestHiveSingleto
           withTable(tableName) {
             sql(s"CREATE TABLE $tableName STORED AS parquet AS SELECT 'a', 'b'")
             val catalogTable = getCatalogTable(tableName)
+            // CDPD-3881: It looks like the following statement is not true for CDP Hive 3 any more:
             // Hive serde tables always update statistics by Hive metastore
-            if (!isConverted || updateEnabled) {
+            if (/* !isConverted || */ updateEnabled) {
               assert(catalogTable.stats.nonEmpty)
             } else {
               assert(catalogTable.stats.isEmpty)

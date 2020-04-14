@@ -20,11 +20,11 @@ package org.apache.spark.sql.hive
 import java.net.URI
 
 import org.apache.hadoop.conf.Configuration
+import org.apache.hadoop.hive.ql.processors.CommandProcessorException
 
 import org.apache.spark.SparkConf
 import org.apache.spark.sql.catalyst.TableIdentifier
 import org.apache.spark.sql.catalyst.catalog._
-import org.apache.spark.sql.execution.QueryExecutionException
 import org.apache.spark.sql.execution.command.DDLUtils
 import org.apache.spark.sql.hive.test.TestHiveUtils
 import org.apache.spark.sql.types.StructType
@@ -165,23 +165,27 @@ class HiveExternalCatalogSuite extends ExternalCatalogSuite {
     val client = externalCatalog.client
     // test add jars which doesn't exists
     val jarPath = "file:///tmp/not_exists.jar"
-    assertThrows[QueryExecutionException](client.runSqlHive(s"ADD JAR $jarPath"))
+    // CDPD-3881: Due to CDP Hive 3 we throw a CommandProcessorException from a different
+    // classloader so catching it is not so straightforward
+    assert(intercept[Exception](client.runSqlHive(
+      s"ADD JAR $jarPath")).getClass.getName === classOf[CommandProcessorException].getName)
 
     // test change to the database which doesn't exists
-    assertThrows[QueryExecutionException](client.runSqlHive(
-      s"use db_not_exists"))
+    assert(intercept[Exception](client.runSqlHive(
+      s"use db_not_exists")).getClass.getName === classOf[CommandProcessorException].getName)
 
     // test create hive table failed with unsupported into type
-    assertThrows[QueryExecutionException](client.runSqlHive(
-      s"CREATE TABLE t(n into)"))
+    assert(intercept[Exception](client.runSqlHive(
+      s"CREATE TABLE t(n into)")).getClass.getName === classOf[CommandProcessorException].getName)
 
     // test desc table failed with wrong `FORMATED` keyword
-    assertThrows[QueryExecutionException](client.runSqlHive(
-      s"DESC FORMATED t"))
+    assert(intercept[Exception](client.runSqlHive(
+      s"DESC FORMATED t")).getClass.getName === classOf[CommandProcessorException].getName)
 
     // test wrong insert query
-    assertThrows[QueryExecutionException](client.runSqlHive(
-      "INSERT overwrite directory \"fs://localhost/tmp\" select 1 as a"))
+    assert(intercept[Exception](client.runSqlHive(
+      "INSERT overwrite directory \"fs://localhost/tmp\" select 1 as a")
+    ).getClass.getName === classOf[CommandProcessorException].getName)
   }
 
   test("SPARK-31061: alterTable should be able to change table provider") {

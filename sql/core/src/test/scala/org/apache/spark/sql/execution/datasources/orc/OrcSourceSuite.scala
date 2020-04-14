@@ -121,7 +121,8 @@ abstract class OrcSuite extends OrcTest with BeforeAndAfterAll {
   }
 
   protected def testSelectiveDictionaryEncoding(isSelective: Boolean,
-      isHive23: Boolean = false): Unit = {
+      isHive23: Boolean = false,
+      nativeOrc: Boolean = false): Unit = {
     val tableName = "orcTable"
 
     withTempDir { dir =>
@@ -173,7 +174,13 @@ abstract class OrcSuite extends OrcTest with BeforeAndAfterAll {
           // further refined as to whether they use RLE v1 or v2. RLE v1 is used by
           // Hive 0.11 and RLE v2 is introduced in Hive 0.12 ORC with more improvements.
           // For more details, see https://orc.apache.org/specification/
-          assert(stripe.getColumns(1).getKind === DICTIONARY_V2)
+          // CDPD-3881: It looks like encoding has changed with CDP Hive 3, this is weird a bit as
+          // CDP Hive 3 and Spark 3 uses the exact same downstream ORC version.
+          if (isHive23 && !nativeOrc) {
+            assert(stripe.getColumns(1).getKind === DIRECT_V2)
+          } else {
+            assert(stripe.getColumns(1).getKind === DICTIONARY_V2)
+          }
           if (isSelective || isHive23) {
             assert(stripe.getColumns(2).getKind === DIRECT_V2)
           } else {

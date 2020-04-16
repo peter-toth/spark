@@ -52,6 +52,7 @@ function do_build_external_components {
   if [ -n "$NEW_SAC_VERSION" ]; then
     "$MVN" versions:set -DnewVersion=${NEW_SAC_VERSION} > "$ATLAS_CONNECTOR_BUILD_LOG" 2>&1
   fi
+  sed -i 's|<repositories>|<repositories><repository><id>gbnRepo</id><name>gbn repo</name><url>http://cloudera-build-us-west-1.vpc.cloudera.com/s3/build/1984040/cdh/7.x/maven-repository/</url><releases><enabled>true</enabled></releases><snapshots><enabled>true</enabled></snapshots></repository>|' pom.xml
   "$MVN" clean package -DskipTests $BUILD_OPTS >> "$ATLAS_CONNECTOR_BUILD_LOG" 2>&1
   )
   local ATLAS_CONNECTOR_JAR=$(ls $ATLAS_CONNECTOR_DIR/spark-atlas-connector/target/spark-atlas-connector*.jar)

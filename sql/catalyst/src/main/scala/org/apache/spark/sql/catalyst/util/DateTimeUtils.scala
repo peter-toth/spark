@@ -19,7 +19,7 @@ package org.apache.spark.sql.catalyst.util
 
 import java.sql.{Date, Timestamp}
 import java.text.{DateFormat, ParsePosition, SimpleDateFormat}
-import java.time.Instant
+import java.time.{DateTimeException, Instant, LocalDate, ZonedDateTime, ZoneOffset}
 import java.util.{Calendar, GregorianCalendar, Locale, TimeZone}
 import java.util.concurrent.ConcurrentHashMap
 import java.util.function.{Function => JFunction}
@@ -195,11 +195,38 @@ object DateTimeUtils {
     }
   }
 
+  // cut off date in proleptic Gregorian for doing something special on read is 1582-10-15
+  // This value is also timezone agnostic
+  private val cutoffDateRead = LocalDate.of(
+    1582,
+    10,
+    15
+  ).atStartOfDay.toInstant(ZoneOffset.UTC).toEpochMilli
+
   /**
    * Returns the number of days since epoch from HiveDate.
    */
   def fromHiveDate(date: HiveDate): SQLDate = {
-    val convertedMicros = convertTz(date.toEpochMilli * 1000, TimeZone.getDefault, TimeZoneUTC)
+    val epochMillisProleptic: Long = date.toEpochMilli
+    val convertedMicros = if (epochMillisProleptic < cutoffDateRead) {
+      // Dates below the cutoff have a different epoch seconds than what
+      // Spark expects. Spark uses the  hybrid Julian calendar, and Hive uses
+      // the proleptic Gregorian calendar. Convert the epoch seconds to the
+      // hybrid Julian calendar calendar so that Spark understands it.
+      val instant = Instant.ofEpochMilli(epochMillisProleptic)
+      // It's OK that we hardcode UTC here. Hive represents timezone-agnostic dates as a
+      // UTC date. We just want to extract the hours, minutes, seconds, and nanos. We
+      // don't care about the epoch seconds.
+      val zoned = ZonedDateTime.ofInstant(instant, TimeZoneUTC.toZoneId)
+      // We don't need to do anything to shift the epoch millis to the local timezone.
+      // The Date constructor will do that for us.
+      new Date(
+        zoned.getYear - 1900,
+        zoned.getMonth.getValue - 1,
+        zoned.getDayOfMonth).getTime * 1000
+    } else {
+      convertTz(epochMillisProleptic * 1000, TimeZone.getDefault, TimeZoneUTC)
+    }
     val r = millisToDays(convertedMicros / 1000)
     r
   }
@@ -218,10 +245,55 @@ object DateTimeUtils {
     new Date(daysToMillis(daysSinceEpoch))
   }
 
-  def toHiveDate(daysSinceEpoch: SQLDate): HiveDate = {
+  private def makeLocalDate(theDate: Date): LocalDate = {
+    LocalDate.of(
+      theDate.getYear + 1900,
+      theDate.getMonth + 1,
+      theDate.getDate
+    )
+  }
 
+  /* Attempt to make a LocalDate from a Date. Not all values of Date
+   * can be represented as a LocalDate instance. Sometimes we need to
+   * try with the next value of Date
+   */
+  private def toLocalDate(date: Date): LocalDate = {
+    try {
+      makeLocalDate(date)
+    } catch {
+      case _: DateTimeException =>
+        // That didn't work out, probably because of leap year differences between
+        // the hybrid Julian and proleptic Gregorian calendars.
+        // Try again with the next day in the Julian calendar
+        makeLocalDate(
+          new Date(
+            date.getYear,
+            date.getMonth,
+            date.getDate + 1
+          )
+        )
+    }
+  }
+  // cut off date in hybrid Julian for doing something special on write is 1582-10-15
+  // This value is also timezone aware
+  private val cutoffDateWrite = new Date(1582 - 1900, 9, 15).getTime
+
+  def toHiveDate(daysSinceEpoch: SQLDate): HiveDate = {
     val micros = daysToMillis(daysSinceEpoch) * 1000
-    val convertedMicros = convertTz(micros, TimeZoneUTC, TimeZone.getDefault)
+    val convertedMicros = if ((micros/1000) < cutoffDateWrite) {
+      // Dates below the cutoff have a different epoch seconds than what
+      // Hive expects. Spark uses the  hybrid Julian calendar, and Hive uses
+      // the proleptic Gregorian calendar. Convert the epoch seconds to the
+      // proleptic Gregorian calendar so that Hive understands it.
+      val date = new Date(micros/1000)
+      // It's OK that we hard-code UTC. We want the timezone-agnostic version of
+      // the date, which Hive represents as a UTC date with the same hours, minutes,
+      // seconds, nanos.
+      val local = toLocalDate(date)
+      local.atStartOfDay.toInstant(ZoneOffset.UTC).toEpochMilli * 1000
+    } else {
+      convertTz(micros, TimeZoneUTC, TimeZone.getDefault)
+    }
     val r = HiveDate.ofEpochMilli(convertedMicros / 1000)
     r
   }

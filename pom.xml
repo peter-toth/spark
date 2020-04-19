@@ -134,7 +134,7 @@
     <!-- Version used for internal directory structure -->
     <hive.version.short>2.3</hive.version.short>
     <!-- note that this should be compatible with Kafka brokers version 0.10 and up -->
-    <kafka.version>2.4.1.7.1.1.0-565</kafka.version>
+    <kafka.version>2.5.0.7.2.3.0-SNAPSHOT</kafka.version>
     <derby.version>10.14.2.0</derby.version>
     <parquet.version>1.10.99.7.2.3.0-SNAPSHOT</parquet.version>
     <orc.version>1.5.1.7.2.3.0-SNAPSHOT</orc.version>

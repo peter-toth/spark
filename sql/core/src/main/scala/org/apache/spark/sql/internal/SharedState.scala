@@ -51,27 +51,49 @@ private[sql] class SharedState(val sparkContext: SparkContext) extends Logging {
       sparkContext.hadoopConfiguration.addResource(configFile)
     }
 
-    // hive.metastore.warehouse.dir only stay in hadoopConf
+    // hive.metastore.warehouse.dir and hive.metastore.warehouse.external.dir
+    // only stay in hadoopConf
     sparkContext.conf.remove("hive.metastore.warehouse.dir")
+    sparkContext.conf.remove("hive.metastore.warehouse.external.dir")
     // Set the Hive metastore warehouse path to the one we use
     val hiveWarehouseDir = sparkContext.hadoopConfiguration.get("hive.metastore.warehouse.dir")
-    if (hiveWarehouseDir != null && !sparkContext.conf.contains(WAREHOUSE_PATH.key)) {
-      // If hive.metastore.warehouse.dir is set and spark.sql.warehouse.dir is not set,
-      // we will respect the value of hive.metastore.warehouse.dir.
-      sparkContext.conf.set(WAREHOUSE_PATH.key, hiveWarehouseDir)
-      logInfo(s"${WAREHOUSE_PATH.key} is not set, but hive.metastore.warehouse.dir " +
+    val hiveWarehouseExtDir =
+      sparkContext.hadoopConfiguration.get("hive.metastore.warehouse.external.dir")
+    if (hiveWarehouseExtDir != null && !sparkContext.conf.contains(WAREHOUSE_PATH.key)) {
+      // In CDP 7.1.1 and later if hive.metastore.warehouse.external.dir is set and
+      // spark.sql.warehouse.dir is not set, we will respect the value of
+      // hive.metastore.warehouse.external.dir.
+      sparkContext.conf.set(WAREHOUSE_PATH.key, hiveWarehouseExtDir)
+      logInfo(s"${WAREHOUSE_PATH.key} is not set, but hive.metastore.warehouse.external.dir " +
         s"is set. Setting ${WAREHOUSE_PATH.key} to the value of " +
+        s"hive.metastore.warehouse.external.dir ('$hiveWarehouseExtDir').")
+      hiveWarehouseExtDir
+    } else if (hiveWarehouseDir != null && !sparkContext.conf.contains(WAREHOUSE_PATH.key)) {
+      // If hive.metastore.warehouse.dir is set and hive.metastore.warehouse.external.dir and
+      // spark.sql.warehouse.dir are not set, we will respect the value of
+      // hive.metastore.warehouse.dir.
+      sparkContext.conf.set(WAREHOUSE_PATH.key, hiveWarehouseDir)
+      logInfo(s"${WAREHOUSE_PATH.key} and hive.metastore.warehouse.external.dir are not set, but" +
+        s" hive.metastore.warehouse.dir is set. Setting ${WAREHOUSE_PATH.key} to the value of " +
         s"hive.metastore.warehouse.dir ('$hiveWarehouseDir').")
       hiveWarehouseDir
     } else {
-      // If spark.sql.warehouse.dir is set, we will override hive.metastore.warehouse.dir using
-      // the value of spark.sql.warehouse.dir.
-      // When neither spark.sql.warehouse.dir nor hive.metastore.warehouse.dir is set,
-      // we will set hive.metastore.warehouse.dir to the default value of spark.sql.warehouse.dir.
+      // If spark.sql.warehouse.dir is set, we will override hive.metastore.warehouse.external.dir
+      // and hive.metastore.warehouse.dir using the value of spark.sql.warehouse.dir.
+      // When neither spark.sql.warehouse.dir nor hive.metastore.warehouse.external.dir or
+      // hive.metastore.warehouse.dir are set, we will set hive.metastore.warehouse.external.dir to
+      // the default value of spark.sql.warehouse.dir.
       val sparkWarehouseDir = sparkContext.conf.get(WAREHOUSE_PATH)
       logInfo(s"Setting hive.metastore.warehouse.dir ('$hiveWarehouseDir') to the value of " +
         s"${WAREHOUSE_PATH.key} ('$sparkWarehouseDir').")
-      sparkContext.hadoopConfiguration.set("hive.metastore.warehouse.dir", sparkWarehouseDir)
+      sparkContext.hadoopConfiguration.set(
+        "hive.metastore.warehouse.external.dir",
+        sparkWarehouseDir)
+      if (Utils.isTesting) {
+        sparkContext.hadoopConfiguration.set(
+          "hive.metastore.warehouse.dir",
+          sparkWarehouseDir)
+      }
       sparkWarehouseDir
     }
   }

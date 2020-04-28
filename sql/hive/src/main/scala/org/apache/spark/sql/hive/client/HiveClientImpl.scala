@@ -140,10 +140,11 @@ private[hive] class HiveClientImpl(
       // its own state by newState()
       val ret = SessionState.get
       if (ret != null) {
-        // hive.metastore.warehouse.dir is determined in SharedState after the CliSessionState
-        // instance constructed, we need to follow that change here.
+        // hive.metastore.warehouse.dir and hive.metastore.warehouse.external.dir are
+        // determined in SharedState after the CliSessionState instance constructed, we
+        // need to follow that change here.
         warehouseDir.foreach { dir =>
-          ret.getConf.setVar(ConfVars.METASTOREWAREHOUSE, dir)
+          ret.getConf.setVar(ConfVars.HIVE_METASTORE_WAREHOUSE_EXTERNAL, dir)
         }
         ret
       } else {
@@ -155,7 +156,8 @@ private[hive] class HiveClientImpl(
   // Log the default warehouse location.
   logInfo(
     s"Warehouse location for Hive client " +
-      s"(version ${version.fullVersion}) is ${conf.getVar(ConfVars.METASTOREWAREHOUSE)}")
+      s"(version ${version.fullVersion}) is" +
+      s" ${conf.getVar(ConfVars.HIVE_METASTORE_WAREHOUSE_EXTERNAL)}")
 
   private def newState(): SessionState = {
     val hiveConf = new HiveConf(classOf[SessionState])

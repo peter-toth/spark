@@ -291,7 +291,7 @@ class CliSuite extends SparkFunSuite with BeforeAndAfterAll with Logging {
     val tmpDir = Utils.createTempDir(namePrefix = "SPARK-21451")
     runCliWithin(
       1.minute,
-      Seq(s"--conf", s"spark.hadoop.${ConfVars.METASTOREWAREHOUSE}=$tmpDir"))(
+      Seq(s"--conf", s"spark.hadoop.${ConfVars.HIVE_METASTORE_WAREHOUSE_EXTERNAL}=$tmpDir"))(
       "set spark.sql.warehouse.dir;" -> tmpDir.getAbsolutePath)
     tmpDir.delete()
   }

@@ -39,7 +39,7 @@ private[client] object HiveClientBuilder {
     metastorePath.delete()
     extraConf ++ Map(
       "javax.jdo.option.ConnectionURL" -> s"jdbc:derby:;databaseName=$metastorePath;create=true",
-      "hive.metastore.warehouse.dir" -> warehousePath.toString)
+      "hive.metastore.warehouse.external.dir" -> warehousePath.toString)
   }
 
   // for testing only

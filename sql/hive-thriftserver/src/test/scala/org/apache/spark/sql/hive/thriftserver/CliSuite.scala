@@ -98,7 +98,9 @@ class CliSuite extends SparkFunSuite with BeforeAndAfterAll with BeforeAndAfterE
       ""
     }
     val warehouseConf =
-      maybeWarehouse.map(dir => s"--hiveconf ${ConfVars.METASTOREWAREHOUSE}=$dir").getOrElse("")
+      maybeWarehouse
+        .map(dir => s"--hiveconf ${ConfVars.HIVE_METASTORE_WAREHOUSE_EXTERNAL}=$dir")
+        .getOrElse("")
     val command = {
       val cliScript = "../../bin/spark-sql".split("/").mkString(File.separator)
       val jdbcUrl = s"jdbc:derby:;databaseName=$metastorePath;create=true"
@@ -196,7 +198,8 @@ class CliSuite extends SparkFunSuite with BeforeAndAfterAll with BeforeAndAfterE
     // override conf from hive-site.xml
     runCliWithin(
       2.minute,
-      extraArgs = Seq("--conf", s"spark.hadoop.${ConfVars.METASTOREWAREHOUSE}=$sparkWareHouseDir"),
+      extraArgs = Seq("--conf",
+        s"spark.hadoop.${ConfVars.HIVE_METASTORE_WAREHOUSE_EXTERNAL}=$sparkWareHouseDir"),
       maybeWarehouse = None,
       useExternalHiveFile = true)(
       "desc database default;" -> sparkWareHouseDir.getAbsolutePath,
@@ -207,7 +210,8 @@ class CliSuite extends SparkFunSuite with BeforeAndAfterAll with BeforeAndAfterE
     // override conf from --hiveconf too
     runCliWithin(
       2.minute,
-      extraArgs = Seq("--conf", s"spark.${ConfVars.METASTOREWAREHOUSE}=$sparkWareHouseDir"))(
+      extraArgs = Seq("--conf",
+        s"spark.${ConfVars.HIVE_METASTORE_WAREHOUSE_EXTERNAL}=$sparkWareHouseDir"))(
       "desc database default;" -> sparkWareHouseDir.getAbsolutePath,
       "create database cliTestDb;" -> "",
       "desc database cliTestDb;" -> sparkWareHouseDir.getAbsolutePath,
@@ -221,7 +225,8 @@ class CliSuite extends SparkFunSuite with BeforeAndAfterAll with BeforeAndAfterE
       extraArgs =
         Seq("--conf",
           s"${StaticSQLConf.WAREHOUSE_PATH.key}=${sparkWareHouseDir}1",
-          "--conf", s"spark.hadoop.${ConfVars.METASTOREWAREHOUSE}=${sparkWareHouseDir}2"))(
+          "--conf",
+          s"spark.hadoop.${ConfVars.HIVE_METASTORE_WAREHOUSE_EXTERNAL}=${sparkWareHouseDir}2"))(
       "desc database default;" -> sparkWareHouseDir.getAbsolutePath.concat("1"))
   }
 

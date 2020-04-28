@@ -66,7 +66,7 @@ class UISeleniumSuite
         |  --master local
         |  --hiveconf hive.root.logger=INFO,console
         |  --hiveconf ${ConfVars.METASTORECONNECTURLKEY}=$metastoreJdbcUri
-        |  --hiveconf ${ConfVars.METASTOREWAREHOUSE}=$warehousePath
+        |  --hiveconf ${ConfVars.HIVE_METASTORE_WAREHOUSE_EXTERNAL}=$warehousePath
         |  --hiveconf ${ConfVars.HIVE_SERVER2_THRIFT_BIND_HOST}=localhost
         |  --hiveconf ${ConfVars.HIVE_SERVER2_TRANSPORT_MODE}=$mode
         |  --hiveconf $portConf=$port

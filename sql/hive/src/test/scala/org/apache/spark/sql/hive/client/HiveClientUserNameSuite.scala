@@ -56,7 +56,9 @@ class HiveClientUserNameSuite(version: String) extends HiveVersionSuite(version)
 
   private def getUserNameFromHiveClient: String = {
     val hadoopConf = new Configuration()
-    hadoopConf.set("hive.metastore.warehouse.dir", Utils.createTempDir().toURI().toString())
+    hadoopConf.set(
+      "hive.metastore.warehouse.external.dir",
+      Utils.createTempDir().toURI().toString())
     val client = buildClient(hadoopConf)
     client.userName
   }

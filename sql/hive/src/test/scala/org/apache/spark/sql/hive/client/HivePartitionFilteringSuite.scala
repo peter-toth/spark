@@ -49,7 +49,9 @@ class HivePartitionFilteringSuite(version: String)
 
     val hadoopConf = new Configuration()
     hadoopConf.setBoolean(tryDirectSqlKey, tryDirectSql)
-    hadoopConf.set("hive.metastore.warehouse.dir", Utils.createTempDir().toURI().toString())
+    hadoopConf.set(
+      "hive.metastore.warehouse.external.dir",
+      Utils.createTempDir().toURI().toString())
     val client = buildClient(hadoopConf)
     val tableSchema =
       new StructType().add("value", "int").add("ds", "int").add("h", "int").add("chunk", "string")

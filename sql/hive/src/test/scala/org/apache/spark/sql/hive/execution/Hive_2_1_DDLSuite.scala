@@ -53,7 +53,7 @@ class Hive_2_1_DDLSuite extends SparkFunSuite with TestHiveSingleton with Before
       .set(HiveUtils.HIVE_METASTORE_JARS.key, "maven")
 
     val hadoopConf = new Configuration()
-    hadoopConf.set("hive.metastore.warehouse.dir", warehouse.toURI().toString())
+    hadoopConf.set("hive.metastore.warehouse.external.dir", warehouse.toURI().toString())
     hadoopConf.set("javax.jdo.option.ConnectionURL",
       s"jdbc:derby:;databaseName=${metastore.getAbsolutePath()};create=true")
     // These options are needed since the defaults in Hive 2.1 cause exceptions with an

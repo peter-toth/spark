@@ -75,10 +75,11 @@ class HiveExternalCatalogSuite extends ExternalCatalogSuite {
         .add("col2", "string")
         .add("partCol1", "int")
         .add("partCol2", "string")
+      val locationUri = newUriForDatabase
       val table = CatalogTable(
         identifier = TableIdentifier("tbl", Some("db1")),
-        tableType = CatalogTableType.MANAGED,
-        storage = CatalogStorageFormat.empty,
+        tableType = CatalogTableType.EXTERNAL,
+        storage = CatalogStorageFormat.empty.copy(locationUri = Some(locationUri)),
         schema = new StructType()
           .add("col1", "int")
           .add("partCol1", "int")
@@ -95,11 +96,13 @@ class HiveExternalCatalogSuite extends ExternalCatalogSuite {
 
   test("SPARK-22306: alter table schema should not erase the bucketing metadata at hive side") {
     val catalog = newBasicCatalog()
+    val locationUri = newUriForDatabase
     externalCatalog.client.runSqlHive(
-      """
+      s"""
         |CREATE TABLE db1.t(a string, b string)
         |CLUSTERED BY (a, b) SORTED BY (a, b) INTO 10 BUCKETS
         |STORED AS PARQUET
+        |LOCATION '$locationUri'
       """.stripMargin)
 
     val newSchema = new StructType().add("a", "string").add("b", "string").add("c", "string")
@@ -113,11 +116,13 @@ class HiveExternalCatalogSuite extends ExternalCatalogSuite {
 
   test("SPARK-30050: analyze/rename table should not erase the bucketing metadata at hive side") {
     val catalog = newBasicCatalog()
+    val locationUri = newUriForDatabase
     externalCatalog.client.runSqlHive(
-      """
+      s"""
         |CREATE TABLE db1.t(a string, b string)
         |CLUSTERED BY (a, b) SORTED BY (a, b) INTO 10 BUCKETS
         |STORED AS PARQUET
+        |LOCATION '$locationUri'
       """.stripMargin)
 
     val bucketString1 = externalCatalog.client.runSqlHive("DESC FORMATTED db1.t")

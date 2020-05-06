@@ -3236,11 +3236,6 @@
 
     <profile>
       <id>hive-thriftserver</id>
-      <activation>
-        <property>
-          <name>cdpd.build</name>
-        </property>
-      </activation>
       <modules>
         <module>sql/hive-thriftserver</module>
       </modules>

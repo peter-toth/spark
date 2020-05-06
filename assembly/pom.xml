@@ -108,6 +108,117 @@
       <version>1.0.1</version>
       <scope>${hadoop.deps.scope}</scope>
     </dependency>
+
+    <!-- Begin CDPD-10144: Jars needed for HWC LLAP access -->
+    <dependency>
+      <groupId>${hive.group}</groupId>
+      <artifactId>hive-service</artifactId>
+      <version>${hive.version}</version>
+      <scope>${hive.deps.scope}</scope>
+      <exclusions>
+        <exclusion>
+          <groupId>org.apache.hive</groupId>
+          <artifactId>hive-llap-common</artifactId>
+        </exclusion>
+        <exclusion>
+          <groupId>org.apache.hive</groupId>
+          <artifactId>hive-llap-client</artifactId>
+        </exclusion>
+        <exclusion>
+          <groupId>org.apache.hive</groupId>
+          <artifactId>hive-llap-server</artifactId>
+        </exclusion>
+        <exclusion>
+	  <groupId>org.eclipse.jetty</groupId>
+	  <artifactId>jetty-runner</artifactId>
+	</exclusion>
+        <exclusion>
+	  <groupId>javax.servlet.jsp</groupId>
+	  <artifactId>javax.servlet.jsp-api</artifactId>
+	</exclusion>
+	<exclusion>
+	  <groupId>org.jamon</groupId>
+          <artifactId>jamon-runtime</artifactId>
+        </exclusion>
+      </exclusions>
+    </dependency>
+
+    <dependency>
+      <groupId>org.apache.tez</groupId>
+      <artifactId>tez-common</artifactId>
+      <version>${tez.version}</version>
+      <scope>compile</scope>
+      <exclusions>
+        <exclusion>
+          <groupId>org.slf4j</groupId>
+          <artifactId>slf4j-api</artifactId>
+        </exclusion>
+        <exclusion>
+	  <groupId>org.apache.tez</groupId>
+	  <artifactId>hadoop-shim</artifactId>
+        </exclusion>
+        <exclusion>
+          <groupId>com.sun.jersey</groupId>
+          <artifactId>*</artifactId>
+        </exclusion>
+        <exclusion>
+          <groupId>com.jcraft</groupId>
+          <artifactId>jsch</artifactId>
+        </exclusion>
+      </exclusions>
+    </dependency>
+
+    <dependency>
+      <groupId>org.apache.tez</groupId>
+      <artifactId>tez-api</artifactId>
+      <version>${tez.version}</version>
+      <scope>compile</scope>
+      <exclusions>
+        <exclusion>
+          <groupId>org.slf4j</groupId>
+          <artifactId>slf4j-api</artifactId>
+        </exclusion>
+        <exclusion>
+	  <groupId>org.codehaus.jettison</groupId>
+	  <artifactId>jettison</artifactId>
+        </exclusion>
+        <exclusion>
+	  <groupId>com.squareup.okio</groupId>
+	  <artifactId>okio</artifactId>
+        </exclusion>
+        <exclusion>
+	  <groupId>org.ow2.asm</groupId>
+	  <artifactId>asm</artifactId>
+        </exclusion>
+	<exclusion>
+	  <groupId>com.sun.jersey</groupId>
+          <artifactId>*</artifactId>
+        </exclusion>
+      </exclusions>
+    </dependency>
+
+    <dependency>
+      <groupId>org.apache.tez</groupId>
+      <artifactId>tez-runtime-internals</artifactId>
+      <version>${tez.version}</version>
+      <scope>compile</scope>
+      <exclusions>
+        <exclusion>
+          <groupId>org.slf4j</groupId>
+          <artifactId>slf4j-api</artifactId>
+        </exclusion>
+        <exclusion>
+	  <groupId>org.apache.tez</groupId>
+	  <artifactId>hadoop-shim</artifactId>
+        </exclusion>
+      </exclusions>
+    </dependency>
+
+    <dependency>
+      <groupId>${hive.group}</groupId>
+      <artifactId>hive-jdbc</artifactId>
+    </dependency>
+    <!-- End CDPD-10144: Jars needed for HWC LLAP access -->
   </dependencies>
 
   <build>

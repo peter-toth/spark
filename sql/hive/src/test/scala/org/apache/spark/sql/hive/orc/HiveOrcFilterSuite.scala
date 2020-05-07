@@ -22,7 +22,6 @@ import java.sql.{Date, Timestamp}
 
 import scala.collection.JavaConverters._
 
-import org.apache.commons.lang3.{JavaVersion, SystemUtils}
 import org.apache.hadoop.hive.ql.io.sarg.{PredicateLeaf, SearchArgument}
 
 import org.apache.spark.sql.{Column, DataFrame}
@@ -304,8 +303,6 @@ class HiveOrcFilterSuite extends OrcTest with TestHiveSingleton {
   }
 
   test("filter pushdown - combinations with logical operators") {
-    // CDPD-4216: disabled in JDK11; possibly fixed upstream as part of SPARK-27737.
-    assume(!SystemUtils.isJavaVersionAtLeast(JavaVersion.JAVA_9))
     withOrcDataFrame((1 to 4).map(i => Tuple1(Option(i)))) { implicit df =>
       // Because `ExpressionTree` is not accessible at Hive 1.2.x, this should be checked
       // in string form in order to check filter creation including logical operators

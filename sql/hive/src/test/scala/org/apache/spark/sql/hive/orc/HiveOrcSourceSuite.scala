@@ -19,8 +19,6 @@ package org.apache.spark.sql.hive.orc
 
 import java.io.File
 
-import org.apache.commons.lang3.{JavaVersion, SystemUtils}
-
 import org.apache.spark.sql.{AnalysisException, Row}
 import org.apache.spark.sql.TestingUDT.{IntervalData, IntervalUDT}
 import org.apache.spark.sql.execution.datasources.orc.OrcSuite

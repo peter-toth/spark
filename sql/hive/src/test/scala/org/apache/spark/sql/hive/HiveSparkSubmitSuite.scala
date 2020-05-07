@@ -110,8 +110,6 @@ class HiveSparkSubmitSuite
   }
 
   test("SPARK-8368: includes jars passed in through --jars") {
-    // CDPD-4216: disabled on JDK11 because this uses the built-in Hive.
-    assume(!SystemUtils.isJavaVersionAtLeast(JavaVersion.JAVA_9))
     val unusedJar = TestUtils.createJarWithClasses(Seq.empty)
     val jar1 = TestUtils.createJarWithClasses(Seq("SparkSubmitClassA"))
     val jar2 = TestUtils.createJarWithClasses(Seq("SparkSubmitClassB"))
@@ -311,8 +309,6 @@ class HiveSparkSubmitSuite
   // CDPD-6761
   ignore("SPARK-18360: default table path of tables in default database should depend on the " +
     "location of default database") {
-    // CDPD-4216: disabled on JDK11 because this uses the built-in Hive.
-    assume(!SystemUtils.isJavaVersionAtLeast(JavaVersion.JAVA_9))
     val unusedJar = TestUtils.createJarWithClasses(Seq.empty)
     val args = Seq(
       "--class", SPARK_18360.getClass.getName.stripSuffix("$"),
@@ -326,8 +322,6 @@ class HiveSparkSubmitSuite
   }
 
   test("SPARK-18989: DESC TABLE should not fail with format class not found") {
-    // CDPD-4216: disabled on JDK11 because this uses the built-in Hive.
-    assume(!SystemUtils.isJavaVersionAtLeast(JavaVersion.JAVA_9))
     val unusedJar = TestUtils.createJarWithClasses(Seq.empty)
 
     val argsForCreateTable = Seq(

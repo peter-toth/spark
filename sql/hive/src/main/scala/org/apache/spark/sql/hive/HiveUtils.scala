@@ -527,5 +527,4 @@ private[spark] object HiveUtils extends Logging {
       table.copy(schema = StructType(dataCols ++ partCols))
     }
   }
-
 }

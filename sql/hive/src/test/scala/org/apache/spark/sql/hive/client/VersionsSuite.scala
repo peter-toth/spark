@@ -97,8 +97,6 @@ class VersionsSuite extends SparkFunSuite with Logging {
   }
 
   test("hadoop configuration preserved") {
-    // CDPD-4216: built-in version doesn't work on JDK11.
-    assume(!SystemUtils.isJavaVersionAtLeast(JavaVersion.JAVA_9))
     val hadoopConf = new Configuration()
     hadoopConf.set("test", "success")
     val client = new IsolatedClientLoader(
@@ -148,12 +146,7 @@ class VersionsSuite extends SparkFunSuite with Logging {
     assert(getNestedMessages(e) contains "Unknown column 'A0.OWNER_NAME' in 'field list'")
   }
 
-  // CDPD-4216: built-in version doesn't work on JDK11.
-  private val versions = if (!SystemUtils.isJavaVersionAtLeast(JavaVersion.JAVA_9)) {
-    Seq(HiveUtils.builtinHiveVersion)
-  } else {
-    Nil
-  }
+  private val versions = Seq(HiveUtils.builtinHiveVersion)
 
   private var client: HiveClient = null
 

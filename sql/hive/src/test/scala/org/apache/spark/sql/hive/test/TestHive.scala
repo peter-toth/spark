@@ -25,7 +25,6 @@ import scala.collection.JavaConverters._
 import scala.collection.mutable
 import scala.language.implicitConversions
 
-import org.apache.commons.lang3.{JavaVersion, SystemUtils}
 import org.apache.hadoop.conf.Configuration
 import org.apache.hadoop.fs.Path
 import org.apache.hadoop.hive.conf.HiveConf.ConfVars
@@ -38,7 +37,7 @@ import org.apache.spark.internal.config
 import org.apache.spark.internal.config.UI._
 import org.apache.spark.sql.{DataFrame, Dataset, SparkSession, SQLContext}
 import org.apache.spark.sql.catalyst.analysis.UnresolvedRelation
-import org.apache.spark.sql.catalyst.catalog.ExternalCatalogWithListener
+import org.apache.spark.sql.catalyst.catalog.{ExternalCatalog, ExternalCatalogWithListener}
 import org.apache.spark.sql.catalyst.optimizer.ConvertToLocalRelation
 import org.apache.spark.sql.catalyst.plans.logical.{LogicalPlan, OneRowRelation}
 import org.apache.spark.sql.connector.catalog.CatalogV2Implicits._
@@ -89,8 +88,7 @@ private[hive] class TestHiveExternalCatalog(
 
   override lazy val client: HiveClient =
     hiveClient.getOrElse {
-      val (sconf, hconf) = TestHiveUtils.newCatalogConfig(conf, hadoopConf, true)
-      HiveUtils.newClientForMetadata(sconf, hconf)
+      HiveUtils.newClientForMetadata(conf, hadoopConf)
     }
 }
 
@@ -685,55 +683,4 @@ private[hive] object HiveTestJars {
     }
     targetFile
   }
-}
-
-object TestHiveUtils {
-
-  /**
-   * CDPD-4216: this is a hack to make unit tests work on JDK 11, since the Datanucleus
-   * jars of our built-in version of Hive (1.2.1) do not.
-   *
-   * This uses Hive 2.3, which is not the most current, but it's what upstream uses
-   * on Hadoop 3. Trying to use 3.0 for this runs into problems.
-   *
-   * There's also an option to create a separate metastore directory, since Hive 2.3's
-   * Derby doesn't seem to like multiple instances using the same underlying DB.
-   *
-   * We can probably revert this to upstream's version when CDPD-3881 is finalized.
-   */
-  def newCatalogConfig(
-      conf: SparkConf,
-      hadoopConf: Configuration,
-      createMetastoreDir: Boolean = false): (SparkConf, Configuration) = {
-    val (catalogConf, hiveConf) = if (SystemUtils.isJavaVersionAtLeast(JavaVersion.JAVA_9)) {
-      val _hconf = new Configuration(hadoopConf)
-      _hconf.set("hive.metastore.schema.verification", "false")
-      _hconf.set("datanucleus.schema.autoCreateAll", "true")
-      _hconf.set("datanucleus.schema.autoCreateTables", "true")
-      _hconf.set("hive.execution.engine", "mr")
-      _hconf.set("datanucleus.autoCreateSchema", "true")
-      _hconf.set("datanucleus.autoCreateColumns", "true")
-      _hconf.set("datanucleus.autoCreateConstraints", "true")
-
-      val _sconf = conf.clone()
-        .set(HiveUtils.HIVE_METASTORE_VERSION, "3.1.0")
-        .set(HiveUtils.HIVE_METASTORE_JARS, "maven")
-
-      (_sconf, _hconf)
-    } else {
-      (conf, hadoopConf)
-    }
-
-    if (createMetastoreDir) {
-      val metastorePath = new File(Utils.createTempDir(), "metastore").getAbsolutePath()
-      val warehousePath = Utils.createTempDir()
-
-      hiveConf.set(ConfVars.METASTORECONNECTURLKEY.varname,
-         s"jdbc:derby:;databaseName=$metastorePath;create=true")
-      catalogConf.set(WAREHOUSE_PATH, warehousePath.toURI().toString())
-    }
-
-    (catalogConf, hiveConf)
-  }
-
 }

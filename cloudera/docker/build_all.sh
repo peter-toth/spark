@@ -3,12 +3,16 @@
 PUBLISH_DOCKER_REGISTRY=docker-private.infra.cloudera.com/cloudera
 SPARK_HOME="$(cd "$(dirname "$0")"/../..; pwd)"
 DOCKER_IMAGE_TOOL_CMD="./bin/docker-image-tool.sh"
+GBN=""
 
 while [[ $# -ge 1 ]]; do
   arg=$1
   case $arg in
     --registry)
     PUBLISH_DOCKER_REGISTRY="$2"
+    ;;
+    --gbn)
+    GBN="$2"
     ;;
     *)
     ;;
@@ -43,6 +47,9 @@ TAG=${SPARK_VERSION}
 if [[ "$SPARK_VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+-[0-9]+$ ]]; then
   # RE build system assumes that images are tagged with relase version (such as 2.99.0.0-8)
   TAG=$(echo $TAG | grep -oE "\b[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+-[0-9]+\b")
+fi
+if [[ -n $GBN ]]; then
+  TAG=$TAG-$GBN
 fi
 
 # It's not possible to push multiple images with the same name and different tags via RE build system

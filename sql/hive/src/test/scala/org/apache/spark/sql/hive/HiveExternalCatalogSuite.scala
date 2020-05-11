@@ -26,6 +26,7 @@ import org.apache.spark.SparkConf
 import org.apache.spark.sql.catalyst.TableIdentifier
 import org.apache.spark.sql.catalyst.catalog._
 import org.apache.spark.sql.execution.command.DDLUtils
+import org.apache.spark.sql.hive.test.TestHiveUtils
 import org.apache.spark.sql.types.StructType
 
 /**
@@ -34,7 +35,8 @@ import org.apache.spark.sql.types.StructType
 class HiveExternalCatalogSuite extends ExternalCatalogSuite {
 
   private val externalCatalog: HiveExternalCatalog = {
-    val catalog = new HiveExternalCatalog(new SparkConf, new Configuration)
+    val catalog = new HiveExternalCatalog(new SparkConf,
+      TestHiveUtils.newCatalogConfig(new Configuration))
     catalog.client.reset()
     catalog
   }

@@ -684,3 +684,16 @@ private[hive] object HiveTestJars {
     targetFile
   }
 }
+
+object TestHiveUtils {
+
+  // CDPD-12036: change the path of Derby database that is used for backend of in-memory HMS to a
+  // temporary directory
+  def newCatalogConfig(hadoopConf: Configuration): Configuration = {
+    val metastorePath = new File(Utils.createTempDir(), "metastore").getAbsolutePath()
+    hadoopConf.set(ConfVars.METASTORECONNECTURLKEY.varname,
+      s"jdbc:derby:;databaseName=$metastorePath;create=true")
+
+    hadoopConf
+  }
+}

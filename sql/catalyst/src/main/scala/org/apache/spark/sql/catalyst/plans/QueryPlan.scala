@@ -195,22 +195,25 @@ abstract class QueryPlan[PlanType <: QueryPlan[PlanType]] extends TreeNode[PlanT
   }
 
   def verboseStringWithOperatorId(): String = {
-    val codegenIdStr =
-      getTagValue(QueryPlan.CODEGEN_ID_TAG).map(id => s"[codegen id : $id]").getOrElse("")
-    val operatorId = getTagValue(QueryPlan.OP_ID_TAG).map(id => s"$id").getOrElse("unknown")
-    val baseStr = s"($operatorId) $nodeName $codegenIdStr"
     val argumentString = argString(SQLConf.get.maxToStringFields)
 
     if (argumentString.nonEmpty) {
       s"""
-         |$baseStr
+         |$formattedNodeName
          |Arguments: $argumentString
-      """.stripMargin
+         |""".stripMargin
     } else {
       s"""
-         |$baseStr
-      """.stripMargin
+         |$formattedNodeName
+         |""".stripMargin
     }
+  }
+
+  protected def formattedNodeName: String = {
+    val opId = getTagValue(QueryPlan.OP_ID_TAG).map(id => s"$id").getOrElse("unknown")
+    val codegenId =
+      getTagValue(QueryPlan.CODEGEN_ID_TAG).map(id => s" [codegen id : $id]").getOrElse("")
+    s"($opId) $nodeName$codegenId"
   }
 
   /**
@@ -232,10 +235,10 @@ abstract class QueryPlan[PlanType <: QueryPlan[PlanType]] extends TreeNode[PlanT
   }
 
   /**
-   * Returns a sequence containing the result of applying a partial function to all elements in this
+   * A variant of `collect`. This method not only apply the given function to all elements in this
    * plan, also considering all the plans in its (nested) subqueries
    */
-  def collectInPlanAndSubqueries[B](f: PartialFunction[PlanType, B]): Seq[B] =
+  def collectWithSubqueries[B](f: PartialFunction[PlanType, B]): Seq[B] =
     (this +: subqueriesAll).flatMap(_.collect(f))
 
   override def innerChildren: Seq[QueryPlan[_]] = subqueries

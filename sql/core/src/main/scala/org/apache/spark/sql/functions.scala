@@ -1204,7 +1204,7 @@ object functions {
 
   /**
    * Generate a random column with independent and identically distributed (i.i.d.) samples
-   * from U[0.0, 1.0].
+   * uniformly distributed in [0.0, 1.0).
    *
    * @note The function is non-deterministic in general case.
    *
@@ -1215,7 +1215,7 @@ object functions {
 
   /**
    * Generate a random column with independent and identically distributed (i.i.d.) samples
-   * from U[0.0, 1.0].
+   * uniformly distributed in [0.0, 1.0).
    *
    * @note The function is non-deterministic in general case.
    *
@@ -3099,6 +3099,7 @@ object functions {
    *             cast to a date, such as `yyyy-MM-dd` or `yyyy-MM-dd HH:mm:ss.SSSS`
    * @param format: 'year', 'yyyy', 'yy' to truncate by year,
    *               or 'month', 'mon', 'mm' to truncate by month
+   *               Other options are: 'week', 'quarter'
    *
    * @return A date, or null if `date` was a string that could not be cast to a date or `format`
    *         was an invalid value
@@ -3117,7 +3118,8 @@ object functions {
    * @param format: 'year', 'yyyy', 'yy' to truncate by year,
    *                'month', 'mon', 'mm' to truncate by month,
    *                'day', 'dd' to truncate by day,
-   *                Other options are: 'second', 'minute', 'hour', 'week', 'month', 'quarter'
+   *                Other options are:
+   *                'microsecond', 'millisecond', 'second', 'minute', 'hour', 'week', 'quarter'
    * @param timestamp A date, timestamp or string. If a string, the data must be in a format that
    *                  can be cast to a timestamp, such as `yyyy-MM-dd` or `yyyy-MM-dd HH:mm:ss.SSSS`
    * @return A timestamp, or null if `timestamp` was a string that could not be cast to a timestamp
@@ -4833,17 +4835,21 @@ object functions {
    * @group udf_funcs
    * @since 2.0.0
    */
-  @deprecated("Untyped Scala UDF API is deprecated, please use typed Scala UDF API such as " +
-    "'def udf[RT: TypeTag](f: Function0[RT]): UserDefinedFunction' instead.", "3.0.0")
+  @deprecated("Scala `udf` method with return type parameter is deprecated. " +
+    "Please use Scala `udf` method without return type parameter.", "3.0.0")
   def udf(f: AnyRef, dataType: DataType): UserDefinedFunction = {
     if (!SQLConf.get.getConf(SQLConf.LEGACY_ALLOW_UNTYPED_SCALA_UDF)) {
       val errorMsg = "You're using untyped Scala UDF, which does not have the input type " +
         "information. Spark may blindly pass null to the Scala closure with primitive-type " +
         "argument, and the closure will see the default value of the Java type for the null " +
         "argument, e.g. `udf((x: Int) => x, IntegerType)`, the result is 0 for null input. " +
-        "You could use typed Scala UDF APIs (e.g. `udf((x: Int) => x)`) to avoid this problem, " +
-        s"or set ${SQLConf.LEGACY_ALLOW_UNTYPED_SCALA_UDF.key} to true and use this API with " +
-        s"caution."
+        "To get rid of this error, you could:\n" +
+        "1. use typed Scala UDF APIs(without return type parameter), e.g. `udf((x: Int) => x)`\n" +
+        "2. use Java UDF APIs, e.g. `udf(new UDF1[String, Integer] { " +
+        "override def call(s: String): Integer = s.length() }, IntegerType)`, " +
+        "if input types are all non primitive\n" +
+        s"3. set ${SQLConf.LEGACY_ALLOW_UNTYPED_SCALA_UDF.key} to true and " +
+        s"use this API with caution"
       throw new AnalysisException(errorMsg)
     }
     SparkUserDefinedFunction(f, dataType, inputEncoders = Nil)

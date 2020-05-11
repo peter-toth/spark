@@ -64,11 +64,11 @@ case class SortMergeJoinExec(
       s"${condition.get}"
     } else "None"
     s"""
-       |(${ExplainUtils.getOpId(this)}) $nodeName ${ExplainUtils.getCodegenId(this)}
+       |$formattedNodeName
        |${ExplainUtils.generateFieldString("Left keys", leftKeys)}
        |${ExplainUtils.generateFieldString("Right keys", rightKeys)}
        |${ExplainUtils.generateFieldString("Join condition", joinCondStr)}
-     """.stripMargin
+       |""".stripMargin
   }
 
   override def output: Seq[Attribute] = {

@@ -1549,23 +1549,27 @@ class StatisticsSuite extends StatisticsCollectionTestBase with TestHiveSingleto
           // analyze table
           sql(s"ANALYZE TABLE $tblName COMPUTE STATISTICS NOSCAN")
           var tableStats = getTableStats(tblName)
-          assert(tableStats.sizeInBytes == 657)
+
+          // CDPD-11915: we don't verify the exact number here, as parquet library would change
+          // the actual number and it will affect the test. We only verify the numbers will be
+          // same across these analyses.
+          val expectedTableStatsSizeInBytes = tableStats.sizeInBytes
           assert(tableStats.rowCount.isEmpty)
 
           sql(s"ANALYZE TABLE $tblName COMPUTE STATISTICS")
           tableStats = getTableStats(tblName)
-          assert(tableStats.sizeInBytes == 657)
+          assert(tableStats.sizeInBytes == expectedTableStatsSizeInBytes)
           assert(tableStats.rowCount.get == 1)
 
           // analyze a single partition
           sql(s"ANALYZE TABLE $tblName PARTITION (ds='2019-12-13') COMPUTE STATISTICS NOSCAN")
           var partStats = getPartitionStats(tblName, Map("ds" -> "2019-12-13"))
-          assert(partStats.sizeInBytes == 657)
+          assert(partStats.sizeInBytes == expectedTableStatsSizeInBytes)
           assert(partStats.rowCount.isEmpty)
 
           sql(s"ANALYZE TABLE $tblName PARTITION (ds='2019-12-13') COMPUTE STATISTICS")
           partStats = getPartitionStats(tblName, Map("ds" -> "2019-12-13"))
-          assert(partStats.sizeInBytes == 657)
+          assert(partStats.sizeInBytes == expectedTableStatsSizeInBytes)
           assert(partStats.rowCount.get == 1)
         }
       }

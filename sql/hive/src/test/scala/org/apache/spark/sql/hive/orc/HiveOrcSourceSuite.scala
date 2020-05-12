@@ -324,10 +324,11 @@ class HiveOrcSourceSuite extends OrcSuite with TestHiveSingleton {
     }
   }
 
-  test("SPARK-31580: Read a file written before ORC-569") {
-    assume(HiveUtils.isHive23) // Hive 1.2 doesn't use Apache ORC
-    // Test ORC file came from ORC-621
-    val df = readResourceOrcFile("test-data/TestStringDictionary.testRowIndex.orc")
-    assert(df.where("str < 'row 001000'").count() === 1000)
-  }
+  // CDPD-12030: re-enable these test once ORC-621 lands in our builds
+//  test("SPARK-31580: Read a file written before ORC-569") {
+//    assume(HiveUtils.isHive23) // Hive 1.2 doesn't use Apache ORC
+//    // Test ORC file came from ORC-621
+//    val df = readResourceOrcFile("test-data/TestStringDictionary.testRowIndex.orc")
+//    assert(df.where("str < 'row 001000'").count() === 1000)
+//  }
 }

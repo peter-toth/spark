@@ -121,7 +121,7 @@
     <yarn.version>${hadoop.version}</yarn.version>
     <flume.version>1.6.0</flume.version>
     <zookeeper.version>3.5.5.7.2.1.0-SNAPSHOT</zookeeper.version>
-    <curator.version>4.2.0</curator.version>
+    <curator.version>4.3.0.7.2.1.0-SNAPSHOT</curator.version>
     <hive.group>org.apache.hive</hive.group>
     <hive.classifier />
     <!-- Version used in Maven Hive dependency -->
@@ -3085,7 +3085,7 @@
       <id>hadoop-2.7</id>
       <properties>
         <hadoop.version>3.1.1.7.2.1.0-SNAPSHOT</hadoop.version>
-        <curator.version>4.2.0</curator.version>
+        <curator.version>4.3.0.7.2.1.0-SNAPSHOT</curator.version>
       </properties>
       <dependencyManagement>
         <dependencies>
@@ -3164,7 +3164,7 @@
       </activation>
       <properties>
         <hadoop.version>3.1.1.7.2.1.0-SNAPSHOT</hadoop.version>
-        <curator.version>4.2.0</curator.version>
+        <curator.version>4.3.0.7.2.1.0-SNAPSHOT</curator.version>
         <zookeeper.version>3.5.5.7.2.1.0-SNAPSHOT</zookeeper.version>
         <!-- Do not need parquet-hadoop-bundle because we already have
           parquet-common, parquet-column and parquet-hadoop -->

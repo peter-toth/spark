@@ -44,6 +44,7 @@ import org.apache.spark.sql.catalyst.InternalRow
 import org.apache.spark.sql.catalyst.analysis.CastSupport
 import org.apache.spark.sql.catalyst.expressions._
 import org.apache.spark.sql.catalyst.util.DateTimeUtils
+import org.apache.spark.sql.hive.util.HiveDateTimeUtils
 import org.apache.spark.sql.internal.SQLConf
 import org.apache.spark.sql.types._
 import org.apache.spark.unsafe.types.UTF8String
@@ -467,10 +468,10 @@ private[hive] object HadoopTableReader extends HiveInspectors with Logging {
                    case aType: LongType =>
                      row(ordinal) = unwrapper(value).asInstanceOf[UTF8String].toString.toLong
                    case aType: TimestampType =>
-                     row(ordinal) = DateTimeUtils.fromHiveTimestamp(
+                     row(ordinal) = HiveDateTimeUtils.fromHiveTimestamp(
                        HiveTimestamp.valueOf(unwrapper(value).asInstanceOf[UTF8String].toString))
                    case aType: DateType =>
-                     row(ordinal) = DateTimeUtils.fromHiveDate(
+                     row(ordinal) = HiveDateTimeUtils.fromHiveDate(
                        HiveDate.valueOf(unwrapper(value).asInstanceOf[UTF8String].toString))
                    case aType: ByteType =>
                      row(ordinal) = unwrapper(value).asInstanceOf[UTF8String].toString.toByte
@@ -523,10 +524,11 @@ private[hive] object HadoopTableReader extends HiveInspectors with Logging {
                 (value: Any, row: InternalRow, ordinal: Int) =>
                   row.setLong(
                     ordinal,
-                    DateTimeUtils.fromHiveTimestamp(oi.getPrimitiveJavaObject(value)))
+                    HiveDateTimeUtils.fromHiveTimestamp(oi.getPrimitiveJavaObject(value)))
               case oi: DateObjectInspector =>
                 (value: Any, row: InternalRow, ordinal: Int) =>
-                  row.setInt(ordinal, DateTimeUtils.fromHiveDate(oi.getPrimitiveJavaObject(value)))
+                  row.setInt(ordinal,
+                    HiveDateTimeUtils.fromHiveDate(oi.getPrimitiveJavaObject(value)))
               case oi: BinaryObjectInspector =>
                 (value: Any, row: InternalRow, ordinal: Int) =>
                   row.update(ordinal, oi.getPrimitiveJavaObject(value))

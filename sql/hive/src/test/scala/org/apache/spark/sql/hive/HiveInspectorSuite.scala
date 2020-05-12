@@ -17,8 +17,7 @@
 
 package org.apache.spark.sql.hive
 
-import java.util
-import java.util.{Locale, TimeZone}
+import java.util.{ArrayList, Locale, Map => JMap, TimeZone}
 
 import org.apache.hadoop.hive.ql.udf.UDAFPercentile
 import org.apache.hadoop.hive.serde2.io.DoubleWritable
@@ -65,11 +64,11 @@ class HiveInspectorSuite extends SparkFunSuite with HiveInspectors {
     val sfPercentiles = soi.getStructFieldRef("percentiles")
 
     assert(2 === soi.getStructFieldData(b, sfCounts)
-      .asInstanceOf[util.Map[LongWritable, LongWritable]]
+      .asInstanceOf[JMap[LongWritable, LongWritable]]
       .get(new LongWritable(1L))
       .get())
     assert(0.1 === soi.getStructFieldData(b, sfPercentiles)
-      .asInstanceOf[util.ArrayList[DoubleWritable]]
+      .asInstanceOf[ArrayList[DoubleWritable]]
       .get(0)
       .get())
   }

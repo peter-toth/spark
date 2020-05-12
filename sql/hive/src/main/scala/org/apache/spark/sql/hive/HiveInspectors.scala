@@ -35,6 +35,7 @@ import org.apache.spark.sql.catalyst.InternalRow
 import org.apache.spark.sql.catalyst.expressions._
 import org.apache.spark.sql.catalyst.util._
 import org.apache.spark.sql.execution.datasources.DaysWritable
+import org.apache.spark.sql.hive.util.HiveDateTimeUtils
 import org.apache.spark.sql.types
 import org.apache.spark.sql.types._
 import org.apache.spark.unsafe.types.UTF8String
@@ -327,10 +328,10 @@ private[hive] trait HiveInspectors {
           HiveDecimal.create(o.asInstanceOf[Decimal].toJavaBigDecimal))
       case _: JavaDateObjectInspector =>
         withNullSafe(o =>
-            DateTimeUtils.toHiveDate(o.asInstanceOf[Int]))
+            HiveDateTimeUtils.toHiveDate(o.asInstanceOf[Int]))
       case _: JavaTimestampObjectInspector =>
         withNullSafe(o =>
-            DateTimeUtils.toHiveTimestamp(o.asInstanceOf[Long]))
+          HiveDateTimeUtils.toHiveTimestamp(o.asInstanceOf[Long]))
       case _: HiveDecimalObjectInspector if x.preferWritable() =>
         withNullSafe(o => getDecimalWritable(o.asInstanceOf[Decimal]))
       case _: HiveDecimalObjectInspector =>
@@ -344,12 +345,12 @@ private[hive] trait HiveInspectors {
         withNullSafe(o => getDateWritable(o))
       case _: DateObjectInspector =>
         withNullSafe(o => DateTimeUtils.toJavaDate(
-          DateTimeUtils.fromHiveDate(o.asInstanceOf[HiveDate])))
+          HiveDateTimeUtils.fromHiveDate(o.asInstanceOf[HiveDate])))
       case _: TimestampObjectInspector if x.preferWritable() =>
         withNullSafe(o => getTimestampWritable(o))
       case _: TimestampObjectInspector =>
         withNullSafe(o => DateTimeUtils.toJavaTimestamp(
-          DateTimeUtils.fromHiveTimestamp(o.asInstanceOf[HiveTimestamp])))
+          HiveDateTimeUtils.fromHiveTimestamp(o.asInstanceOf[HiveTimestamp])))
       case _: VoidObjectInspector =>
         (_: Any) => null // always be null for void object inspector
     }
@@ -503,7 +504,7 @@ private[hive] trait HiveInspectors {
         System.arraycopy(writable.getBytes, 0, constant, 0, constant.length)
         _ => constant
       case poi: WritableConstantDateObjectInspector =>
-        val constant = DateTimeUtils.fromHiveDate(poi.getWritableConstantValue.get())
+        val constant = HiveDateTimeUtils.fromHiveDate(poi.getWritableConstantValue.get())
         _ => constant
       case mi: StandardConstantMapObjectInspector =>
         val keyUnwrapper = unwrapperFor(mi.getMapKeyObjectInspector)
@@ -626,7 +627,7 @@ private[hive] trait HiveInspectors {
         case x: DateObjectInspector if x.preferWritable() =>
           data: Any => {
             if (data != null) {
-              DateTimeUtils.fromHiveDate(x.getPrimitiveWritableObject(data).get())
+              HiveDateTimeUtils.fromHiveDate(x.getPrimitiveWritableObject(data).get())
             } else {
               null
             }
@@ -634,7 +635,7 @@ private[hive] trait HiveInspectors {
         case x: DateObjectInspector =>
           data: Any => {
             if (data != null) {
-              DateTimeUtils.fromHiveDate(x.getPrimitiveJavaObject(data))
+              HiveDateTimeUtils.fromHiveDate(x.getPrimitiveJavaObject(data))
             } else {
               null
             }
@@ -654,7 +655,7 @@ private[hive] trait HiveInspectors {
         case ti: TimestampObjectInspector =>
           data: Any => {
             if (data != null) {
-              DateTimeUtils.fromHiveTimestamp(ti.getPrimitiveJavaObject(data))
+              HiveDateTimeUtils.fromHiveTimestamp(ti.getPrimitiveJavaObject(data))
             } else {
               null
             }
@@ -1026,7 +1027,7 @@ private[hive] trait HiveInspectors {
     if (value == null) {
       null
     } else {
-      val toHiveD = DateTimeUtils.toHiveDate(value.asInstanceOf[Int])
+      val toHiveD = HiveDateTimeUtils.toHiveDate(value.asInstanceOf[Int])
       new hiveIo.DateWritableV2(toHiveD)
     }
 
@@ -1034,7 +1035,7 @@ private[hive] trait HiveInspectors {
     if (value == null) {
       null
     } else {
-      val toHiveTs = DateTimeUtils.toHiveTimestamp(value.asInstanceOf[Long])
+      val toHiveTs = HiveDateTimeUtils.toHiveTimestamp(value.asInstanceOf[Long])
       new hiveIo.TimestampWritableV2(toHiveTs)
     }
 

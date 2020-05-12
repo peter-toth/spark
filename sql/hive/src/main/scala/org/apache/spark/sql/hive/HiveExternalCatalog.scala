@@ -19,7 +19,7 @@ package org.apache.spark.sql.hive
 
 import java.io.IOException
 import java.lang.reflect.InvocationTargetException
-import java.util
+import java.util.LinkedHashMap
 import java.util.Locale
 
 import scala.collection.mutable
@@ -892,7 +892,7 @@ private[spark] class HiveExternalCatalog(conf: SparkConf, hadoopConf: Configurat
       isSrcLocal: Boolean): Unit = withClient {
     requireTableExists(db, table)
 
-    val orderedPartitionSpec = new util.LinkedHashMap[String, String]()
+    val orderedPartitionSpec = new LinkedHashMap[String, String]()
     getTable(db, table).partitionColumnNames.foreach { colName =>
       // Hive metastore is not case preserving and keeps partition columns with lower cased names,
       // and Hive will validate the column names in partition spec to make sure they are partition
@@ -922,7 +922,7 @@ private[spark] class HiveExternalCatalog(conf: SparkConf, hadoopConf: Configurat
       numDP: Int): Unit = withClient {
     requireTableExists(db, table)
 
-    val orderedPartitionSpec = new util.LinkedHashMap[String, String]()
+    val orderedPartitionSpec = new LinkedHashMap[String, String]()
     getTable(db, table).partitionColumnNames.foreach { colName =>
       // Hive metastore is not case preserving and keeps partition columns with lower cased names,
       // and Hive will validate the column names in partition spec to make sure they are partition

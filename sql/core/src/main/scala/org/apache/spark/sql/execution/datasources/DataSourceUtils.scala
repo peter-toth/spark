@@ -17,12 +17,18 @@
 
 package org.apache.spark.sql.execution.datasources
 
+import java.util.Locale
+
 import org.apache.hadoop.fs.Path
 import org.json4s.NoTypeHints
 import org.json4s.jackson.Serialization
 
+import org.apache.spark.sql.{SPARK_LEGACY_DATETIME, SPARK_VERSION_METADATA_KEY}
 import org.apache.spark.sql.AnalysisException
+import org.apache.spark.sql.internal.SQLConf
+import org.apache.spark.sql.sources.BaseRelation
 import org.apache.spark.sql.types._
+import org.apache.spark.util.Utils
 
 
 object DataSourceUtils {
@@ -64,4 +70,31 @@ object DataSourceUtils {
 
   private[sql] def isDataFile(fileName: String) =
     !(fileName.startsWith("_") || fileName.startsWith("."))
+
+  /**
+   * Returns if the given relation's V1 datasource provider supports nested predicate pushdown.
+   */
+  private[sql] def supportNestedPredicatePushdown(relation: BaseRelation): Boolean =
+    relation match {
+      case hs: HadoopFsRelation =>
+        val supportedDatasources =
+          Utils.stringToSeq(SQLConf.get.getConf(SQLConf.NESTED_PREDICATE_PUSHDOWN_FILE_SOURCE_LIST)
+            .toLowerCase(Locale.ROOT))
+        supportedDatasources.contains(hs.toString)
+      case _ => false
+    }
+
+  def needRebaseDateTime(lookupFileMeta: String => String): Option[Boolean] = {
+    if (Utils.isTesting && SQLConf.get.getConfString("spark.test.forceNoRebase", "") == "true") {
+      return Some(false)
+    }
+    // If there is no version, we return None and let the caller side to decide.
+    Option(lookupFileMeta(SPARK_VERSION_METADATA_KEY)).map { version =>
+      // Files written by Spark 2.4 and earlier follow the legacy hybrid calendar and we need to
+      // rebase the datetime values.
+      // Files written by Spark 3.0 and latter may also need the rebase if they were written with
+      // the "rebaseInWrite" config enabled.
+      version < "3.0.0" || lookupFileMeta(SPARK_LEGACY_DATETIME) != null
+    }
+  }
 }

@@ -21,6 +21,7 @@ import java.security.PrivilegedExceptionAction
 import java.util.Locale
 import java.util.concurrent.atomic.AtomicBoolean
 
+import org.apache.hadoop.hive.common.ServerUtils
 import org.apache.hadoop.hive.conf.HiveConf
 import org.apache.hadoop.hive.conf.HiveConf.ConfVars
 import org.apache.hadoop.security.{SecurityUtil, UserGroupInformation}
@@ -126,6 +127,8 @@ object HiveThriftServer2 extends Logging {
       SparkSQLEnv.sqlContext.sessionState.newHadoopConf())
 
     try {
+      // Cleanup the scratch dir before starting
+      ServerUtils.cleanUpScratchDir(executionHive.conf)
       val server = new HiveThriftServer2(SparkSQLEnv.sqlContext)
       server.init(executionHive.conf)
       server.start()

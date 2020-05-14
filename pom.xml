@@ -117,7 +117,7 @@
     <maven.compiler.target>${java.version}</maven.compiler.target>
     <maven.version>3.6.3</maven.version>
     <sbt.project.name>spark</sbt.project.name>
-    <slf4j.version>1.7.16</slf4j.version>
+    <slf4j.version>1.7.30</slf4j.version>
     <log4j.version>1.2.17-cloudera1</log4j.version>
     <hadoop.version>3.1.1.7.1.1.0-SNAPSHOT</hadoop.version>
     <protobuf.version>2.5.0</protobuf.version>
@@ -128,7 +128,7 @@
     <hive.classifier></hive.classifier>
     <!-- Version used in Maven Hive dependency -->
     <hive.version>3.1.3000.7.1.1.0-SNAPSHOT</hive.version>
-    <hive23.version>2.3.6</hive23.version>
+    <hive23.version>2.3.7</hive23.version>
     <!-- Version used for internal directory structure -->
     <hive.version.short>2.3</hive.version.short>
     <!-- note that this should be compatible with Kafka brokers version 0.10 and up -->
@@ -180,6 +180,7 @@
     <!-- org.apache.commons/commons-pool2/-->
     <commons-pool2.version>2.6.2</commons-pool2.version>
     <datanucleus-core.version>4.1.17</datanucleus-core.version>
+    <guava.version>28.0-jre</guava.version>
     <janino.version>3.0.16</janino.version>
     <jersey.version>2.30</jersey.version>
     <joda.version>2.10.5</joda.version>
@@ -468,7 +469,7 @@
       <dependency>
         <groupId>com.google.guava</groupId>
         <artifactId>guava</artifactId>
-        <version>28.0-jre</version>
+        <version>${guava.version}</version>
         <scope>provided</scope>
       </dependency>
       <dependency>

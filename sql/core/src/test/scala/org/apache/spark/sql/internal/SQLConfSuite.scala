@@ -116,7 +116,7 @@ class SQLConfSuite extends QueryTest with SharedSparkSession {
     }
   }
 
-  test("reset will not change static sql configs and spark core configs") {
+  test("SPARK-31234: reset will not change static sql configs and spark core configs") {
     val conf = spark.sparkContext.getConf.getAll.toMap
     val appName = conf.get("spark.app.name")
     val driverHost = conf.get("spark.driver.host")
@@ -301,8 +301,8 @@ class SQLConfSuite extends QueryTest with SharedSparkSession {
     assert(spark.sessionState.conf.getConfString(fallback.key, "lzo") === "lzo")
 
     val displayValue = spark.sessionState.conf.getAllDefinedConfs
-      .find { case (key, _, _) => key == fallback.key }
-      .map { case (_, v, _) => v }
+      .find { case (key, _, _, _) => key == fallback.key }
+      .map { case (_, v, _, _) => v }
       .get
     assert(displayValue === fallback.defaultValueString)
 
@@ -313,8 +313,8 @@ class SQLConfSuite extends QueryTest with SharedSparkSession {
     assert(spark.sessionState.conf.getConfString(fallback.key) === "lzo")
 
     val newDisplayValue = spark.sessionState.conf.getAllDefinedConfs
-      .find { case (key, _, _) => key == fallback.key }
-      .map { case (_, v, _) => v }
+      .find { case (key, _, _, _) => key == fallback.key }
+      .map { case (_, v, _, _) => v }
       .get
     assert(newDisplayValue === "lzo")
 

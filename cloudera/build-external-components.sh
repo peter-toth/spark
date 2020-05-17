@@ -19,6 +19,7 @@
 # external components may depend on Spark artifacts. Can be called from any working directory.
 # Requirements: JAVA_HOME needs to be set, Python 2.7 or higher
 SPARK_HOME="$(cd "$(dirname "$0")"/..; pwd)"
+ATLAS_CONNECTOR_BUILD_LOG="$SPARK_HOME/sac-build-output.log"
 MVN="$SPARK_HOME/build/mvn"
 
 function log {
@@ -42,7 +43,6 @@ function do_build_external_components {
   if [[ ! -d $ATLAS_CONNECTOR_DIR ]]; then
     git clone "git://github.mtv.cloudera.com/${ATLAS_CONNECTOR_OWNER}/spark-atlas-connector.git" $ATLAS_CONNECTOR_DIR > /dev/null 2>&1
   fi
-  ATLAS_CONNECTOR_BUILD_LOG="$SPARK_HOME/sac-build-output.log"
   (
   cd $ATLAS_CONNECTOR_DIR
   git fetch  > /dev/null 2>&1
@@ -61,9 +61,16 @@ function do_build_external_components {
 }
 
 ADDITIONAL_JARS=$(do_build_external_components)
+JAR_FILE_NAMES=(${ADDITIONAL_JARS//,/ })
+if [ ${#JAR_FILE_NAMES[@]} -eq 0 ]; then
+    log "Error: External components build failed."
+    log "Build output:"
+    cat "$ATLAS_CONNECTOR_BUILD_LOG"
+    exit 1
+fi
 
 # Loop over comma-separated list of additional jar paths.
-for jar in ${ADDITIONAL_JARS//,/ }
+for jar in ${JAR_FILE_NAMES}
 do
   if [ ! -f "$jar" ]; then
     log "Error: Could not find '$jar'."

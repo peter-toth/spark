@@ -174,18 +174,26 @@ class HDFSMetadataLog[T <: AnyRef : ClassTag](sparkSession: SparkSession, path: 
     }
   }
 
-  override def getLatest(): Option[(Long, T)] = {
-    val batchIds = fileManager.list(metadataPath, batchFilesFilter)
+  /**
+   * Return the latest batch Id without reading the file. This method only checks for existence of
+   * file to avoid cost on reading and deserializing log file.
+   */
+  def getLatestBatchId(): Option[Long] = {
+    fileManager.list(metadataPath, batchFilesFilter)
       .map(f => pathToBatchId(f.getPath))
-      .sorted
-      .reverse
-    for (batchId <- batchIds) {
-      val batch = get(batchId)
-      if (batch.isDefined) {
-        return Some((batchId, batch.get))
+      .sorted(Ordering.Long.reverse)
+      .headOption
+  }
+
+  override def getLatest(): Option[(Long, T)] = {
+    getLatestBatchId().map { batchId =>
+      val content = get(batchId).getOrElse {
+        // If we find the last batch file, we must read that file, other than failing back to
+        // old batches.
+        throw new IllegalStateException(s"failed to read log file for batch $batchId")
       }
+      (batchId, content)
     }
-    None
   }
 
   /**

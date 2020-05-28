@@ -94,8 +94,10 @@ class FileStreamSink(
 
   private val basePath = new Path(path)
   private val logPath = new Path(basePath, FileStreamSink.metadataDir)
+  private val outputTimeToLive = options.get("outputRetentionMs").map(_.toLong)
   private val fileLog =
-    new FileStreamSinkLog(FileStreamSinkLog.VERSION, sparkSession, logPath.toUri.toString)
+    new FileStreamSinkLog(FileStreamSinkLog.VERSION, sparkSession, logPath.toUri.toString,
+      outputTimeToLive)
   private val hadoopConf = sparkSession.sessionState.newHadoopConf()
 
   private def basicWriteJobStatsTracker: BasicWriteJobStatsTracker = {

@@ -20,6 +20,8 @@ package org.apache.spark.sql.execution.streaming
 import java.io.{ByteArrayInputStream, ByteArrayOutputStream}
 import java.nio.charset.StandardCharsets.UTF_8
 
+import org.apache.hadoop.fs.FileSystem
+
 import org.apache.spark.SparkFunSuite
 import org.apache.spark.sql.internal.SQLConf
 import org.apache.spark.sql.test.SharedSparkSession
@@ -149,6 +151,17 @@ class FileStreamSinkLogSuite extends SparkFunSuite with SharedSparkSession {
     }
   }
 
+  private def listBatchFiles(fs: FileSystem, sinkLog: FileStreamSinkLog): Set[String] = {
+    fs.listStatus(sinkLog.metadataPath).map(_.getPath.getName).filter { fileName =>
+      try {
+        getBatchIdFromFileName(fileName)
+        true
+      } catch {
+        case _: NumberFormatException => false
+      }
+    }.toSet
+  }
+
   test("delete expired file") {
     // Set FILE_SINK_LOG_CLEANUP_DELAY to 0 so that we can detect the deleting behaviour
     // deterministically and one min batches to retain
@@ -158,18 +171,7 @@ class FileStreamSinkLogSuite extends SparkFunSuite with SharedSparkSession {
       SQLConf.MIN_BATCHES_TO_RETAIN.key -> "1") {
       withFileStreamSinkLog { sinkLog =>
         val fs = sinkLog.metadataPath.getFileSystem(spark.sessionState.newHadoopConf())
-
-        def listBatchFiles(): Set[String] = {
-          fs.listStatus(sinkLog.metadataPath).map(_.getPath.getName).filter { fileName =>
-            try {
-              getBatchIdFromFileName(fileName)
-              true
-            } catch {
-              case _: NumberFormatException => false
-            }
-          }.toSet
-        }
-
+        def listBatchFiles(): Set[String] = this.listBatchFiles(fs, sinkLog)
         sinkLog.add(0, Array(newFakeSinkFileStatus("/a/b/0", FileStreamSinkLog.ADD_ACTION)))
         assert(Set("0") === listBatchFiles())
         sinkLog.add(1, Array(newFakeSinkFileStatus("/a/b/1", FileStreamSinkLog.ADD_ACTION)))
@@ -193,18 +195,7 @@ class FileStreamSinkLogSuite extends SparkFunSuite with SharedSparkSession {
       SQLConf.MIN_BATCHES_TO_RETAIN.key -> "2") {
       withFileStreamSinkLog { sinkLog =>
         val fs = sinkLog.metadataPath.getFileSystem(spark.sessionState.newHadoopConf())
-
-        def listBatchFiles(): Set[String] = {
-          fs.listStatus(sinkLog.metadataPath).map(_.getPath.getName).filter { fileName =>
-            try {
-              getBatchIdFromFileName(fileName)
-              true
-            } catch {
-              case _: NumberFormatException => false
-            }
-          }.toSet
-        }
-
+        def listBatchFiles(): Set[String] = this.listBatchFiles(fs, sinkLog)
         sinkLog.add(0, Array(newFakeSinkFileStatus("/a/b/0", FileStreamSinkLog.ADD_ACTION)))
         assert(Set("0") === listBatchFiles())
         sinkLog.add(1, Array(newFakeSinkFileStatus("/a/b/1", FileStreamSinkLog.ADD_ACTION)))
@@ -225,6 +216,22 @@ class FileStreamSinkLogSuite extends SparkFunSuite with SharedSparkSession {
     }
   }
 
+  test("filter out outdated entries when compacting") {
+    val curTime = System.currentTimeMillis()
+    withFileStreamSinkLog(sinkLog => {
+      val logs = Seq(
+        newFakeSinkFileStatus("/a/b/x", FileStreamSinkLog.ADD_ACTION, curTime),
+        newFakeSinkFileStatus("/a/b/y", FileStreamSinkLog.ADD_ACTION, curTime),
+        newFakeSinkFileStatus("/a/b/z", FileStreamSinkLog.ADD_ACTION, curTime))
+      assert(logs === sinkLog.compactLogs(logs))
+
+      val logs2 = Seq(
+        newFakeSinkFileStatus("/a/b/m", FileStreamSinkLog.ADD_ACTION, curTime - 80000),
+        newFakeSinkFileStatus("/a/b/n", FileStreamSinkLog.ADD_ACTION, curTime - 120000))
+      assert(logs === sinkLog.compactLogs(logs ++ logs2))
+    }, Some(60000))
+  }
+
   test("read Spark 2.1.0 log format") {
     assert(readFromResource("file-sink-log-version-2.1.0") === Seq(
       // SinkFileStatus("/a/b/0", 100, false, 100, 1, 100, FileStreamSinkLog.ADD_ACTION), -> deleted
@@ -241,23 +248,29 @@ class FileStreamSinkLogSuite extends SparkFunSuite with SharedSparkSession {
   }
 
   /**
-   * Create a fake SinkFileStatus using path and action. Most of tests don't care about other fields
-   * in SinkFileStatus.
+   * Create a fake SinkFileStatus using path and action, and optionally modification time.
+   * Most of tests don't care about other fields in SinkFileStatus.
    */
-  private def newFakeSinkFileStatus(path: String, action: String): SinkFileStatus = {
+  private def newFakeSinkFileStatus(
+      path: String,
+      action: String,
+      modificationTime: Long = Long.MaxValue): SinkFileStatus = {
     SinkFileStatus(
       path = path,
       size = 100L,
       isDir = false,
-      modificationTime = 100L,
+      modificationTime = modificationTime,
       blockReplication = 1,
       blockSize = 100L,
       action = action)
   }
 
-  private def withFileStreamSinkLog(f: FileStreamSinkLog => Unit): Unit = {
+  private def withFileStreamSinkLog(
+      f: FileStreamSinkLog => Unit,
+      ttl: Option[Long] = None): Unit = {
     withTempDir { file =>
-      val sinkLog = new FileStreamSinkLog(FileStreamSinkLog.VERSION, spark, file.getCanonicalPath)
+      val sinkLog = new FileStreamSinkLog(FileStreamSinkLog.VERSION, spark, file.getCanonicalPath,
+        ttl)
       f(sinkLog)
     }
   }

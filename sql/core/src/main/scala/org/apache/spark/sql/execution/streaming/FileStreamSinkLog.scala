@@ -81,7 +81,8 @@ object SinkFileStatus {
 class FileStreamSinkLog(
     metadataLogVersion: Int,
     sparkSession: SparkSession,
-    path: String)
+    path: String,
+    outputTimeToLiveMs: Option[Long] = None)
   extends CompactibleFileStreamLog[SinkFileStatus](metadataLogVersion, sparkSession, path) {
 
   private implicit val formats = Serialization.formats(NoTypeHints)
@@ -97,8 +98,22 @@ class FileStreamSinkLog(
     s"Please set ${SQLConf.FILE_SINK_LOG_COMPACT_INTERVAL.key} (was $defaultCompactInterval) " +
       "to a positive value.")
 
+  private val ttlMs = outputTimeToLiveMs.getOrElse(Long.MaxValue)
+
   override def compactLogs(logs: Seq[SinkFileStatus]): Seq[SinkFileStatus] = {
-    val deletedFiles = logs.filter(_.action == FileStreamSinkLog.DELETE_ACTION).map(_.path).toSet
+    val curTime = System.currentTimeMillis()
+    val deletedFiles = logs.filter { log =>
+      if (log.action == FileStreamSinkLog.DELETE_ACTION) {
+        logDebug(s"${log.path} excluded by delete action.")
+        true
+      } else if (curTime - log.modificationTime > ttlMs) {
+        logDebug(s"${log.path} excluded by retention - current time: $curTime / " +
+          s"modification time: ${log.modificationTime} / TTL: $ttlMs.")
+        true
+      } else {
+        false
+      }
+    }.map(_.path).toSet
     if (deletedFiles.isEmpty) {
       logs
     } else {

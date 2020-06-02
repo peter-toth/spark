@@ -522,8 +522,7 @@ private[hive] object HadoopTableReader extends HiveInspectors with Logging {
                   row.update(ordinal, HiveShim.toCatalystDecimal(oi, value))
               case oi: TimestampObjectInspector =>
                 (value: Any, row: InternalRow, ordinal: Int) =>
-                  row.setLong(
-                    ordinal,
+                  row.setLong(ordinal,
                     HiveDateTimeUtils.fromHiveTimestamp(oi.getPrimitiveJavaObject(value)))
               case oi: DateObjectInspector =>
                 (value: Any, row: InternalRow, ordinal: Int) =>

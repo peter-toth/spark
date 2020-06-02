@@ -30,6 +30,7 @@ import sun.util.calendar.ZoneInfo
 
 import org.apache.spark.sql.catalyst.util.DateTimeConstants._
 import org.apache.spark.sql.catalyst.util.RebaseDateTime._
+import org.apache.spark.sql.internal.SQLConf
 import org.apache.spark.sql.types.Decimal
 import org.apache.spark.unsafe.types.{CalendarInterval, UTF8String}
 
@@ -198,6 +199,24 @@ object DateTimeUtils {
   }
 
   /**
+   * This is the CDP Hive 3 compatible version of `fromJulianDay`. Please find more details at
+   * `SQLConf.PARQUET_INT96_TIMESTAMP_HIVE3_COMPATIBILITY_ENABLED`.
+   */
+  def fromHive3CompatibleJulianDay(day: Int, nanoseconds: Long): SQLTimestamp = {
+    val rebased = rebaseJulianToGregorianDays(day - JULIAN_DAY_OF_EPOCH) * MICROS_PER_DAY +
+      NANOSECONDS.toMicros(nanoseconds)
+    rebased
+  }
+
+  def fromJulianDayParquet(day: Int, nanoseconds: Long): SQLTimestamp = {
+    if (SQLConf.get.isParquetINT96TimestampHive3CompatibilityEnabled) {
+      DateTimeUtils.fromHive3CompatibleJulianDay(day, nanoseconds)
+    } else {
+      DateTimeUtils.fromJulianDay(day, nanoseconds)
+    }
+  }
+
+  /**
    * Returns Julian day and nanoseconds in a day from the number of microseconds
    *
    * Note: support timestamp since 4717 BC (without negative nanoseconds, compatible with Hive).
@@ -207,6 +226,29 @@ object DateTimeUtils {
     val day = julian_us / MICROS_PER_DAY
     val micros = julian_us % MICROS_PER_DAY
     (day.toInt, MICROSECONDS.toNanos(micros))
+  }
+
+  /**
+   * This is the CDP Hive 3 compatible version of `toJulianDay`. Please find more details at
+   * `SQLConf.PARQUET_INT96_TIMESTAMP_HIVE3_COMPATIBILITY_ENABLED`.
+   */
+  def toHive3CompatibleJulianDay(us: SQLTimestamp): (Int, Long) = {
+    var gregorianDays = (us / MICROS_PER_DAY).toInt
+    var nanos = MICROSECONDS.toNanos(us % MICROS_PER_DAY)
+    if (nanos < 0) {
+      gregorianDays -= 1
+      nanos += MICROSECONDS.toNanos(MICROS_PER_DAY)
+    }
+    val julianDays = rebaseGregorianToJulianDays(gregorianDays) + JULIAN_DAY_OF_EPOCH
+    (julianDays, nanos)
+  }
+
+  def toJulianDayParquet(us: SQLTimestamp): (Int, Long) = {
+    if (SQLConf.get.isParquetINT96TimestampHive3CompatibilityEnabled) {
+      DateTimeUtils.toHive3CompatibleJulianDay(us)
+    } else {
+      DateTimeUtils.toJulianDay(us)
+    }
   }
 
   /*

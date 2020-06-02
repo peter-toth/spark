@@ -497,8 +497,7 @@ abstract class OrcSuite extends OrcTest with BeforeAndAfterAll {
     }
   }
 
-  // CDPD-12412
-  ignore("SPARK-31238, SPARK-31423: rebasing dates in write") {
+  test("SPARK-31238, SPARK-31423: rebasing dates in write") {
     withTempPath { dir =>
       val path = dir.getAbsolutePath
       Seq("1001-01-01", "1582-10-10").toDF("dateS")
@@ -526,8 +525,7 @@ abstract class OrcSuite extends OrcTest with BeforeAndAfterAll {
     }
   }
 
-  // CDPD-12412
-  ignore("SPARK-31284, SPARK-31423: rebasing timestamps in write") {
+  test("SPARK-31284, SPARK-31423: rebasing timestamps in write") {
     withTempPath { dir =>
       val path = dir.getAbsolutePath
       Seq("1001-01-01 01:02:03.123456", "1582-10-10 11:12:13.654321").toDF("tsS")

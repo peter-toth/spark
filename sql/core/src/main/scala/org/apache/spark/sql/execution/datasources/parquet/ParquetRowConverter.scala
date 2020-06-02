@@ -309,7 +309,7 @@ private[parquet] class ParquetRowConverter(
             val buf = value.toByteBuffer.order(ByteOrder.LITTLE_ENDIAN)
             val timeOfDayNanos = buf.getLong
             val julianDay = buf.getInt
-            val rawTime = DateTimeUtils.fromJulianDay(julianDay, timeOfDayNanos)
+            val rawTime = DateTimeUtils.fromJulianDayParquet(julianDay, timeOfDayNanos)
             val adjTime = convertTz.map(DateTimeUtils.convertTz(rawTime, _, ZoneOffset.UTC))
               .getOrElse(rawTime)
             updater.setLong(adjTime)
@@ -749,6 +749,6 @@ private[parquet] object ParquetRowConverter {
     val buffer = binary.toByteBuffer.order(ByteOrder.LITTLE_ENDIAN)
     val timeOfDayNanos = buffer.getLong
     val julianDay = buffer.getInt
-    DateTimeUtils.fromJulianDay(julianDay, timeOfDayNanos)
+    DateTimeUtils.fromJulianDayParquet(julianDay, timeOfDayNanos)
   }
 }

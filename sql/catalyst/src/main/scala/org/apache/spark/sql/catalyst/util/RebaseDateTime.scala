@@ -153,8 +153,8 @@ object RebaseDateTime {
   // in Proleptic Gregorian calendar.
   private final val gregorianCommonEraStartDay = gregJulianDiffSwitchDay(0)
 
-  private final val gregorianStartDate = LocalDate.of(1582, 10, 15)
-  private final val julianEndDate = LocalDate.of(1582, 10, 4)
+  final val gregorianStartDate = LocalDate.of(1582, 10, 15)
+  final val julianEndDate = LocalDate.of(1582, 10, 4)
 
   /**
    * Converts the given number of days since the epoch day 1970-01-01 to a local date in Proleptic
@@ -300,8 +300,8 @@ object RebaseDateTime {
   // across all time zones are zero
   final val lastSwitchGregorianTs: Long = getLastSwitchTs(gregJulianRebaseMap)
 
-  private final val gregorianStartTs = LocalDateTime.of(gregorianStartDate, LocalTime.MIDNIGHT)
-  private final val julianEndTs = LocalDateTime.of(
+  final val gregorianStartTs = LocalDateTime.of(gregorianStartDate, LocalTime.MIDNIGHT)
+  final val julianEndTs = LocalDateTime.of(
     julianEndDate,
     LocalTime.of(23, 59, 59, 999999999))
 

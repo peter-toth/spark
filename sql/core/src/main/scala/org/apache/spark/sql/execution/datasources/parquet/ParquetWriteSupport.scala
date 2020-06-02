@@ -193,7 +193,8 @@ class ParquetWriteSupport extends WriteSupport[InternalRow] with Logging {
         outputTimestampType match {
           case SQLConf.ParquetOutputTimestampType.INT96 =>
             (row: SpecializedGetters, ordinal: Int) =>
-              val (julianDay, timeOfDayNanos) = DateTimeUtils.toJulianDay(row.getLong(ordinal))
+              val (julianDay, timeOfDayNanos) =
+                DateTimeUtils.toJulianDayParquet(row.getLong(ordinal))
               val buf = ByteBuffer.wrap(timestampBuffer)
               buf.order(ByteOrder.LITTLE_ENDIAN).putLong(timeOfDayNanos).putInt(julianDay)
               recordConsumer.addBinary(Binary.fromReusedByteArray(timestampBuffer))

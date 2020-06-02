@@ -598,6 +598,29 @@ object SQLConf {
     .booleanConf
     .createWithDefault(true)
 
+  // https://jira.cloudera.com/browse/CDPD-16035
+  // This change in CDP Hive:
+  // scalastyle:off
+  // https://github.infra.cloudera.com/CDH/hive/commit/6778d69a5c3b842278a32e2128464daf4b381d46#diff-133fe961a46ebd6c5d7daf683f2d6e00R46:
+  //   calendar.setGregorianChange(new Date(Long.MIN_VALUE));
+  // scalastyle:on
+  // (i.e. calendar is no longer a hybrid calendar, but it is a proleptic Gregorian Calendar)
+  // causes that when a timestamp is stored in parquet in "legacy" INT96 type then the nanosOfDay
+  // part no longer means Julian nanos, but it means proleptic Gregorian nanos and only the days
+  // part is transformed/interpreted as Julian days (see details of the conversion in
+  // NanoTimeUtils.getNanoTime and NanoTimeUtils.getTimestamp).
+  // This is actually a breaking change both with Hive 2 and with Spark 3 and we need a conversion
+  // in Spark 3 that follows that logic.
+  val PARQUET_INT96_TIMESTAMP_HIVE3_COMPATIBILITY_ENABLED =
+    buildConf("spark.cloudera.sql.parquet.int96Timestamp.hive3compatibility.enabled")
+      .doc("CDP Hive 3 has changed the conversion between Gregorian and Julian timestamps when " +
+        "storing them into INT96. This flag tells Spark SQL to use CDP Hive 3 way of conversion " +
+        "to provide compatibility with CDP Hive 3.")
+      .version("3.0.0")
+      .internal()
+      .booleanConf
+      .createWithDefault(false)
+
   val PARQUET_INT96_TIMESTAMP_CONVERSION = buildConf("spark.sql.parquet.int96TimestampConversion")
     .doc("This controls whether timestamp adjustments should be applied to INT96 data when " +
       "converting to timestamps, for data written by Impala.  This is necessary because Impala " +
@@ -2926,6 +2949,9 @@ class SQLConf extends Serializable with Logging {
   def isParquetBinaryAsString: Boolean = getConf(PARQUET_BINARY_AS_STRING)
 
   def isParquetINT96AsTimestamp: Boolean = getConf(PARQUET_INT96_AS_TIMESTAMP)
+
+  def isParquetINT96TimestampHive3CompatibilityEnabled: Boolean =
+    getConf(PARQUET_INT96_TIMESTAMP_HIVE3_COMPATIBILITY_ENABLED)
 
   def isParquetINT96TimestampConversion: Boolean = getConf(PARQUET_INT96_TIMESTAMP_CONVERSION)
 

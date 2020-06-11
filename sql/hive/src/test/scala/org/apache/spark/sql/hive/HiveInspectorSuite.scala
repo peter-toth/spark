@@ -17,7 +17,7 @@
 
 package org.apache.spark.sql.hive
 
-import java.util.{ArrayList, Locale, Map => JMap, TimeZone}
+import java.util.{ArrayList, Map => JMap}
 
 import org.apache.hadoop.hive.ql.udf.UDAFPercentile
 import org.apache.hadoop.hive.serde2.io.DoubleWritable
@@ -72,11 +72,6 @@ class HiveInspectorSuite extends SparkFunSuite with HiveInspectors {
       .get(0)
       .get())
   }
-
-  // Timezone is fixed to America/Los_Angeles for those timezone sensitive tests (timestamp_*)
-  TimeZone.setDefault(TimeZone.getTimeZone("America/Los_Angeles"))
-  // Add Locale setting
-  Locale.setDefault(Locale.US)
 
   val data =
     Literal(true) ::

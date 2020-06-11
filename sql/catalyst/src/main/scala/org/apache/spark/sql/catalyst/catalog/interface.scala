@@ -533,7 +533,7 @@ object CatalogColumnStat extends Logging {
     TimestampFormatter(
       format = "yyyy-MM-dd HH:mm:ss.SSSSSS",
       zoneId = ZoneOffset.UTC,
-      needVarLengthSecondFraction = isParsing)
+      isParsing = isParsing)
   }
 
   /**

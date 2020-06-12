@@ -3269,11 +3269,6 @@
 
     <profile>
       <id>kafka-0-8</id>
-      <activation>
-        <property>
-          <name>cdpd.build</name>
-        </property>
-      </activation>
       <modules>
         <module>external/kafka-0-8</module>
         <module>external/kafka-0-8-assembly</module>

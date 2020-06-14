@@ -34,6 +34,12 @@ import com.typesafe.tools.mima.core.ProblemFilters._
  */
 object MimaExcludes {
 
+  // Exclude rules for 3.1.x
+  lazy val v31excludes = v30excludes ++ Seq(
+    // [SPARK-24634] Add a new metric regarding number of inputs later than watermark plus allowed delay
+    ProblemFilters.exclude[DirectMissingMethodProblem]("org.apache.spark.sql.streaming.StateOperatorProgress.<init>$default$4")
+  )
+
   // Exclude rules for 3.0.x
   lazy val v30excludes = v24excludes ++ Seq(
     // [SPARK-29306] Add support for Stage level scheduling for executors

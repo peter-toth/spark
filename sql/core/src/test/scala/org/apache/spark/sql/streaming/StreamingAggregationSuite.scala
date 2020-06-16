@@ -213,7 +213,7 @@ class StreamingAggregationSuite extends StateStoreMetricsTest
         var progress = query.recentProgress.last
 
         operatorProgress ++= progress.stateOperators.map { op =>
-          op.copy(op.numRowsUpdated, op.numLateInputs)
+          op.copy(op.numRowsUpdated, op.numRowsDroppedByWatermark)
         }
         if (progress.numInputRows == 0) {
           // empty batch, merge metrics from previous batch as well
@@ -224,7 +224,8 @@ class StreamingAggregationSuite extends StateStoreMetricsTest
             // other metrics represent current status of state so picking up the latest values.
             val newOperatorProgress = sop.copy(
               sop.numRowsUpdated + progress.stateOperators(index).numRowsUpdated,
-              sop.numLateInputs + progress.stateOperators(index).numLateInputs)
+              sop.numRowsDroppedByWatermark +
+                progress.stateOperators(index).numRowsDroppedByWatermark)
             operatorProgress(index) = newOperatorProgress
           }
         }

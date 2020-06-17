@@ -402,7 +402,8 @@ class EventLoggingListenerSuite extends SparkFunSuite with LocalSparkContext wit
     // Verify the log file contains the expected events.
     // Posted events should be logged, except for ExecutorMetricsUpdate events -- these
     // are consolidated, and the peak values for each stage are logged at stage end.
-    val logData = EventLogFileReader.openEventLog(new Path(eventLogger.logWriter.logPath), fileSystem)
+    val logData =
+      EventLogFileReader.openEventLog(new Path(eventLogger.logWriter.logPath), fileSystem)
     try {
       val lines = readLines(logData)
       val logStart = SparkListenerLogStart(SPARK_VERSION)

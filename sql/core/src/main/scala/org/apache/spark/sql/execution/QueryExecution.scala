@@ -37,6 +37,7 @@ import org.apache.spark.sql.catalyst.util.truncatedString
 import org.apache.spark.sql.execution.command.{DescribeTableCommand, ExecutedCommandExec, ShowTablesCommand}
 import org.apache.spark.sql.execution.dynamicpruning.PlanDynamicPruningFilters
 import org.apache.spark.sql.execution.exchange.{EnsureRequirements, ReuseExchange}
+import org.apache.spark.sql.execution.reuse.ReuseExchangeAndSubquery
 import org.apache.spark.sql.internal.SQLConf
 import org.apache.spark.sql.types.{BinaryType, DateType, DecimalType, TimestampType, _}
 import org.apache.spark.util.Utils
@@ -96,7 +97,7 @@ class QueryExecution(val sparkSession: SparkSession, val logical: LogicalPlan) {
   }
 
   protected def preparations: Seq[Rule[SparkPlan]] = {
-    QueryExecution.preparations(sparkSession)
+    QueryExecution.preparations(sparkSession, false)
   }
 
   /**
@@ -298,15 +299,28 @@ object QueryExecution {
    * are correct, insert whole stage code gen, and try to reduce the work done by reusing exchanges
    * and subqueries.
    */
-  private[execution] def preparations(sparkSession: SparkSession): Seq[Rule[SparkPlan]] =
+  private[execution] def preparations(
+      sparkSession: SparkSession,
+      subquery: Boolean): Seq[Rule[SparkPlan]] =
     Seq(
       PlanDynamicPruningFilters(sparkSession),
       PlanSubqueries(sparkSession),
       EnsureRequirements(sparkSession.sessionState.conf),
-      CollapseCodegenStages(sparkSession.sessionState.conf),
-      ReuseExchange(sparkSession.sessionState.conf),
-      ReuseSubquery(sparkSession.sessionState.conf)
-    )
+      CollapseCodegenStages(sparkSession.sessionState.conf)) ++
+      (if (SQLConf.get.wholePlanReuseEnabled) {
+        if (subquery) {
+          Nil
+        } else {
+          // This rule must be last so that the reuse nodes that this rule inserts remain valid.
+          // I.e. no further transformation happens on the exchange and subquery instances
+          // referenced by the reuse nodes.
+          Seq(ReuseExchangeAndSubquery(sparkSession.sessionState.conf))
+        }
+      } else {
+        Seq(
+          ReuseExchange(sparkSession.sessionState.conf),
+          ReuseSubquery(sparkSession.sessionState.conf))
+      })
 
   /**
    * Prepares a planned [[SparkPlan]] for execution by inserting shuffle operations and internal
@@ -337,7 +351,7 @@ object QueryExecution {
    * Prepare the [[SparkPlan]] for execution.
    */
   def prepareExecutedPlan(spark: SparkSession, plan: SparkPlan): SparkPlan = {
-    prepareForExecution(preparations(spark), plan)
+    prepareForExecution(preparations(spark, true), plan)
   }
 
   /**

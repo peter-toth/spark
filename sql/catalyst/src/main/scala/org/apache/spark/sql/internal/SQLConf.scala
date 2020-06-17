@@ -1224,6 +1224,13 @@ object SQLConf {
     .booleanConf
     .createWithDefault(true)
 
+  val WHOLEPLANREUSE_ENABLED = buildConf("spark.cloudera.sql.wholePlanReuse.enabled")
+    .internal()
+    .doc("When true, the planner will try to find out duplicated subqueries and exchanges in the " +
+      "whole plan.")
+    .booleanConf
+    .createWithDefault(false)
+
   val STATE_STORE_PROVIDER_CLASS =
     buildConf("spark.sql.streaming.stateStore.providerClass")
       .internal()
@@ -2881,6 +2888,8 @@ class SQLConf extends Serializable with Logging {
   def exchangeReuseEnabled: Boolean = getConf(EXCHANGE_REUSE_ENABLED)
 
   def subqueryReuseEnabled: Boolean = getConf(SUBQUERY_REUSE_ENABLED)
+
+  def wholePlanReuseEnabled: Boolean = getConf(WHOLEPLANREUSE_ENABLED)
 
   def caseSensitiveAnalysis: Boolean = getConf(SQLConf.CASE_SENSITIVE)
 

@@ -1646,4 +1646,25 @@ class SubquerySuite extends QueryTest with SharedSparkSession with AdaptiveSpark
     checkAnswer(df, df2)
     checkAnswer(df, Nil)
   }
+
+  test("Subquery reuse across the whole plan") {
+    val df = sql(
+      """
+        |SELECT (SELECT avg(key) FROM testData), (SELECT (SELECT avg(key) FROM testData))
+        |FROM testData
+        |LIMIT 1
+      """.stripMargin)
+
+    val plan = df.queryExecution.executedPlan
+
+    val subqueryIds = plan.collectWithSubqueries { case s: SubqueryExec => s.id }
+    val reusedSubqueryIds = plan.collectWithSubqueries {
+      case rs: ReusedSubqueryExec => rs.child.id
+    }
+
+    assert(subqueryIds.size == 2, "Whole plan subquery reusing not working correctly")
+    assert(reusedSubqueryIds.size == 1, "Whole plan subquery reusing not working correctly")
+    assert(reusedSubqueryIds.forall(subqueryIds.contains(_)),
+      "ReusedSubqueryExec should reuse an existing subquery")
+  }
 }

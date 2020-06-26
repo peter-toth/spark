@@ -336,13 +336,12 @@ object QueryPlan extends PredicateHelper {
    * `Attribute`, and replace it with `BoundReference` will cause error.
    */
   def normalizeExpressions[T <: Expression](e: T, input: AttributeSeq): T = {
-    type T2 = QueryPlan[_]
     e.transformUp {
-      case s: PlanExpression[T2 @unchecked] =>
+      case s: PlanExpression[QueryPlan[_] @unchecked] =>
         // Normalize the outer references in the subquery plan.
         val normalizedPlan = s.plan.transformAllExpressions {
           case OuterReference(r) => OuterReference(QueryPlan.normalizeExpressions(r, input))
-        }.canonicalized.asInstanceOf[T2]
+        }.canonicalized
         s.withNewPlan(normalizedPlan)
 
       case ar: AttributeReference =>

@@ -31,31 +31,35 @@ import org.apache.spark.sql.types.StructType
  */
 case class ReuseExchangeAndSubquery(conf: SQLConf) extends Rule[SparkPlan] {
 
+  private class ReuseCache[T <: SparkPlan] {
+    // To avoid costly canonicalization of an exchange or a subquery:
+    // - we use its schema first to check if it can be replaced to a reused one at all
+    // - we insert it into the map of canonicalized plans only when at least 2 have the same schema
+    private val cache = Map[StructType, (T, Map[SparkPlan, T])]()
+
+    def lookup(plan: T): T = {
+      val (firstSameSchemaPlan, sameResultPlans) = cache.getOrElseUpdate(plan.schema, plan -> Map())
+      if (firstSameSchemaPlan.ne(plan)) {
+        if (sameResultPlans.isEmpty) {
+          sameResultPlans += firstSameSchemaPlan.canonicalized -> firstSameSchemaPlan
+        }
+        sameResultPlans.getOrElseUpdate(plan.canonicalized, plan)
+      } else {
+        plan
+      }
+    }
+  }
+
   def apply(plan: SparkPlan): SparkPlan = {
     if (conf.exchangeReuseEnabled || conf.subqueryReuseEnabled) {
-      // To avoid costly canonicalization of an exchange or a subquery:
-      // - we use its schema first to check if it can be replaced to a reused one at all
-      // - we insert it into the map of canonicalized plans only when at least 2 have the same
-      //   schema
-      val exchanges = Map[StructType, (Exchange, Map[SparkPlan, Exchange])]()
-      val subqueries = Map[StructType, (BaseSubqueryExec, Map[SparkPlan, BaseSubqueryExec])]()
+      val exchanges = new ReuseCache[Exchange]()
+      val subqueries = new ReuseCache[BaseSubqueryExec]()
 
       def reuse(plan: SparkPlan): SparkPlan = plan.transformUp {
         case exchange: Exchange if conf.exchangeReuseEnabled =>
-          val (firstSameSchemaExchange, sameResultExchanges) =
-            exchanges.getOrElseUpdate(exchange.schema, exchange -> Map())
-          if (firstSameSchemaExchange.ne(exchange)) {
-            if (sameResultExchanges.isEmpty) {
-              sameResultExchanges +=
-                firstSameSchemaExchange.canonicalized -> firstSameSchemaExchange
-            }
-            val sameResultExchange =
-              sameResultExchanges.getOrElseUpdate(exchange.canonicalized, exchange)
-            if (sameResultExchange.ne(exchange)) {
-              ReusedExchangeExec(exchange.output, sameResultExchange)
-            } else {
-              exchange
-            }
+          val cached = exchanges.lookup(exchange)
+          if (cached.ne(exchange)) {
+            ReusedExchangeExec(exchange.output, cached)
           } else {
             exchange
           }
@@ -63,27 +67,18 @@ case class ReuseExchangeAndSubquery(conf: SQLConf) extends Rule[SparkPlan] {
         case other => other.transformExpressionsUp {
           case sub: ExecSubqueryExpression =>
             val subquery = reuse(sub.plan).asInstanceOf[BaseSubqueryExec]
-            if (conf.subqueryReuseEnabled) {
-              val (firstSameSchemaSubquery, sameResultSubqueries) =
-                subqueries.getOrElseUpdate(subquery.schema, subquery -> Map())
-              if (firstSameSchemaSubquery.ne(subquery)) {
-                if (sameResultSubqueries.isEmpty) {
-                  sameResultSubqueries +=
-                    firstSameSchemaSubquery.canonicalized -> firstSameSchemaSubquery
-                }
-                val sameResultSubquery =
-                  sameResultSubqueries.getOrElseUpdate(subquery.canonicalized, subquery)
-                if (sameResultSubquery.ne(subquery)) {
-                  sub.withNewPlan(ReusedSubqueryExec(sameResultSubquery))
+            sub.withNewPlan(
+              if (conf.subqueryReuseEnabled) {
+                val cached = subqueries.lookup(subquery)
+                if (cached.ne(subquery)) {
+                  ReusedSubqueryExec(cached)
                 } else {
-                  sub.withNewPlan(subquery)
+                  subquery
                 }
               } else {
-                sub.withNewPlan(subquery)
+                subquery
               }
-            } else {
-              sub.withNewPlan(subquery)
-            }
+            )
         }
       }
 

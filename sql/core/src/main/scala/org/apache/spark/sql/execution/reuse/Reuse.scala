@@ -29,7 +29,7 @@ import org.apache.spark.sql.types.StructType
  * Find out duplicated exchanges and subqueries in the whole spark plan including subqueries, then
  * use the same exhange or subquery for all the references.
  */
-case class WholePlanReuse(conf: SQLConf) extends Rule[SparkPlan] {
+case class ReuseExchangeAndSubquery(conf: SQLConf) extends Rule[SparkPlan] {
 
   def apply(plan: SparkPlan): SparkPlan = {
     if (conf.exchangeReuseEnabled || conf.subqueryReuseEnabled) {

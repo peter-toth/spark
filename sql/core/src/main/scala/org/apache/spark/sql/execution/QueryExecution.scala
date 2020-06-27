@@ -36,7 +36,7 @@ import org.apache.spark.sql.catalyst.util.truncatedString
 import org.apache.spark.sql.execution.adaptive.{AdaptiveExecutionContext, InsertAdaptiveSparkPlan}
 import org.apache.spark.sql.execution.dynamicpruning.PlanDynamicPruningFilters
 import org.apache.spark.sql.execution.exchange.EnsureRequirements
-import org.apache.spark.sql.execution.reuse.WholePlanReuse
+import org.apache.spark.sql.execution.reuse.ReuseExchangeAndSubquery
 import org.apache.spark.sql.execution.streaming.{IncrementalExecution, OffsetSeqMetadata}
 import org.apache.spark.sql.internal.SQLConf
 import org.apache.spark.sql.streaming.OutputMode
@@ -342,7 +342,7 @@ object QueryExecution {
       (if (subquery) {
         Nil
       } else {
-        Seq(WholePlanReuse(sparkSession.sessionState.conf))
+        Seq(ReuseExchangeAndSubquery(sparkSession.sessionState.conf))
       })
   }
 

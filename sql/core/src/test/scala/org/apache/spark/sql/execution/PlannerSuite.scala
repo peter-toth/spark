@@ -29,7 +29,7 @@ import org.apache.spark.sql.execution.aggregate.{HashAggregateExec, ObjectHashAg
 import org.apache.spark.sql.execution.columnar.{InMemoryRelation, InMemoryTableScanExec}
 import org.apache.spark.sql.execution.exchange.{EnsureRequirements, ReusedExchangeExec, ShuffleExchangeExec}
 import org.apache.spark.sql.execution.joins.{BroadcastHashJoinExec, SortMergeJoinExec}
-import org.apache.spark.sql.execution.reuse.WholePlanReuse
+import org.apache.spark.sql.execution.reuse.ReuseExchangeAndSubquery
 import org.apache.spark.sql.functions._
 import org.apache.spark.sql.internal.SQLConf
 import org.apache.spark.sql.test.SharedSparkSession
@@ -477,7 +477,7 @@ class PlannerSuite extends SharedSparkSession with AdaptiveSparkPlanHelper {
       shuffle,
       shuffle.copy())
 
-    val outputPlan = WholePlanReuse(spark.sessionState.conf).apply(inputPlan)
+    val outputPlan = ReuseExchangeAndSubquery(spark.sessionState.conf).apply(inputPlan)
     if (outputPlan.collect { case e: ReusedExchangeExec => true }.size != 1) {
       fail(s"Should re-use the shuffle:\n$outputPlan")
     }
@@ -494,7 +494,7 @@ class PlannerSuite extends SharedSparkSession with AdaptiveSparkPlanHelper {
       ShuffleExchangeExec(finalPartitioning, inputPlan),
       ShuffleExchangeExec(finalPartitioning, inputPlan))
 
-    val outputPlan2 = WholePlanReuse(spark.sessionState.conf).apply(inputPlan2)
+    val outputPlan2 = ReuseExchangeAndSubquery(spark.sessionState.conf).apply(inputPlan2)
     if (outputPlan2.collect { case e: ReusedExchangeExec => true }.size != 2) {
       fail(s"Should re-use the two shuffles:\n$outputPlan2")
     }

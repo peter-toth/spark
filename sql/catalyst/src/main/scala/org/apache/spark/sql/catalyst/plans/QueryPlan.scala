@@ -341,7 +341,7 @@ object QueryPlan extends PredicateHelper {
         // Normalize the outer references in the subquery plan.
         val normalizedPlan = s.plan.transformAllExpressions {
           case OuterReference(r) => OuterReference(QueryPlan.normalizeExpressions(r, input))
-        }.canonicalized
+        }
         s.withNewPlan(normalizedPlan)
 
       case ar: AttributeReference =>

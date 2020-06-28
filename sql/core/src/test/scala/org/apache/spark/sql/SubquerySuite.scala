@@ -1655,6 +1655,23 @@ class SubquerySuite extends QueryTest with SharedSparkSession with AdaptiveSpark
         |LIMIT 1
       """.stripMargin)
 
+    // scalastyle:off
+    // CollectLimit 1
+    // +- *(1) Project [Subquery scalar-subquery#240, [id=#112] AS scalarsubquery()#248, Subquery scalar-subquery#242, [id=#183] AS scalarsubquery()#249]
+    //    :  :- Subquery scalar-subquery#240, [id=#112]
+    //    :  :  +- *(2) HashAggregate(keys=[], functions=[avg(cast(key#13 as bigint))])
+    //    :  :     +- Exchange SinglePartition, true, [id=#108]
+    //    :  :        +- *(1) HashAggregate(keys=[], functions=[partial_avg(cast(key#13 as bigint))])
+    //    :  :           +- *(1) SerializeFromObject [knownnotnull(assertnotnull(input[0, org.apache.spark.sql.test.SQLTestData$TestData, true])).key AS key#13]
+    //    :  :              +- Scan[obj#12]
+    //    :  +- Subquery scalar-subquery#242, [id=#183]
+    //    :     +- *(1) Project [ReusedSubquery Subquery scalar-subquery#240, [id=#112] AS scalarsubquery()#247]
+    //    :        :  +- ReusedSubquery Subquery scalar-subquery#240, [id=#112]
+    //    :        +- *(1) Scan OneRowRelation[]
+    //    +- *(1) SerializeFromObject
+    //      +- Scan[obj#12]
+    // scalastyle:on
+
     val plan = df.queryExecution.executedPlan
 
     val subqueryIds = plan.collectWithSubqueries { case s: SubqueryExec => s.id }

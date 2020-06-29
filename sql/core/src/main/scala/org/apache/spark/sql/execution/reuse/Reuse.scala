@@ -48,6 +48,15 @@ case class ReuseExchangeAndSubquery(conf: SQLConf) extends Rule[SparkPlan] {
         plan
       }
     }
+
+    def addOrElse(plan: T, f: T => SparkPlan): SparkPlan = {
+      val cached = lookup(plan)
+      if (cached.eq(plan)) {
+        plan
+      } else {
+        f(cached)
+      }
+    }
   }
 
   def apply(plan: SparkPlan): SparkPlan = {
@@ -57,24 +66,14 @@ case class ReuseExchangeAndSubquery(conf: SQLConf) extends Rule[SparkPlan] {
 
       def reuse(plan: SparkPlan): SparkPlan = plan.transformUp {
         case exchange: Exchange if conf.exchangeReuseEnabled =>
-          val cached = exchanges.lookup(exchange)
-          if (cached.ne(exchange)) {
-            ReusedExchangeExec(exchange.output, cached)
-          } else {
-            exchange
-          }
+          exchanges.addOrElse(exchange, ReusedExchangeExec(exchange.output, _))
 
         case other => other.transformExpressionsUp {
           case sub: ExecSubqueryExpression =>
             val subquery = reuse(sub.plan).asInstanceOf[BaseSubqueryExec]
             sub.withNewPlan(
               if (conf.subqueryReuseEnabled) {
-                val cached = subqueries.lookup(subquery)
-                if (cached.ne(subquery)) {
-                  ReusedSubqueryExec(cached)
-                } else {
-                  subquery
-                }
+                subqueries.addOrElse(subquery, ReusedSubqueryExec(_)).asInstanceOf[BaseSubqueryExec]
               } else {
                 subquery
               }

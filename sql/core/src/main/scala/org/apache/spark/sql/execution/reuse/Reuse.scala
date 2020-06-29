@@ -31,14 +31,14 @@ import org.apache.spark.sql.types.StructType
  */
 case class ReuseExchangeAndSubquery(conf: SQLConf) extends Rule[SparkPlan] {
 
-  private class ReuseCache[T <: SparkPlan] {
+  private class ReuseMap[T <: SparkPlan] {
     // To avoid costly canonicalization of an exchange or a subquery:
     // - we use its schema first to check if it can be replaced to a reused one at all
     // - we insert it into the map of canonicalized plans only when at least 2 have the same schema
-    private val cache = Map[StructType, (T, Map[SparkPlan, T])]()
+    private val map = Map[StructType, (T, Map[SparkPlan, T])]()
 
     def lookup(plan: T): T = {
-      val (firstSameSchemaPlan, sameResultPlans) = cache.getOrElseUpdate(plan.schema, plan -> Map())
+      val (firstSameSchemaPlan, sameResultPlans) = map.getOrElseUpdate(plan.schema, plan -> Map())
       if (firstSameSchemaPlan.ne(plan)) {
         if (sameResultPlans.isEmpty) {
           sameResultPlans += firstSameSchemaPlan.canonicalized -> firstSameSchemaPlan
@@ -52,8 +52,8 @@ case class ReuseExchangeAndSubquery(conf: SQLConf) extends Rule[SparkPlan] {
 
   def apply(plan: SparkPlan): SparkPlan = {
     if (conf.exchangeReuseEnabled || conf.subqueryReuseEnabled) {
-      val exchanges = new ReuseCache[Exchange]()
-      val subqueries = new ReuseCache[BaseSubqueryExec]()
+      val exchanges = new ReuseMap[Exchange]()
+      val subqueries = new ReuseMap[BaseSubqueryExec]()
 
       def reuse(plan: SparkPlan): SparkPlan = plan.transformUp {
         case exchange: Exchange if conf.exchangeReuseEnabled =>

@@ -17,50 +17,17 @@
 
 package org.apache.spark.sql.execution.reuse
 
-import scala.collection.mutable.Map
-import scala.language.existentials
-
-import org.apache.spark.sql.catalyst.plans.QueryPlan
 import org.apache.spark.sql.catalyst.rules.Rule
 import org.apache.spark.sql.execution.{BaseSubqueryExec, ExecSubqueryExpression, ReusedSubqueryExec, SparkPlan}
 import org.apache.spark.sql.execution.exchange.{Exchange, ReusedExchangeExec}
 import org.apache.spark.sql.internal.SQLConf
-import org.apache.spark.sql.types.StructType
+import org.apache.spark.sql.util.ReuseMap
 
 /**
  * Find out duplicated exchanges and subqueries in the whole spark plan including subqueries, then
  * use the same exhange or subquery for all the references.
  */
 case class ReuseExchangeAndSubquery(conf: SQLConf) extends Rule[SparkPlan] {
-
-  private class ReuseMap[T <: QueryPlan[_]] {
-    // To avoid costly canonicalization of an exchange or a subquery:
-    // - we use its schema first to check if it can be replaced to a reused one at all
-    // - we insert it into the map of canonicalized plans only when at least 2 have the same schema
-    private val map = Map[StructType, (T, Map[T2 forSome { type T2 >: T }, T])]()
-
-    def lookup(plan: T): T = {
-      val (firstSameSchemaPlan, sameResultPlans) = map.getOrElseUpdate(plan.schema, plan -> Map())
-      if (firstSameSchemaPlan.ne(plan)) {
-        if (sameResultPlans.isEmpty) {
-          sameResultPlans +=
-            firstSameSchemaPlan.canonicalized -> firstSameSchemaPlan
-        }
-        sameResultPlans.getOrElseUpdate(plan.canonicalized, plan)
-      } else {
-        plan
-      }
-    }
-
-    def addOrElse[T2 >: T](plan: T, f: T => T2): T2 = {
-      val found = lookup(plan)
-      if (found eq plan) {
-        plan
-      } else {
-        f(found)
-      }
-    }
-  }
 
   def apply(plan: SparkPlan): SparkPlan = {
     if (conf.exchangeReuseEnabled || conf.subqueryReuseEnabled) {

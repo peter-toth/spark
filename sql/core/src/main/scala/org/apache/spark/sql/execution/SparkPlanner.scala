@@ -44,7 +44,7 @@ class SparkPlanner(
       SpecialLimits ::
       Aggregation ::
       Window ::
-      JoinSelection ::
+      JoinSelection(conf) ::
       InMemoryScans ::
       BasicOperators :: Nil)
 

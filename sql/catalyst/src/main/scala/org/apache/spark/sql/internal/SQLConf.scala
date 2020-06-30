@@ -1658,6 +1658,13 @@ object SQLConf {
       .booleanConf
       .createWithDefault(false)
 
+  val SIMPLE_JOIN_REORDER_ENABLED =
+    buildConf("spark.sql.simpleJoinReorder.enabled")
+      .doc("Enables simple join reorder based on sizes.")
+      .version("3.1.0")
+      .booleanConf
+      .createWithDefault(true)
+
   val JOIN_REORDER_DP_THRESHOLD =
     buildConf("spark.sql.cbo.joinReorder.dp.threshold")
       .doc("The maximum number of joined nodes allowed in the dynamic programming algorithm.")
@@ -3064,6 +3071,8 @@ class SQLConf extends Serializable with Logging {
   def autoSizeUpdateEnabled: Boolean = getConf(SQLConf.AUTO_SIZE_UPDATE_ENABLED)
 
   def joinReorderEnabled: Boolean = getConf(SQLConf.JOIN_REORDER_ENABLED)
+
+  def simpleJoinReorderEnabled: Boolean = getConf(SQLConf.SIMPLE_JOIN_REORDER_ENABLED)
 
   def joinReorderDPThreshold: Int = getConf(SQLConf.JOIN_REORDER_DP_THRESHOLD)
 

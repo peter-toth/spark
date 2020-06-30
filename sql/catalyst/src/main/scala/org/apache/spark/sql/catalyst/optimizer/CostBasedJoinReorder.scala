@@ -37,9 +37,7 @@ object CostBasedJoinReorder extends Rule[LogicalPlan] with PredicateHelper {
   private def conf = SQLConf.get
 
   def apply(plan: LogicalPlan): LogicalPlan = {
-    if (!conf.cboEnabled || !conf.joinReorderEnabled) {
-      plan
-    } else {
+    if (conf.simpleJoinReorderEnabled || conf.cboEnabled && conf.joinReorderEnabled) {
       val result = plan transformDown {
         // Start reordering with a joinable item, which is an InnerLike join with conditions.
         // Avoid reordering if a join hint is present.
@@ -53,6 +51,8 @@ object CostBasedJoinReorder extends Rule[LogicalPlan] with PredicateHelper {
       result transform {
         case OrderedJoin(left, right, jt, cond) => Join(left, right, jt, cond, JoinHint.NONE)
       }
+    } else {
+      plan
     }
   }
 
@@ -62,7 +62,7 @@ object CostBasedJoinReorder extends Rule[LogicalPlan] with PredicateHelper {
       // Do reordering if the number of items is appropriate and join conditions exist.
       // We also need to check if costs of all items can be evaluated.
       if (items.size > 2 && items.size <= conf.joinReorderDPThreshold && conditions.nonEmpty &&
-          items.forall(_.stats.rowCount.isDefined)) {
+        (conf.simpleJoinReorderEnabled || items.forall(_.stats.rowCount.isDefined))) {
         JoinReorderDP.search(conf, items, conditions, output)
       } else {
         plan
@@ -138,7 +138,7 @@ case class OrderedJoin(
  * For cost evaluation, since physical costs for operators are not available currently, we use
  * cardinalities and sizes to compute costs.
  */
-object JoinReorderDP extends PredicateHelper with Logging {
+object JoinReorderDP extends PredicateHelper with JoinSelectionHelper with Logging {
 
   def search(
       conf: SQLConf,
@@ -151,7 +151,7 @@ object JoinReorderDP extends PredicateHelper with Logging {
     // Create the initial plans: each plan is a single item with zero cost.
     val itemIndex = items.zipWithIndex
     val foundPlans = mutable.Buffer[JoinPlanMap](itemIndex.map {
-      case (item, id) => Set(id) -> JoinPlan(Set(id), item, Set.empty, Cost(0, 0))
+      case (item, id) => Set(id) -> JoinPlan(Set(id), item, Set.empty, Cost(0, 0, Array.fill(5)(0)))
     }.toMap)
 
     // Build filters from the join graph to be used by the search algorithm.
@@ -310,8 +310,10 @@ object JoinReorderDP extends PredicateHelper with Logging {
     val itemIds = oneJoinPlan.itemIds.union(otherJoinPlan.itemIds)
     // Now the root node of onePlan/otherPlan becomes an intermediate join (if it's a non-leaf
     // item), so the cost of the new join should also include its own cost.
+    val id = selectJoin(newJoin, conf).id
+    val ownCost = Cost(0, 0, Array.tabulate(5)(i => if (i == id) 1 else 0))
     val newPlanCost = oneJoinPlan.planCost + oneJoinPlan.rootCost(conf) +
-      otherJoinPlan.planCost + otherJoinPlan.rootCost(conf)
+      otherJoinPlan.planCost + otherJoinPlan.rootCost(conf) + ownCost
     Some(JoinPlan(itemIds, newPlan, collectedJoinConds, newPlanCost))
   }
 
@@ -336,16 +338,33 @@ object JoinReorderDP extends PredicateHelper with Logging {
     def rootCost(conf: SQLConf): Cost = {
       if (itemIds.size > 1) {
         val rootStats = plan.stats
-        Cost(rootStats.rowCount.get, rootStats.sizeInBytes)
+        Cost(rootStats.rowCount.getOrElse(0), rootStats.sizeInBytes, Array.fill(5)(0))
       } else {
         // If the plan is a leaf item, it has zero cost.
-        Cost(0, 0)
+        Cost(0, 0, Array.fill(5)(0))
       }
     }
 
+    val order = Seq(0, 1, 2, 3, 4)
+
+    def compareByOrder(a: Array[Int], b: Array[Int]): Int = {
+      var i = 0
+      var c = 0
+      do {
+        c = b(order(i)) - a(order(i))
+        i += 1
+      } while (i < a.size && c == 0)
+      c
+    }
+
     def betterThan(other: JoinPlan, conf: SQLConf): Boolean = {
-      if (other.planCost.card == 0 || other.planCost.size == 0) {
+      if (other.planCost.size == 0) {
         false
+      } else if (other.planCost.card == 0) {
+        conf.simpleJoinReorderEnabled && {
+          val o = compareByOrder(this.planCost.joins, other.planCost.joins)
+          o < 0 || o == 0 && this.planCost.size < other.planCost.size
+        }
       } else {
         val relativeRows = BigDecimal(this.planCost.card) / BigDecimal(other.planCost.card)
         val relativeSize = BigDecimal(this.planCost.size) / BigDecimal(other.planCost.size)
@@ -361,8 +380,10 @@ object JoinReorderDP extends PredicateHelper with Logging {
  * @param card Cardinality (number of rows).
  * @param size Size in bytes.
  */
-case class Cost(card: BigInt, size: BigInt) {
-  def +(other: Cost): Cost = Cost(this.card + other.card, this.size + other.size)
+case class Cost(card: BigInt, size: BigInt, joins: Array[Int]) {
+  def +(other: Cost): Cost =
+    Cost(this.card + other.card, this.size + other.size,
+      this.joins.zip(other.joins).map(c => c._1 + c._2))
 }
 
 /**

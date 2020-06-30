@@ -150,6 +150,10 @@
                   <pattern>org.codehaus.jackson</pattern>
                   <shadedPattern>${spark.shaded.raz.packageName}.org.codehaus.jackson</shadedPattern>
                 </relocation>
+                <relocation>
+                  <pattern>jersey.repackaged</pattern>
+                  <shadedPattern>jersey1.repackaged</shadedPattern>
+                </relocation>
               </relocations>
 
             </configuration>

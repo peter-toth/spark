@@ -18,6 +18,7 @@
 package org.apache.spark.sql.util
 
 import scala.collection.mutable.Map
+import scala.language.existentials
 
 import org.apache.spark.sql.catalyst.plans.QueryPlan
 import org.apache.spark.sql.types.StructType

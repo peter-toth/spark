@@ -42,7 +42,7 @@ class ReuseMap[T <: QueryPlan[_]] {
    * @param plan the input plan
    * @return the matching plan or the input plan
    */
-  def lookup(plan: T): T = {
+  def lookupOrElseAdd(plan: T): T = {
     val (firstSameSchemaPlan, sameResultPlans) = map.getOrElseUpdate(plan.schema, plan -> Map())
     if (firstSameSchemaPlan ne plan) {
       if (sameResultPlans.isEmpty) {
@@ -62,8 +62,8 @@ class ReuseMap[T <: QueryPlan[_]] {
    * @param f the function to apply
    * @return the matching plan with `f` applied or the input plan
    */
-  def addOrElse[T2 >: T](plan: T, f: T => T2): T2 = {
-    val found = lookup(plan)
+  def reuseOrElseAdd[T2 >: T](plan: T, f: T => T2): T2 = {
+    val found = lookupOrElseAdd(plan)
     if (found eq plan) {
       plan
     } else {

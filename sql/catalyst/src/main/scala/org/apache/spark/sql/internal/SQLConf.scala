@@ -280,7 +280,7 @@ object SQLConf {
         "a broadcast hash join operation can be reused as the dynamic pruning filter.")
       .version("3.0.0")
       .booleanConf
-      .createWithDefault(true)
+      .createWithDefault(false)
 
   val COMPRESS_CACHED = buildConf("spark.sql.inMemoryColumnarStorage.compressed")
     .doc("When set to true Spark SQL will automatically select a compression codec for each " +
@@ -1642,7 +1642,7 @@ object SQLConf {
       .doc("Enables CBO for estimation of plan statistics when set true.")
       .version("2.2.0")
       .booleanConf
-      .createWithDefault(false)
+      .createWithDefault(true)
 
   val PLAN_STATS_ENABLED =
     buildConf("spark.sql.cbo.planStats.enabled")
@@ -1656,7 +1656,7 @@ object SQLConf {
       .doc("Enables join reorder in CBO.")
       .version("2.2.0")
       .booleanConf
-      .createWithDefault(false)
+      .createWithDefault(true)
 
   val JOIN_REORDER_DP_THRESHOLD =
     buildConf("spark.sql.cbo.joinReorder.dp.threshold")

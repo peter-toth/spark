@@ -17,6 +17,8 @@
 
 package org.apache.spark.sql.execution.benchmark
 
+import scala.util.Try
+
 import org.apache.spark.SparkConf
 import org.apache.spark.benchmark.Benchmark
 import org.apache.spark.internal.Logging
@@ -25,6 +27,8 @@ import org.apache.spark.sql.catalyst.catalog.HiveTableRelation
 import org.apache.spark.sql.catalyst.plans.logical.SubqueryAlias
 import org.apache.spark.sql.catalyst.util._
 import org.apache.spark.sql.execution.datasources.LogicalRelation
+import org.apache.spark.sql.execution.joins.BaseJoinExec
+import org.apache.spark.sql.internal.SQLConf
 
 /**
  * Benchmark to measure TPCDS query performance.
@@ -62,8 +66,16 @@ object TPCDSQueryBenchmark extends SqlBasedBenchmark {
 
   def setupTables(dataLocation: String): Map[String, Long] = {
     tables.map { tableName =>
-      spark.read.parquet(s"$dataLocation/$tableName").createOrReplaceTempView(tableName)
-      tableName -> spark.table(tableName).count()
+      spark.sql(s"DROP TABLE IF EXISTS $tableName")
+//      spark.read.parquet(s"$dataLocation/$tableName").createOrReplaceTempView(tableName)
+//      tableName -> spark.table(tableName).count()
+      spark.catalog.createTable(tableName, s"$dataLocation/$tableName", "parquet")
+      Try { spark.sql(s"ALTER TABLE $tableName RECOVER PARTITIONS") }.getOrElse(0)
+      spark.sql(s"ANALYZE TABLE $tableName COMPUTE STATISTICS")
+      val table = spark.table(tableName)
+      val allColumns = table.columns.mkString(", ")
+      spark.sql(s"ANALYZE TABLE $tableName COMPUTE STATISTICS FOR COLUMNS $allColumns")
+      tableName -> table.count()
     }.toMap
   }
 
@@ -89,12 +101,46 @@ object TPCDSQueryBenchmark extends SqlBasedBenchmark {
         case _ =>
       }
       val numRows = queryRelations.map(tableSizes.getOrElse(_, 0L)).sum
-      val benchmark = new Benchmark(s"TPCDS Snappy", numRows, 2, output = output)
-      benchmark.addCase(s"$name$nameSuffix") { _ =>
+      import scala.concurrent.duration._
+      val benchmark = new Benchmark(s"TPCDS Snappy", numRows, 10, warmupTime = 30.seconds,
+        output = output)
+//      import scala.concurrent.duration._
+//      val benchmark = new Benchmark(s"TPCDS Snappy", numRows, 1,
+//        minTime = 0.seconds, warmupTime = 0.seconds)
+
+      benchmark.addCase(s"$name$nameSuffix - cbo") { _ =>
         spark.sql(queryString).noop()
+//        spark.sql(queryString).explain(true)
+//        val p = spark.sql(queryString).queryExecution.executedPlan
+//        print(s"Plan $name:\n${normalizedExplain(p.toString)}\n")
+//        val joins = p.collectWithSubqueries{ case j: BaseJoinExec => j.nodeName }
+//        val joinCounts = joins.groupBy(identity).mapValues(_.size)
+//        print(s"Join stats $name: count: ${joins.size} distribution: $joinCounts\n")
+      }
+      benchmark.addCase(s"$name$nameSuffix - default") { _ =>
+        withSQLConf(SQLConf.CBO_ENABLED.key -> "false") {
+          spark.sql(queryString).noop()
+//          spark.sql(queryString).explain(true)
+//          val p = spark.sql(queryString).queryExecution.executedPlan
+//          print(s"Plan $name - old:\n${normalizedExplain(p.toString)}\n")
+//          val joins = p.collectWithSubqueries { case j: BaseJoinExec => j.nodeName }
+//          val joinCounts = joins.groupBy(identity).mapValues(_.size)
+//          print(s"Join stats $name - old: count: ${joins.size} distribution: $joinCounts\n")
+        }
       }
       benchmark.run()
     }
+  }
+
+  def normalizedExplain(s: String): String = {
+    import scala.util.matching.Regex
+    import scala.collection.mutable
+
+    val cache = mutable.Map[String, String]()
+    var i = 0
+    val r = "#\\d+".r
+    r.replaceAllIn(s,
+      x => cache.getOrElseUpdate(x.source.subSequence(x.start, x.end).toString, { i += 1; s"#$i" }))
   }
 
   def filterQueries(

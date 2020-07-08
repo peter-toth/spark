@@ -1642,7 +1642,14 @@ object SQLConf {
       .doc("Enables CBO for estimation of plan statistics when set true.")
       .version("2.2.0")
       .booleanConf
-      .createWithDefault(false)
+      .createWithDefault(true)
+
+   val CBO_PRUNEFIX_ENABLED =
+    buildConf("spark.sql.cbo.prunefix.enabled")
+      .doc("Enables CBO for estimation of plan statistics when set true.")
+      .version("2.2.0")
+      .booleanConf
+      .createWithDefault(true)
 
   val PLAN_STATS_ENABLED =
     buildConf("spark.sql.cbo.planStats.enabled")
@@ -1656,7 +1663,7 @@ object SQLConf {
       .doc("Enables join reorder in CBO.")
       .version("2.2.0")
       .booleanConf
-      .createWithDefault(false)
+      .createWithDefault(true)
 
   val JOIN_REORDER_DP_THRESHOLD =
     buildConf("spark.sql.cbo.joinReorder.dp.threshold")

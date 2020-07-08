@@ -473,6 +473,12 @@
       <artifactId>kafka-clients</artifactId>
       <version>${kafka.version}</version>
       <scope>provided</scope>
+      <exclusions>
+        <exclusion>
+          <groupId>org.apache.shiro</groupId>
+          <artifactId>shiro-core</artifactId>
+        </exclusion>
+      </exclusions>
     </dependency>
 
   </dependencies>

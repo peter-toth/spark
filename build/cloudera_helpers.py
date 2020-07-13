@@ -29,7 +29,7 @@ def _get_gbn_for_bquery(bquery):
           --index-url https://pypi.infra.cloudera.com/api/pypi/cloudera/simple""")
     raise RuntimeError(msg + u', caused by ' + repr(cause)), None, sys.exc_info()[2]
 
-  gbn = subprocess.check_output(["buildinfo", "resolve", bquery])
+  gbn = subprocess.check_output(["buildinfo", "resolve", bquery]).rstrip()
   print("resolved bquery %s into gbn %s" % (bquery, gbn))
   return gbn
 

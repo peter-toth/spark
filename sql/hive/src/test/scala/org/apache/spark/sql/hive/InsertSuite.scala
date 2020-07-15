@@ -414,15 +414,7 @@ class InsertSuite extends QueryTest with TestHiveSingleton with BeforeAndAfter
           sql(s"INSERT INTO TABLE $tableName PARTITION (b=15) SELECT 13, 14, 16")
         }
 
-        // Because of CDPD-7882 we will raise an exception when dynamic and
-        // static partitions are mixed during inserts on hive tables.
-        if (tableName.equals("hive_table")) {
-          intercept[AnalysisException] {
-            sql(s"INSERT INTO TABLE $tableName PARTITION (b=14, c) SELECT 13, 16, 15")
-          }
-        } else {
-          sql(s"INSERT INTO TABLE $tableName PARTITION (b=14, c) SELECT 13, 16, 15")
-        }
+        sql(s"INSERT INTO TABLE $tableName PARTITION (b=14, c) SELECT 13, 16, 15")
 
         // Dynamic partitioning columns need to be after static partitioning columns.
         intercept[AnalysisException] {
@@ -435,28 +427,16 @@ class InsertSuite extends QueryTest with TestHiveSingleton with BeforeAndAfter
 
         sql(s"INSERT INTO TABLE $tableName SELECT 25, 28, 26, 27")
 
-        if (tableName.equals("hive_table")) {
-          checkAnswer(
-            sql(s"SELECT a, b, c, d FROM $tableName"),
-            Row(1, 2, 3, 4) ::
-              Row(5, 6, 7, 8) ::
-              Row(9, 10, 11, 12) ::
-              Row(17, 18, 19, 20) ::
-              Row(21, 22, 23, 24) ::
-              Row(25, 26, 27, 28) :: Nil
-          )
-        } else {
-          checkAnswer(
-            sql(s"SELECT a, b, c, d FROM $tableName"),
-            Row(1, 2, 3, 4) ::
-              Row(5, 6, 7, 8) ::
-              Row(9, 10, 11, 12) ::
-              Row(13, 14, 15, 16) ::
-              Row(17, 18, 19, 20) ::
-              Row(21, 22, 23, 24) ::
-              Row(25, 26, 27, 28) :: Nil
-          )
-        }
+        checkAnswer(
+          sql(s"SELECT a, b, c, d FROM $tableName"),
+          Row(1, 2, 3, 4) ::
+            Row(5, 6, 7, 8) ::
+            Row(9, 10, 11, 12) ::
+            Row(13, 14, 15, 16) ::
+            Row(17, 18, 19, 20) ::
+            Row(21, 22, 23, 24) ::
+            Row(25, 26, 27, 28) :: Nil
+        )
       }
   }
 

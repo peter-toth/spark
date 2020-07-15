@@ -365,8 +365,7 @@ class HiveQuerySuite extends HiveComparisonTest with SQLTestUtils with BeforeAnd
       |SELECT * FROM createdtable;
     """.stripMargin)
 
-  // Ignoring this until CDPD-7882 is fixed.
-  ignore("SPARK-7270: consider dynamic partition when comparing table output") {
+  test("SPARK-7270: consider dynamic partition when comparing table output") {
     withTable("test_partition", "ptest") {
       sql(s"CREATE TABLE test_partition (a STRING) PARTITIONED BY (b BIGINT, c STRING)")
       sql(s"CREATE TABLE ptest (a STRING, b BIGINT, c STRING)")

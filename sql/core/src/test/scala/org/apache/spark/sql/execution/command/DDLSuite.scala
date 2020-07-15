@@ -2512,9 +2512,7 @@ abstract class DDLSuite extends QueryTest with SQLTestUtils {
         if (isUsingHiveMetastore) {
           spark.sql("CREATE TABLE t2(a int) " +
             s"PARTITIONED BY(c string, b string) LOCATION '${dir.toURI}'")
-          // Ignore this until CDPD-7882 is fixed. Otherwise, it won't work if we
-          // raise exception to avoid data corruption
-          // validatePartialStaticPartitionTable("t2")
+          validatePartialStaticPartitionTable("t2")
         }
 
         def validatePartialStaticPartitionTable(tableName: String): Unit = {

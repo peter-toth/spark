@@ -137,19 +137,6 @@ case class InsertIntoHiveTable(
       case (key, None) => key -> ""
     }
 
-    // Because of CDPD-7882 we will raise an exception when dynamic and
-    // static partitions are mixed in an insert query.
-    if (numStaticPartitions > 0 && numDynamicPartitions > 0) {
-      throw new AnalysisException(
-        "Inserts using a combination of static and dynamic partitions are not supported for" +
-          " this release. To workaround the issue please use dynamic partitions for all" +
-          " partitions. For example in a table like: \n" +
-          "'create table t (a INT, d INT) PARTITIONED BY (b INT, c INT)' \n" +
-          "you can do: \n 'INSERT INTO TABLE t PARTITION (b, c) SELECT 14, 16, 14, 15'. \n" +
-          " Alternatively mention all the partitions in a static way like:\n" +
-          " 'INSERT INTO TABLE t PARTITION (b=14, c=15) SELECT 13, 16'")
-    }
-
     // All partition column names in the format of "<column name 1>/<column name 2>/..."
     val partitionColumns = fileSinkConf.getTableInfo.getProperties.getProperty("partition_columns")
     val partitionColumnNames = Option(partitionColumns).map(_.split("/")).getOrElse(Array.empty)

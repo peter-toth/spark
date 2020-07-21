@@ -28,7 +28,6 @@ import scala.Tuple2$;
 import scala.collection.Iterator;
 
 import com.google.common.collect.HashMultiset;
-import com.google.common.collect.Iterators;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;

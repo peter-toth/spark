@@ -27,7 +27,6 @@ import java.util.concurrent.atomic.AtomicLong
 import scala.util.Random
 
 import org.apache.hadoop.fs.{FSDataInputStream, Path, RawLocalFileSystem}
-
 import org.apache.hadoop.fs.FileSystem
 
 import org.apache.spark.SparkFunSuite

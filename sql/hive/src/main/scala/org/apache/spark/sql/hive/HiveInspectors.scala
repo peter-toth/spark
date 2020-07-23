@@ -635,11 +635,7 @@ private[hive] trait HiveInspectors {
         case x: TimestampObjectInspector if x.preferWritable() =>
           data: Any => {
             if (data != null) {
-              val t = x.getPrimitiveWritableObject(data)
-              val millis = t.getSeconds * 1000000L + t.getNanos / 1000L
-              val conMillis = DateTimeUtils.convertTz(
-                millis, TimeZone.getDefault, DateTimeUtils.TimeZoneUTC)
-              conMillis
+              DateTimeUtils.fromHiveTimestamp(x.getPrimitiveJavaObject(data))
             } else {
               null
             }

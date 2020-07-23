@@ -19,8 +19,10 @@ package org.apache.spark.sql.catalyst.util
 
 import java.sql.{Date, Timestamp}
 import java.text.{DateFormat, ParsePosition, SimpleDateFormat}
-import java.time.{DateTimeException, Instant, LocalDate, ZonedDateTime, ZoneOffset}
+import java.time.{DateTimeException, Instant, LocalDate, LocalDateTime, LocalTime, ZonedDateTime, ZoneId, ZoneOffset}
+import java.time.temporal.ChronoField
 import java.util.{Calendar, GregorianCalendar, Locale, TimeZone}
+import java.util.Calendar.{DAY_OF_MONTH, DST_OFFSET, ERA, HOUR_OF_DAY, MINUTE, MONTH, SECOND, YEAR, ZONE_OFFSET}
 import java.util.concurrent.ConcurrentHashMap
 import java.util.function.{Function => JFunction}
 import javax.xml.bind.DatatypeConverter
@@ -302,9 +304,15 @@ object DateTimeUtils {
    * Returns a HiveTimestamp from number of micros since epoch.
    */
   def toHiveTimestamp(us: SQLTimestamp): HiveTimestamp = {
-    // setNanos() will overwrite the millisecond part, so the milliseconds should be
-    // cut off at seconds
-    val usToDefault = convertTz(us, TimeZoneUTC, TimeZone.getDefault)
+    val usToDefault = if ((us/1000) < cutoffDateWrite) {
+      // convert the hybrid Julian timestamp to a proleptic Gregorian one
+      // shift to a time zone agnostic value, while we're at it.
+      rebaseJulianToGregorianMicros(ZoneId.of("UTC"), us)
+    } else {
+      // setNanos() will overwrite the millisecond part, so the milliseconds should be
+      // cut off at seconds
+      convertTz(us, TimeZoneUTC, TimeZone.getDefault)
+    }
     var seconds = usToDefault / MICROS_PER_SECOND
     var micros = usToDefault % MICROS_PER_SECOND
     // setNanos() can not accept negative value
@@ -337,9 +345,17 @@ object DateTimeUtils {
    * Returns the number of micros since epoch from HiveTimestamp.
    */
   def fromHiveTimestamp(t: HiveTimestamp): SQLTimestamp = {
-    val jTimestamp = t.toSqlTimestamp
-    val utcJTs = fromJavaTimestamp(jTimestamp)
-    convertTz(utcJTs, TimeZone.getDefault, TimeZoneUTC )
+    val epochMillisProleptic: Long = t.toEpochMilli
+    if (epochMillisProleptic < cutoffDateRead) {
+      val nanosProleptic: Int = t.getNanos
+      val epochMicrosProleptic =
+        epochMillisProleptic * 1000L + (nanosProleptic.toLong / 1000) % 1000L
+      rebaseGregorianToJulianMicros(ZoneId.of("UTC"), epochMicrosProleptic)
+    } else {
+      val jTimestamp = t.toSqlTimestamp
+      val utcJTs = fromJavaTimestamp(jTimestamp)
+      convertTz(utcJTs, TimeZone.getDefault, TimeZoneUTC)
+    }
   }
 
   /**
@@ -352,6 +368,97 @@ object DateTimeUtils {
       0L
     }
   }
+
+  // Taken from Spark 3
+
+  private final val gregorianStartDate = LocalDate.of(1582, 10, 15)
+  private final val julianEndDate = LocalDate.of(1582, 10, 4)
+  private final val gregorianStartTs = LocalDateTime.of(gregorianStartDate, LocalTime.MIDNIGHT)
+  private final val julianEndTs = LocalDateTime.of(
+    julianEndDate,
+    LocalTime.of(23, 59, 59, 999999999))
+
+  def microsToInstant(us: Long): Instant = {
+    val secs = Math.floorDiv(us, MICROS_PER_SECOND)
+    val mos = Math.floorMod(us, MICROS_PER_SECOND)
+    Instant.ofEpochSecond(secs, mos * NANOS_PER_MICROS)
+  }
+
+  private[sql] def rebaseGregorianToJulianMicros(zoneId: ZoneId, micros: Long): Long = {
+    val instant = microsToInstant(micros)
+    val zonedDateTime = instant.atZone(zoneId)
+    var ldt = zonedDateTime.toLocalDateTime
+    if (ldt.isAfter(julianEndTs) && ldt.isBefore(gregorianStartTs)) {
+      ldt = LocalDateTime.of(gregorianStartDate, ldt.toLocalTime)
+    }
+    val cal = new Calendar.Builder()
+      // `gregory` is a hybrid calendar that supports both the Julian and Gregorian calendar systems
+      .setCalendarType("gregory")
+      .setDate(ldt.getYear, ldt.getMonthValue - 1, ldt.getDayOfMonth)
+      .setTimeOfDay(ldt.getHour, ldt.getMinute, ldt.getSecond)
+      .build()
+    // A local timestamp can have 2 instants in the cases of switching from:
+    //  1. Summer to winter time.
+    //  2. One standard time zone to another one. For example, Asia/Hong_Kong switched from JST
+    //     to HKT on 18 November, 1945 01:59:59 AM.
+    // Below we check that the original `instant` is earlier or later instant. If it is an earlier
+    // instant, we take the standard and DST offsets of the previous day otherwise of the next one.
+    val trans = zoneId.getRules.getTransition(ldt)
+    if (trans != null && trans.isOverlap) {
+      val cloned = cal.clone().asInstanceOf[Calendar]
+      // Does the current offset belong to the offset before the transition.
+      // If so, we will take zone offsets from the previous day otherwise from the next day.
+      // This assumes that transitions cannot happen often than once per 2 days.
+      val shift = if (trans.getOffsetBefore == zonedDateTime.getOffset) -1 else 1
+      cloned.add(DAY_OF_MONTH, shift)
+      cal.set(ZONE_OFFSET, cloned.get(ZONE_OFFSET))
+      cal.set(DST_OFFSET, cloned.get(DST_OFFSET))
+    }
+    fromMillis(cal.getTimeInMillis) + ldt.get(ChronoField.MICRO_OF_SECOND)
+  }
+
+  private[sql] def rebaseJulianToGregorianMicros(zoneId: ZoneId, micros: Long): Long = {
+    val cal = new Calendar.Builder()
+      // `gregory` is a hybrid calendar that supports both
+      // the Julian and Gregorian calendar systems
+      .setCalendarType("gregory")
+      .setInstant(toMillis(micros))
+      .build()
+    val localDateTime = LocalDateTime.of(
+      cal.get(YEAR),
+      cal.get(MONTH) + 1,
+      // The number of days will be added later to handle non-existing
+      // Julian dates in Proleptic Gregorian calendar.
+      // For example, 1000-02-29 exists in Julian calendar because 1000
+      // is a leap year but it is not a leap year in Gregorian calendar.
+      1,
+      cal.get(HOUR_OF_DAY),
+      cal.get(MINUTE),
+      cal.get(SECOND),
+      (Math.floorMod(micros, MICROS_PER_SECOND) * NANOS_PER_MICROS).toInt)
+      .`with`(ChronoField.ERA, cal.get(ERA))
+      .plusDays(cal.get(DAY_OF_MONTH) - 1)
+    val zonedDateTime = localDateTime.atZone(zoneId)
+    // In the case of local timestamp overlapping, we need to choose the correct time instant
+    // which is related to the original local timestamp. We look ahead of 1 day, and if the next
+    // date has the same standard zone and DST offsets, the current local timestamp belongs to
+    // the period after the transition. In that case, we take the later zoned date time otherwise
+    // earlier one. Here, we assume that transitions happen not often than once per day.
+    val trans = zoneId.getRules.getTransition(localDateTime)
+    val adjustedZdt = if (trans != null && trans.isOverlap) {
+      val dstOffset = cal.get(DST_OFFSET)
+      val zoneOffset = cal.get(ZONE_OFFSET)
+      cal.add(DAY_OF_MONTH, 1)
+      if (zoneOffset == cal.get(ZONE_OFFSET) && dstOffset == cal.get(DST_OFFSET)) {
+        zonedDateTime.withLaterOffsetAtOverlap()
+      } else {
+        zonedDateTime.withEarlierOffsetAtOverlap()
+      }
+    } else zonedDateTime
+    instantToMicros(adjustedZdt.toInstant)
+  }
+
+  // End of taken from Spark 3
 
   /**
    * Returns the number of microseconds since epoch from Julian day

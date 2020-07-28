@@ -1622,7 +1622,14 @@
         <version>${hive.version}</version>
         <scope>${hive.deps.scope}</scope>
         <exclusions>
-
+          <exclusion>
+            <groupId>com.sun.jersey</groupId>
+            <artifactId>*</artifactId>
+          </exclusion>
+          <exclusion>
+            <groupId>com.sun.jersey.contribs</groupId>
+            <artifactId>*</artifactId>
+          </exclusion>
           <!-- pull this in when needed; the explicit definition culls the surplis-->
           <exclusion>
             <groupId>${hive.group}</groupId>

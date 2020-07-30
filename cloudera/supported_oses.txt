@@ -8,3 +8,4 @@ Debian7
 SLES11
 SLES12
 Ubuntu1604
+Ubuntu1804

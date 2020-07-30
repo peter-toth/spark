@@ -38,7 +38,7 @@ if [[ -z "$CDH_VERSION" ]]; then
     exit 1
 fi
 
-declare -a OSES=("alpine" "slim")
+declare -a OSES=("alpine" "slim" "ubi8")
 declare -a FLAVORS=("python")
 
 SPARK_VERSION_LC=$(echo "$SPARK_VERSION" | awk '{print tolower($0)}')

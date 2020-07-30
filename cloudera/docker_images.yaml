@@ -3,6 +3,8 @@ docker_images:
   spark-alpine-python: spark-python-alpine-2.4.0
   spark-slim: spark-slim-2.4.0
   spark-slim-python: spark-python-slim-2.4.0
+  spark-ubi8: spark-ubi8-2.4.0
+  spark-ubi8-python: spark-python-ubi8-2.4.0
 
 registry: __REGISTRY__
 docker_image_tag:

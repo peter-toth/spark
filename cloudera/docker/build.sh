@@ -6,7 +6,7 @@ usage() {
   echo "Usage $0: REPO OS SPARK_VERSION [-f FLAVOR]"
   echo "Example $0: cloudera alpine cloudera-2.4.4"
   echo "Example $0: cloudera alpine cloudera-2.4.4 -f python"
-  echo "Supported OS list: slim, alpine"
+  echo "Supported OS list: slim, alpine, ubi8"
   echo "Supported FLAVOR list: python"
   exit 1
 }

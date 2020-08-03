@@ -780,9 +780,9 @@ class Analyzer(
                 // AggregateFunction's with the exception of First and Last in their default mode
                 // (which we handle) and possibly some Hive UDAF's.
                 case First(expr, _) =>
-                  First(ifExpr(expr), Literal(true))
+                  First(ifExpr(expr), true)
                 case Last(expr, _) =>
-                  Last(ifExpr(expr), Literal(true))
+                  Last(ifExpr(expr), true)
                 case a: AggregateFunction =>
                   a.withNewChildren(a.children.map(ifExpr))
               }.transform {
@@ -1041,12 +1041,10 @@ class Analyzer(
 
         val staticPartitions = i.partitionSpec.filter(_._2.isDefined).mapValues(_.get)
         val query = addStaticPartitionColumns(r, i.query, staticPartitions)
-        val dynamicPartitionOverwrite = partCols.size > staticPartitions.size &&
-          conf.partitionOverwriteMode == PartitionOverwriteMode.DYNAMIC
 
         if (!i.overwrite) {
           AppendData.byPosition(r, query)
-        } else if (dynamicPartitionOverwrite) {
+        } else if (conf.partitionOverwriteMode == PartitionOverwriteMode.DYNAMIC) {
           OverwritePartitionsDynamic.byPosition(r, query)
         } else {
           OverwriteByExpression.byPosition(r, query, staticDeleteExpression(r, staticPartitions))

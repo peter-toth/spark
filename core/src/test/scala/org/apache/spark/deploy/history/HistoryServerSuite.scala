@@ -170,6 +170,8 @@ class HistoryServerSuite extends SparkFunSuite with BeforeAndAfter with Matchers
     "executor node blacklisting" -> "applications/app-20161116163331-0000/executors",
     "executor node blacklisting unblacklisting" -> "applications/app-20161115172038-0000/executors",
     "executor memory usage" -> "applications/app-20161116163331-0000/executors",
+    "stage list with peak metrics" -> "applications/app-20200706201101-0003/stages",
+    "stage with peak metrics" -> "applications/app-20200706201101-0003/stages/2/0",
 
     "app environment" -> "applications/app-20161116163331-0000/environment"
     // Todo: enable this test when logging the even of onBlockUpdated. See: SPARK-13845

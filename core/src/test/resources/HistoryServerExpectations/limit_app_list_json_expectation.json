@@ -1,4 +1,19 @@
 [ {
+  "id" : "app-20200706201101-0003",
+  "name" : "Spark shell",
+  "attempts" : [ {
+    "startTime" : "2020-07-07T03:11:00.235GMT",
+    "endTime" : "2020-07-07T03:17:04.231GMT",
+    "lastUpdated" : "",
+    "duration" : 363996,
+    "sparkUser" : "terryk",
+    "completed" : true,
+    "appSparkVersion" : "3.1.0-SNAPSHOT",
+    "startTimeEpoch" : 1594091460235,
+    "endTimeEpoch" : 1594091824231,
+    "lastUpdatedEpoch" : 0
+  } ]
+}, {
   "id" : "application_1553914137147_0018",
   "name" : "LargeBlocks",
   "attempts" : [ {
@@ -24,23 +39,8 @@
     "sparkUser" : "attilapiros",
     "completed" : true,
     "appSparkVersion" : "2.3.0-SNAPSHOT",
-    "lastUpdatedEpoch" : 0,
     "startTimeEpoch" : 1516300235119,
-    "endTimeEpoch" : 1516300707938
-  } ]
-}, {
-  "id" : "app-20180109111548-0000",
-  "name" : "Spark shell",
-  "attempts" : [ {
-    "startTime" : "2018-01-09T10:15:42.372GMT",
-    "endTime" : "2018-01-09T10:24:37.606GMT",
-    "lastUpdated" : "",
-    "duration" : 535234,
-    "sparkUser" : "attilapiros",
-    "completed" : true,
-    "appSparkVersion" : "2.3.0-SNAPSHOT",
-    "lastUpdatedEpoch" : 0,
-    "startTimeEpoch" : 1515492942372,
-    "endTimeEpoch" : 1515493477606
+    "endTimeEpoch" : 1516300707938,
+    "lastUpdatedEpoch" : 0
   } ]
 } ]

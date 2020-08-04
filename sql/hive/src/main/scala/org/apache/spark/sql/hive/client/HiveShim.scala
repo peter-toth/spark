@@ -44,7 +44,7 @@ import org.apache.hadoop.hive.serde.serdeConstants
 import org.apache.spark.internal.Logging
 import org.apache.spark.sql.AnalysisException
 import org.apache.spark.sql.SparkSession
-import org.apache.spark.sql.catalyst.FunctionIdentifier
+import org.apache.spark.sql.catalyst.{FunctionIdentifier, TableIdentifier}
 import org.apache.spark.sql.catalyst.analysis.NoSuchPermanentFunctionException
 import org.apache.spark.sql.catalyst.catalog.{CatalogFunction, CatalogTablePartition, CatalogUtils, FunctionResource, FunctionResourceType}
 import org.apache.spark.sql.catalyst.expressions._
@@ -1630,7 +1630,7 @@ private[client] class Shim_cdpd extends Shim_v3_1 {
   override def loadPartition(
       hive: Hive,
       loadPath: Path,
-      tableName: String,
+      tableIdentifierString: String,
       partSpec: JMap[String, String],
       replace: Boolean,
       inheritTableSpecs: Boolean,
@@ -1639,8 +1639,9 @@ private[client] class Shim_cdpd extends Shim_v3_1 {
     val isDirectInsert: Boolean = false
     val session = SparkSession.getActiveSession
     assert(session.nonEmpty)
-    val database = session.get.sessionState.catalog.getCurrentDatabase
-    val table = hive.getTable(database, tableName)
+    // extract the database and plain table name from the full identifier
+    val ti = session.get.sessionState.sqlParser.parseTableIdentifier(tableIdentifierString)
+    val table = hive.getTable(ti.database.get, ti.table)
     val loadFileType = if (replace) {
       org.apache.hadoop.hive.ql.plan.LoadTableDesc.LoadFileType.REPLACE_ALL
     } else {

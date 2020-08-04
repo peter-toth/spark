@@ -126,7 +126,8 @@
     <zookeeper.version>3.5.5.7.1.1.0-565</zookeeper.version>
     <curator.version>4.2.0</curator.version>
     <hive.group>org.apache.hive</hive.group>
-    <hive.classifier>core</hive.classifier>
+    <!-- If core used as upstream then java.lang.NoClassDefFoundError: org/apache/hadoop/hive/llap/io/api/LlapProxy -->
+    <hive.classifier />
     <!-- Version used in Maven Hive dependency -->
     <hive.version>3.1.3000.7.1.1.0-565</hive.version>
     <hive23.version>2.3.7</hive23.version>

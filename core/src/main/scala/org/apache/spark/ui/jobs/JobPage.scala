@@ -253,7 +253,8 @@ private[ui] class JobPage(parent: JobsTab, store: AppStatusStore) extends WebUIP
           accumulatorUpdates = Nil,
           tasks = None,
           executorSummary = None,
-          killedTasksSummary = Map())
+          killedTasksSummary = Map(),
+          peakExecutorMetrics = None)
       }
     }
 

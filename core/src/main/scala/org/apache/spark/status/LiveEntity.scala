@@ -347,6 +347,8 @@ private class LiveExecutorStageSummary(
 
   var metrics = createMetrics(default = 0L)
 
+  val peakExecutorMetrics = new ExecutorMetrics()
+
   override protected def doUpdate(): Any = {
     val info = new v1.ExecutorStageSummary(
       taskTime,
@@ -363,7 +365,8 @@ private class LiveExecutorStageSummary(
       metrics.shuffleWriteMetrics.recordsWritten,
       metrics.memoryBytesSpilled,
       metrics.diskBytesSpilled,
-      isBlacklisted)
+      isBlacklisted,
+      Some(peakExecutorMetrics).filter(_.isSet))
     new ExecutorStageSummaryWrapper(stageId, attemptId, executorId, info)
   }
 
@@ -401,6 +404,8 @@ private class LiveStage extends LiveEntity {
   val activeTasksPerExecutor = new HashMap[String, Int]().withDefaultValue(0)
 
   var blackListedExecutors = new HashSet[String]()
+
+  val peakExecutorMetrics = new ExecutorMetrics()
 
   // Used for cleanup of tasks after they reach the configured limit. Not written to the store.
   @volatile var cleaning = false
@@ -465,7 +470,8 @@ private class LiveStage extends LiveEntity {
       accumulatorUpdates = newAccumulatorInfos(info.accumulables.values),
       tasks = None,
       executorSummary = None,
-      killedTasksSummary = killedSummary)
+      killedTasksSummary = killedSummary,
+      Some(peakExecutorMetrics).filter(_.isSet))
   }
 
   override protected def doUpdate(): Any = {

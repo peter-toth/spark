@@ -20,6 +20,7 @@ package org.apache.spark.sql.execution
 import java.io.{BufferedWriter, OutputStreamWriter}
 import java.nio.charset.StandardCharsets
 import java.sql.{Date, Timestamp}
+import java.util.concurrent.atomic.AtomicLong
 
 import org.apache.hadoop.fs.Path
 
@@ -48,6 +49,8 @@ import org.apache.spark.util.Utils
  * changing them, because a lot of developers use the feature for debugging.
  */
 class QueryExecution(val sparkSession: SparkSession, val logical: LogicalPlan) {
+
+  val id: Long = QueryExecution.nextExecutionId
 
   // TODO: Move the planner an optimizer into here from SessionState.
   protected def planner = sparkSession.sessionState.planner
@@ -254,7 +257,7 @@ class QueryExecution(val sparkSession: SparkSession, val logical: LogicalPlan) {
   /** A special namespace for commands that can be used to debug query execution. */
   // scalastyle:off
   object debug {
-  // scalastyle:on
+    // scalastyle:on
 
     /**
      * Prints to stdout all the generated code found in this plan (i.e. the output of each
@@ -296,4 +299,10 @@ class QueryExecution(val sparkSession: SparkSession, val logical: LogicalPlan) {
       }
     }
   }
+}
+
+object QueryExecution {
+  private val _nextExecutionId = new AtomicLong(0)
+
+  private def nextExecutionId: Long = _nextExecutionId.getAndIncrement
 }

@@ -20,6 +20,7 @@ package org.apache.spark.sql.execution
 import java.io.{BufferedWriter, OutputStreamWriter}
 import java.nio.charset.StandardCharsets
 import java.sql.{Date, Timestamp}
+import java.util.concurrent.atomic.AtomicLong
 
 import org.apache.hadoop.fs.Path
 
@@ -48,6 +49,8 @@ import org.apache.spark.util.Utils
  * changing them, because a lot of developers use the feature for debugging.
  */
 class QueryExecution(val sparkSession: SparkSession, val logical: LogicalPlan) {
+
+  val id: Long = QueryExecution.nextExecutionId
 
   // TODO: Move the planner an optimizer into here from SessionState.
   protected def planner = sparkSession.sessionState.planner
@@ -285,6 +288,10 @@ class QueryExecution(val sparkSession: SparkSession, val logical: LogicalPlan) {
 }
 
 object QueryExecution {
+  private val _nextExecutionId = new AtomicLong(0)
+
+  private def nextExecutionId: Long = _nextExecutionId.getAndIncrement
+
   /**
    * Construct a sequence of rules that are used to prepare a planned [[SparkPlan]] for execution.
    * These rules will make sure subqueries are planned, make use the data partitioning and ordering

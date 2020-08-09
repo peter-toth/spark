@@ -27,7 +27,7 @@ import java.util.zip.{ZipEntry, ZipOutputStream}
 import scala.collection.JavaConverters._
 import scala.collection.mutable
 import scala.io.Source
-import scala.util.Try
+import scala.util.control.NonFatal
 import scala.xml.Node
 
 import com.fasterxml.jackson.annotation.JsonIgnore
@@ -529,7 +529,8 @@ private[history] class FsHistoryProvider(conf: SparkConf, clock: Clock)
                 case _: FileNotFoundException => false
               }
 
-            case _: FileNotFoundException =>
+            case NonFatal(e) =>
+              logWarning(s"Error while filtering log ${reader.rootPath}", e)
               false
           }
         }

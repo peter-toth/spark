@@ -17,7 +17,7 @@
   "name" : "SPARK3_ON_YARN",
   "label" : "Spark 3",
   "description" : "Apache Spark is an open source cluster computing system. This service runs Spark 3 as an application on YARN. <span class=\"error\">Before adding this service, ensure that you have installed the Spark3 binaries, which are not included in CDH.</span>",
-  "version" : "3.0.0.cloudera1-SNAPSHOT",
+  "version" : "3.0.7110.0",
   "compatibility" : { "cdhVersion" : { "min" : "7" } },
   "runAs" : {
     "user" : "spark",

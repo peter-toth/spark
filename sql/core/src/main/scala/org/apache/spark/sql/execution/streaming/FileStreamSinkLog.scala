@@ -100,30 +100,24 @@ class FileStreamSinkLog(
 
   private val ttlMs = outputTimeToLiveMs.getOrElse(Long.MaxValue)
 
-  override def compactLogs(logs: Seq[SinkFileStatus]): Seq[SinkFileStatus] = {
+  override def shouldRetain(log: SinkFileStatus): Boolean = {
     val curTime = System.currentTimeMillis()
-    val deletedFiles = logs.filter { log =>
-      if (log.action == FileStreamSinkLog.DELETE_ACTION) {
-        logDebug(s"${log.path} excluded by delete action.")
-        true
-      } else if (curTime - log.modificationTime > ttlMs) {
-        logDebug(s"${log.path} excluded by retention - current time: $curTime / " +
-          s"modification time: ${log.modificationTime} / TTL: $ttlMs.")
-        true
-      } else {
-        false
-      }
-    }.map(_.path).toSet
-    if (deletedFiles.isEmpty) {
-      logs
+    if (log.action == FileStreamSinkLog.DELETE_ACTION) {
+      logDebug(s"${log.path} excluded by delete action.")
+      false
+    } else if (curTime - log.modificationTime > ttlMs) {
+      logDebug(s"${log.path} excluded by retention - current time: $curTime / " +
+        s"modification time: ${log.modificationTime} / TTL: $ttlMs.")
+      false
     } else {
-      logs.filter(f => !deletedFiles.contains(f.path))
+      true
     }
   }
 }
 
 object FileStreamSinkLog {
   val VERSION = 1
+  // TODO: SPARK-32648 This action hasn't been used from the introduction, better to remove this.
   val DELETE_ACTION = "delete"
   val ADD_ACTION = "add"
 }

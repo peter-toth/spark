@@ -21,6 +21,9 @@ import threading
 import time
 import unittest
 import warnings
+import sys
+if sys.version >= '3':
+    basestring = unicode = str
 
 from pyspark import SparkContext, SparkConf
 from pyspark.sql import Row, SparkSession
@@ -427,6 +430,12 @@ class ArrowTests(ReusedSQLTestCase):
         pdf = self.spark.sparkContext.emptyRDD().toDF("col1 int").toPandas()
         self.assertEqual(len(pdf), 0)
         self.assertEqual(list(pdf.columns), ["col1"])
+
+    def test_createDataFrame_empty_partition(self):
+        pdf = pd.DataFrame({"c1": [1], "c2": ["string"]})
+        df = self.spark.createDataFrame(pdf)
+        self.assertEqual([Row(c1=1, c2='string')], df.collect())
+        self.assertGreater(self.spark.sparkContext.defaultParallelism, len(pdf))
 
 
 @unittest.skipIf(

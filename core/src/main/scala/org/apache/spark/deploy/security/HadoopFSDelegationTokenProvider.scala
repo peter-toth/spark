@@ -100,7 +100,7 @@ private[deploy] class HadoopFSDelegationTokenProvider
       creds: Credentials): Credentials = {
 
     filesystems.foreach { fs =>
-      logInfo(s"getting token for: $fs with renewer $renewer")
+      logInfo(s"getting token for: ${fs.getClass}:${fs.getUri} with renewer $renewer")
       fs.addDelegationTokens(renewer, creds)
     }
 

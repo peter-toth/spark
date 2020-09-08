@@ -1,0 +1,166 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  ~ Licensed to the Apache Software Foundation (ASF) under one or more
+  ~ contributor license agreements.  See the NOTICE file distributed with
+  ~ this work for additional information regarding copyright ownership.
+  ~ The ASF licenses this file to You under the Apache License, Version 2.0
+  ~ (the "License"); you may not use this file except in compliance with
+  ~ the License.  You may obtain a copy of the License at
+  ~
+  ~    http://www.apache.org/licenses/LICENSE-2.0
+  ~
+  ~ Unless required by applicable law or agreed to in writing, software
+  ~ distributed under the License is distributed on an "AS IS" BASIS,
+  ~ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  ~ See the License for the specific language governing permissions and
+  ~ limitations under the License.
+  -->
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+
+  <!-- no parent declaration here, b/c for some reason that messes up the shading rules -->
+  <groupId>org.apache.spark</groupId>
+  <artifactId>spark-shaded-raz</artifactId>
+  <version>3.0.0.3.0.7110.0-SNAPSHOT</version>
+  <packaging>jar</packaging>
+  <name>Spark shaded raz directories</name>
+  <description>
+    Raz requires jersey1, which conflicts with spark's use of jersey2.  So we shade jersey1 and repackage the
+    raz clients to reference our shaded jersey1.  Finally, as raz is pulled in transitively via
+    hadoop-cloud-storage, the assembly has to exclude the transitive dependency,
+    and instead pull in our shaded version.
+  </description>
+
+  <properties>
+    <!-- Package to use when relocating shaded classes. -->
+    <spark.shaded.raz.packageName>org.apache.ranger</spark.shaded.raz.packageName>
+    <ranger.version>2.0.0.7.1.1.0-565</ranger.version>
+    <codehaus.jackson.version>1.9.13</codehaus.jackson.version>
+  </properties>
+
+  <!-- Because we don't inherit from the parent pom, we have to repeat the repository
+       info here.
+       TODO also repeat gbn-repo stuff -->
+  <repositories>
+    <repository>
+      <id>gcs-maven-central-mirror</id>
+      <!--
+        Google Mirror of Maven Central, placed first so that it's used instead of flaky Maven Central.
+        See https://storage-download.googleapis.com/maven-central/index.html
+      -->
+      <name>GCS Maven Central mirror</name>
+      <url>https://maven-central.storage-download.googleapis.com/repos/central/data/</url>
+      <releases>
+        <enabled>true</enabled>
+      </releases>
+      <snapshots>
+        <enabled>false</enabled>
+      </snapshots>
+    </repository>
+    <repository>
+      <!--
+        This is used as a fallback when the first try fails.
+      -->
+      <id>central</id>
+      <name>Maven Repository</name>
+      <url>https://repo.maven.apache.org/maven2</url>
+      <releases>
+        <enabled>true</enabled>
+      </releases>
+      <snapshots>
+        <enabled>false</enabled>
+      </snapshots>
+    </repository>
+    <repository>
+      <id>cloudera</id>
+      <url>https://nexus-private.hortonworks.com/nexus/content/groups/public</url>
+      <releases>
+        <enabled>true</enabled>
+      </releases>
+    </repository>
+  </repositories>
+
+
+
+  <dependencies>
+    <dependency>
+      <groupId>org.codehaus.jackson</groupId>
+      <artifactId>jackson-jaxrs</artifactId>
+      <version>${codehaus.jackson.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.ranger</groupId>
+      <artifactId>ranger-raz-hook-abfs</artifactId>
+      <version>${ranger.version}</version>
+    </dependency>
+  </dependencies>
+
+  <build>
+    <plugins>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-shade-plugin</artifactId>
+        <version>3.2.4</version>
+        <executions>
+          <execution>
+            <phase>package</phase>
+            <goals>
+              <goal>shade</goal>
+            </goals>
+
+            <configuration>
+              <minimizeJar>false</minimizeJar>
+              <shadedArtifactAttached>true</shadedArtifactAttached>
+              <shadedClassifierName>shaded</shadedClassifierName>
+              <transformers>
+                <transformer implementation="org.apache.maven.plugins.shade.resource.ServicesResourceTransformer"/>
+                <transformer implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer" />
+                <transformer implementation="org.apache.maven.plugins.shade.resource.AppendingTransformer" />
+              </transformers>
+              <filters>
+                <filter>
+                  <artifact>*:*</artifact>
+                  <excludes>
+                    <exclude>META-INF/*.SF</exclude>
+                    <exclude>META-INF/*.DSA</exclude>
+                    <exclude>META-INF/*.RSA</exclude>
+                  </excludes>
+                </filter>
+              </filters>
+              <artifactSet>
+                <includes>
+                  <include>org.apache.ranger:*</include>
+                  <include>com.sun.jersey:jersey-bundle</include>
+                  <include>javax.ws.rs:jsr311-api</include>
+                  <include>org.codehaus.jackson:jackson-jaxrs</include>
+                  <include>org.codehaus.jackson:jackson-core-asl</include>
+                  <include>org.codehaus.jackson:jackson-mapper-asl</include>
+                </includes>
+              </artifactSet>
+
+              <relocations>
+                <relocation>
+                  <pattern>javax.ws.rs</pattern>
+                  <shadedPattern>${spark.shaded.raz.packageName}.javax.ws.rs</shadedPattern>
+                </relocation>
+                <relocation>
+                  <pattern>com.sun.jersey</pattern>
+                  <shadedPattern>${spark.shaded.raz.packageName}.com.sun.jersey</shadedPattern>
+                </relocation>
+                <relocation>
+                  <pattern>org.codehaus.jackson</pattern>
+                  <shadedPattern>${spark.shaded.raz.packageName}.org.codehaus.jackson</shadedPattern>
+                </relocation>
+              </relocations>
+
+            </configuration>
+
+          </execution>
+        </executions>
+      </plugin>
+    </plugins>
+  </build>
+
+</project>

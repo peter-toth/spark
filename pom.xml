@@ -3323,6 +3323,7 @@
       </activation>
       <modules>
         <module>hadoop-cloud</module>
+        <module>shaded-raz</module>
       </modules>
     </profile>
 

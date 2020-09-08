@@ -36,7 +36,7 @@ import org.apache.hadoop.yarn.client.api.YarnClientApplication
 import org.apache.hadoop.yarn.conf.YarnConfiguration
 import org.apache.hadoop.yarn.util.Records
 import org.mockito.ArgumentMatchers.{any, anyBoolean, anyShort, eq => meq}
-import org.mockito.Mockito.{spy, verify, mock}
+import org.mockito.Mockito.{mock, spy, verify}
 import org.scalatest.Matchers
 
 import org.apache.spark.{SparkConf, SparkFunSuite, TestUtils}

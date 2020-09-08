@@ -19,5 +19,5 @@ package org.apache.spark.sql.catalyst.optimizer
 
 
 class NestedColumnAliasingSuite {
-  //TODO: merge with changes from SPARK-27314 once SPARK-25379 landed as well
+  // TODO: merge with changes from SPARK-27314 once SPARK-25379 landed as well
 }

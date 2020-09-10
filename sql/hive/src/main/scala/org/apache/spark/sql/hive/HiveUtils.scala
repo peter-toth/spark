@@ -125,7 +125,15 @@ private[spark] object HiveUtils extends Logging {
         "syntax.")
       .version("3.0.0")
       .booleanConf
-      .createWithDefault(true)
+      // https://jira.cloudera.com/browse/CDPD-16803:
+      // We enable "Enable Optimized S3 Committers" in CM by default. That option configures
+      // spark.sql.sources.commitProtocolClass=
+      // org.apache.spark.internal.io.cloud.PathOutputCommitProtocol which doesn't support
+      // `dynamicPartitionOverwrite`. Since `dynamicPartitionOverwrite` became the default in Spark3
+      // with Hive tables that can be converted to datasource relations
+      // (https://issues.apache.org/jira/browse/SPARK-28573) without disabling this configuration
+      // INSERT OVERWRITE statements to those tables would fail.
+      .createWithDefault(false)
 
   val CONVERT_METASTORE_CTAS = buildConf("spark.sql.hive.convertMetastoreCtas")
     .doc("When set to true,  Spark will try to use built-in data source writer " +

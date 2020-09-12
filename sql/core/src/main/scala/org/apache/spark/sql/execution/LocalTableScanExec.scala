@@ -59,7 +59,7 @@ case class LocalTableScanExec(
   }
 
   override protected def stringArgs: Iterator[Any] = {
-    if (rows.isEmpty) {
+    if (rows == null || rows.isEmpty) {
       Iterator("<empty>", output)
     } else {
       Iterator(output)

@@ -18,6 +18,7 @@
 package org.apache.spark.sql.hive
 
 import java.lang.reflect.{ParameterizedType, Type, WildcardType}
+import java.util.Locale
 
 import scala.collection.JavaConverters._
 
@@ -261,6 +262,34 @@ private[hive] trait HiveInspectors {
     input => if (input == null) null else f(input)
   }
 
+  protected def openCSVWrapperFor(oi: ObjectInspector, dataType: DataType): Any => Any = {
+    val toOpenCSVString: Any => String = dataType match {
+      case _: ByteType => o => o.toString
+      case _: IntegerType => o => o.toString
+      case _: ShortType => o => o.toString
+      case _: LongType => o => o.toString
+      case _: FloatType => o => o.toString
+      case _: DoubleType => o => o.toString
+      case _: DecimalType =>
+        o => HiveDecimal.create(o.asInstanceOf[Decimal].toJavaBigDecimal).toString
+      case _: BooleanType => o => o.toString.toUpperCase(Locale.ROOT)
+      case _: DateType => o => HiveDateTimeUtils.toHiveDate(o.asInstanceOf[Int]).toString
+      case _: TimestampType => o => HiveDateTimeUtils.toHiveTimestamp(o.asInstanceOf[Long]).toString
+      case _: StringType => o => o.toString
+      case _: BinaryType => o => new String(o.asInstanceOf[Array[Byte]])
+      case _ => throw new AnalysisException(s"Unsupported data type with OpenCSVSerde: $dataType")
+    }
+
+    oi match {
+      case soi: StringObjectInspector if soi.preferWritable() =>
+        withNullSafe(o => getStringWritable(UTF8String.fromString(toOpenCSVString(o))))
+      case _: StringObjectInspector =>
+        withNullSafe(o => toOpenCSVString(o))
+      case _ => throw new AnalysisException(
+        s"Unexpected object inspector with OpenCSVSerde: ${oi.getClass.getName}")
+    }
+  }
+
   /**
    * Wraps with Hive types based on object inspector.
    */
@@ -276,7 +305,7 @@ private[hive] trait HiveInspectors {
       case _: StringObjectInspector if x.preferWritable() =>
         withNullSafe(o => getStringWritable(o))
       case _: StringObjectInspector =>
-        withNullSafe(o => o.toString())
+        withNullSafe(o => o.asInstanceOf[UTF8String].toString())
       case _: IntObjectInspector if x.preferWritable() =>
         withNullSafe(o => getIntWritable(o))
       case _: IntObjectInspector =>

@@ -141,7 +141,12 @@ class HiveOutputWriter(
   private val fieldOIs =
     standardOI.getAllStructFieldRefs.asScala.map(_.getFieldObjectInspector).toArray
   private val dataTypes = dataSchema.map(_.dataType).toArray
-  private val wrappers = fieldOIs.zip(dataTypes).map { case (f, dt) => wrapperFor(f, dt) }
+  private val wrappers =
+    if (serializer.getClass.getName == "org.apache.hadoop.hive.serde2.OpenCSVSerde") {
+      fieldOIs.zip(dataTypes).map { case (f, dt) => openCSVWrapperFor(f, dt) }
+    } else {
+      fieldOIs.zip(dataTypes).map { case (f, dt) => wrapperFor(f, dt) }
+    }
   private val outputData = new Array[Any](fieldOIs.length)
 
   override def write(row: InternalRow): Unit = {

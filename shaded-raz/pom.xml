@@ -92,6 +92,16 @@
       <artifactId>ranger-raz-hook-abfs</artifactId>
       <version>${ranger.version}</version>
     </dependency>
+    <dependency>
+      <groupId>org.apache.ranger</groupId>
+      <artifactId>ranger-raz-hook-s3</artifactId>
+      <version>${ranger.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.ranger</groupId>
+      <artifactId>ranger-raz-s3-lib</artifactId>
+      <version>${ranger.version}</version>
+    </dependency>
   </dependencies>
 
   <build>

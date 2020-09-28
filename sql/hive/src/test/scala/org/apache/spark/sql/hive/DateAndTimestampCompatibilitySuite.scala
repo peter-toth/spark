@@ -376,7 +376,7 @@ class DateAndTimestampCompatibilitySuite
 
         val checkQuery = s"""
             |SELECT original, expected
-            |FROM $tableName
+            |FROM $extTableName
             |WHERE !(original <=> expected)
             |""".stripMargin
 

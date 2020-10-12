@@ -105,8 +105,32 @@ case class ScalarSubquery(
     Literal.create(result, dataType).doGenCode(ctx, ev)
   }
 
+  // Real canonicalization of a `ScalarSubquery` is not safe because canonicalization can happen on
+  // executors as well where `SparkPlan.sqlContext` is not available and initialization of some
+  // `SparkPlan` nodes in `ScalarSubquery.plan' depend on the presence of `sqlContext` (e.g.
+  // `SortExec.enableRadixSort`, `HashAggregateExec.testFallbackStartsAt`), so these nodes would
+  // throw NPE in those cases.
+  //
+  // But `ScalarSubquery` canonicalization is important for `ReuseExchangeAndSubquery` rule as it
+  // works in bottom-up manner and can change a `SubqueryExec` to `ReusedSubqueryExec` in a
+  // `ScalarSubquery` node under a parent node that can be a better reuse possibility. Without
+  // canonicalization of `ScalarSubquery` we would lose that better reuse option at its parent.
+  //
+  // So until these issues are not fixed, what we can do here is to leave the `SparkPlan` nodes
+  // untouched and remove minor cosmetic changes only. It is safe to remove `ReusedSubqueryExec`
+  // wrapper and change the `exprId` to 0.
   override lazy val canonicalized: ScalarSubquery = {
-    copy(plan = plan.canonicalized.asInstanceOf[BaseSubqueryExec], exprId = ExprId(0))
+    if (SQLConf.get.wholePlanReuseEnabled) {
+      plan match {
+        case ReusedSubqueryExec(child) => copy(plan = child, exprId = ExprId(0))
+        case _ => copy(exprId = ExprId(0))
+      }
+    } else {
+      // It's not possible to use `super.canonicalized` (i.e. use `Expression.canonicalized`) in a
+      // `lazy val` but `ScalarSubquery` has no children and `Canonicalize.execute` doesn't make any
+      // change to it, so we return 'this` as `super.canonicalized` would do.
+      this
+    }
   }
 }
 

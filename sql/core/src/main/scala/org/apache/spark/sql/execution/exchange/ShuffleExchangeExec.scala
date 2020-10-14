@@ -63,7 +63,7 @@ case class ShuffleExchangeExec(
 
   override def outputPartitioning: Partitioning = newPartitioning
 
-  private lazy val serializer: Serializer =
+  private val serializer: Serializer =
     new UnsafeRowSerializer(child.output.size, longMetric("dataSize"))
 
   override protected def doPrepare(): Unit = {

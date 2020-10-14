@@ -100,7 +100,7 @@ case class ShuffleExchangeExec(
 
   override def nodeName: String = "Exchange"
 
-  private lazy val serializer: Serializer =
+  private val serializer: Serializer =
     new UnsafeRowSerializer(child.output.size, longMetric("dataSize"))
 
   @transient lazy val inputRDD: RDD[InternalRow] = child.execute()

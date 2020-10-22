@@ -25,7 +25,7 @@ import org.apache.spark.SparkConf
 /**
  * Hadoop delegation token provider.
  */
-private[spark] trait HadoopDelegationTokenProvider {
+trait HadoopDelegationTokenProvider {
 
   /**
    * Name of the service to provide delegation tokens. This name should be unique.  Spark will

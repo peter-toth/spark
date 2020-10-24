@@ -344,6 +344,13 @@ private[spark] object Config extends Logging {
       .timeConf(TimeUnit.SECONDS)
       .createOptional
 
+  val KUBERNETES_EXECUTOR_CHECK_ALL_CONTAINERS =
+    ConfigBuilder("spark.kubernetes.executor.checkAllContainers")
+      .doc("If set to true, all containers in the executor pod will be checked when reporting" +
+        "executor status.")
+      .booleanConf
+      .createWithDefault(false)
+
   val KUBERNETES_DRIVER_LABEL_PREFIX = "spark.kubernetes.driver.label."
   val KUBERNETES_DRIVER_ANNOTATION_PREFIX = "spark.kubernetes.driver.annotation."
   val KUBERNETES_DRIVER_SECRETS_PREFIX = "spark.kubernetes.driver.secrets."

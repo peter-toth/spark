@@ -33,15 +33,13 @@ import org.apache.spark.ml.param.{Param, ParamMap, Params}
 import org.apache.spark.ml.util._
 import org.apache.spark.sql.{DataFrame, Dataset}
 import org.apache.spark.sql.types.StructType
-import org.apache.spark.util.{ListenerBus, SystemClock}
 
 /**
  * :: DeveloperApi ::
  * A stage in a pipeline, either an [[Estimator]] or a [[Transformer]].
  */
 @DeveloperApi
-abstract class PipelineStage extends Params with Logging with
-  ListenerBus[MLListener, MLListenEvent] {
+abstract class PipelineStage extends Params with Logging {
 
   /**
    * :: DeveloperApi ::
@@ -81,13 +79,6 @@ abstract class PipelineStage extends Params with Logging with
   }
 
   override def copy(extra: ParamMap): PipelineStage
-
-  override protected def doPostEvent(
-      listener: MLListener,
-      event: MLListenEvent): Unit = {
-    listener.onEvent(event)
-  }
-
 }
 
 /**
@@ -174,17 +165,8 @@ class Pipeline @Since("1.4.0") (
         transformers += stage.asInstanceOf[Transformer]
       }
     }
-    val model = new PipelineModel(uid, transformers.toArray).setParent(this)
-    if (SparkContext.getOrCreate().getConf.getBoolean("use.sac", false)) {
-      this.addListener(new MLListener {
-        override def onEvent(event: MLListenEvent): Unit = {
-          SparkContext.getOrCreate().listenerBus.post(event)
-        }
-      })
-      postToAll(CreatePipelineEvent(this.uid, dataset))
-      postToAll(CreateModelEvent(model.uid))
-    }
-    model
+
+    new PipelineModel(uid, transformers.toArray).setParent(this)
   }
 
   @Since("1.4.0")
@@ -219,17 +201,8 @@ object Pipeline extends MLReadable[Pipeline] {
 
     SharedReadWrite.validateStages(instance.getStages)
 
-    override protected def saveImpl(path: String): Unit = {
+    override protected def saveImpl(path: String): Unit =
       SharedReadWrite.saveImpl(instance, instance.getStages, sc, path)
-      if (SparkContext.getOrCreate().getConf.getBoolean("use.sac", false)) {
-        this.addListener(new MLListener {
-          override def onEvent(event: MLListenEvent): Unit = {
-            SparkContext.getOrCreate().listenerBus.post(event)
-          }
-        })
-        postToAll(SavePipelineEvent(instance.uid, path))
-      }
-    }
   }
 
   private class PipelineReader extends MLReader[Pipeline] {
@@ -330,16 +303,7 @@ class PipelineModel private[ml] (
   @Since("2.0.0")
   override def transform(dataset: Dataset[_]): DataFrame = {
     transformSchema(dataset.schema, logging = true)
-    val result = stages.foldLeft(dataset.toDF)((cur, transformer) => transformer.transform(cur))
-    if (SparkContext.getOrCreate().getConf.getBoolean("use.sac", false)) {
-      this.addListener(new MLListener {
-        override def onEvent(event: MLListenEvent): Unit = {
-          SparkContext.getOrCreate().listenerBus.post(event)
-        }
-      })
-      postToAll(TransformEvent(this.uid))
-    }
-    result
+    stages.foldLeft(dataset.toDF)((cur, transformer) => transformer.transform(cur))
   }
 
   @Since("1.2.0")
@@ -357,48 +321,22 @@ class PipelineModel private[ml] (
 }
 
 @Since("1.6.0")
-object PipelineModel extends MLReadable[PipelineModel] with ListenerBus[MLListener, MLListenEvent] {
+object PipelineModel extends MLReadable[PipelineModel] {
 
   import Pipeline.SharedReadWrite
 
-  override protected def doPostEvent(
-      listener: MLListener,
-      event: MLListenEvent): Unit = {
-    listener.onEvent(event)
-  }
   @Since("1.6.0")
   override def read: MLReader[PipelineModel] = new PipelineModelReader
 
   @Since("1.6.0")
-  override def load(path: String): PipelineModel = {
-    val pipelinemode = super.load(path)
-    if (SparkContext.getOrCreate().getConf.getBoolean("use.sac", false)) {
-      this.addListener(new MLListener {
-        override def onEvent(event: MLListenEvent): Unit = {
-          SparkContext.getOrCreate().listenerBus.post(event)
-        }
-      })
-      postToAll(LoadModelEvent(path, pipelinemode.uid))
-    }
-    pipelinemode
-  }
+  override def load(path: String): PipelineModel = super.load(path)
 
   private[PipelineModel] class PipelineModelWriter(instance: PipelineModel) extends MLWriter {
 
     SharedReadWrite.validateStages(instance.stages.asInstanceOf[Array[PipelineStage]])
 
-    override protected def saveImpl(path: String): Unit = {
-      SharedReadWrite.saveImpl(instance,
-        instance.stages.asInstanceOf[Array[PipelineStage]], sc, path)
-      if (SparkContext.getOrCreate().getConf.getBoolean("use.sac", false)) {
-        this.addListener(new MLListener {
-          override def onEvent(event: MLListenEvent): Unit = {
-            SparkContext.getOrCreate().listenerBus.post(event)
-          }
-        })
-        postToAll(SaveModelEvent(instance.uid, path))
-      }
-    }
+    override protected def saveImpl(path: String): Unit = SharedReadWrite.saveImpl(instance,
+      instance.stages.asInstanceOf[Array[PipelineStage]], sc, path)
   }
 
   private class PipelineModelReader extends MLReader[PipelineModel] {

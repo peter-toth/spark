@@ -3,10 +3,11 @@ Changes only in Hortonworks github and not in Apache SPARK-2.4.0 and hence not c
 INCOMPATIBLE CHANGES
 
 NEW FEATURES
-    BUG-92048 Implement loading and visualizing Spark ML pipeline abstracts at Atlas
     BUG-92048 Add switch to enable/disable Spark Atlas Connector
     BUG-96831 Add commit protocol binding to Hadoop 3.1 PathOutputCommitter mechanism.
-    BUG-111820 Spark ML model and pipeline serialization 
+    SPARK-13587: Support virtualenv in pyspark
+    (Support Spark Atlas Connector)
+    BUG-97790  Spark Atlas Connector: support Kafka as external data source
 
 IMPROVEMENTS
     RMP-6461: Add --jarDirs and SPARK_APP_JARS to include directories in spark-submit and spark-shell

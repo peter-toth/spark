@@ -2584,6 +2584,85 @@ abstract class SQLQuerySuiteBase extends QueryTest with SQLTestUtils with TestHi
       }
     }
   }
+
+  test("test") {
+    import org.apache.spark.sql.SaveMode
+    import scala.util.Try
+
+    val tables = Seq("catalog_page", "catalog_returns", "customer", "customer_address",
+      "customer_demographics", "date_dim", "household_demographics", "inventory", "item",
+      "promotion", "store", "store_returns", "catalog_sales", "web_sales", "store_sales",
+      "web_returns", "web_site", "reason", "call_center", "warehouse", "ship_mode", "income_band",
+      "time_dim", "web_page")
+
+    def setupTables(dataLocation: String): Map[String, Long] = {
+      tables.map { tableName =>
+        spark.sql(s"DROP TABLE IF EXISTS $tableName")
+        //      spark.read.parquet(s"$dataLocation/$tableName").createOrReplaceTempView(tableName)
+        //      tableName -> spark.table(tableName).count()
+        spark.catalog.createTable(tableName, s"$dataLocation/$tableName", "parquet")
+        Try {
+          spark.sql(s"ALTER TABLE $tableName RECOVER PARTITIONS")
+        }
+        spark.sql(s"ANALYZE TABLE $tableName COMPUTE STATISTICS")
+        val table = spark.table(tableName)
+        val allColumns = table.columns.mkString(", ")
+        spark.sql(s"ANALYZE TABLE $tableName COMPUTE STATISTICS FOR COLUMNS $allColumns")
+        tableName -> table.count()
+      }.toMap
+    }
+    setupTables("/Users/petertoth/git/apache/spark-sql-perf/data5")
+
+    withTable("t") {
+      withSQLConf("hive.exec.dynamic.partition" -> "true",
+        "hive.exec.dynamic.partition.mode" -> "nonstrict") {
+        withTempDir { loc =>
+          sql(s"CREATE TABLE t(c1 INT) PARTITIONED BY(P1 STRING) LOCATION '${loc.getAbsolutePath}'")
+          sql("INSERT OVERWRITE TABLE t PARTITION(P1) VALUES(1, 'caseSensitive')")
+          checkAnswer(sql("select * from t"), Row(1, "caseSensitive"))
+        }
+      }
+    }
+
+    val df = sql(
+      """
+        |SELECT
+        |  i_item_desc,
+        |  w_warehouse_name,
+        |  d1.d_week_seq,
+        |  count(CASE WHEN p_promo_sk IS NULL
+        |    THEN 1
+        |        ELSE 0 END) no_promo,
+        |  count(CASE WHEN p_promo_sk IS NOT NULL
+        |    THEN 1
+        |        ELSE 0 END) promo,
+        |  count(*) total_cnt
+        |FROM catalog_sales
+        |  JOIN inventory ON (cs_item_sk = inv_item_sk)
+        |  JOIN warehouse ON (w_warehouse_sk = inv_warehouse_sk)
+        |  JOIN item ON (i_item_sk = cs_item_sk)
+        |  JOIN customer_demographics ON (cs_bill_cdemo_sk = cd_demo_sk)
+        |  JOIN household_demographics ON (cs_bill_hdemo_sk = hd_demo_sk)
+        |  JOIN date_dim d1 ON (cs_sold_date_sk = d1.d_date_sk)
+        |  JOIN date_dim d2 ON (inv_date_sk = d2.d_date_sk)
+        |  JOIN date_dim d3 ON (cs_ship_date_sk = d3.d_date_sk)
+        |  LEFT OUTER JOIN promotion ON (cs_promo_sk = p_promo_sk)
+        |  LEFT OUTER JOIN catalog_returns ON (cr_item_sk = cs_item_sk AND
+        |    cr_order_number = cs_order_number)
+        |WHERE d1.d_week_seq = d2.d_week_seq
+        |  AND inv_quantity_on_hand < cs_quantity
+        |  AND d3.d_date > (cast(d1.d_date AS DATE) + interval 5 days)
+        |  AND hd_buy_potential = '>10000'
+        |  AND d1.d_year = 1999
+        |  AND hd_buy_potential = '>10000'
+        |  AND cd_marital_status = 'D'
+        |  AND d1.d_year = 1999
+        |GROUP BY i_item_desc, w_warehouse_name, d1.d_week_seq
+        |ORDER BY total_cnt DESC, i_item_desc, w_warehouse_name, d_week_seq
+        |LIMIT 100
+        |""".stripMargin)
+    df.explain()
+  }
 }
 
 @SlowHiveTest

@@ -1732,6 +1732,13 @@ object SQLConf {
       .booleanConf
       .createWithDefault(false)
 
+  val TEST1 =
+    buildConf("spark.sql.test1")
+      .doc("Test1")
+      .version("2.2.0")
+      .booleanConf
+      .createWithDefault(false)
+
   val JOIN_REORDER_DP_THRESHOLD =
     buildConf("spark.sql.cbo.joinReorder.dp.threshold")
       .doc("The maximum number of joined nodes allowed in the dynamic programming algorithm.")

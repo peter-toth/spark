@@ -57,6 +57,13 @@ private[spark] object Kafka {
       .stringConf
       .createOptional
 
+  val TRUSTSTORE_TYPE =
+    ConfigBuilder("spark.kafka.ssl.truststore.type")
+      .doc("The type of the trust store file. For further details please see kafka " +
+        "documentation. Only used to obtain delegation token.")
+      .stringConf
+      .createOptional
+
   val KEYSTORE_LOCATION =
     ConfigBuilder("spark.kafka.ssl.keystore.location")
       .doc("The location of the key store file. This is optional for client and can be used for " +
@@ -68,6 +75,14 @@ private[spark] object Kafka {
   val KEYSTORE_PASSWORD =
     ConfigBuilder("spark.kafka.ssl.keystore.password")
       .doc("The store password for the key store file. This is optional for client and only " +
+        "needed if ssl.keystore.location is configured. For further details please see kafka " +
+        "documentation. Only used to obtain delegation token.")
+      .stringConf
+      .createOptional
+
+  val KEYSTORE_TYPE =
+    ConfigBuilder("spark.kafka.ssl.keystore.type")
+      .doc("The type of the key store file. This is optional for client and only " +
         "needed if ssl.keystore.location is configured. For further details please see kafka " +
         "documentation. Only used to obtain delegation token.")
       .stringConf

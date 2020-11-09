@@ -31,8 +31,10 @@ class KafkaTokenUtilSuite extends SparkFunSuite with KafkaDelegationTokenTest {
   private val bootStrapServers = "127.0.0.1:0"
   private val trustStoreLocation = "/path/to/trustStore"
   private val trustStorePassword = "trustStoreSecret"
+  private val trustStoreType = "trustStoreType"
   private val keyStoreLocation = "/path/to/keyStore"
   private val keyStorePassword = "keyStoreSecret"
+  private val keyStoreType = "keyStoreType"
   private val keyPassword = "keySecret"
   private val keytab = "/path/to/keytab"
   private val principal = "user@domain.com"
@@ -95,6 +97,7 @@ class KafkaTokenUtilSuite extends SparkFunSuite with KafkaDelegationTokenTest {
     sparkConf.set(Kafka.SECURITY_PROTOCOL, SASL_SSL.name)
     sparkConf.set(Kafka.TRUSTSTORE_LOCATION, trustStoreLocation)
     sparkConf.set(Kafka.TRUSTSTORE_PASSWORD, trustStorePassword)
+    sparkConf.set(Kafka.TRUSTSTORE_TYPE, trustStoreType)
     sparkConf.set(Kafka.KEYSTORE_LOCATION, keyStoreLocation)
     sparkConf.set(Kafka.KEYSTORE_PASSWORD, keyStorePassword)
     sparkConf.set(Kafka.KEY_PASSWORD, keyPassword)
@@ -107,8 +110,10 @@ class KafkaTokenUtilSuite extends SparkFunSuite with KafkaDelegationTokenTest {
       === SASL_SSL.name)
     assert(adminClientProperties.get("ssl.truststore.location") === trustStoreLocation)
     assert(adminClientProperties.get("ssl.truststore.password") === trustStorePassword)
+    assert(adminClientProperties.get("ssl.truststore.type") === trustStoreType)
     assert(!adminClientProperties.containsKey("ssl.keystore.location"))
     assert(!adminClientProperties.containsKey("ssl.keystore.password"))
+    assert(!adminClientProperties.containsKey("ssl.keystore.type"))
     assert(!adminClientProperties.containsKey("ssl.key.password"))
   }
 
@@ -118,8 +123,10 @@ class KafkaTokenUtilSuite extends SparkFunSuite with KafkaDelegationTokenTest {
     sparkConf.set(Kafka.SECURITY_PROTOCOL, SSL.name)
     sparkConf.set(Kafka.TRUSTSTORE_LOCATION, trustStoreLocation)
     sparkConf.set(Kafka.TRUSTSTORE_PASSWORD, trustStorePassword)
+    sparkConf.set(Kafka.TRUSTSTORE_TYPE, trustStoreType)
     sparkConf.set(Kafka.KEYSTORE_LOCATION, keyStoreLocation)
     sparkConf.set(Kafka.KEYSTORE_PASSWORD, keyStorePassword)
+    sparkConf.set(Kafka.KEYSTORE_TYPE, keyStoreType)
     sparkConf.set(Kafka.KEY_PASSWORD, keyPassword)
 
     val adminClientProperties = KafkaTokenUtil.createAdminClientProperties(sparkConf)
@@ -130,8 +137,10 @@ class KafkaTokenUtilSuite extends SparkFunSuite with KafkaDelegationTokenTest {
       === SSL.name)
     assert(adminClientProperties.get("ssl.truststore.location") === trustStoreLocation)
     assert(adminClientProperties.get("ssl.truststore.password") === trustStorePassword)
+    assert(adminClientProperties.get("ssl.truststore.type") === trustStoreType)
     assert(adminClientProperties.get("ssl.keystore.location") === keyStoreLocation)
     assert(adminClientProperties.get("ssl.keystore.password") === keyStorePassword)
+    assert(adminClientProperties.get("ssl.keystore.type") === keyStoreType)
     assert(adminClientProperties.get("ssl.key.password") === keyPassword)
   }
 

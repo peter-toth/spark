@@ -141,6 +141,9 @@ private[spark] object KafkaTokenUtil extends Logging {
     sparkConf.get(Kafka.TRUSTSTORE_PASSWORD).foreach { truststorePassword =>
       properties.put("ssl.truststore.password", truststorePassword)
     }
+    sparkConf.get(Kafka.TRUSTSTORE_TYPE).foreach { truststoreType =>
+      properties.put("ssl.truststore.type", truststoreType)
+    }
   }
 
   private def setKeyStoreProperties(sparkConf: SparkConf, properties: ju.Properties): Unit = {
@@ -149,6 +152,9 @@ private[spark] object KafkaTokenUtil extends Logging {
     }
     sparkConf.get(Kafka.KEYSTORE_PASSWORD).foreach { keystorePassword =>
       properties.put("ssl.keystore.password", keystorePassword)
+    }
+    sparkConf.get(Kafka.KEYSTORE_TYPE).foreach { keystoreType =>
+      properties.put("ssl.keystore.type", keystoreType)
     }
     sparkConf.get(Kafka.KEY_PASSWORD).foreach { keyPassword =>
       properties.put("ssl.key.password", keyPassword)

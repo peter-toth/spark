@@ -135,13 +135,22 @@ object ExtractPythonUDFs extends Rule[LogicalPlan] with PredicateHelper {
     case plan: LogicalPlan => extract(plan)
   }
 
+  private def canonicalizeDeterministic(u: PythonUDF) = {
+    if (u.deterministic) {
+      u.canonicalized.asInstanceOf[PythonUDF]
+    } else {
+      u
+    }
+  }
+
   /**
    * Extract all the PythonUDFs from the current operator and evaluate them before the operator.
    */
   private def extract(plan: LogicalPlan): LogicalPlan = {
-    val udfs = collectEvaluableUDFsFromExpressions(plan.expressions)
+    val udfs = ExpressionSet(collectEvaluableUDFsFromExpressions(plan.expressions))
       // ignore the PythonUDF that come from second/third aggregate, which is not used
       .filter(udf => udf.references.subsetOf(plan.inputSet))
+      .toSeq.asInstanceOf[Seq[PythonUDF]]
     if (udfs.isEmpty) {
       // If there aren't any, we are done.
       plan
@@ -187,7 +196,7 @@ object ExtractPythonUDFs extends Rule[LogicalPlan] with PredicateHelper {
                 "Expected either Scalar Pandas UDFs or Batched UDFs but got both")
           }
 
-          attributeMap ++= validUdfs.zip(resultAttrs)
+          attributeMap ++= validUdfs.map(canonicalizeDeterministic).zip(resultAttrs)
           evaluation
         } else {
           child
@@ -195,13 +204,12 @@ object ExtractPythonUDFs extends Rule[LogicalPlan] with PredicateHelper {
       }
       // Other cases are disallowed as they are ambiguous or would require a cartesian
       // product.
-      udfs.filterNot(attributeMap.contains).foreach { udf =>
-        sys.error(s"Invalid PythonUDF $udf, requires attributes from more than one child.")
+      udfs.map(canonicalizeDeterministic).filterNot(attributeMap.contains).foreach {
+        udf => sys.error(s"Invalid PythonUDF $udf, requires attributes from more than one child.")
       }
 
       val rewritten = splitFilter.withNewChildren(newChildren).transformExpressions {
-        case p: PythonUDF if attributeMap.contains(p) =>
-          attributeMap(p)
+        case p: PythonUDF => attributeMap.getOrElse(canonicalizeDeterministic(p), p)
       }
 
       // extract remaining python UDFs recursively

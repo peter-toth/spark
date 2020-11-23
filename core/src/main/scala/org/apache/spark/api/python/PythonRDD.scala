@@ -39,6 +39,7 @@ import org.apache.spark.api.java.{JavaPairRDD, JavaRDD, JavaSparkContext}
 import org.apache.spark.broadcast.Broadcast
 import org.apache.spark.input.PortableDataStream
 import org.apache.spark.internal.Logging
+import org.apache.spark.internal.config.PYTHON_AUTH_SOCKET_TIMEOUT
 import org.apache.spark.network.util.JavaUtils
 import org.apache.spark.rdd.RDD
 import org.apache.spark.security.SocketAuthHelper
@@ -876,13 +877,13 @@ private[spark] abstract class PythonServer[T](
 
 }
 
-private[spark] object PythonServer {
+private[spark] object PythonServer extends Logging {
 
   /**
    * Create a socket server and run user function on the socket in a background thread.
    *
    * The socket server can only accept one connection, or close if no connection
-   * in 15 seconds.
+   * in configurable amount of seconds (default 15).
    *
    * The thread will terminate after the supplied user function, or if there are any exceptions.
    *
@@ -894,19 +895,26 @@ private[spark] object PythonServer {
       authHelper: SocketAuthHelper,
       threadName: String)
       (func: Socket => Unit): (Int, String) = {
+    logTrace("Creating listening socket")
     val serverSocket = new ServerSocket(0, 1, InetAddress.getByAddress(Array(127, 0, 0, 1)))
-    // Close the socket if no connection in 15 seconds
-    serverSocket.setSoTimeout(15000)
+    // Close the socket if no connection in the configured seconds
+    val timeout = authHelper.conf.get(PYTHON_AUTH_SOCKET_TIMEOUT).toInt
+    logTrace(s"Setting timeout to $timeout sec")
+    serverSocket.setSoTimeout(timeout * 1000)
 
     new Thread(threadName) {
       setDaemon(true)
       override def run(): Unit = {
         var sock: Socket = null
         try {
+          logTrace(s"Waiting for connection on port ${serverSocket.getLocalPort}")
           sock = serverSocket.accept()
+          logTrace(s"Connection accepted from address ${sock.getRemoteSocketAddress}")
           authHelper.authClient(sock)
+          logTrace("Client authenticated")
           func(sock)
         } finally {
+          logTrace("Closing server")
           JavaUtils.closeQuietly(serverSocket)
           JavaUtils.closeQuietly(sock)
         }

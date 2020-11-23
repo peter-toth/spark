@@ -81,4 +81,8 @@ private[spark] object PythonUtils {
   def getEncryptionEnabled(sc: JavaSparkContext): Boolean = {
     sc.conf.get(org.apache.spark.internal.config.IO_ENCRYPTION_ENABLED)
   }
+
+  def getPythonAuthSocketTimeout(sc: JavaSparkContext): Long = {
+    sc.conf.get(org.apache.spark.internal.config.PYTHON_AUTH_SOCKET_TIMEOUT)
+  }
 }

@@ -28,7 +28,7 @@ import scala.util.control.NonFatal
 
 import org.apache.spark._
 import org.apache.spark.internal.Logging
-import org.apache.spark.internal.config.PYSPARK_EXECUTOR_MEMORY
+import org.apache.spark.internal.config.{PYSPARK_EXECUTOR_MEMORY, PYTHON_AUTH_SOCKET_TIMEOUT}
 import org.apache.spark.security.SocketAuthHelper
 import org.apache.spark.util._
 
@@ -72,6 +72,7 @@ private[spark] abstract class BasePythonRunner[IN, OUT](
 
   private val conf = SparkEnv.get.conf
   private val bufferSize = conf.getInt("spark.buffer.size", 65536)
+  protected val authSocketTimeout = conf.get(PYTHON_AUTH_SOCKET_TIMEOUT)
   private val reuseWorker = conf.getBoolean("spark.python.worker.reuse", true)
   // each python worker gets an equal part of the allocation. the worker pool will grow to the
   // number of concurrent tasks, which is determined by the number of cores in this executor.
@@ -106,6 +107,7 @@ private[spark] abstract class BasePythonRunner[IN, OUT](
     if (memoryMb.isDefined) {
       envVars.put("PYSPARK_EXECUTOR_MEMORY_MB", memoryMb.get.toString)
     }
+    envVars.put("SPARK_AUTH_SOCKET_TIMEOUT", authSocketTimeout.toString)
     val worker: Socket = env.createPythonWorker(pythonExec, envVars.asScala.toMap)
     // Whether is the worker released into idle pool or closed. When any codes try to release or
     // close a worker, they should use `releasedOrClosed.compareAndSet` to flip the state to make

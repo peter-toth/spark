@@ -213,6 +213,12 @@ package object config {
     .bytesConf(ByteUnit.MiB)
     .createOptional
 
+  private[spark] val PYTHON_AUTH_SOCKET_TIMEOUT =
+    ConfigBuilder("spark.python.authenticate.socketTimeout")
+      .internal()
+      .timeConf(TimeUnit.SECONDS)
+      .createWithDefaultString("15s")
+
   private[spark] val IS_PYTHON_APP = ConfigBuilder("spark.yarn.isPython").internal()
     .booleanConf.createWithDefault(false)
 

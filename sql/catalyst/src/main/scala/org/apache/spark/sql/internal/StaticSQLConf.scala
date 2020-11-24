@@ -176,4 +176,15 @@ object StaticSQLConf extends Logging {
       .doc("The number of inactive queries to retain for Structured Streaming UI.")
       .intConf
       .createWithDefault(100)
+
+  val ENABLED_STREAMING_UI_CUSTOM_METRIC_LIST =
+    buildStaticConf("spark.sql.streaming.ui.enabledCustomMetricList")
+      .internal()
+      .doc("Configures a list of custom metrics on Structured Streaming UI, which are enabled. " +
+        "The list contains the name of the custom metrics separated by comma. In aggregation" +
+        "only sum used. The list of supported custom metrics is state store provider specific " +
+        "and it can be found out for example from query progress log entry.")
+      .stringConf
+      .toSequence
+      .createWithDefault(Nil)
 }

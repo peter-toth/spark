@@ -24,11 +24,12 @@ import java.security.PrivilegedExceptionAction
 import java.text.ParseException
 import java.util.{ServiceLoader, UUID}
 import java.util.jar.JarInputStream
+import javax.ws.rs.core.UriBuilder
 
 import scala.annotation.tailrec
 import scala.collection.JavaConverters._
 import scala.collection.mutable.ArrayBuffer
-import scala.util.{Failure, Properties, Success, Try}
+import scala.util.{Properties, Try}
 
 import org.apache.commons.io.FilenameUtils
 import org.apache.commons.lang3.StringUtils
@@ -311,7 +312,7 @@ private[spark] class SparkSubmit extends Logging {
         // In K8s client mode, when in the driver, add resolved jars early as we might need
         // them at the submit time for artifact downloading.
         // For example we might use the dependencies for downloading
-        // files from a Hadoop Compatible fs eg. S3. In this case the user might pass:
+        // files from a Hadoop Compatible fs e.g. S3. In this case the user might pass:
         // --packages com.amazonaws:aws-java-sdk:1.7.4:org.apache.hadoop:hadoop-aws:2.7.6
         if (isKubernetesClusterModeDriver) {
           val loader = getSubmitClassLoader(sparkConf)
@@ -387,10 +388,19 @@ private[spark] class SparkSubmit extends Logging {
         // Executors will get the jars from the Spark file server.
         // Explicitly download the related files here
         args.jars = renameResourcesToLocalFS(args.jars, localJars)
-        val localFiles = Option(args.files).map {
+        val filesLocalFiles = Option(args.files).map {
           downloadFileList(_, targetDir, sparkConf, hadoopConf, secMgr)
         }.orNull
-        args.files = renameResourcesToLocalFS(args.files, localFiles)
+        val archiveLocalFiles = Option(args.archives).map { uri =>
+          val resolvedUri = Utils.resolveURI(uri)
+          val downloadedUri = downloadFileList(
+            UriBuilder.fromUri(resolvedUri).fragment(null).build().toString,
+            targetDir, sparkConf, hadoopConf, secMgr)
+          UriBuilder.fromUri(downloadedUri).fragment(resolvedUri.getFragment).build().toString
+        }.orNull
+        args.files = renameResourcesToLocalFS(args.files, filesLocalFiles)
+        args.archives = renameResourcesToLocalFS(args.archives, archiveLocalFiles)
+        args.pyFiles = renameResourcesToLocalFS(args.pyFiles, localPyFiles)
       }
     }
 
@@ -474,10 +484,12 @@ private[spark] class SparkSubmit extends Logging {
         args.mainClass = "org.apache.spark.deploy.PythonRunner"
         args.childArgs = ArrayBuffer(localPrimaryResource, localPyFiles) ++ args.childArgs
       }
-      if (clusterManager != YARN) {
-        // The YARN backend handles python files differently, so don't merge the lists.
-        args.files = mergeFileLists(args.files, args.pyFiles)
-      }
+    }
+
+    // Non-PySpark applications can need Python dependencies.
+    if (deployMode == CLIENT && clusterManager != YARN) {
+      // The YARN backend handles python files differently, so don't merge the lists.
+      args.files = mergeFileLists(args.files, args.pyFiles)
     }
 
     if (localPyFiles != null) {
@@ -604,6 +616,8 @@ private[spark] class SparkSubmit extends Logging {
         confKey = CORES_MAX.key),
       OptionAssigner(args.files, LOCAL | STANDALONE | MESOS | KUBERNETES, ALL_DEPLOY_MODES,
         confKey = FILES.key),
+      OptionAssigner(args.archives, LOCAL | STANDALONE | MESOS | KUBERNETES, ALL_DEPLOY_MODES,
+        confKey = ARCHIVES.key),
       OptionAssigner(args.jars, LOCAL, CLIENT, confKey = JARS.key),
       OptionAssigner(args.jars, STANDALONE | MESOS | KUBERNETES, ALL_DEPLOY_MODES,
         confKey = JARS.key),
@@ -773,6 +787,10 @@ private[spark] class SparkSubmit extends Logging {
           childArgs += ("--arg", arg)
         }
       }
+      // Pass the proxyUser to the k8s app so it is possible to add it to the driver args
+      if (args.proxyUser != null) {
+        childArgs += ("--proxy-user", args.proxyUser)
+      }
     }
 
     // Load any properties specified through --conf and the default properties file
@@ -789,6 +807,7 @@ private[spark] class SparkSubmit extends Logging {
     val pathConfigs = Seq(
       JARS.key,
       FILES.key,
+      ARCHIVES.key,
       "spark.yarn.dist.files",
       "spark.yarn.dist.archives",
       "spark.yarn.dist.jars")
@@ -814,7 +833,7 @@ private[spark] class SparkSubmit extends Logging {
     }
     sparkConf.set(SUBMIT_PYTHON_FILES, formattedPyFiles.split(",").toSeq)
 
-    (childArgs, childClasspath, sparkConf, childMainClass)
+    (childArgs.toSeq, childClasspath.toSeq, sparkConf, childMainClass)
   }
 
   private def renameResourcesToLocalFS(resources: String, localResources: String): String = {
@@ -1154,13 +1173,16 @@ private[spark] object SparkSubmitUtils {
     val br: IBiblioResolver = new IBiblioResolver
     br.setM2compatible(true)
     br.setUsepoms(true)
+    val defaultInternalRepo : Option[String] = sys.env.get("DEFAULT_ARTIFACT_REPOSITORY")
+    br.setRoot(defaultInternalRepo.getOrElse("https://repo1.maven.org/maven2/"))
     br.setName("central")
     cr.add(br)
 
     val sp: IBiblioResolver = new IBiblioResolver
     sp.setM2compatible(true)
     sp.setUsepoms(true)
-    sp.setRoot("https://dl.bintray.com/spark-packages/maven")
+    sp.setRoot(sys.env.getOrElse(
+      "DEFAULT_ARTIFACT_REPOSITORY", "https://dl.bintray.com/spark-packages/maven"))
     sp.setName("spark-packages")
     cr.add(sp)
     cr
@@ -1178,8 +1200,14 @@ private[spark] object SparkSubmitUtils {
       cacheDirectory: File): String = {
     artifacts.map { artifactInfo =>
       val artifact = artifactInfo.asInstanceOf[Artifact].getModuleRevisionId
+      val extraAttrs = artifactInfo.asInstanceOf[Artifact].getExtraAttributes
+      val classifier = if (extraAttrs.containsKey("classifier")) {
+        "-" + extraAttrs.get("classifier")
+      } else {
+        ""
+      }
       cacheDirectory.getAbsolutePath + File.separator +
-        s"${artifact.getOrganisation}_${artifact.getName}-${artifact.getRevision}.jar"
+        s"${artifact.getOrganisation}_${artifact.getName}-${artifact.getRevision}$classifier.jar"
     }.mkString(",")
   }
 
@@ -1341,6 +1369,13 @@ private[spark] object SparkSubmitUtils {
       ""
     } else {
       val sysOut = System.out
+      // Default configuration name for ivy
+      val ivyConfName = "default"
+
+      // A Module descriptor must be specified. Entries are dummy strings
+      val md = getModuleDescriptor
+
+      md.setDefaultConf(ivyConfName)
       try {
         // To prevent ivy from logging to system out
         System.setOut(printStream)
@@ -1368,14 +1403,6 @@ private[spark] object SparkSubmitUtils {
           resolveOptions.setDownload(true)
         }
 
-        // Default configuration name for ivy
-        val ivyConfName = "default"
-
-        // A Module descriptor must be specified. Entries are dummy strings
-        val md = getModuleDescriptor
-
-        md.setDefaultConf(ivyConfName)
-
         // Add exclusion rules for Spark and Scala Library
         addExclusionRules(ivySettings, ivyConfName, md)
         // add all supplied maven artifacts as dependencies
@@ -1393,12 +1420,10 @@ private[spark] object SparkSubmitUtils {
           packagesDirectory.getAbsolutePath + File.separator +
             "[organization]_[artifact]-[revision](-[classifier]).[ext]",
           retrieveOptions.setConfs(Array(ivyConfName)))
-        val paths = resolveDependencyPaths(rr.getArtifacts.toArray, packagesDirectory)
-        val mdId = md.getModuleRevisionId
-        clearIvyResolutionFiles(mdId, ivySettings, ivyConfName)
-        paths
+        resolveDependencyPaths(rr.getArtifacts.toArray, packagesDirectory)
       } finally {
         System.setOut(sysOut)
+        clearIvyResolutionFiles(md.getModuleRevisionId, ivySettings, ivyConfName)
       }
     }
   }

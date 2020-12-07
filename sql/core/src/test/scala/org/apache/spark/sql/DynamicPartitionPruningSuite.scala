@@ -19,7 +19,8 @@ package org.apache.spark.sql
 
 import org.scalatest.GivenWhenThen
 
-import org.apache.spark.sql.catalyst.expressions.{CodegenObjectFactoryMode, DynamicPruningExpression, Expression}
+import org.apache.spark.sql.catalyst.expressions.{DynamicPruningExpression, Expression}
+import org.apache.spark.sql.catalyst.expressions.CodegenObjectFactoryMode._
 import org.apache.spark.sql.catalyst.plans.ExistenceJoin
 import org.apache.spark.sql.execution._
 import org.apache.spark.sql.execution.adaptive.{AdaptiveSparkPlanExec, AdaptiveSparkPlanHelper}
@@ -253,29 +254,15 @@ abstract class DynamicPartitionPruningSuiteBase
     withSQLConf(SQLConf.DYNAMIC_PARTITION_PRUNING_ENABLED.key -> "true",
       SQLConf.DYNAMIC_PARTITION_PRUNING_REUSE_BROADCAST_ONLY.key -> "false",
       SQLConf.EXCHANGE_REUSE_ENABLED.key -> "false") {
-      withTable("df1", "df2") {
-        spark.range(1000)
-          .select(col("id"), col("id").as("k"))
-          .write
-          .partitionBy("k")
-          .format(tableFormat)
-          .mode("overwrite")
-          .saveAsTable("df1")
+      val df = sql(
+        """
+          |SELECT f.date_id, f.store_id FROM fact_sk f
+          |JOIN dim_store s ON f.store_id = s.store_id AND s.country = 'NL'
+        """.stripMargin)
 
-        spark.range(100)
-          .select(col("id"), col("id").as("k"))
-          .write
-          .partitionBy("k")
-          .format(tableFormat)
-          .mode("overwrite")
-          .saveAsTable("df2")
+      checkPartitionPruningPredicate(df, true, false)
 
-        val df = sql("SELECT df1.id, df2.k FROM df1 JOIN df2 ON df1.k = df2.k AND df2.id < 2")
-
-        checkPartitionPruningPredicate(df, true, false)
-
-        checkAnswer(df, Row(0, 0) :: Row(1, 1) :: Nil)
-      }
+      checkAnswer(df, Row(1000, 1) :: Row(1010, 2) :: Row(1020, 2) :: Nil)
     }
   }
 
@@ -358,6 +345,7 @@ abstract class DynamicPartitionPruningSuiteBase
         val allFilesNum = scan1.metrics("numFiles").value
         val allFilesSize = scan1.metrics("filesSize").value
         assert(scan1.metrics("numPartitions").value === numPartitions)
+        assert(scan1.metrics("pruningTime").value === -1)
 
         // No dynamic partition pruning, so no static metrics
         // Only files from fid = 5 partition are scanned
@@ -371,6 +359,7 @@ abstract class DynamicPartitionPruningSuiteBase
         assert(0 < partFilesNum && partFilesNum < allFilesNum)
         assert(0 < partFilesSize && partFilesSize < allFilesSize)
         assert(scan2.metrics("numPartitions").value === 1)
+        assert(scan2.metrics("pruningTime").value === -1)
 
         // Dynamic partition pruning is used
         // Static metrics are as-if reading the whole fact table
@@ -383,6 +372,7 @@ abstract class DynamicPartitionPruningSuiteBase
         assert(scan3.metrics("numFiles").value == partFilesNum)
         assert(scan3.metrics("filesSize").value == partFilesSize)
         assert(scan3.metrics("numPartitions").value === 1)
+        assert(scan3.metrics("pruningTime").value !== -1)
       }
     }
   }
@@ -401,7 +391,7 @@ abstract class DynamicPartitionPruningSuiteBase
        """.stripMargin)
 
       val found = df.queryExecution.executedPlan.find {
-        case BroadcastHashJoinExec(_, _, p: ExistenceJoin, _, _, _, _) => true
+        case BroadcastHashJoinExec(_, _, p: ExistenceJoin, _, _, _, _, _) => true
         case _ => false
       }
 
@@ -460,6 +450,19 @@ abstract class DynamicPartitionPruningSuiteBase
           """
             |SELECT * FROM fact_sk f
             |LEFT SEMI JOIN dim_store s
+            |ON f.store_id = s.store_id AND s.country = 'NL'
+          """.stripMargin)
+
+        checkPartitionPruningPredicate(df, true, false)
+      }
+
+      Given("left-semi join with partition column on the right side")
+      withSQLConf(SQLConf.DYNAMIC_PARTITION_PRUNING_ENABLED.key -> "true",
+        SQLConf.EXCHANGE_REUSE_ENABLED.key -> "false") {
+        val df = sql(
+          """
+            |SELECT * FROM dim_store s
+            |LEFT SEMI JOIN fact_sk f
             |ON f.store_id = s.store_id AND s.country = 'NL'
           """.stripMargin)
 
@@ -1156,7 +1159,7 @@ abstract class DynamicPartitionPruningSuiteBase
   test("cleanup any DPP filter that isn't pushed down due to expression id clashes") {
     withSQLConf(SQLConf.DYNAMIC_PARTITION_PRUNING_REUSE_BROADCAST_ONLY.key -> "true") {
       withTable("fact", "dim") {
-        spark.range(1000).select($"id".as("A"), $"id".as("AA"))
+        spark.range(20).select($"id".as("A"), $"id".as("AA"))
           .write.partitionBy("A").format(tableFormat).mode("overwrite").saveAsTable("fact")
         spark.range(10).select($"id".as("B"), $"id".as("BB"))
           .write.format(tableFormat).mode("overwrite").saveAsTable("dim")
@@ -1224,38 +1227,24 @@ abstract class DynamicPartitionPruningSuiteBase
 
   test("Make sure dynamic pruning works on uncorrelated queries") {
     withSQLConf(SQLConf.DYNAMIC_PARTITION_PRUNING_REUSE_BROADCAST_ONLY.key -> "true") {
-      Seq(false, true).foreach { wholePlanReuse =>
-        withSQLConf(SQLConf.WHOLEPLANREUSE_ENABLED.key -> wholePlanReuse.toString) {
-          val df = sql(
-            """
-              |SELECT d.store_id,
-              |       SUM(f.units_sold),
-              |       (SELECT SUM(f.units_sold)
-              |        FROM fact_stats f JOIN dim_stats d ON d.store_id = f.store_id
-              |        WHERE d.country = 'US') AS total_prod
-              |FROM fact_stats f JOIN dim_stats d ON d.store_id = f.store_id
-              |WHERE d.country = 'US'
-              |GROUP BY 1
-          """.stripMargin)
-          checkAnswer(df, Row(4, 50, 70) :: Row(5, 10, 70) :: Row(6, 10, 70) :: Nil)
+      val df = sql(
+        """
+          |SELECT d.store_id,
+          |       SUM(f.units_sold),
+          |       (SELECT SUM(f.units_sold)
+          |        FROM fact_stats f JOIN dim_stats d ON d.store_id = f.store_id
+          |        WHERE d.country = 'US') AS total_prod
+          |FROM fact_stats f JOIN dim_stats d ON d.store_id = f.store_id
+          |WHERE d.country = 'US'
+          |GROUP BY 1
+        """.stripMargin)
+      checkAnswer(df, Row(4, 50, 70) :: Row(5, 10, 70) :: Row(6, 10, 70) :: Nil)
 
-          val plan = df.queryExecution.executedPlan
-          val countSubqueryBroadcasts =
-            plan.collectWithSubqueries({ case _: SubqueryBroadcastExec => 1 }).sum
-          val countReusedSubqueryBroadcasts =
-            plan.collectWithSubqueries({
-              case ReusedSubqueryExec(_: SubqueryBroadcastExec) => 1
-            }).sum
+      val plan = df.queryExecution.executedPlan
+      val countSubqueryBroadcasts =
+        plan.collectWithSubqueries({ case _: SubqueryBroadcastExec => 1 }).sum
 
-          if (wholePlanReuse) {
-            assert(countSubqueryBroadcasts == 1)
-            assert(countReusedSubqueryBroadcasts == 1)
-          } else {
-            assert(countSubqueryBroadcasts == 2)
-            assert(countReusedSubqueryBroadcasts == 0)
-          }
-        }
-      }
+      assert(countSubqueryBroadcasts == 2)
     }
   }
 
@@ -1373,51 +1362,51 @@ abstract class DynamicPartitionPruningSuiteBase
   }
 
   test("SPARK-32659: Fix the data issue when pruning DPP on non-atomic type") {
-    withSQLConf(
-      SQLConf.DYNAMIC_PARTITION_PRUNING_FALLBACK_FILTER_RATIO.key -> "2", // Make sure insert DPP
-      SQLConf.DYNAMIC_PARTITION_PRUNING_REUSE_BROADCAST_ONLY.key -> "false") {
-      withTable("df1", "df2") {
-        spark.range(1000)
-          .select(col("id"), col("id").as("k"))
-          .write
-          .partitionBy("k")
-          .format(tableFormat)
-          .mode("overwrite")
-          .saveAsTable("df1")
+    Seq(NO_CODEGEN, CODEGEN_ONLY).foreach { mode =>
+      Seq(true, false).foreach { pruning =>
+        withSQLConf(
+          SQLConf.CODEGEN_FACTORY_MODE.key -> mode.toString,
+          SQLConf.DYNAMIC_PARTITION_PRUNING_ENABLED.key -> s"$pruning") {
+          Seq("struct", "array").foreach { dataType =>
+            val df = sql(
+              s"""
+                 |SELECT f.date_id, f.product_id, f.units_sold, f.store_id FROM fact_stats f
+                 |JOIN dim_stats s
+                 |ON $dataType(f.store_id) = $dataType(s.store_id) WHERE s.country = 'DE'
+              """.stripMargin)
 
-        spark.range(100)
-          .select(col("id"), col("id").as("k"))
-          .write
-          .partitionBy("k")
-          .format(tableFormat)
-          .mode("overwrite")
-          .saveAsTable("df2")
-
-        Seq(CodegenObjectFactoryMode.NO_CODEGEN,
-          CodegenObjectFactoryMode.CODEGEN_ONLY).foreach { mode =>
-          Seq(true, false).foreach { pruning =>
-            withSQLConf(
-              SQLConf.CODEGEN_FACTORY_MODE.key -> mode.toString,
-              SQLConf.DYNAMIC_PARTITION_PRUNING_ENABLED.key -> s"$pruning") {
-              val df = sql(
-                """
-                  |SELECT df1.id, df2.k
-                  |FROM df1
-                  |  JOIN df2
-                  |  ON struct(df1.k) = struct(df2.k)
-                  |    AND df2.id < 2
-                  |""".stripMargin)
-              if (pruning) {
-                checkPartitionPruningPredicate(df, true, false)
-              } else {
-                checkPartitionPruningPredicate(df, false, false)
-              }
-
-              checkAnswer(df, Row(0, 0) :: Row(1, 1) :: Nil)
+            if (pruning) {
+              checkPartitionPruningPredicate(df, false, true)
+            } else {
+              checkPartitionPruningPredicate(df, false, false)
             }
+
+            checkAnswer(df,
+              Row(1030, 2, 10, 3) ::
+              Row(1040, 2, 50, 3) ::
+              Row(1050, 2, 50, 3) ::
+              Row(1060, 2, 50, 3) :: Nil
+            )
           }
         }
       }
+    }
+  }
+
+  test("SPARK-32817: DPP throws error when the broadcast side is empty") {
+    withSQLConf(
+      SQLConf.DYNAMIC_PARTITION_PRUNING_ENABLED.key -> "true",
+      SQLConf.DYNAMIC_PARTITION_PRUNING_REUSE_BROADCAST_ONLY.key -> "true") {
+      val df = sql(
+        """
+          |SELECT * FROM fact_sk f
+          |JOIN dim_store s
+          |ON f.store_id = s.store_id WHERE s.country = 'XYZ'
+        """.stripMargin)
+
+      checkPartitionPruningPredicate(df, false, true)
+
+      checkAnswer(df, Nil)
     }
   }
 }

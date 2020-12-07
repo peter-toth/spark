@@ -73,7 +73,8 @@ class JDBCSuite extends QueryTest
     }
   }
 
-  before {
+  override def beforeAll(): Unit = {
+    super.beforeAll()
     Utils.classForName("org.h2.Driver")
     // Extra properties that will be specified for our database. We need these to test
     // usage of parameters from OPTIONS clause in queries.
@@ -275,8 +276,9 @@ class JDBCSuite extends QueryTest
     // Untested: IDENTITY, OTHER, UUID, ARRAY, and GEOMETRY types.
   }
 
-  after {
+  override def afterAll(): Unit = {
     conn.close()
+    super.afterAll()
   }
 
   // Check whether the tables are fetched in the expected degree of parallelism
@@ -768,9 +770,14 @@ class JDBCSuite extends QueryTest
   }
 
   test("Dialect unregister") {
-    JdbcDialects.registerDialect(testH2Dialect)
-    JdbcDialects.unregisterDialect(testH2Dialect)
-    assert(JdbcDialects.get(urlWithUserAndPass) == NoopDialect)
+    JdbcDialects.unregisterDialect(H2Dialect)
+    try {
+      JdbcDialects.registerDialect(testH2Dialect)
+      JdbcDialects.unregisterDialect(testH2Dialect)
+      assert(JdbcDialects.get(urlWithUserAndPass) == NoopDialect)
+    } finally {
+      JdbcDialects.registerDialect(H2Dialect)
+    }
   }
 
   test("Aggregated dialects") {
@@ -1184,7 +1191,10 @@ class JDBCSuite extends QueryTest
 
   test("SPARK-16387: Reserved SQL words are not escaped by JDBC writer") {
     val df = spark.createDataset(Seq("a", "b", "c")).toDF("order")
-    val schema = JdbcUtils.schemaString(df, "jdbc:mysql://localhost:3306/temp")
+    val schema = JdbcUtils.schemaString(
+      df.schema,
+      df.sqlContext.conf.caseSensitiveAnalysis,
+      "jdbc:mysql://localhost:3306/temp")
     assert(schema.contains("`order` TEXT"))
   }
 

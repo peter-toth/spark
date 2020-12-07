@@ -96,7 +96,7 @@ trait StateStoreWriter extends StatefulOperator { self: SparkPlan =>
       .map(entry => entry._1 -> longMetric(entry._1).value)
 
     val javaConvertedCustomMetrics: java.util.HashMap[String, java.lang.Long] =
-      new java.util.HashMap(customMetrics.mapValues(long2Long).asJava)
+      new java.util.HashMap(customMetrics.mapValues(long2Long).toMap.asJava)
 
     new StateOperatorProgress(
       numRowsTotal = longMetric("numTotalStateRows").value,
@@ -246,7 +246,7 @@ case class StateStoreRestoreExec(
   override protected def doExecute(): RDD[InternalRow] = {
     val numOutputRows = longMetric("numOutputRows")
 
-    child.execute().mapPartitionsWithStateStore(
+    child.execute().mapPartitionsWithReadStateStore(
       getStateInfo,
       keyExpressions.toStructType,
       stateManager.getStateValueSchema,
@@ -460,7 +460,10 @@ case class StreamingDeduplicateExec(
       child.output.toStructType,
       indexOrdinal = None,
       sqlContext.sessionState,
-      Some(sqlContext.streams.stateStoreCoordinator)) { (store, iter) =>
+      Some(sqlContext.streams.stateStoreCoordinator),
+      // We won't check value row in state store since the value StreamingDeduplicateExec.EMPTY_ROW
+      // is unrelated to the output schema.
+      Map(StateStoreConf.FORMAT_VALIDATION_CHECK_VALUE_CONFIG -> "false")) { (store, iter) =>
       val getKey = GenerateUnsafeProjection.generate(keyExpressions, child.output)
       val numOutputRows = longMetric("numOutputRows")
       val numTotalStateRows = longMetric("numTotalStateRows")

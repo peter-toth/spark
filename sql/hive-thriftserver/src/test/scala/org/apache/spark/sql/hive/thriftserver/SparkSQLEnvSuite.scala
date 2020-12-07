@@ -18,7 +18,6 @@
 package org.apache.spark.sql.hive.thriftserver
 
 import org.apache.commons.io.FileUtils
-import org.scalatest.Ignore
 import test.custom.listener.{DummyQueryExecutionListener, DummyStreamingQueryListener}
 
 import org.apache.spark.SparkFunSuite
@@ -29,7 +28,6 @@ import org.apache.spark.sql.hive.test.TestHiveContext
 import org.apache.spark.sql.internal.StaticSQLConf.{QUERY_EXECUTION_LISTENERS, STREAMING_QUERY_LISTENERS, WAREHOUSE_PATH}
 import org.apache.spark.util.Utils
 
-@Ignore
 class SparkSQLEnvSuite extends SparkFunSuite {
   test("SPARK-29604 external listeners should be initialized with Spark classloader") {
     val metastorePath = Utils.createTempDir("spark_derby")

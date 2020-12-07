@@ -22,7 +22,8 @@ import java.util.concurrent.ConcurrentHashMap
 
 import scala.collection.JavaConverters._
 
-import org.apache.spark.annotation.Evolving
+import org.apache.spark.annotation.{Evolving, Since}
+
 
 /**
  * Resource profile builder to build a Resource profile to associate with an RDD.
@@ -30,11 +31,10 @@ import org.apache.spark.annotation.Evolving
  * that will get applied during a stage. This allows the user to change the resource
  * requirements between stages.
  *
- * This api is currently private until the rest of the pieces are in place and then it
- * will become public.
  */
 @Evolving
-private[spark] class ResourceProfileBuilder() {
+@Since("3.1.0")
+class ResourceProfileBuilder() {
 
   private val _taskResources = new ConcurrentHashMap[String, TaskResourceRequest]()
   private val _executorResources = new ConcurrentHashMap[String, ExecutorResourceRequest]()

@@ -22,7 +22,7 @@ import java.util.concurrent.TimeUnit
 import org.apache.spark.SparkFunSuite
 import org.apache.spark.sql.catalyst.plans.SQLHelper
 import org.apache.spark.sql.catalyst.util.DateTimeConstants._
-import org.apache.spark.sql.catalyst.util.DateTimeUtils.fromMillis
+import org.apache.spark.sql.catalyst.util.DateTimeUtils.millisToMicros
 import org.apache.spark.sql.catalyst.util.IntervalUtils._
 import org.apache.spark.sql.catalyst.util.IntervalUtils.IntervalUnit._
 import org.apache.spark.sql.internal.SQLConf
@@ -67,7 +67,7 @@ class IntervalUtilsSuite extends SparkFunSuite with SQLHelper {
     testSingleUnit("HouR", 3, 0, 0, 3 * MICROS_PER_HOUR)
     testSingleUnit("MiNuTe", 3, 0, 0, 3 * MICROS_PER_MINUTE)
     testSingleUnit("Second", 3, 0, 0, 3 * MICROS_PER_SECOND)
-    testSingleUnit("MilliSecond", 3, 0, 0, fromMillis(3))
+    testSingleUnit("MilliSecond", 3, 0, 0, millisToMicros(3))
     testSingleUnit("MicroSecond", 3, 0, 0, 3)
 
     checkFromInvalidString(null, "cannot be null")
@@ -75,6 +75,19 @@ class IntervalUtilsSuite extends SparkFunSuite with SQLHelper {
     for (input <- Seq("", "interval", "foo", "foo 1 day")) {
       checkFromInvalidString(input, "Error parsing")
     }
+  }
+
+  test("string to interval: interval with dangling parts should not results null") {
+    checkFromInvalidString("+", "expect a number after '+' but hit EOL")
+    checkFromInvalidString("-", "expect a number after '-' but hit EOL")
+    checkFromInvalidString("+ 2", "expect a unit name after '2' but hit EOL")
+    checkFromInvalidString("- 1", "expect a unit name after '1' but hit EOL")
+    checkFromInvalidString("1", "expect a unit name after '1' but hit EOL")
+    checkFromInvalidString("1.2", "expect a unit name after '1.2' but hit EOL")
+    checkFromInvalidString("1 day 2", "expect a unit name after '2' but hit EOL")
+    checkFromInvalidString("1 day 2.2", "expect a unit name after '2.2' but hit EOL")
+    checkFromInvalidString("1 day -", "expect a number after '-' but hit EOL")
+    checkFromInvalidString("-.", "expect a unit name after '-.' but hit EOL")
   }
 
   test("string to interval: multiple units") {
@@ -115,6 +128,14 @@ class IntervalUtilsSuite extends SparkFunSuite with SQLHelper {
     checkFromString("1 \t day \n 2 \r hour", new CalendarInterval(0, 1, 2 * MICROS_PER_HOUR))
     checkFromInvalidString("interval1 \t day \n 2 \r hour", "invalid interval prefix interval1")
     checkFromString("interval\r1\tday", new CalendarInterval(0, 1, 0))
+    // scalastyle:off nonascii
+    checkFromInvalidString("中国 interval 1 day", "unrecognized number '中国'")
+    checkFromInvalidString("interval浙江 1 day", "invalid interval prefix interval浙江")
+    checkFromInvalidString("interval 1杭州 day", "invalid value '1杭州'")
+    checkFromInvalidString("interval 1 滨江day", "invalid unit '滨江day'")
+    checkFromInvalidString("interval 1 day长河", "invalid unit 'day长河'")
+    checkFromInvalidString("interval 1 day 网商路", "unrecognized number '网商路'")
+    // scalastyle:on nonascii
   }
 
   test("string to interval: seconds with fractional part") {
@@ -161,7 +182,7 @@ class IntervalUtilsSuite extends SparkFunSuite with SQLHelper {
         new CalendarInterval(
           0,
           10,
-          12 * MICROS_PER_MINUTE + fromMillis(888)))
+          12 * MICROS_PER_MINUTE + millisToMicros(888)))
       assert(fromDayTimeString("-3 0:0:0") === new CalendarInterval(0, -3, 0L))
 
       failFuncWithInvalidInput("5 30:12:20", "hour 30 outside range", fromDayTimeString)

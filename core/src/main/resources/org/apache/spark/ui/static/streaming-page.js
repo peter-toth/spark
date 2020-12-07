@@ -43,7 +43,46 @@ function showBootstrapTooltip(node, text) {
 
 // Hide the tooltip for "node"
 function hideBootstrapTooltip(node) {
-    $(node).tooltip("destroy");
+    $(node).tooltip("dispose");
+}
+
+// Return the function to scroll to the corresponding
+// row on clicking a point of batch in the timeline.
+function getOnClickTimelineFunction() {
+    // If the user click one point in the graphs, jump to the batch row and highlight it. And
+    // recovery the batch row after 3 seconds if necessary.
+    // We need to remember the last clicked batch so that we can recovery it.
+    var lastClickedBatch = null;
+    var lastTimeout = null;
+
+    return function(d) {
+        var batchSelector = $("#batch-" + d.x);
+        // If there is a corresponding batch row, scroll down to it and highlight it.
+        if (batchSelector.length > 0) {
+            if (lastTimeout != null) {
+                window.clearTimeout(lastTimeout);
+            }
+            if (lastClickedBatch != null) {
+                clearBatchRow(lastClickedBatch);
+                lastClickedBatch = null;
+            }
+            lastClickedBatch = d.x;
+            highlightBatchRow(lastClickedBatch);
+            lastTimeout = window.setTimeout(function () {
+                lastTimeout = null;
+                if (lastClickedBatch != null) {
+                    clearBatchRow(lastClickedBatch);
+                    lastClickedBatch = null;
+                }
+            }, 3000); // Clean up after 3 seconds
+
+            var topOffset = batchSelector.offset().top - 15;
+            if (topOffset < 0) {
+                topOffset = 0;
+            }
+            $('html,body').animate({scrollTop: topOffset}, 200);
+        }
+    }
 }
 
 // Return the function to scroll to the corresponding

@@ -54,7 +54,7 @@ private[spark] object PythonUtils {
    * Convert list of T into seq of T (for calling API with varargs)
    */
   def toSeq[T](vs: JList[T]): Seq[T] = {
-    vs.asScala
+    vs.asScala.toSeq
   }
 
   /**
@@ -88,5 +88,9 @@ private[spark] object PythonUtils {
 
   def getPythonAuthSocketTimeout(sc: JavaSparkContext): Long = {
     sc.conf.get(org.apache.spark.internal.config.Python.PYTHON_AUTH_SOCKET_TIMEOUT)
+  }
+
+  def getSparkBufferSize(sc: JavaSparkContext): Int = {
+    sc.conf.get(org.apache.spark.internal.config.BUFFER_SIZE)
   }
 }

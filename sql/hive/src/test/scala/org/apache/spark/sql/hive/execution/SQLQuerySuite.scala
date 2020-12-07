@@ -21,7 +21,7 @@ import java.io.File
 import java.net.URI
 import java.nio.charset.StandardCharsets
 import java.sql.{Date, Timestamp}
-import java.util.{Locale, Set, TimeZone}
+import java.util.{Locale, Set}
 
 import com.google.common.io.Files
 import org.apache.hadoop.fs.{FileSystem, Path}
@@ -33,6 +33,7 @@ import org.apache.spark.sql.catalyst.analysis.{EliminateSubqueryAliases, Functio
 import org.apache.spark.sql.catalyst.catalog.{CatalogTableType, CatalogUtils, HiveTableRelation}
 import org.apache.spark.sql.catalyst.parser.ParseException
 import org.apache.spark.sql.catalyst.plans.logical.{LogicalPlan, SubqueryAlias}
+import org.apache.spark.sql.execution.TestUncaughtExceptionHandler
 import org.apache.spark.sql.execution.adaptive.{DisableAdaptiveExecutionSuite, EnableAdaptiveExecutionSuite}
 import org.apache.spark.sql.execution.command.{FunctionsCommand, LoadDataCommand}
 import org.apache.spark.sql.execution.datasources.{HadoopFsRelation, LogicalRelation}
@@ -44,7 +45,6 @@ import org.apache.spark.sql.internal.StaticSQLConf.GLOBAL_TEMP_DATABASE
 import org.apache.spark.sql.test.SQLTestUtils
 import org.apache.spark.sql.types._
 import org.apache.spark.tags.SlowHiveTest
-import org.apache.spark.util.Utils
 
 case class Nested1(f1: Nested2)
 case class Nested2(f2: Nested3)
@@ -92,7 +92,8 @@ abstract class SQLQuerySuiteBase extends QueryTest with SQLTestUtils with TestHi
   test("script") {
     withTempView("script_table") {
       assume(TestUtils.testCommandAvailable("/bin/bash"))
-      assume(TestUtils.testCommandAvailable("echo | sed"))
+      assume(TestUtils.testCommandAvailable("echo"))
+      assume(TestUtils.testCommandAvailable("sed"))
       val scriptFilePath = getTestResourcePath("test_script.sh")
       val df = Seq(("x1", "y1", "z1"), ("x2", "y2", "z2")).toDF("c1", "c2", "c3")
       df.createOrReplaceTempView("script_table")
@@ -711,8 +712,7 @@ abstract class SQLQuerySuiteBase extends QueryTest with SQLTestUtils with TestHi
               |AS SELECT key, value FROM mytable1
             """.stripMargin)
         }.getMessage
-        assert(e.contains("Create Partitioned Table As Select cannot specify data type for " +
-          "the partition columns of the target table"))
+        assert(e.contains("Partition column types may not be specified in Create Table As Select"))
       }
     }
   }
@@ -1173,7 +1173,7 @@ abstract class SQLQuerySuiteBase extends QueryTest with SQLTestUtils with TestHi
 
   test("SPARK-6785: HiveQuerySuite - Date comparison test 2") {
     checkAnswer(
-      sql("SELECT CAST(CAST(0 AS timestamp) AS date) > CAST(0 AS timestamp) FROM src LIMIT 1"),
+      sql("SELECT CAST(timestamp_seconds(0) AS date) > timestamp_seconds(0) FROM src LIMIT 1"),
       Row(false))
   }
 
@@ -1183,10 +1183,10 @@ abstract class SQLQuerySuiteBase extends QueryTest with SQLTestUtils with TestHi
       sql(
         """
           | SELECT
-          | CAST(CAST(0 AS timestamp) AS date),
-          | CAST(CAST(CAST(0 AS timestamp) AS date) AS string),
-          | CAST(0 AS timestamp),
-          | CAST(CAST(0 AS timestamp) AS string),
+          | CAST(timestamp_seconds(0) AS date),
+          | CAST(CAST(timestamp_seconds(0) AS date) AS string),
+          | timestamp_seconds(0),
+          | CAST(timestamp_seconds(0) AS string),
           | CAST(CAST(CAST('1970-01-01 23:00:00' AS timestamp) AS date) AS timestamp)
           | FROM src LIMIT 1
         """.stripMargin),
@@ -1196,6 +1196,7 @@ abstract class SQLQuerySuiteBase extends QueryTest with SQLTestUtils with TestHi
         Timestamp.valueOf("1969-12-31 16:00:00"),
         String.valueOf("1969-12-31 16:00:00"),
         Timestamp.valueOf("1970-01-01 00:00:00")))
+
   }
 
   test("SPARK-8588 HiveTypeCoercion.inConversion fires too early") {
@@ -2025,6 +2026,7 @@ abstract class SQLQuerySuiteBase extends QueryTest with SQLTestUtils with TestHi
           sql(
             """
               |CREATE TABLE part_table (c STRING)
+              |STORED AS textfile
               |PARTITIONED BY (d STRING)
             """.stripMargin)
           sql(s"LOAD DATA LOCAL INPATH '$path/part-r-000011' " +
@@ -2203,38 +2205,62 @@ abstract class SQLQuerySuiteBase extends QueryTest with SQLTestUtils with TestHi
     }
   }
 
-  test("SPARK-21912 ORC/Parquet table should not create invalid column names") {
+  test("SPARK-21912 Parquet table should not create invalid column names") {
     Seq(" ", ",", ";", "{", "}", "(", ")", "\n", "\t", "=").foreach { name =>
-      Seq("ORC", "PARQUET").foreach { source =>
-        withTable("t21912") {
-          val m = intercept[AnalysisException] {
-            sql(s"CREATE TABLE t21912(`col$name` INT) USING $source")
-          }.getMessage
-          assert(m.contains(s"contains invalid character(s)"))
+      val source = "PARQUET"
+      withTable("t21912") {
+        val m = intercept[AnalysisException] {
+          sql(s"CREATE TABLE t21912(`col$name` INT) USING $source")
+        }.getMessage
+        assert(m.contains(s"contains invalid character(s)"))
 
-          val m1 = intercept[AnalysisException] {
-            sql(s"CREATE TABLE t21912 STORED AS $source AS SELECT 1 `col$name`")
-          }.getMessage
-          assert(m1.contains(s"contains invalid character(s)"))
+        val m1 = intercept[AnalysisException] {
+          sql(s"CREATE TABLE t21912 STORED AS $source AS SELECT 1 `col$name`")
+        }.getMessage
+        assert(m1.contains(s"contains invalid character(s)"))
 
-          val m2 = intercept[AnalysisException] {
-            sql(s"CREATE TABLE t21912 USING $source AS SELECT 1 `col$name`")
-          }.getMessage
-          assert(m2.contains(s"contains invalid character(s)"))
+        val m2 = intercept[AnalysisException] {
+          sql(s"CREATE TABLE t21912 USING $source AS SELECT 1 `col$name`")
+        }.getMessage
+        assert(m2.contains(s"contains invalid character(s)"))
 
-          withSQLConf(HiveUtils.CONVERT_METASTORE_PARQUET.key -> "false") {
-            val m3 = intercept[AnalysisException] {
-              sql(s"CREATE TABLE t21912(`col$name` INT) USING hive OPTIONS (fileFormat '$source')")
-            }.getMessage
-            assert(m3.contains(s"contains invalid character(s)"))
-          }
-
-          sql(s"CREATE TABLE t21912(`col` INT) USING $source")
-          val m4 = intercept[AnalysisException] {
-            sql(s"ALTER TABLE t21912 ADD COLUMNS(`col$name` INT)")
+        withSQLConf(HiveUtils.CONVERT_METASTORE_PARQUET.key -> "false") {
+          val m3 = intercept[AnalysisException] {
+            sql(s"CREATE TABLE t21912(`col$name` INT) USING hive OPTIONS (fileFormat '$source')")
           }.getMessage
-          assert(m4.contains(s"contains invalid character(s)"))
+          assert(m3.contains(s"contains invalid character(s)"))
         }
+
+        sql(s"CREATE TABLE t21912(`col` INT) USING $source")
+        val m4 = intercept[AnalysisException] {
+          sql(s"ALTER TABLE t21912 ADD COLUMNS(`col$name` INT)")
+        }.getMessage
+        assert(m4.contains(s"contains invalid character(s)"))
+      }
+    }
+  }
+
+  test("SPARK-32889: ORC table column name supports special characters") {
+    // " " "," is not allowed.
+    Seq("$", ";", "{", "}", "(", ")", "\n", "\t", "=").foreach { name =>
+      val source = "ORC"
+      Seq(s"CREATE TABLE t32889(`$name` INT) USING $source",
+          s"CREATE TABLE t32889 STORED AS $source AS SELECT 1 `$name`",
+          s"CREATE TABLE t32889 USING $source AS SELECT 1 `$name`",
+          s"CREATE TABLE t32889(`$name` INT) USING hive OPTIONS (fileFormat '$source')")
+      .foreach { command =>
+        withTable("t32889") {
+          sql(command)
+          assertResult(name)(
+            sessionState.catalog.getTableMetadata(TableIdentifier("t32889")).schema.fields(0).name)
+        }
+      }
+
+      withTable("t32889") {
+        sql(s"CREATE TABLE t32889(`col` INT) USING $source")
+        sql(s"ALTER TABLE t32889 ADD COLUMNS(`$name` INT)")
+        assertResult(name)(
+          sessionState.catalog.getTableMetadata(TableIdentifier("t32889")).schema.fields(1).name)
       }
     }
   }
@@ -2456,67 +2482,67 @@ abstract class SQLQuerySuiteBase extends QueryTest with SQLTestUtils with TestHi
     }
   }
 
-// This is ignored because of CDPD-7882
-//  test("SPARK-29295: dynamic insert overwrite external partition should not have old data") {
-//    Seq("true", "false").foreach { convertParquet =>
-//      withTable("test") {
-//        withTempDir { f =>
-//          sql("CREATE EXTERNAL TABLE test(id int) PARTITIONED BY (p1 string, p2 string) " +
-//            s"STORED AS PARQUET LOCATION '${f.getAbsolutePath}'")
-//
-//          withSQLConf(HiveUtils.CONVERT_METASTORE_PARQUET.key -> convertParquet,
-//            "hive.exec.dynamic.partition.mode" -> "nonstrict") {
-//            sql(
-//              """
-//                |INSERT OVERWRITE TABLE test PARTITION(p1='n1', p2)
-//                |SELECT * FROM VALUES (1, 'n2'), (2, 'n3') AS t(id, p2)
-//              """.stripMargin)
-//            checkAnswer(sql("SELECT id FROM test WHERE p1 = 'n1' and p2 = 'n2' ORDER BY id"),
-//              Array(Row(1)))
-//            checkAnswer(sql("SELECT id FROM test WHERE p1 = 'n1' and p2 = 'n3' ORDER BY id"),
-//              Array(Row(2)))
-//
-//            sql("INSERT OVERWRITE TABLE test PARTITION(p1='n1', p2) SELECT 4, 'n4'")
-//            checkAnswer(sql("SELECT id FROM test WHERE p1 = 'n1' and p2 = 'n4' ORDER BY id"),
-//              Array(Row(4)))
-//
-//            sql("ALTER TABLE test DROP PARTITION(p1='n1',p2='n2')")
-//            sql("ALTER TABLE test DROP PARTITION(p1='n1',p2='n3')")
-//
-//            sql(
-//              """
-//                |INSERT OVERWRITE TABLE test PARTITION(p1='n1', p2)
-//                |SELECT * FROM VALUES (5, 'n2'), (6, 'n3') AS t(id, p2)
-//              """.stripMargin)
-//            checkAnswer(sql("SELECT id FROM test WHERE p1 = 'n1' and p2 = 'n2' ORDER BY id"),
-//              Array(Row(5)))
-//            checkAnswer(sql("SELECT id FROM test WHERE p1 = 'n1' and p2 = 'n3' ORDER BY id"),
-//              Array(Row(6)))
-//            // Partition not overwritten should not be deleted.
-//            checkAnswer(sql("SELECT id FROM test WHERE p1 = 'n1' and p2 = 'n4' ORDER BY id"),
-//              Array(Row(4)))
-//          }
-//        }
-//      }
-//
-//      withTable("test") {
-//        withTempDir { f =>
-//          sql("CREATE EXTERNAL TABLE test(id int) PARTITIONED BY (p1 string, p2 string) " +
-//            s"STORED AS PARQUET LOCATION '${f.getAbsolutePath}'")
-//
-//          withSQLConf(HiveUtils.CONVERT_METASTORE_PARQUET.key -> convertParquet,
-//            "hive.exec.dynamic.partition.mode" -> "nonstrict") {
-//            // We should unescape partition value.
-//            sql("INSERT OVERWRITE TABLE test PARTITION(p1='n1', p2) SELECT 1, '/'")
-//            sql("ALTER TABLE test DROP PARTITION(p1='n1',p2='/')")
-//            sql("INSERT OVERWRITE TABLE test PARTITION(p1='n1', p2) SELECT 2, '/'")
-//            checkAnswer(sql("SELECT id FROM test WHERE p1 = 'n1' and p2 = '/' ORDER BY id"),
-//              Array(Row(2)))
-//          }
-//        }
-//      }
-//    }
-//  }
+  // This is ignored because of CDPD-7882
+  ignore("SPARK-29295: dynamic insert overwrite external partition should not have old data") {
+    Seq("true", "false").foreach { convertParquet =>
+      withTable("test") {
+        withTempDir { f =>
+          sql("CREATE EXTERNAL TABLE test(id int) PARTITIONED BY (p1 string, p2 string) " +
+            s"STORED AS PARQUET LOCATION '${f.getAbsolutePath}'")
+
+          withSQLConf(HiveUtils.CONVERT_METASTORE_PARQUET.key -> convertParquet,
+            "hive.exec.dynamic.partition.mode" -> "nonstrict") {
+            sql(
+              """
+                |INSERT OVERWRITE TABLE test PARTITION(p1='n1', p2)
+                |SELECT * FROM VALUES (1, 'n2'), (2, 'n3') AS t(id, p2)
+              """.stripMargin)
+            checkAnswer(sql("SELECT id FROM test WHERE p1 = 'n1' and p2 = 'n2' ORDER BY id"),
+              Array(Row(1)))
+            checkAnswer(sql("SELECT id FROM test WHERE p1 = 'n1' and p2 = 'n3' ORDER BY id"),
+              Array(Row(2)))
+
+            sql("INSERT OVERWRITE TABLE test PARTITION(p1='n1', p2) SELECT 4, 'n4'")
+            checkAnswer(sql("SELECT id FROM test WHERE p1 = 'n1' and p2 = 'n4' ORDER BY id"),
+              Array(Row(4)))
+
+            sql("ALTER TABLE test DROP PARTITION(p1='n1',p2='n2')")
+            sql("ALTER TABLE test DROP PARTITION(p1='n1',p2='n3')")
+
+            sql(
+              """
+                |INSERT OVERWRITE TABLE test PARTITION(p1='n1', p2)
+                |SELECT * FROM VALUES (5, 'n2'), (6, 'n3') AS t(id, p2)
+              """.stripMargin)
+            checkAnswer(sql("SELECT id FROM test WHERE p1 = 'n1' and p2 = 'n2' ORDER BY id"),
+              Array(Row(5)))
+            checkAnswer(sql("SELECT id FROM test WHERE p1 = 'n1' and p2 = 'n3' ORDER BY id"),
+              Array(Row(6)))
+            // Partition not overwritten should not be deleted.
+            checkAnswer(sql("SELECT id FROM test WHERE p1 = 'n1' and p2 = 'n4' ORDER BY id"),
+              Array(Row(4)))
+          }
+        }
+      }
+
+      withTable("test") {
+        withTempDir { f =>
+          sql("CREATE EXTERNAL TABLE test(id int) PARTITIONED BY (p1 string, p2 string) " +
+            s"STORED AS PARQUET LOCATION '${f.getAbsolutePath}'")
+
+          withSQLConf(HiveUtils.CONVERT_METASTORE_PARQUET.key -> convertParquet,
+            "hive.exec.dynamic.partition.mode" -> "nonstrict") {
+            // We should unescape partition value.
+            sql("INSERT OVERWRITE TABLE test PARTITION(p1='n1', p2) SELECT 1, '/'")
+            sql("ALTER TABLE test DROP PARTITION(p1='n1',p2='/')")
+            sql("INSERT OVERWRITE TABLE test PARTITION(p1='n1', p2) SELECT 2, '/'")
+            checkAnswer(sql("SELECT id FROM test WHERE p1 = 'n1' and p2 = '/' ORDER BY id"),
+              Array(Row(2)))
+          }
+        }
+      }
+    }
+  }
 
   test("partition pruning should handle date correctly") {
     withSQLConf(SQLConf.OPTIMIZER_INSET_CONVERSION_THRESHOLD.key -> "2") {

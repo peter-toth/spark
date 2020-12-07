@@ -89,7 +89,7 @@ class HiveTranslationLayerCheck(session: SparkSession) extends Rule[LogicalPlan]
         }
         i
 
-      case i @ InsertIntoStatement(r: HiveTableRelation, _, _, _, _) =>
+      case i @ InsertIntoStatement(r: HiveTableRelation, _, _, _, _, _) =>
         CatalogUtils.throwIfRO(r.tableMeta)
         i
 

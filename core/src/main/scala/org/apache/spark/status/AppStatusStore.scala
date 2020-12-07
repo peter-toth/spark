@@ -22,7 +22,7 @@ import java.util.{List => JList}
 import scala.collection.JavaConverters._
 import scala.collection.mutable.HashMap
 
-import org.apache.spark.{JobExecutionStatus, SparkConf, SparkException}
+import org.apache.spark.{JobExecutionStatus, SparkConf}
 import org.apache.spark.status.api.v1
 import org.apache.spark.ui.scope._
 import org.apache.spark.util.Utils
@@ -38,7 +38,13 @@ private[spark] class AppStatusStore(
   def applicationInfo(): v1.ApplicationInfo = {
     try {
       // The ApplicationInfo may not be available when Spark is starting up.
-      store.view(classOf[ApplicationInfoWrapper]).max(1).iterator().next().info
+      Utils.tryWithResource(
+        store.view(classOf[ApplicationInfoWrapper])
+          .max(1)
+          .closeableIterator()
+      ) { it =>
+        it.next().info
+      }
     } catch {
       case _: NoSuchElementException =>
         throw new NoSuchElementException("Failed to get the application information. " +
@@ -49,6 +55,10 @@ private[spark] class AppStatusStore(
   def environmentInfo(): v1.ApplicationEnvironmentInfo = {
     val klass = classOf[ApplicationEnvironmentInfoWrapper]
     store.read(klass, klass.getName()).info
+  }
+
+  def resourceProfileInfo(): Seq[v1.ResourceProfileInfo] = {
+    store.view(classOf[ResourceProfileWrapper]).asScala.map(_.rpInfo).toSeq
   }
 
   def jobsList(statuses: JList[JobExecutionStatus]): Seq[v1.JobData] = {
@@ -375,7 +385,8 @@ private[spark] class AppStatusStore(
       stageAttemptId: Int,
       offset: Int,
       length: Int,
-      sortBy: v1.TaskSorting): Seq[v1.TaskData] = {
+      sortBy: v1.TaskSorting,
+      statuses: JList[v1.TaskStatus]): Seq[v1.TaskData] = {
     val (indexName, ascending) = sortBy match {
       case v1.TaskSorting.ID =>
         (None, true)
@@ -384,7 +395,7 @@ private[spark] class AppStatusStore(
       case v1.TaskSorting.DECREASING_RUNTIME =>
         (Some(TaskIndexNames.EXEC_RUN_TIME), false)
     }
-    taskList(stageId, stageAttemptId, offset, length, indexName, ascending)
+    taskList(stageId, stageAttemptId, offset, length, indexName, ascending, statuses)
   }
 
   def taskList(
@@ -393,7 +404,8 @@ private[spark] class AppStatusStore(
       offset: Int,
       length: Int,
       sortBy: Option[String],
-      ascending: Boolean): Seq[v1.TaskData] = {
+      ascending: Boolean,
+      statuses: JList[v1.TaskStatus] = List().asJava): Seq[v1.TaskData] = {
     val stageKey = Array(stageId, stageAttemptId)
     val base = store.view(classOf[TaskDataWrapper])
     val indexed = sortBy match {
@@ -406,7 +418,13 @@ private[spark] class AppStatusStore(
     }
 
     val ordered = if (ascending) indexed else indexed.reverse()
-    val taskDataWrapperIter = ordered.skip(offset).max(length).asScala
+    val taskDataWrapperIter = if (statuses != null && !statuses.isEmpty) {
+      val statusesStr = statuses.asScala.map(_.toString).toSet
+      ordered.asScala.filter(s => statusesStr.contains(s.status)).slice(offset, offset + length)
+    } else {
+      ordered.skip(offset).max(length).asScala
+    }
+
     constructTaskDataList(taskDataWrapperIter)
   }
 
@@ -487,6 +505,7 @@ private[spark] class AppStatusStore(
       tasks = Some(tasks),
       executorSummary = Some(executorSummary(stage.stageId, stage.attemptId)),
       killedTasksSummary = stage.killedTasksSummary,
+      resourceProfileId = stage.resourceProfileId,
       peakExecutorMetrics = stage.peakExecutorMetrics)
   }
 

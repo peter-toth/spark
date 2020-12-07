@@ -22,12 +22,10 @@ import java.lang.{Long => JLong}
 import java.net.URI
 import java.nio.charset.StandardCharsets.UTF_8
 import java.util.concurrent.ConcurrentHashMap
-import java.util.concurrent.atomic.AtomicLong
 
 import scala.util.Random
 
-import org.apache.hadoop.fs.{FSDataInputStream, Path, RawLocalFileSystem}
-import org.apache.hadoop.fs.FileSystem
+import org.apache.hadoop.fs.{FileSystem, FSDataInputStream, Path, RawLocalFileSystem}
 
 import org.apache.spark.SparkFunSuite
 import org.apache.spark.sql.internal.SQLConf
@@ -41,10 +39,7 @@ class FileStreamSinkLogSuite extends SparkFunSuite with SharedSparkSession {
   test("shouldRetain") {
     withFileStreamSinkLog { sinkLog =>
       val log = newFakeSinkFileStatus("/a/b/x", FileStreamSinkLog.ADD_ACTION)
-      val log2 = newFakeSinkFileStatus("/a/b/z", FileStreamSinkLog.DELETE_ACTION)
-
-      assert(sinkLog.shouldRetain(log))
-      assert(!sinkLog.shouldRetain(log2))
+      assert(sinkLog.shouldRetain(log, System.currentTimeMillis()))
     }
   }
 
@@ -60,14 +55,6 @@ class FileStreamSinkLogSuite extends SparkFunSuite with SharedSparkSession {
           blockSize = 10000L,
           action = FileStreamSinkLog.ADD_ACTION),
         SinkFileStatus(
-          path = "/a/b/y",
-          size = 200L,
-          isDir = false,
-          modificationTime = 2000L,
-          blockReplication = 2,
-          blockSize = 20000L,
-          action = FileStreamSinkLog.DELETE_ACTION),
-        SinkFileStatus(
           path = "/a/b/z",
           size = 300L,
           isDir = false,
@@ -79,7 +66,6 @@ class FileStreamSinkLogSuite extends SparkFunSuite with SharedSparkSession {
       // scalastyle:off
       val expected = s"""v$VERSION
           |{"path":"/a/b/x","size":100,"isDir":false,"modificationTime":1000,"blockReplication":1,"blockSize":10000,"action":"add"}
-          |{"path":"/a/b/y","size":200,"isDir":false,"modificationTime":2000,"blockReplication":2,"blockSize":20000,"action":"delete"}
           |{"path":"/a/b/z","size":300,"isDir":false,"modificationTime":3000,"blockReplication":3,"blockSize":30000,"action":"add"}""".stripMargin
       // scalastyle:on
       val baos = new ByteArrayOutputStream()
@@ -96,7 +82,6 @@ class FileStreamSinkLogSuite extends SparkFunSuite with SharedSparkSession {
       // scalastyle:off
       val logs = s"""v$VERSION
           |{"path":"/a/b/x","size":100,"isDir":false,"modificationTime":1000,"blockReplication":1,"blockSize":10000,"action":"add"}
-          |{"path":"/a/b/y","size":200,"isDir":false,"modificationTime":2000,"blockReplication":2,"blockSize":20000,"action":"delete"}
           |{"path":"/a/b/z","size":300,"isDir":false,"modificationTime":3000,"blockReplication":3,"blockSize":30000,"action":"add"}""".stripMargin
       // scalastyle:on
 
@@ -109,14 +94,6 @@ class FileStreamSinkLogSuite extends SparkFunSuite with SharedSparkSession {
           blockReplication = 1,
           blockSize = 10000L,
           action = FileStreamSinkLog.ADD_ACTION),
-        SinkFileStatus(
-          path = "/a/b/y",
-          size = 200L,
-          isDir = false,
-          modificationTime = 2000L,
-          blockReplication = 2,
-          blockSize = 20000L,
-          action = FileStreamSinkLog.DELETE_ACTION),
         SinkFileStatus(
           path = "/a/b/z",
           size = 300L,
@@ -224,12 +201,14 @@ class FileStreamSinkLogSuite extends SparkFunSuite with SharedSparkSession {
         newFakeSinkFileStatus("/a/b/x", FileStreamSinkLog.ADD_ACTION, curTime),
         newFakeSinkFileStatus("/a/b/y", FileStreamSinkLog.ADD_ACTION, curTime),
         newFakeSinkFileStatus("/a/b/z", FileStreamSinkLog.ADD_ACTION, curTime))
-      logs.foreach { log => assert(sinkLog.shouldRetain(log)) }
+      logs.foreach { log => assert(sinkLog.shouldRetain(log, curTime)) }
 
       val logs2 = Seq(
         newFakeSinkFileStatus("/a/b/m", FileStreamSinkLog.ADD_ACTION, curTime - 80000),
         newFakeSinkFileStatus("/a/b/n", FileStreamSinkLog.ADD_ACTION, curTime - 120000))
-      logs2.foreach { log => assert(!sinkLog.shouldRetain(log)) }
+      logs2.foreach { log =>
+        assert(!sinkLog.shouldRetain(log, curTime))
+      }
     }, Some(60000))
   }
 

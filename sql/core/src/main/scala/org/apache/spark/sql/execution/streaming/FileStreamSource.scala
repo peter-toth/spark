@@ -104,7 +104,7 @@ class FileStreamSource(
   // Visible for testing and debugging in production.
   val seenFiles = new SeenFilesMap(maxFileAgeMs, fileNameOnly)
 
-  metadataLog.allFiles().foreach { entry =>
+  metadataLog.restore().foreach { entry =>
     seenFiles.add(entry.path, entry.timestamp)
   }
   seenFiles.purge()
@@ -139,6 +139,7 @@ class FileStreamSource(
           // Discard unselected files if the number of files are smaller than threshold.
           // This is to avoid the case when the next batch would have too few files to read
           // whereas there're new files available.
+          logTrace(s"Discarding ${usFiles.length} unread files as it's smaller than threshold.")
           (bFiles, null)
         } else {
           (bFiles, usFiles)
@@ -152,7 +153,8 @@ class FileStreamSource(
     }
 
     if (unselectedFiles != null && unselectedFiles.nonEmpty) {
-      unreadFiles = unselectedFiles
+      logTrace(s"Taking first $MAX_CACHED_UNSEEN_FILES unread files.")
+      unreadFiles = unselectedFiles.take(MAX_CACHED_UNSEEN_FILES)
       logTrace(s"${unreadFiles.size} unread files are available for further batches.")
     } else {
       unreadFiles = null
@@ -176,10 +178,16 @@ class FileStreamSource(
 
     if (batchFiles.nonEmpty) {
       metadataLogCurrentOffset += 1
-      metadataLog.add(metadataLogCurrentOffset, batchFiles.map { case (p, timestamp) =>
+
+      val fileEntries = batchFiles.map { case (p, timestamp) =>
         FileEntry(path = p, timestamp = timestamp, batchId = metadataLogCurrentOffset)
-      }.toArray)
-      logInfo(s"Log offset set to $metadataLogCurrentOffset with ${batchFiles.size} new files")
+      }.toArray
+      if (metadataLog.add(metadataLogCurrentOffset, fileEntries)) {
+        logInfo(s"Log offset set to $metadataLogCurrentOffset with ${batchFiles.size} new files")
+      } else {
+        throw new IllegalStateException("Concurrent update to the log. Multiple streaming jobs " +
+          s"detected for $metadataLogCurrentOffset")
+      }
     }
 
     FileStreamSourceOffset(metadataLogCurrentOffset)
@@ -343,6 +351,7 @@ object FileStreamSource {
   type Timestamp = Long
 
   val DISCARD_UNSEEN_FILES_RATIO = 0.2
+  val MAX_CACHED_UNSEEN_FILES = 10000
 
   case class FileEntry(path: String, timestamp: Timestamp, batchId: Long) extends Serializable
 
@@ -515,7 +524,7 @@ object FileStreamSource {
     }
 
     private def buildSourceGlobFilters(sourcePath: Path): Seq[GlobFilter] = {
-      val filters = new scala.collection.mutable.MutableList[GlobFilter]()
+      val filters = new scala.collection.mutable.ArrayBuffer[GlobFilter]()
 
       var currentPath = sourcePath
       while (!currentPath.isRoot) {
@@ -523,7 +532,7 @@ object FileStreamSource {
         currentPath = currentPath.getParent
       }
 
-      filters.toList
+      filters.toSeq
     }
 
     override protected def cleanTask(entry: FileEntry): Unit = {

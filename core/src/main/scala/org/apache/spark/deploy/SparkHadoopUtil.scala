@@ -465,6 +465,9 @@ private[spark] object SparkHadoopUtil {
     for ((key, value) <- conf.getAll if key.startsWith("spark.hadoop.")) {
       hadoopConf.set(key.substring("spark.hadoop.".length), value)
     }
+    if (conf.getOption("spark.hadoop.mapreduce.fileoutputcommitter.algorithm.version").isEmpty) {
+      hadoopConf.set("mapreduce.fileoutputcommitter.algorithm.version", "1")
+    }
   }
 
   private def appendSparkHiveConfigs(conf: SparkConf, hadoopConf: Configuration): Unit = {

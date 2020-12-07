@@ -26,7 +26,6 @@ import sys
 import subprocess
 import glob
 import shutil
-from collections import namedtuple
 
 from sparktestsupport import SPARK_HOME, USER_HOME, ERROR_CODES
 from sparktestsupport.shellutils import exit_from_command_with_retcode, run_cmd, rm_r, which
@@ -43,7 +42,8 @@ def determine_modules_for_files(filenames):
     """
     Given a list of filenames, return the set of modules that contain those files.
     If a file is not associated with a more specific submodule, then this method will consider that
-    file to belong to the 'root' module. GitHub Action and Appveyor files are ignored.
+    file to belong to the 'root' module. `.github` directory is counted only in GitHub Actions,
+    and `appveyor.yml` is always ignored because this file is dedicated only to AppVeyor builds.
 
     >>> sorted(x.name for x in determine_modules_for_files(["python/pyspark/a.py", "sql/core/foo"]))
     ['pyspark-core', 'sql']
@@ -55,6 +55,8 @@ def determine_modules_for_files(filenames):
     changed_modules = set()
     for filename in filenames:
         if filename in ("appveyor.yml",):
+            continue
+        if ("GITHUB_ACTIONS" not in os.environ) and filename.startswith(".github"):
             continue
         matched_at_least_one_module = False
         for module in modules.all_modules:
@@ -133,7 +135,7 @@ def determine_modules_to_test(changed_modules, deduplicated=True):
     ... # doctest: +NORMALIZE_WHITESPACE
     ['avro', 'catalyst', 'core', 'examples', 'graphx', 'hive', 'hive-thriftserver',
      'mllib', 'mllib-local', 'pyspark-core', 'pyspark-ml', 'pyspark-mllib',
-     'pyspark-sql', 'pyspark-streaming', 'repl', 'root',
+     'pyspark-resource', 'pyspark-sql', 'pyspark-streaming', 'repl', 'root',
      'sparkr', 'sql', 'sql-kafka-0-10', 'streaming', 'streaming-kafka-0-10',
      'streaming-kinesis-asl']
     """
@@ -326,7 +328,6 @@ def get_hive_profiles(hive_version):
     """
 
     sbt_maven_hive_profiles = {
-        "hive1.2": ["-Phive-1.2"],
         "hive2.3": ["-Phive-2.3"],
     }
 
@@ -386,7 +387,8 @@ def build_spark_assembly_sbt(extra_profiles, checkstyle=False):
     if checkstyle:
         run_java_style_checks(build_profiles)
 
-    build_spark_unidoc_sbt(extra_profiles)
+    if not os.environ.get("AMPLAB_JENKINS"):
+        build_spark_unidoc_sbt(extra_profiles)
 
 
 def build_apache_spark(build_tool, extra_profiles):
@@ -481,6 +483,12 @@ def run_python_tests(test_modules, parallelism, with_coverage=False):
     if test_modules != [modules.root]:
         command.append("--modules=%s" % ','.join(m.name for m in test_modules))
     command.append("--parallelism=%i" % parallelism)
+    if "GITHUB_ACTIONS" in os.environ:
+        # See SPARK-33565. Python 3.8 was temporarily removed as its default Python executables
+        # to test because of Jenkins environment issue. Once Jenkins has Python 3.8 to test,
+        # we should remove this change back and add python3.8 into python/run-tests.py script.
+        command.append("--python-executable=%s" % ','.join(
+            x for x in ["python3.6", "python3.8", "pypy3"] if which(x)))
     run_cmd(command)
 
     if with_coverage:
@@ -626,7 +634,7 @@ def main():
         # if we're on the Amplab Jenkins build servers setup variables
         # to reflect the environment settings
         build_tool = os.environ.get("AMPLAB_JENKINS_BUILD_TOOL", "sbt")
-        hadoop_version = os.environ.get("AMPLAB_JENKINS_BUILD_PROFILE", "hadoop2.7")
+        hadoop_version = os.environ.get("AMPLAB_JENKINS_BUILD_PROFILE", "hadoop3.2")
         hive_version = os.environ.get("AMPLAB_JENKINS_BUILD_HIVE_PROFILE", "hive2.3")
         test_env = "amplab_jenkins"
         # add path for Python3 in Jenkins if we're calling from a Jenkins machine
@@ -634,9 +642,9 @@ def main():
         # /home/jenkins/anaconda2/envs/py36/bin
         os.environ["PATH"] = "/home/anaconda/envs/py36/bin:" + os.environ.get("PATH")
     else:
-        # else we're running locally or Github Actions.
+        # else we're running locally or GitHub Actions.
         build_tool = "sbt"
-        hadoop_version = os.environ.get("HADOOP_PROFILE", "hadoop2.7")
+        hadoop_version = os.environ.get("HADOOP_PROFILE", "hadoop3.2")
         hive_version = os.environ.get("HIVE_PROFILE", "hive2.3")
         if "GITHUB_ACTIONS" in os.environ:
             test_env = "github_actions"
@@ -652,10 +660,16 @@ def main():
     included_tags = []
     excluded_tags = []
     if should_only_test_modules:
-        # If we're running the tests in Github Actions, attempt to detect and test
+        # If we're running the tests in GitHub Actions, attempt to detect and test
         # only the affected modules.
         if test_env == "github_actions":
-            if os.environ["GITHUB_BASE_REF"] != "":
+            if os.environ["GITHUB_INPUT_BRANCH"] != "":
+                # Dispatched request
+                # Note that it assumes GitHub Actions has already merged
+                # the given `GITHUB_INPUT_BRANCH` branch.
+                changed_files = identify_changed_files_from_git_commits(
+                    "HEAD", target_branch=os.environ["GITHUB_SHA"])
+            elif os.environ["GITHUB_BASE_REF"] != "":
                 # Pull requests
                 changed_files = identify_changed_files_from_git_commits(
                     os.environ["GITHUB_SHA"], target_branch=os.environ["GITHUB_BASE_REF"])
@@ -741,7 +755,7 @@ def main():
     # if "DOCS" in changed_modules and test_env == "amplab_jenkins":
     #    build_spark_documentation()
 
-    if any(m.should_run_build_tests for m in test_modules):
+    if any(m.should_run_build_tests for m in test_modules) and test_env != "amplab_jenkins":
         run_build_tests()
 
     # spark build

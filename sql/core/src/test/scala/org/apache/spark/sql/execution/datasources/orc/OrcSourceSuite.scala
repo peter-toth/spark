@@ -33,7 +33,7 @@ import org.scalatest.BeforeAndAfterAll
 
 import org.apache.spark.{SPARK_VERSION_SHORT, SparkException}
 import org.apache.spark.sql.{Row, SPARK_VERSION_METADATA_KEY}
-import org.apache.spark.sql.execution.datasources.SchemaMergeUtils
+import org.apache.spark.sql.execution.datasources.{CommonFileDataSourceSuite, SchemaMergeUtils}
 import org.apache.spark.sql.internal.SQLConf
 import org.apache.spark.sql.test.SharedSparkSession
 import org.apache.spark.sql.types.{LongType, StructField, StructType}
@@ -41,8 +41,10 @@ import org.apache.spark.util.Utils
 
 case class OrcData(intField: Int, stringField: String)
 
-abstract class OrcSuite extends OrcTest with BeforeAndAfterAll {
+abstract class OrcSuite extends OrcTest with BeforeAndAfterAll with CommonFileDataSourceSuite {
   import testImplicits._
+
+  override protected def dataSourceFormat = "orc"
 
   var orcTableDir: File = null
   var orcTableAsDir: File = null
@@ -121,7 +123,7 @@ abstract class OrcSuite extends OrcTest with BeforeAndAfterAll {
   }
 
   protected def testSelectiveDictionaryEncoding(isSelective: Boolean,
-      isHive23: Boolean = false,
+      isHiveOrc: Boolean = false,
       nativeOrc: Boolean = false): Unit = {
     val tableName = "orcTable"
 
@@ -176,12 +178,12 @@ abstract class OrcSuite extends OrcTest with BeforeAndAfterAll {
           // For more details, see https://orc.apache.org/specification/
           // CDPD-3881: It looks like encoding has changed with CDP Hive 3, this is weird a bit as
           // CDP Hive 3 and Spark 3 uses the exact same downstream ORC version.
-          if (isHive23 && !nativeOrc) {
+          if (isHiveOrc && !nativeOrc) {
             assert(stripe.getColumns(1).getKind === DIRECT_V2)
           } else {
             assert(stripe.getColumns(1).getKind === DICTIONARY_V2)
           }
-          if (isSelective || isHive23) {
+          if (isSelective || isHiveOrc) {
             assert(stripe.getColumns(2).getKind === DIRECT_V2)
           } else {
             assert(stripe.getColumns(2).getKind === DICTIONARY_V2)
@@ -595,9 +597,9 @@ class OrcSourceSuite extends OrcSuite with SharedSparkSession {
   }
 
   // CDPD-12030: re-enable these test once ORC-621 lands in our builds
-//  test("SPARK-31580: Read a file written before ORC-569") {
-//    // Test ORC file came from ORC-621
-//    val df = readResourceOrcFile("test-data/TestStringDictionary.testRowIndex.orc")
-//    assert(df.where("str < 'row 001000'").count() === 1000)
-//  }
+  ignore("SPARK-31580: Read a file written before ORC-569") {
+    // Test ORC file came from ORC-621
+    val df = readResourceOrcFile("test-data/TestStringDictionary.testRowIndex.orc")
+    assert(df.where("str < 'row 001000'").count() === 1000)
+  }
 }

@@ -3426,6 +3426,37 @@ class SQLQuerySuite extends QueryTest with SharedSparkSession with AdaptiveSpark
     checkAnswer(df2, Row(1) :: Nil)
   }
 
+  test("SPARK-30279 Support 32 or more grouping attributes for GROUPING_ID()") {
+    withTempView("t") {
+      sql("CREATE TEMPORARY VIEW t AS SELECT * FROM " +
+        s"VALUES(${(0 until 65).map { _ => 1 }.mkString(", ")}, 3) AS " +
+        s"t(${(0 until 65).map { i => s"k$i" }.mkString(", ")}, v)")
+
+      def testGropingIDs(numGroupingSet: Int, expectedIds: Seq[Any] = Nil): Unit = {
+        val groupingCols = (0 until numGroupingSet).map { i => s"k$i" }
+        val df = sql("SELECT GROUPING_ID(), SUM(v) FROM t GROUP BY " +
+          s"GROUPING SETS ((${groupingCols.mkString(",")}), (${groupingCols.init.mkString(",")}))")
+        checkAnswer(df, expectedIds.map { id => Row(id, 3) })
+      }
+
+      withSQLConf(SQLConf.LEGACY_INTEGER_GROUPING_ID.key -> "true") {
+        testGropingIDs(32, Seq(0, 1))
+        val errMsg = intercept[AnalysisException] {
+          testGropingIDs(33)
+        }.getMessage
+        assert(errMsg.contains("Grouping sets size cannot be greater than 32"))
+      }
+
+      withSQLConf(SQLConf.LEGACY_INTEGER_GROUPING_ID.key -> "false") {
+        testGropingIDs(64, Seq(0L, 1L))
+        val errMsg = intercept[AnalysisException] {
+          testGropingIDs(65)
+        }.getMessage
+        assert(errMsg.contains("Grouping sets size cannot be greater than 64"))
+      }
+    }
+  }
+
   test("SPARK-31166: UNION map<null, null> and other maps should not fail") {
     checkAnswer(
       sql("(SELECT map()) UNION ALL (SELECT map(1, 2))"),
@@ -3439,6 +3470,131 @@ class SQLQuerySuite extends QueryTest with SharedSparkSession with AdaptiveSpark
       val cloned = spark.cloneSession()
       SparkSession.setActiveSession(cloned)
       assert(SQLConf.get.getConf(SQLConf.CODEGEN_FALLBACK) === true)
+    }
+  }
+
+  test("SPARK-31594: Do not display the seed of rand/randn with no argument in output schema") {
+    def checkIfSeedExistsInExplain(df: DataFrame): Unit = {
+      val output = new java.io.ByteArrayOutputStream()
+      Console.withOut(output) {
+        df.explain()
+      }
+      val projectExplainOutput = output.toString.split("\n").find(_.contains("Project")).get
+      assert(projectExplainOutput.matches(""".*randn?\(-?[0-9]+\).*"""))
+    }
+    val df1 = sql("SELECT rand()")
+    assert(df1.schema.head.name === "rand()")
+    checkIfSeedExistsInExplain(df1)
+    val df2 = sql("SELECT rand(1L)")
+    assert(df2.schema.head.name === "rand(1)")
+    checkIfSeedExistsInExplain(df2)
+    val df3 = sql("SELECT randn()")
+    assert(df3.schema.head.name === "randn()")
+    checkIfSeedExistsInExplain(df1)
+    val df4 = sql("SELECT randn(1L)")
+    assert(df4.schema.head.name === "randn(1)")
+    checkIfSeedExistsInExplain(df2)
+  }
+
+  test("SPARK-31670: Trim unnecessary Struct field alias in Aggregate/GroupingSets") {
+    withTempView("t") {
+      sql(
+        """
+          |CREATE TEMPORARY VIEW t(a, b, c) AS
+          |SELECT * FROM VALUES
+          |('A', 1, NAMED_STRUCT('row_id', 1, 'json_string', '{"i": 1}')),
+          |('A', 2, NAMED_STRUCT('row_id', 2, 'json_string', '{"i": 1}')),
+          |('A', 2, NAMED_STRUCT('row_id', 2, 'json_string', '{"i": 2}')),
+          |('B', 1, NAMED_STRUCT('row_id', 3, 'json_string', '{"i": 1}')),
+          |('C', 3, NAMED_STRUCT('row_id', 4, 'json_string', '{"i": 1}'))
+        """.stripMargin)
+
+      checkAnswer(
+        sql(
+          """
+            |SELECT a, c.json_string, SUM(b)
+            |FROM t
+            |GROUP BY a, c.json_string
+            |""".stripMargin),
+        Row("A", "{\"i\": 1}", 3) :: Row("A", "{\"i\": 2}", 2) ::
+          Row("B", "{\"i\": 1}", 1) :: Row("C", "{\"i\": 1}", 3) :: Nil)
+
+      checkAnswer(
+        sql(
+          """
+            |SELECT a, c.json_string, SUM(b)
+            |FROM t
+            |GROUP BY a, c.json_string
+            |WITH CUBE
+            |""".stripMargin),
+        Row("A", "{\"i\": 1}", 3) :: Row("A", "{\"i\": 2}", 2) :: Row("A", null, 5) ::
+          Row("B", "{\"i\": 1}", 1) :: Row("B", null, 1) ::
+          Row("C", "{\"i\": 1}", 3) :: Row("C", null, 3) ::
+          Row(null, "{\"i\": 1}", 7) :: Row(null, "{\"i\": 2}", 2) :: Row(null, null, 9) :: Nil)
+
+      checkAnswer(
+        sql(
+          """
+            |SELECT a, get_json_object(c.json_string, '$.i'), SUM(b)
+            |FROM t
+            |GROUP BY a, get_json_object(c.json_string, '$.i')
+            |WITH CUBE
+            |""".stripMargin),
+        Row("A", "1", 3) :: Row("A", "2", 2) :: Row("A", null, 5) ::
+          Row("B", "1", 1) :: Row("B", null, 1) ::
+          Row("C", "1", 3) :: Row("C", null, 3) ::
+          Row(null, "1", 7) :: Row(null, "2", 2) :: Row(null, null, 9) :: Nil)
+
+      checkAnswer(
+        sql(
+          """
+            |SELECT a, c.json_string AS json_string, SUM(b)
+            |FROM t
+            |GROUP BY a, c.json_string
+            |WITH CUBE
+            |""".stripMargin),
+        Row("A", null, 5) :: Row("A", "{\"i\": 1}", 3) :: Row("A", "{\"i\": 2}", 2) ::
+          Row("B", null, 1) :: Row("B", "{\"i\": 1}", 1) ::
+          Row("C", null, 3) :: Row("C", "{\"i\": 1}", 3) ::
+          Row(null, null, 9) :: Row(null, "{\"i\": 1}", 7) :: Row(null, "{\"i\": 2}", 2) :: Nil)
+
+      checkAnswer(
+        sql(
+          """
+            |SELECT a, c.json_string as js, SUM(b)
+            |FROM t
+            |GROUP BY a, c.json_string
+            |WITH CUBE
+            |""".stripMargin),
+        Row("A", null, 5) :: Row("A", "{\"i\": 1}", 3) :: Row("A", "{\"i\": 2}", 2) ::
+          Row("B", null, 1) :: Row("B", "{\"i\": 1}", 1) ::
+          Row("C", null, 3) :: Row("C", "{\"i\": 1}", 3) ::
+          Row(null, null, 9) :: Row(null, "{\"i\": 1}", 7) :: Row(null, "{\"i\": 2}", 2) :: Nil)
+
+      checkAnswer(
+        sql(
+          """
+            |SELECT a, c.json_string as js, SUM(b)
+            |FROM t
+            |GROUP BY a, c.json_string
+            |WITH ROLLUP
+            |""".stripMargin),
+        Row("A", null, 5) :: Row("A", "{\"i\": 1}", 3) :: Row("A", "{\"i\": 2}", 2) ::
+          Row("B", null, 1) :: Row("B", "{\"i\": 1}", 1) ::
+          Row("C", null, 3) :: Row("C", "{\"i\": 1}", 3) ::
+          Row(null, null, 9) :: Nil)
+
+      checkAnswer(
+        sql(
+          """
+            |SELECT a, c.json_string, SUM(b)
+            |FROM t
+            |GROUP BY a, c.json_string
+            |GROUPING sets((a),(a, c.json_string))
+            |""".stripMargin),
+        Row("A", null, 5) :: Row("A", "{\"i\": 1}", 3) :: Row("A", "{\"i\": 2}", 2) ::
+          Row("B", null, 1) :: Row("B", "{\"i\": 1}", 1) ::
+          Row("C", null, 3) :: Row("C", "{\"i\": 1}", 3) :: Nil)
     }
   }
 
@@ -3468,15 +3624,42 @@ class SQLQuerySuite extends QueryTest with SharedSparkSession with AdaptiveSpark
     }
   }
 
-  test("SPARK-32237: Hint in CTE") {
-    withTable("t") {
-      sql("CREATE TABLE t USING PARQUET AS SELECT 1 AS id")
-      checkAnswer(
-        sql("""
-              |WITH cte AS (SELECT /*+ REPARTITION(3) */ * FROM t)
-              |SELECT * FROM cte
-            """.stripMargin),
-        Row(1) :: Nil)
+  test("SPARK-31875: remove hints from plan when spark.sql.optimizer.disableHints = true") {
+    withSQLConf(SQLConf.DISABLE_HINTS.key -> "true") {
+      withTempView("t1", "t2") {
+        Seq[Integer](1, 2).toDF("c1").createOrReplaceTempView("t1")
+        Seq[Integer](1, 2).toDF("c1").createOrReplaceTempView("t2")
+        val repartitionHints = Seq(
+          "COALESCE(2)",
+          "REPARTITION(c1)",
+          "REPARTITION(c1, 2)",
+          "REPARTITION_BY_RANGE(c1, 2)",
+          "REPARTITION_BY_RANGE(c1)"
+        )
+        val joinHints = Seq(
+          "BROADCASTJOIN (t1)",
+          "MAPJOIN(t1)",
+          "SHUFFLE_MERGE(t1)",
+          "MERGEJOIN(t1)",
+          "SHUFFLE_REPLICATE_NL(t1)"
+        )
+
+        repartitionHints.foreach { hintName =>
+          val sqlText = s"SELECT /*+ $hintName */ * FROM t1"
+          val sqlTextWithoutHint = "SELECT * FROM t1"
+          val expectedPlan = sql(sqlTextWithoutHint)
+          val actualPlan = sql(sqlText)
+          comparePlans(actualPlan.queryExecution.analyzed, expectedPlan.queryExecution.analyzed)
+        }
+
+        joinHints.foreach { hintName =>
+          val sqlText = s"SELECT /*+ $hintName */ * FROM t1 INNER JOIN t2 ON t1.c1 = t2.c1"
+          val sqlTextWithoutHint = "SELECT * FROM t1 INNER JOIN t2 ON t1.c1 = t2.c1"
+          val expectedPlan = sql(sqlTextWithoutHint)
+          val actualPlan = sql(sqlText)
+          comparePlans(actualPlan.queryExecution.analyzed, expectedPlan.queryExecution.analyzed)
+        }
+      }
     }
   }
 
@@ -3500,6 +3683,40 @@ class SQLQuerySuite extends QueryTest with SharedSparkSession with AdaptiveSpark
       .createOrReplaceTempView("C")
     checkAnswer(sql("SELECT 0 FROM ( SELECT * FROM B JOIN C USING (id)) " +
       "JOIN ( SELECT * FROM B JOIN C USING (id)) USING (id)"), Row(0))
+  }
+
+  test("SPARK-32788: non-partitioned table scan should not have partition filter") {
+    withTable("t") {
+      spark.range(1).write.saveAsTable("t")
+      checkAnswer(sql("SELECT id FROM t WHERE (SELECT true)"), Row(0L))
+    }
+  }
+
+  test("SPARK-33306: Timezone is needed when cast Date to String") {
+    withTempView("t1", "t2") {
+      spark.sql("select to_date(concat('2000-01-0', id)) as d from range(1, 2)")
+        .createOrReplaceTempView("t1")
+      spark.sql("select concat('2000-01-0', id) as d from range(1, 2)")
+        .createOrReplaceTempView("t2")
+      val result = Date.valueOf("2000-01-01")
+
+      checkAnswer(sql("select t1.d from t1 join t2 on t1.d = t2.d"), Row(result))
+      withSQLConf(SQLConf.LEGACY_CAST_DATETIME_TO_STRING.key -> "true") {
+        checkAnswer(sql("select t1.d from t1 join t2 on t1.d = t2.d"), Row(result))
+      }
+    }
+  }
+
+  test("SPARK-33338: GROUP BY using literal map should not fail") {
+    withTempDir { dir =>
+      sql(s"CREATE TABLE t USING ORC LOCATION '${dir.toURI}' AS SELECT map('k1', 'v1') m, 'k1' k")
+      Seq(
+        "SELECT map('k1', 'v1')[k] FROM t GROUP BY 1",
+        "SELECT map('k1', 'v1')[k] FROM t GROUP BY map('k1', 'v1')[k]",
+        "SELECT map('k1', 'v1')[k] a FROM t GROUP BY a").foreach { statement =>
+        checkAnswer(sql(statement), Row("v1"))
+      }
+    }
   }
 }
 

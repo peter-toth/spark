@@ -106,7 +106,7 @@ class SparkSessionExtensions {
    * Build the override rules for columnar execution.
    */
   private[sql] def buildColumnarRules(session: SparkSession): Seq[ColumnarRule] = {
-    columnarRuleBuilders.map(_.apply(session))
+    columnarRuleBuilders.map(_.apply(session)).toSeq
   }
 
   /**
@@ -137,7 +137,7 @@ class SparkSessionExtensions {
    * Build the analyzer resolution `Rule`s using the given [[SparkSession]].
    */
   private[sql] def buildResolutionRules(session: SparkSession): Seq[Rule[LogicalPlan]] = {
-    resolutionRuleBuilders.map(_.apply(session))
+    resolutionRuleBuilders.map(_.apply(session)).toSeq
   }
 
   /**
@@ -154,7 +154,7 @@ class SparkSessionExtensions {
    * Build the analyzer post-hoc resolution `Rule`s using the given [[SparkSession]].
    */
   private[sql] def buildPostHocResolutionRules(session: SparkSession): Seq[Rule[LogicalPlan]] = {
-    postHocResolutionRuleBuilders.map(_.apply(session))
+    postHocResolutionRuleBuilders.map(_.apply(session)).toSeq
   }
 
   /**
@@ -171,7 +171,7 @@ class SparkSessionExtensions {
    * Build the check analysis `Rule`s using the given [[SparkSession]].
    */
   private[sql] def buildCheckRules(session: SparkSession): Seq[LogicalPlan => Unit] = {
-    checkRuleBuilders.map(_.apply(session))
+    checkRuleBuilders.map(_.apply(session)).toSeq
   }
 
   /**
@@ -186,7 +186,7 @@ class SparkSessionExtensions {
   private[this] val optimizerRules = mutable.Buffer.empty[RuleBuilder]
 
   private[sql] def buildOptimizerRules(session: SparkSession): Seq[Rule[LogicalPlan]] = {
-    optimizerRules.map(_.apply(session))
+    optimizerRules.map(_.apply(session)).toSeq
   }
 
   /**
@@ -202,7 +202,7 @@ class SparkSessionExtensions {
   private[this] val plannerStrategyBuilders = mutable.Buffer.empty[StrategyBuilder]
 
   private[sql] def buildPlannerStrategies(session: SparkSession): Seq[Strategy] = {
-    plannerStrategyBuilders.map(_.apply(session))
+    plannerStrategyBuilders.map(_.apply(session)).toSeq
   }
 
   /**

@@ -85,6 +85,7 @@ trait NamedExpression extends Expression {
    *    e.g. top level attributes aliased in the SELECT clause, or column from a LocalRelation.
    * 2. Seq with a Single element: either the table name or the alias name of the table.
    * 3. Seq with 2 elements: database name and table name
+   * 4. Seq with 3 elements: catalog name, database name and table name
    */
   def qualifier: Seq[String]
 
@@ -142,11 +143,14 @@ abstract class Attribute extends LeafExpression with NamedExpression with NullIn
  *                  fully qualified way. Consider the examples tableName.name, subQueryAlias.name.
  *                  tableName and subQueryAlias are possible qualifiers.
  * @param explicitMetadata Explicit metadata associated with this alias that overwrites child's.
+ * @param deniedMetadataKeys Keys of metadata entries that are supposed to be removed when
+ *                           inheriting the metadata from the child.
  */
 case class Alias(child: Expression, name: String)(
     val exprId: ExprId = NamedExpression.newExprId,
     val qualifier: Seq[String] = Seq.empty,
-    val explicitMetadata: Option[Metadata] = None)
+    val explicitMetadata: Option[Metadata] = None,
+    val deniedMetadataKeys: Seq[String] = Seq.empty)
   extends UnaryExpression with NamedExpression {
 
   // Alias(Generator, xx) need to be transformed into Generate(generator, ...)
@@ -166,7 +170,11 @@ case class Alias(child: Expression, name: String)(
   override def metadata: Metadata = {
     explicitMetadata.getOrElse {
       child match {
-        case named: NamedExpression => named.metadata
+        case named: NamedExpression =>
+          val builder = new MetadataBuilder().withMetadata(named.metadata)
+          deniedMetadataKeys.foreach(builder.remove)
+          builder.build()
+
         case _ => Metadata.empty
       }
     }
@@ -193,7 +201,7 @@ case class Alias(child: Expression, name: String)(
   override def toString: String = s"$child AS $name#${exprId.id}$typeSuffix$delaySuffix"
 
   override protected final def otherCopyArgs: Seq[AnyRef] = {
-    exprId :: qualifier :: explicitMetadata :: Nil
+    exprId :: qualifier :: explicitMetadata :: deniedMetadataKeys :: Nil
   }
 
   override def hashCode(): Int = {
@@ -204,7 +212,7 @@ case class Alias(child: Expression, name: String)(
   override def equals(other: Any): Boolean = other match {
     case a: Alias =>
       name == a.name && exprId == a.exprId && child == a.child && qualifier == a.qualifier &&
-        explicitMetadata == a.explicitMetadata
+        explicitMetadata == a.explicitMetadata && deniedMetadataKeys == a.deniedMetadataKeys
     case _ => false
   }
 

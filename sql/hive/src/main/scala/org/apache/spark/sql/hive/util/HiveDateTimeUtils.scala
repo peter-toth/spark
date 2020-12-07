@@ -34,14 +34,14 @@ object HiveDateTimeUtils {
   /**
    * Returns the number of days since epoch in Proleptic Gregorian Calendar from the Hive Date.
    */
-  def fromHiveDate(date: HiveDate): SQLDate = {
+  def fromHiveDate(date: HiveDate): Int = {
     date.toEpochDay
   }
 
   /**
    * Returns the Hive Date from the number of days since epoch in Proleptic Gregorian Calendar.
    */
-  def toHiveDate(days: SQLDate): HiveDate = {
+  def toHiveDate(days: Int): HiveDate = {
     val shiftedDays =
       if (julianEndSQLDate < days && days < gregorianStartSQLDate) {
         gregorianStartSQLDate
@@ -55,7 +55,7 @@ object HiveDateTimeUtils {
    * Returns the number of microseconds since epoch in Proleptic Gregorian Calendar from the
    * Hive Timestamp.
    */
-  def fromHiveTimestamp(timestamp: HiveTimestamp): SQLTimestamp = {
+  def fromHiveTimestamp(timestamp: HiveTimestamp): Long = {
     val ldt =
       LocalDateTime.ofEpochSecond(timestamp.toEpochSecond, timestamp.getNanos, ZoneOffset.UTC)
     val instant = ldt.atZone(getZoneId(SQLConf.get.sessionLocalTimeZone)).toInstant
@@ -66,7 +66,7 @@ object HiveDateTimeUtils {
    * Returns the Hive Timestamp from the number of microseconds since epoch in Proleptic Gregorian
    * Calendar.
    */
-  def toHiveTimestamp(micros: SQLTimestamp): HiveTimestamp = {
+  def toHiveTimestamp(micros: Long): HiveTimestamp = {
     val instant = microsToInstant(micros)
     var ldt = LocalDateTime.ofInstant(instant, getZoneId(SQLConf.get.sessionLocalTimeZone))
     if (ldt.isAfter(RebaseDateTime.julianEndTs) && ldt.isBefore(RebaseDateTime.gregorianStartTs)) {

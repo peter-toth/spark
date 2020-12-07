@@ -23,7 +23,7 @@
 
   Usage: kinesis_wordcount_asl.py <app-name> <stream-name> <endpoint-url> <region-name>
     <app-name> is the name of the consumer app, used to track the read data in DynamoDB
-    <stream-name> name of the Kinesis stream (ie. mySparkStream)
+    <stream-name> name of the Kinesis stream (i.e. mySparkStream)
     <endpoint-url> endpoint of the Kinesis service
       (e.g. https://kinesis.us-east-1.amazonaws.com)
     <region-name> region name of the Kinesis endpoint (e.g. us-east-1)
@@ -55,8 +55,6 @@
   See http://spark.apache.org/docs/latest/streaming-kinesis-integration.html for more details on
   the Kinesis Spark Streaming integration.
 """
-from __future__ import print_function
-
 import sys
 
 from pyspark import SparkContext

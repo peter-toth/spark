@@ -46,8 +46,7 @@ private[client] object HiveClientBuilder {
   def buildClient(
       version: String,
       hadoopConf: Configuration,
-      extraConf: Map[String, String] = Map.empty,
-      sharesHadoopClasses: Boolean = true): HiveClient = {
+      extraConf: Map[String, String] = Map.empty): HiveClient = {
     val v = VersionInfo.getVersion
     IsolatedClientLoader.forVersion(
       hiveMetastoreVersion = version,
@@ -55,7 +54,6 @@ private[client] object HiveClientBuilder {
       sparkConf = new SparkConf(),
       hadoopConf = hadoopConf,
       config = buildConf(extraConf),
-      ivyPath = ivyPath,
-      sharesHadoopClasses = sharesHadoopClasses).createClient()
+      ivyPath = ivyPath).createClient()
   }
 }

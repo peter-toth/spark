@@ -42,6 +42,7 @@
   "rddIds" : [ 10, 8, 6, 7, 9 ],
   "accumulatorUpdates" : [ ],
   "killedTasksSummary" : { },
+  "resourceProfileId" : 0,
   "peakExecutorMetrics" : {
     "JVMHeapMemory" : 213367864,
     "JVMOffHeapMemory" : 189011656,
@@ -109,6 +110,7 @@
   "rddIds" : [ 5, 3, 4 ],
   "accumulatorUpdates" : [ ],
   "killedTasksSummary" : { },
+  "resourceProfileId" : 0,
   "peakExecutorMetrics" : {
     "JVMHeapMemory" : 0,
     "JVMOffHeapMemory" : 0,
@@ -176,6 +178,7 @@
   "rddIds" : [ 2, 0, 1 ],
   "accumulatorUpdates" : [ ],
   "killedTasksSummary" : { },
+  "resourceProfileId" : 0,
   "peakExecutorMetrics" : {
     "JVMHeapMemory" : 155100856,
     "JVMOffHeapMemory" : 64239224,

@@ -41,7 +41,7 @@ case class SortMergeJoinExec(
     condition: Option[Expression],
     left: SparkPlan,
     right: SparkPlan,
-    isSkewJoin: Boolean = false) extends BinaryExecNode with CodegenSupport {
+    isSkewJoin: Boolean = false) extends ShuffledJoin with CodegenSupport {
 
   override lazy val metrics = Map(
     "numOutputRows" -> SQLMetrics.createMetric(sparkContext, "number of output rows"),
@@ -54,63 +54,13 @@ case class SortMergeJoinExec(
 
   override def stringArgs: Iterator[Any] = super.stringArgs.toSeq.dropRight(1).iterator
 
-  override def simpleStringWithNodeId(): String = {
-    val opId = ExplainUtils.getOpId(this)
-    s"$nodeName $joinType ($opId)".trim
-  }
-
-  override def verboseStringWithOperatorId(): String = {
-    val joinCondStr = if (condition.isDefined) {
-      s"${condition.get}"
-    } else "None"
-    s"""
-       |$formattedNodeName
-       |${ExplainUtils.generateFieldString("Left keys", leftKeys)}
-       |${ExplainUtils.generateFieldString("Right keys", rightKeys)}
-       |${ExplainUtils.generateFieldString("Join condition", joinCondStr)}
-       |""".stripMargin
-  }
-
-  override def output: Seq[Attribute] = {
-    joinType match {
-      case _: InnerLike =>
-        left.output ++ right.output
-      case LeftOuter =>
-        left.output ++ right.output.map(_.withNullability(true))
-      case RightOuter =>
-        left.output.map(_.withNullability(true)) ++ right.output
-      case FullOuter =>
-        (left.output ++ right.output).map(_.withNullability(true))
-      case j: ExistenceJoin =>
-        left.output :+ j.exists
-      case LeftExistence(_) =>
-        left.output
-      case x =>
-        throw new IllegalArgumentException(
-          s"${getClass.getSimpleName} should not take $x as the JoinType")
-    }
-  }
-
-  override def outputPartitioning: Partitioning = joinType match {
-    case _: InnerLike =>
-      PartitioningCollection(Seq(left.outputPartitioning, right.outputPartitioning))
-    // For left and right outer joins, the output is partitioned by the streamed input's join keys.
-    case LeftOuter => left.outputPartitioning
-    case RightOuter => right.outputPartitioning
-    case FullOuter => UnknownPartitioning(left.outputPartitioning.numPartitions)
-    case LeftExistence(_) => left.outputPartitioning
-    case x =>
-      throw new IllegalArgumentException(
-        s"${getClass.getSimpleName} should not take $x as the JoinType")
-  }
-
   override def requiredChildDistribution: Seq[Distribution] = {
     if (isSkewJoin) {
       // We re-arrange the shuffle partitions to deal with skew join, and the new children
       // partitioning doesn't satisfy `HashClusteredDistribution`.
       UnspecifiedDistribution :: UnspecifiedDistribution :: Nil
     } else {
-      HashClusteredDistribution(leftKeys) :: HashClusteredDistribution(rightKeys) :: Nil
+      super.requiredChildDistribution
     }
   }
 
@@ -120,9 +70,9 @@ case class SortMergeJoinExec(
       val leftKeyOrdering = getKeyOrdering(leftKeys, left.outputOrdering)
       val rightKeyOrdering = getKeyOrdering(rightKeys, right.outputOrdering)
       leftKeyOrdering.zip(rightKeyOrdering).map { case (lKey, rKey) =>
-        // Also add the right key and its `sameOrderExpressions`
-        SortOrder(lKey.child, Ascending, lKey.sameOrderExpressions + rKey.child ++ rKey
-          .sameOrderExpressions)
+        // Also add expressions from right side sort order
+        val sameOrderExpressions = ExpressionSet(lKey.sameOrderExpressions ++ rKey.children)
+        SortOrder(lKey.child, Ascending, sameOrderExpressions.toSeq)
       }
     // For left and right outer joins, the output is ordered by the streamed input's join keys.
     case LeftOuter => getKeyOrdering(leftKeys, left.outputOrdering)
@@ -148,7 +98,8 @@ case class SortMergeJoinExec(
     val requiredOrdering = requiredOrders(keys)
     if (SortOrder.orderingSatisfies(childOutputOrdering, requiredOrdering)) {
       keys.zip(childOutputOrdering).map { case (key, childOrder) =>
-        SortOrder(key, Ascending, childOrder.sameOrderExpressions + childOrder.child - key)
+        val sameOrderExpressionsSet = ExpressionSet(childOrder.children) - key
+        SortOrder(key, Ascending, sameOrderExpressionsSet.toSeq)
       }
     } else {
       requiredOrdering

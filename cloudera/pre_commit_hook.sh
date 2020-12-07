@@ -31,6 +31,13 @@ else
 fi
 
 export APACHE_MIRROR=http://mirror.infra.cloudera.com/apache
+# Unittests requires python3.6
+sudo add-apt-repository ppa:deadsnakes/ppa
+sudo apt-get update
+sudo apt-get install python3.6 -y
+sudo rm /usr/bin/python3
+sudo ln -s /usr/bin/python3.6 /usr/bin/python3
+python3 --version
 # Testing first requires building Spark
 ./build/mvn -B $MAVEN_ARGS -Dcdpd.build=true package -DskipTests -Dmaven.repo.local="$MVN_REPO_LOCAL"
 ./build/mvn -B $MAVEN_ARGS -Dcdpd.build=true package -fae -Dmaven.repo.local="$MVN_REPO_LOCAL"

@@ -21,6 +21,8 @@ import java.sql.Timestamp
 
 import scala.util.Random
 
+import org.scalatest.Ignore
+
 import org.apache.spark.sql.{QueryTest, RandomDataGenerator}
 import org.apache.spark.sql.catalyst.TableIdentifier
 import org.apache.spark.sql.catalyst.util.{DateTimeTestUtils, DateTimeUtils}
@@ -469,6 +471,11 @@ class DateAndTimestampCompatibilitySuite
         SQLConf.LEGACY_TIME_PARSER_POLICY.key -> LegacyBehaviorPolicy.LEGACY.toString,
         SQLConf.LEGACY_PARQUET_REBASE_MODE_IN_READ.key -> LegacyBehaviorPolicy.LEGACY.toString,
         SQLConf.LEGACY_PARQUET_REBASE_MODE_IN_WRITE.key -> LegacyBehaviorPolicy.LEGACY.toString,
+        // CDPD-19484 check these flags!
+        SQLConf.LEGACY_PARQUET_INT96_REBASE_MODE_IN_READ.key ->
+                  LegacyBehaviorPolicy.CORRECTED.toString,
+        SQLConf.LEGACY_PARQUET_INT96_REBASE_MODE_IN_WRITE.key ->
+                  LegacyBehaviorPolicy.CORRECTED.toString,
         SQLConf.PARQUET_INT96_TIMESTAMP_HIVE3_COMPATIBILITY_ENABLED.key -> "true",
         // TODO: why do we need this on Jenkins?
         SQLConf.SESSION_LOCAL_TIMEZONE.key -> timezone) {

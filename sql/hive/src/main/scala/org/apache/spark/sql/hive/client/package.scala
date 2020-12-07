@@ -22,7 +22,21 @@ package object client {
   private[hive] sealed abstract class HiveVersion(
       val fullVersion: String,
       val extraDeps: Seq[String] = Nil,
-      val exclusions: Seq[String] = Nil)
+      val exclusions: Seq[String] = Nil) extends Ordered[HiveVersion] {
+    override def compare(that: HiveVersion): Int = {
+      // CDPD-19484: CDP hive version contains CDP version which should be cut.
+      val thisVersionParts = fullVersion.split('.').slice(0, 3).map(_.toInt)
+      val thatVersionParts = that.fullVersion.split('.').slice(0, 3).map(_.toInt)
+      assert(thisVersionParts.length == thatVersionParts.length)
+      thisVersionParts.zip(thatVersionParts).foreach { case (l, r) =>
+        val candidate = l - r
+        if (candidate != 0) {
+          return candidate
+        }
+      }
+      0
+    }
+  }
 
   // scalastyle:off
   private[hive] object hive {

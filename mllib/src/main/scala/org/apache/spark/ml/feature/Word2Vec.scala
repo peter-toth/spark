@@ -169,7 +169,8 @@ final class Word2Vec @Since("1.4.0") (
   @Since("2.0.0")
   override def fit(dataset: Dataset[_]): Word2VecModel = {
     transformSchema(dataset.schema, logging = true)
-    val input = dataset.select($(inputCol)).rdd.map(_.getAs[Seq[String]](0))
+    val input =
+      dataset.select($(inputCol)).rdd.map(_.getSeq[String](0))
     val wordVectors = new feature.Word2Vec()
       .setLearningRate($(stepSize))
       .setMinCount($(minCount))
@@ -286,7 +287,7 @@ class Word2VecModel private[ml] (
     val outputSchema = transformSchema(dataset.schema, logging = true)
     val vectors = wordVectors.getVectors
       .mapValues(vv => Vectors.dense(vv.map(_.toDouble)))
-      .map(identity) // mapValues doesn't return a serializable map (SI-7005)
+      .map(identity).toMap // mapValues doesn't return a serializable map (SI-7005)
     val bVectors = dataset.sparkSession.sparkContext.broadcast(vectors)
     val d = $(vectorSize)
     val emptyVec = Vectors.sparse(d, Array.emptyIntArray, Array.emptyDoubleArray)

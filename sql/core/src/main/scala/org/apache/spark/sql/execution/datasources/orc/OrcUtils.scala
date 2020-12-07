@@ -79,10 +79,10 @@ object OrcUtils extends Logging {
     }
   }
 
-  def readSchema(sparkSession: SparkSession, files: Seq[FileStatus])
+  def readSchema(sparkSession: SparkSession, files: Seq[FileStatus], options: Map[String, String])
       : Option[StructType] = {
     val ignoreCorruptFiles = sparkSession.sessionState.conf.ignoreCorruptFiles
-    val conf = sparkSession.sessionState.newHadoopConf()
+    val conf = sparkSession.sessionState.newHadoopConfWithOptions(options)
     files.toIterator.map(file => readSchema(file.getPath, conf, ignoreCorruptFiles)).collectFirst {
       case Some(schema) =>
         logDebug(s"Reading schema from file $files, got Hive schema string: $schema")
@@ -123,7 +123,7 @@ object OrcUtils extends Logging {
       SchemaMergeUtils.mergeSchemasInParallel(
         sparkSession, options, files, OrcUtils.readOrcSchemasInParallel)
     } else {
-      OrcUtils.readSchema(sparkSession, files)
+      OrcUtils.readSchema(sparkSession, files, options)
     }
   }
 
@@ -218,10 +218,16 @@ object OrcUtils extends Logging {
   }
 
   /**
-   * @return Returns the result schema string based on the canPruneCols flag.
-   *         resultSchemaString will be created using resultsSchema in case of
-   *         canPruneCols is true and for canPruneCols as false value
-   *         resultSchemaString will be created using the actual dataSchema.
+   * Returns the result schema to read from ORC file. In addition, It sets
+   * the schema string to 'orc.mapred.input.schema' so ORC reader can use later.
+   *
+   * @param canPruneCols Flag to decide whether pruned cols schema is send to resultSchema
+   *                     or to send the entire dataSchema to resultSchema.
+   * @param dataSchema   Schema of the orc files.
+   * @param resultSchema Result data schema created after pruning cols.
+   * @param partitionSchema Schema of partitions.
+   * @param conf Hadoop Configuration.
+   * @return Returns the result schema as string.
    */
   def orcResultSchemaString(
       canPruneCols: Boolean,

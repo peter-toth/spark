@@ -31,7 +31,7 @@ import org.apache.spark.sql.util.ReuseMap
  * remain valid. Any further transformation on the plan after this rule can result that a referenced
  * node instance disappears and in that case the reuse node no longer has performance benefit.
  */
-case class ReuseExchangeAndSubquery(conf: SQLConf) extends Rule[SparkPlan] {
+object ReuseExchangeAndSubquery extends Rule[SparkPlan] {
 
   def apply(plan: SparkPlan): SparkPlan = {
     if (conf.exchangeReuseEnabled || conf.subqueryReuseEnabled) {

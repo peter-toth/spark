@@ -41,12 +41,25 @@ import org.apache.spark.sql.types._
  * equivalent [[Literal]] values.
  */
 object ConstantFolding extends Rule[LogicalPlan] {
+
+  private def hasNoSideEffect(e: Expression): Boolean = e match {
+    case _: Attribute => true
+    case _: Literal => true
+    case _: NoThrow if e.deterministic => e.children.forall(hasNoSideEffect)
+    case _ => false
+  }
+
   def apply(plan: LogicalPlan): LogicalPlan = plan transform {
     case q: LogicalPlan => q transformExpressionsDown {
       // Skip redundant folding of literals. This rule is technically not necessary. Placing this
       // here avoids running the next rule for Literal values, which would create a new Literal
       // object and running eval unnecessarily.
       case l: Literal => l
+
+      case Size(c: CreateArray, _) if c.children.forall(hasNoSideEffect) =>
+        Literal(c.children.length)
+      case Size(c: CreateMap, _) if c.children.forall(hasNoSideEffect) =>
+        Literal(c.children.length / 2)
 
       // Fold expressions that are foldable.
       case e if e.foldable => Literal.create(e.eval(EmptyRow), e.dataType)
@@ -177,7 +190,7 @@ object ReorderAssociativeOperator extends Rule[LogicalPlan] {
   private def flattenAdd(
     expression: Expression,
     groupSet: ExpressionSet): Seq[Expression] = expression match {
-    case expr @ Add(l, r) if !groupSet.contains(expr) =>
+    case expr @ Add(l, r, _) if !groupSet.contains(expr) =>
       flattenAdd(l, groupSet) ++ flattenAdd(r, groupSet)
     case other => other :: Nil
   }
@@ -185,7 +198,7 @@ object ReorderAssociativeOperator extends Rule[LogicalPlan] {
   private def flattenMultiply(
     expression: Expression,
     groupSet: ExpressionSet): Seq[Expression] = expression match {
-    case expr @ Multiply(l, r) if !groupSet.contains(expr) =>
+    case expr @ Multiply(l, r, _) if !groupSet.contains(expr) =>
       flattenMultiply(l, groupSet) ++ flattenMultiply(r, groupSet)
     case other => other :: Nil
   }
@@ -201,23 +214,24 @@ object ReorderAssociativeOperator extends Rule[LogicalPlan] {
       // We have to respect aggregate expressions which exists in grouping expressions when plan
       // is an Aggregate operator, otherwise the optimized expression could not be derived from
       // grouping expressions.
+      // TODO: do not reorder consecutive `Add`s or `Multiply`s with different `failOnError` flags
       val groupingExpressionSet = collectGroupingExpressions(q)
       q transformExpressionsDown {
-      case a: Add if a.deterministic && a.dataType.isInstanceOf[IntegralType] =>
+      case a @ Add(_, _, f) if a.deterministic && a.dataType.isInstanceOf[IntegralType] =>
         val (foldables, others) = flattenAdd(a, groupingExpressionSet).partition(_.foldable)
         if (foldables.size > 1) {
-          val foldableExpr = foldables.reduce((x, y) => Add(x, y))
+          val foldableExpr = foldables.reduce((x, y) => Add(x, y, f))
           val c = Literal.create(foldableExpr.eval(EmptyRow), a.dataType)
-          if (others.isEmpty) c else Add(others.reduce((x, y) => Add(x, y)), c)
+          if (others.isEmpty) c else Add(others.reduce((x, y) => Add(x, y, f)), c, f)
         } else {
           a
         }
-      case m: Multiply if m.deterministic && m.dataType.isInstanceOf[IntegralType] =>
+      case m @ Multiply(_, _, f) if m.deterministic && m.dataType.isInstanceOf[IntegralType] =>
         val (foldables, others) = flattenMultiply(m, groupingExpressionSet).partition(_.foldable)
         if (foldables.size > 1) {
-          val foldableExpr = foldables.reduce((x, y) => Multiply(x, y))
+          val foldableExpr = foldables.reduce((x, y) => Multiply(x, y, f))
           val c = Literal.create(foldableExpr.eval(EmptyRow), m.dataType)
-          if (others.isEmpty) c else Multiply(others.reduce((x, y) => Multiply(x, y)), c)
+          if (others.isEmpty) c else Multiply(others.reduce((x, y) => Multiply(x, y, f)), c, f)
         } else {
           m
         }
@@ -463,6 +477,10 @@ object SimplifyConditionals extends Rule[LogicalPlan] with PredicateHelper {
       case If(Literal(null, _), _, falseValue) => falseValue
       case If(cond, trueValue, falseValue)
         if cond.deterministic && trueValue.semanticEquals(falseValue) => trueValue
+      case If(cond, l @ Literal(null, _), FalseLiteral) if !cond.nullable => And(cond, l)
+      case If(cond, l @ Literal(null, _), TrueLiteral) if !cond.nullable => Or(Not(cond), l)
+      case If(cond, FalseLiteral, l @ Literal(null, _)) if !cond.nullable => And(Not(cond), l)
+      case If(cond, TrueLiteral, l @ Literal(null, _)) if !cond.nullable => Or(cond, l)
 
       case e @ CaseWhen(branches, elseValue) if branches.exists(x => falseOrNullLiteral(x._1)) =>
         // If there are branches that are always false, remove them.
@@ -629,10 +647,15 @@ object FoldablePropagation extends Rule[LogicalPlan] {
         val (newChild, foldableMap) = propagateFoldables(p.child)
         val newProject =
           replaceFoldable(p.withNewChildren(Seq(newChild)).asInstanceOf[Project], foldableMap)
-        val newFoldableMap = AttributeMap(newProject.projectList.collect {
-          case a: Alias if a.child.foldable => (a.toAttribute, a)
-        })
+        val newFoldableMap = collectFoldables(newProject.projectList)
         (newProject, newFoldableMap)
+
+      case a: Aggregate =>
+        val (newChild, foldableMap) = propagateFoldables(a.child)
+        val newAggregate =
+          replaceFoldable(a.withNewChildren(Seq(newChild)).asInstanceOf[Aggregate], foldableMap)
+        val newFoldableMap = collectFoldables(newAggregate.aggregateExpressions)
+        (newAggregate, newFoldableMap)
 
       // We can not replace the attributes in `Expand.output`. If there are other non-leaf
       // operators that have the `output` field, we should put them here too.
@@ -675,6 +698,7 @@ object FoldablePropagation extends Rule[LogicalPlan] {
           case LeftOuter => newJoin.right.output
           case RightOuter => newJoin.left.output
           case FullOuter => newJoin.left.output ++ newJoin.right.output
+          case _ => Nil
         })
         val newFoldableMap = AttributeMap(foldableMap.baseMap.values.filterNot {
           case (attr, _) => missDerivedAttrsSet.contains(attr)
@@ -699,14 +723,20 @@ object FoldablePropagation extends Rule[LogicalPlan] {
     }
   }
 
+  private def collectFoldables(expressions: Seq[NamedExpression]) = {
+    AttributeMap(expressions.collect {
+      case a: Alias if a.child.foldable => (a.toAttribute, a)
+    })
+  }
+
   /**
-   * Whitelist of all [[UnaryNode]]s for which allow foldable propagation.
+   * List of all [[UnaryNode]]s which allow foldable propagation.
    */
   private def canPropagateFoldables(u: UnaryNode): Boolean = u match {
     // Handling `Project` is moved to `propagateFoldables`.
     case _: Filter => true
     case _: SubqueryAlias => true
-    case _: Aggregate => true
+    // Handling `Aggregate` is moved to `propagateFoldables`.
     case _: Window => true
     case _: Sample => true
     case _: GlobalLimit => true
@@ -788,7 +818,7 @@ object CombineConcats extends Rule[LogicalPlan] {
           flattened += child
       }
     }
-    Concat(flattened)
+    Concat(flattened.toSeq)
   }
 
   private def hasNestedConcats(concat: Concat): Boolean = concat.children.exists {

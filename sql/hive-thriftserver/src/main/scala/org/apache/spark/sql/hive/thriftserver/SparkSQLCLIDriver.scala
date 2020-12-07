@@ -37,6 +37,7 @@ import org.apache.hadoop.hive.ql.session.SessionState
 import org.apache.hadoop.security.{Credentials, UserGroupInformation}
 import org.apache.log4j.Level
 import org.apache.thrift.transport.TSocket
+import org.slf4j.LoggerFactory
 import sun.misc.{Signal, SignalHandler}
 
 import org.apache.spark.SparkConf
@@ -59,6 +60,7 @@ private[hive] object SparkSQLCLIDriver extends Logging {
   private var transport: TSocket = _
   private final val SPARK_HADOOP_PROP_PREFIX = "spark.hadoop."
 
+  initializeLogIfNecessary(true)
   installSignalHandler()
 
   /**
@@ -206,6 +208,8 @@ private[hive] object SparkSQLCLIDriver extends Logging {
       SparkSQLEnv.sqlContext.setConf(k, v)
     }
 
+    cli.printMasterAndAppId
+
     if (sessionState.execString != null) {
       try {
         cli.processLine(sessionState.execString)
@@ -284,8 +288,6 @@ private[hive] object SparkSQLCLIDriver extends Logging {
     def continuedPromptWithDBSpaces: String = continuedPrompt + ReflectionUtils.invokeStatic(
       classOf[CliDriver], "spacesForString", classOf[String] -> currentDB)
 
-    cli.printMasterAndAppId
-
     var currentPrompt = promptWithCurrentDB
     var line = reader.readLine(currentPrompt + "> ")
 
@@ -329,7 +331,9 @@ private[hive] object SparkSQLCLIDriver extends Logging {
 private[hive] class SparkSQLCLIDriver extends CliDriver with Logging {
   private val sessionState = SessionState.get().asInstanceOf[CliSessionState]
 
-  private val console = ThriftserverShimUtils.getConsole
+  private val LOG = LoggerFactory.getLogger(classOf[SparkSQLCLIDriver])
+
+  private val console = new SessionState.LogHelper(LOG)
 
   private val isRemoteMode = {
     SparkSQLCLIDriver.isRemoteMode(sessionState)
@@ -485,7 +489,7 @@ private[hive] class SparkSQLCLIDriver extends CliDriver with Logging {
 //      oldSignal = Signal.handle(interruptSignal, new SignalHandler() {
 //        private var interruptRequested: Boolean = false
 //
-//        override def handle(signal: Signal) {
+//        override def handle(signal: Signal): Unit {
 //          val initialRequest = !interruptRequested
 //          interruptRequested = true
 //
@@ -523,7 +527,7 @@ private[hive] class SparkSQLCLIDriver extends CliDriver with Logging {
 //            val ignoreErrors = HiveConf.getBoolVar(conf, HiveConf.ConfVars.CLIIGNOREERRORS)
 //            if (ret != 0 && !ignoreErrors) {
 //              CommandProcessorFactory.clean(conf.asInstanceOf[HiveConf])
-//              ret
+//              return ret
 //            }
 //          }
 //        }

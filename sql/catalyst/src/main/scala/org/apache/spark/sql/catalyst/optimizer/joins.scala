@@ -21,7 +21,7 @@ import scala.annotation.tailrec
 
 import org.apache.spark.sql.AnalysisException
 import org.apache.spark.sql.catalyst.expressions._
-import org.apache.spark.sql.catalyst.planning.ExtractFiltersAndInnerJoins
+import org.apache.spark.sql.catalyst.planning.{ExtractEquiJoinKeys, ExtractFiltersAndInnerJoins}
 import org.apache.spark.sql.catalyst.plans._
 import org.apache.spark.sql.catalyst.plans.logical._
 import org.apache.spark.sql.catalyst.rules._
@@ -162,6 +162,59 @@ object EliminateOuterJoin extends Rule[LogicalPlan] with PredicateHelper {
     case f @ Filter(condition, j @ Join(_, _, RightOuter | LeftOuter | FullOuter, _, _)) =>
       val newJoinType = buildNewJoinType(f, j)
       if (j.joinType == newJoinType) f else Filter(condition, j.copy(joinType = newJoinType))
+  }
+}
+
+object ConvertToLeftSemiJoin extends Rule[LogicalPlan] with JoinSelectionHelper {
+  def leftSemiPreventsBroadcast(left: LogicalPlan, right: LogicalPlan, hint: JoinHint): Boolean = {
+//    val x = getBroadcastBuildSide(left, right, Inner, hint, true, conf).isDefined &&
+//      getBroadcastBuildSide(left, right, LeftSemi, hint, true, conf).isEmpty ||
+//      getBroadcastBuildSide(left, right, Inner, hint, false, conf).isDefined &&
+//        getBroadcastBuildSide(left, right, LeftSemi, hint, false, conf).isEmpty
+//    if (x) {
+//      logError(s"x1: ${getBroadcastBuildSide(left, right, Inner, hint, true, conf).isDefined &&
+//        getBroadcastBuildSide(left, right, LeftSemi, hint, true, conf).isEmpty}")
+//      logError(s"x2: ${getBroadcastBuildSide(left, right, Inner, hint, false, conf).isDefined &&
+//        getBroadcastBuildSide(left, right, LeftSemi, hint, false, conf).isEmpty}")
+//    }
+    false
+  }
+
+  def apply(plan: LogicalPlan): LogicalPlan = {
+//    plan
+    plan transform {
+      case p @ Project(_, j @ ExtractEquiJoinKeys(Inner, leftKeys, rightKeys, _, left, right, hint))
+      =>
+        if (p.references.subsetOf(left.outputSet) &&
+          rightKeys.forall(_.isInstanceOf[NamedExpression]) &&
+          right.uniqueConstraints.isUnique(
+            AttributeSet(rightKeys.map(_.asInstanceOf[NamedExpression].toAttribute))) &&
+          !leftSemiPreventsBroadcast(left, right, hint)) {
+          p.copy(child = j.copy(joinType = LeftSemi))
+        } else if (p.references.subsetOf(right.outputSet) &&
+          leftKeys.forall(_.isInstanceOf[NamedExpression]) &&
+          left.uniqueConstraints.isUnique(
+            AttributeSet(leftKeys.map(_.asInstanceOf[NamedExpression].toAttribute))) &&
+          !leftSemiPreventsBroadcast(right, left, hint)) {
+          p.copy(child = j.copy(left = right, right = left, joinType = LeftSemi))
+        } else {
+          p
+        }
+    }
+  }
+}
+
+object DropDuplicateAggregates extends Rule[LogicalPlan] {
+  def apply(plan: LogicalPlan): LogicalPlan = {
+//        plan
+    plan transformUp {
+      case a: Aggregate =>
+        if (!a.valid) {
+          a.child
+        } else {
+          a
+        }
+    }
   }
 }
 

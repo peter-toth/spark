@@ -74,6 +74,10 @@ case class Project(projectList: Seq[NamedExpression], child: LogicalPlan)
 
   override lazy val validConstraints: ExpressionSet =
     getAllValidConstraints(projectList)
+
+  override lazy val validUniqueConstraints: UniqueConstraints = {
+    child.uniqueConstraints.project(projectList)._1
+  }
 }
 
 /**
@@ -176,7 +180,7 @@ object SetOperation {
 case class Intersect(
     left: LogicalPlan,
     right: LogicalPlan,
-    isAll: Boolean) extends SetOperation(left, right) {
+    isAll: Boolean) extends SetOperation(left, right) with UniqueConstraintHelper {
 
   override def nodeName: String = getClass.getSimpleName + ( if ( isAll ) "All" else "" )
 
@@ -195,6 +199,19 @@ case class Intersect(
       Some(children.flatMap(_.maxRows).min)
     }
   }
+
+  override lazy val validUniqueConstraints: UniqueConstraints = {
+    val attributeMap = AttributeMap(right.output.zip(left.output))
+
+    val newConstraints = (left.uniqueConstraints.constraints ++
+      right.uniqueConstraints.constraints.map(mapConstraint(_, attributeMap))).toSet.toSeq
+    val newAttributeEqualities = AttributeMap(left.uniqueConstraints.attributeEqualities.toSeq ++
+      attributeMap.toSeq ++
+      right.uniqueConstraints.attributeEqualities.mapValues(a => attributeMap.getOrElse(a, a)).toSeq
+    )
+
+    new UniqueConstraints(newConstraints, newAttributeEqualities)
+  }
 }
 
 case class Except(
@@ -206,6 +223,8 @@ case class Except(
   override def output: Seq[Attribute] = left.output
 
   override protected lazy val validConstraints: ExpressionSet = leftConstraints
+
+  override lazy val validUniqueConstraints: UniqueConstraints = left.uniqueConstraints
 }
 
 /** Factory for constructing new `Union` nodes. */
@@ -324,7 +343,7 @@ case class Join(
     joinType: JoinType,
     condition: Option[Expression],
     hint: JoinHint)
-  extends BinaryNode with PredicateHelper {
+  extends BinaryNode with PredicateHelper with UniqueConstraintHelper {
 
   override def output: Seq[Attribute] = {
     joinType match {
@@ -364,6 +383,75 @@ case class Join(
         right.constraints
       case FullOuter =>
         ExpressionSet()
+    }
+  }
+
+  def combine(
+      keepConstraints: Boolean,
+      keepOtherConstraints: Boolean): UniqueConstraints = {
+    // constraints: Set(Set(li1, li3))
+    // attributeEqualities: Map(li2 -> li1, li4 -> li3)
+
+    // other.constraints: Set(Set(ri1, ri3))
+    // other.attributeEqualities: Map(ri2 -> ri1, ri4 -> ri3)
+
+    // condition: li1 = ri2 && ri3 = li4
+    // attributes: Set(li1, li2, li3, li4)
+    // otherAttributes: Set(ri1, ri2, ri3, ri4)
+    // keepConstraints: true
+    // keepOtherConstraints: false
+
+    // attributeMap: Map(ri1 -> li1, ri3 -> li3)
+    val attributeMap = AttributeMap(splitConjunctivePredicates(condition.get).collect {
+      case Equality(l: Attribute, r: Attribute)
+        if left.outputSet.contains(l) && right.outputSet.contains(r) =>
+        val cr = r.canonicalized.asInstanceOf[Attribute]
+        val cl = l.canonicalized.asInstanceOf[Attribute]
+        right.uniqueConstraints.attributeEqualities.getOrElse(cr, cr) ->
+          left.uniqueConstraints.attributeEqualities.getOrElse(cl, cl)
+      case Equality(l: Attribute, r: Attribute)
+        if left.outputSet.contains(r) && right.outputSet.contains(l) =>
+        val cr = r.canonicalized.asInstanceOf[Attribute]
+        val cl = l.canonicalized.asInstanceOf[Attribute]
+        right.uniqueConstraints.attributeEqualities.getOrElse(cl, cl) ->
+          left.uniqueConstraints.attributeEqualities.getOrElse(cr, cr)
+    })
+
+    // otherConstraintAttributes: Set(ri1, ri3)
+    // constraintAttributes: Seq(li1, li3)
+    val (leftConstraintAttributes, rightConstraintAttributes) = attributeMap.unzip
+    if (keepConstraints &&
+      right.uniqueConstraints.isUnique(AttributeSet(leftConstraintAttributes))) {
+      if (keepOtherConstraints &&
+        left.uniqueConstraints.isUnique(AttributeSet(rightConstraintAttributes))) {
+        val newConstraints = (left.uniqueConstraints.constraints ++
+          right.uniqueConstraints.constraints.map(mapConstraint(_, attributeMap))).toSet.toList
+        val newAttributeEqualities =
+          AttributeMap(left.uniqueConstraints.attributeEqualities.toSeq ++
+            attributeMap.toSeq ++
+            right.uniqueConstraints.attributeEqualities.mapValues(a => attributeMap.getOrElse(a, a))
+              .toSeq)
+        new UniqueConstraints(newConstraints, newAttributeEqualities)
+      } else {
+        left.uniqueConstraints
+      }
+    } else if (keepOtherConstraints &&
+      left.uniqueConstraints.isUnique(AttributeSet(rightConstraintAttributes))) {
+      right.uniqueConstraints
+    } else {
+      UniqueConstraints.empty
+    }
+  }
+
+
+  override lazy val validUniqueConstraints: UniqueConstraints = {
+    joinType match {
+      case LeftExistence(_) => left.uniqueConstraints
+      case FullOuter => UniqueConstraints.empty
+      case _ if condition.isEmpty => UniqueConstraints.empty
+      case _: InnerLike => combine(true, true)
+      case LeftOuter => combine(true, false)
+      case RightOuter => combine(false, true)
     }
   }
 
@@ -571,7 +659,7 @@ case class Aggregate(
     groupingExpressions: Seq[Expression],
     aggregateExpressions: Seq[NamedExpression],
     child: LogicalPlan)
-  extends UnaryNode {
+  extends UnaryNode with UniqueConstraintHelper {
 
   override lazy val resolved: Boolean = {
     val hasWindowExpressions = aggregateExpressions.exists ( _.collect {
@@ -594,6 +682,59 @@ case class Aggregate(
   override lazy val validConstraints: ExpressionSet = {
     val nonAgg = aggregateExpressions.filter(_.find(_.isInstanceOf[AggregateExpression]).isEmpty)
     getAllValidConstraints(nonAgg)
+  }
+
+  private var _valid: Boolean = _
+
+  override lazy val validUniqueConstraints: UniqueConstraints = {
+    val (projected, expressionMap) = child.uniqueConstraints.project(aggregateExpressions)
+
+    // Set(o2)
+    if (groupingExpressions.nonEmpty) {
+      // groupingAttributes: Seq(o2, o2, o4)
+      val groupingAttributes = groupingExpressions.flatMap { e =>
+        expressionMap.get(mapExpression(e.canonicalized, projected.attributeEqualities)).map(_.head)
+      }
+
+      // newConstraint: Set(o2, o4)
+      val newConstraint = AttributeSet(groupingAttributes)
+
+      // valid = false
+      val validConstraint = !projected.cont(newConstraint)
+
+      if (validConstraint) {
+        _valid = true
+
+        // Seq(Set(o2))
+        val newConstraints = if (groupingAttributes.size == groupingExpressions.size) {
+          Seq(newConstraint)
+        } else {
+          Seq.empty
+        }
+
+        UniqueConstraints(newConstraints, projected.attributeEqualities)
+      } else {
+        _valid = false
+        projected
+      }
+    } else {
+      val newConstraints = expressionMap.values.map(as => AttributeSet(as.head)).toSeq
+
+      _valid = true
+      UniqueConstraints(newConstraints, projected.attributeEqualities)
+    }
+  }
+
+  lazy val valid: Boolean = {
+    if (conf.uniqueKeyTrackingEnabled) {
+      validUniqueConstraints
+      _valid || aggregateExpressions.exists(_.collectFirst {
+        case _: AggregateExpression => true
+      }.isDefined)
+    } else {
+      _valid = true
+      _valid
+    }
   }
 }
 
@@ -721,6 +862,8 @@ case class Expand(
   // This operator can reuse attributes (for example making them null when doing a roll up) so
   // the constraints of the child may no longer be valid.
   override protected lazy val validConstraints: ExpressionSet = ExpressionSet()
+
+  override lazy val validUniqueConstraints: UniqueConstraints = UniqueConstraints.empty
 }
 
 /**

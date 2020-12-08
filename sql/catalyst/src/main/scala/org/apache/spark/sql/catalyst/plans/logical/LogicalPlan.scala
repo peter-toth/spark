@@ -192,6 +192,8 @@ abstract class UnaryNode extends LogicalPlan {
   }
 
   override protected lazy val validConstraints: ExpressionSet = child.constraints
+
+  override lazy val validUniqueConstraints: UniqueConstraints = child.uniqueConstraints
 }
 
 /**

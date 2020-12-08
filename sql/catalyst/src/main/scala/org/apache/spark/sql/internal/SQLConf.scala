@@ -578,6 +578,15 @@ object SQLConf {
     .booleanConf
     .createWithDefault(true)
 
+  val UNIQUEKEY_TRACKING_ENABLED = buildConf("spark.sql.uniqueKey.tracking.enabled")
+    .internal()
+    .doc("When true, the query optimizer will infer and propagate unique keys in the query plan " +
+      "to optimize them. Unique key propagation can sometimes be computationally expensive for " +
+      "certain kinds of query plans which might negatively impact overall runtime.")
+    .version("3.1.0")
+    .booleanConf
+    .createWithDefault(true)
+
   val ESCAPED_STRING_LITERALS = buildConf("spark.sql.parser.escapedStringLiterals")
     .internal()
     .doc("When true, string literals (including regex patterns) remain escaped in our SQL " +
@@ -3220,6 +3229,8 @@ class SQLConf extends Serializable with Logging {
   def caseSensitiveAnalysis: Boolean = getConf(SQLConf.CASE_SENSITIVE)
 
   def constraintPropagationEnabled: Boolean = getConf(CONSTRAINT_PROPAGATION_ENABLED)
+
+  def uniqueKeyTrackingEnabled: Boolean = getConf(UNIQUEKEY_TRACKING_ENABLED)
 
   def escapedStringLiterals: Boolean = getConf(ESCAPED_STRING_LITERALS)
 

@@ -49,6 +49,16 @@ trait QueryPlanConstraints extends ConstraintHelper { self: LogicalPlan =>
    * See [[Canonicalize]] for more details.
    */
   protected lazy val validConstraints: ExpressionSet = ExpressionSet()
+
+  lazy val uniqueConstraints: UniqueConstraints = {
+    if (conf.uniqueKeyTrackingEnabled) {
+      validUniqueConstraints
+    } else {
+      UniqueConstraints.empty
+    }
+  }
+
+  lazy val validUniqueConstraints: UniqueConstraints = UniqueConstraints.empty
 }
 
 trait ConstraintHelper {
@@ -125,5 +135,83 @@ trait ConstraintHelper {
     case a: Attribute => Seq(a)
     case _: NullIntolerant => expr.children.flatMap(scanNullIntolerantAttribute)
     case _ => Seq.empty[Attribute]
+  }
+}
+
+case class UniqueConstraints(
+    constraints: Seq[AttributeSet],
+    attributeEqualities: AttributeMap[Attribute]) extends UniqueConstraintHelper {
+  def isUnique(attributes: AttributeSet): Boolean = {
+    val normalizedConstraint =
+      mapConstraint(canonicalizeAttributes(attributes), attributeEqualities)
+    cont(normalizedConstraint)
+  }
+
+  def cont(constraint: AttributeSet): Boolean = {
+    constraints.exists(_.subsetOf(constraint))
+  }
+
+  def project(projectingExpressions: Seq[NamedExpression]):
+      (UniqueConstraints, Map[Expression, Seq[Attribute]]) = {
+    // constraints: Seq(Set(i1), Set(i5))
+    // attributeEqualities: Map(i2 -> i1, i4 -> i3, i6 -> i5)
+
+    // groupingExpressions: Seq(i1, i2, i3 + 1)
+    // aggregateExpressions:
+    //   Seq(i2 AS o2, i3 + 1 AS o3, i4 + 1 AS o4, sum(i5) as o5, sum(i6) as o6)
+
+    // attributeMap: Seq(o2 -> i1, o3 -> i3 + 1, o4 -> i3 + 1, o5 -> sum(i5), o6 -> sum(i5))
+    val attributeMap = projectingExpressions.collect {
+      case a @ Alias(e, _) =>
+        a.toAttribute.canonicalized.asInstanceOf[Attribute] ->
+          mapExpression(e.canonicalized, attributeEqualities)
+      case a: Attribute =>
+        a.canonicalized.asInstanceOf[Attribute] ->
+          mapExpression(a.canonicalized, attributeEqualities)
+    }
+
+    // expressionMap: Map(i1 -> Set(o2), i3 + 1 -> Set(o4, o5), sum(i5) -> Set(o5, o6))
+    val expressionMap = attributeMap.groupBy(_._2).mapValues(_.map(_._1))
+
+    // newAttributeEqualities: Map(o4 -> o3, o6 -> o5)
+    val newAttributeEqualities = AttributeMap(expressionMap.filter(_._2.size > 1).toSeq
+      .flatMap { case (_, as) => as.tail.map(_ -> as.head) })
+
+    // projectedConstraints: Seq(Set(o2))
+    val projectedConstraints = constraints
+      .filter(_.forall(expressionMap.contains))
+      .map(c => AttributeSet(c.map(expressionMap(_).head).toSeq))
+
+    (new UniqueConstraints(projectedConstraints, newAttributeEqualities), expressionMap)
+  }
+}
+
+object UniqueConstraints {
+  val empty = new UniqueConstraints(Seq.empty, AttributeMap.empty)
+}
+
+trait UniqueConstraintHelper {
+  def canonicalizeAttributes(attributes: AttributeSet): AttributeSet = {
+    AttributeSet(attributes.map(_.canonicalized.asInstanceOf[Attribute]))
+  }
+
+  def mapConstraint(
+      constraint: AttributeSet,
+      attributeMap: AttributeMap[Attribute]): AttributeSet = {
+    if (attributeMap.isEmpty || !constraint.exists(attributeMap.contains)) {
+      constraint
+    } else {
+      AttributeSet(constraint.map(a => attributeMap.getOrElse(a, a)))
+    }
+  }
+
+  def mapExpression(
+      expression: Expression,
+      attributeMap: AttributeMap[Attribute]): Expression = {
+    if (attributeMap.isEmpty) {
+      expression
+    } else {
+      expression.transform { case a: Attribute => attributeMap.getOrElse(a, a) }
+    }
   }
 }

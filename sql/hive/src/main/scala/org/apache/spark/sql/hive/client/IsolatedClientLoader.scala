@@ -192,7 +192,15 @@ private[hive] class IsolatedClientLoader(
       // during class resolution. It is fine when 'sharesHadoopClasses' is disabled.
       name.startsWith("org.apache.commons.configuration2.")
 
+    /**
+     * org.apache.hadoop.hive.common.io.SessionStream class is only in cdpd-hive,
+     * and only ever referenced in unit tests currently.
+     * The class should be shared because it is set outside
+     * "in the outer class loader (to setup the unit test) and within the isolated hive code.
+     */
+
     name.startsWith("org.slf4j") ||
+    name.startsWith("org.apache.hadoop.hive.common.io.SessionStream") ||
     name.startsWith("org.apache.log4j") || // log4j1.x
     name.startsWith("org.apache.logging.log4j") || // log4j2
     name.startsWith("org.apache.spark.") ||

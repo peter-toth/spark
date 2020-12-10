@@ -23,6 +23,7 @@ import java.net.URI
 import org.apache.commons.lang3.{JavaVersion, SystemUtils}
 import org.apache.hadoop.conf.Configuration
 import org.apache.hadoop.hive.common.StatsSetupConst
+import org.apache.hadoop.hive.common.io.SessionStream
 import org.apache.hadoop.hive.ql.io.HiveIgnoreKeyTextOutputFormat
 import org.apache.hadoop.hive.serde2.`lazy`.LazySimpleSerDe
 import org.apache.hadoop.mapred.TextInputFormat
@@ -705,15 +706,15 @@ class VersionsSuite extends SparkFunSuite with Logging {
     }
 
     test(s"$version: setOut") {
-      client.setOut(new PrintStream(new ByteArrayOutputStream()))
+      client.setOut(new SessionStream(new ByteArrayOutputStream()))
     }
 
     test(s"$version: setInfo") {
-      client.setInfo(new PrintStream(new ByteArrayOutputStream()))
+      client.setInfo(new SessionStream(new ByteArrayOutputStream()))
     }
 
     test(s"$version: setError") {
-      client.setError(new PrintStream(new ByteArrayOutputStream()))
+      client.setError(new SessionStream(new ByteArrayOutputStream()))
     }
 
     test(s"$version: newSession") {

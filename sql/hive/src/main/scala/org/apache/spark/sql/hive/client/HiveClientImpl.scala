@@ -28,6 +28,7 @@ import scala.collection.mutable.ArrayBuffer
 
 import org.apache.hadoop.fs.Path
 import org.apache.hadoop.hive.common.StatsSetupConst
+import org.apache.hadoop.hive.common.io.SessionStream
 import org.apache.hadoop.hive.conf.{HiveConf, HiveConfUtil}
 import org.apache.hadoop.hive.conf.HiveConf.ConfVars
 import org.apache.hadoop.hive.metastore.{IMetaStoreClient, TableType => HiveTableType}
@@ -218,8 +219,8 @@ private[hive] class HiveClientImpl(
       state.getConf.setClassLoader(clientLoader.classLoader)
     }
     SessionState.start(state)
-    state.out = new PrintStream(outputBuffer, true, "UTF-8")
-    state.err = new PrintStream(outputBuffer, true, "UTF-8")
+    state.out = new SessionStream(outputBuffer, true, "UTF-8")
+    state.err = new SessionStream(outputBuffer, true, "UTF-8")
     state
   }
 
@@ -347,15 +348,15 @@ private[hive] class HiveClientImpl(
     ret
   }
 
-  def setOut(stream: PrintStream): Unit = withHiveState {
+  def setOut(stream: SessionStream): Unit = withHiveState {
     state.out = stream
   }
 
-  def setInfo(stream: PrintStream): Unit = withHiveState {
+  def setInfo(stream: SessionStream): Unit = withHiveState {
     state.info = stream
   }
 
-  def setError(stream: PrintStream): Unit = withHiveState {
+  def setError(stream: SessionStream): Unit = withHiveState {
     state.err = stream
   }
 

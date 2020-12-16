@@ -19,6 +19,7 @@ package org.apache.spark.executor
 
 import java.io.{Externalizable, ObjectInput, ObjectOutput}
 import java.lang.Thread.UncaughtExceptionHandler
+import java.net.URL
 import java.nio.ByteBuffer
 import java.util.Properties
 import java.util.concurrent.{ConcurrentHashMap, CountDownLatch, TimeUnit}
@@ -49,7 +50,7 @@ import org.apache.spark.scheduler.{DirectTaskResult, FakeTask, ResultTask, Task,
 import org.apache.spark.serializer.{JavaSerializer, SerializerInstance, SerializerManager}
 import org.apache.spark.shuffle.FetchFailedException
 import org.apache.spark.storage.{BlockManager, BlockManagerId}
-import org.apache.spark.util.{LongAccumulator, UninterruptibleThread}
+import org.apache.spark.util.{LongAccumulator, SparkUncaughtExceptionHandler, UninterruptibleThread}
 
 class ExecutorSuite extends SparkFunSuite
     with LocalSparkContext with MockitoSugar with Eventually with PrivateMethodTester {
@@ -58,6 +59,32 @@ class ExecutorSuite extends SparkFunSuite
     // Unset any latches after each test; each test that needs them initializes new ones.
     ExecutorSuiteHelper.latches = null
     super.afterEach()
+  }
+
+  /**
+   * Creates an Executor with the provided arguments, is then passed to `f`
+   * and will be stopped after `f` returns.
+   */
+  def withExecutor(
+      executorId: String,
+      executorHostname: String,
+      env: SparkEnv,
+      userClassPath: Seq[URL] = Nil,
+      isLocal: Boolean = true,
+      uncaughtExceptionHandler: UncaughtExceptionHandler
+        = new SparkUncaughtExceptionHandler
+      )(f: Executor => Unit): Unit = {
+    var executor: Executor = null
+    try {
+      executor = new Executor(executorId, executorHostname, env, userClassPath, isLocal,
+        uncaughtExceptionHandler)
+
+      f(executor)
+    } finally {
+      if (executor != null) {
+        executor.stop()
+      }
+    }
   }
 
   test("SPARK-15963: Catch `TaskKilledException` correctly in Executor.TaskRunner") {
@@ -112,9 +139,8 @@ class ExecutorSuite extends SparkFunSuite
         }
       })
 
-    var executor: Executor = null
-    try {
-      executor = new Executor("id", "localhost", env, userClassPath = Nil, isLocal = true)
+    withExecutor("id", "localhost", env) { executor =>
+
       // the task will be launched in a dedicated worker thread
       executor.launchTask(mockExecutorBackend, taskDescription)
 
@@ -133,11 +159,6 @@ class ExecutorSuite extends SparkFunSuite
       assert(executorSuiteHelper.testFailedReason.isInstanceOf[TaskKilled])
       assert(executorSuiteHelper.testFailedReason.toErrorString === "TaskKilled (test)")
       assert(executorSuiteHelper.taskState === TaskState.KILLED)
-    }
-    finally {
-      if (executor != null) {
-        executor.stop()
-      }
     }
   }
 
@@ -250,27 +271,27 @@ class ExecutorSuite extends SparkFunSuite
     confs.foreach { case (k, v) => conf.set(k, v) }
     val serializer = new JavaSerializer(conf)
     val env = createMockEnv(conf, serializer)
-    val executor =
-      new Executor("id", "localhost", SparkEnv.get, userClassPath = Nil, isLocal = true)
-    val executorClass = classOf[Executor]
+    withExecutor("id", "localhost", SparkEnv.get) { executor =>
+      val executorClass = classOf[Executor]
 
-    // Save all heartbeats sent into an ArrayBuffer for verification
-    val heartbeats = ArrayBuffer[Heartbeat]()
-    val mockReceiver = mock[RpcEndpointRef]
-    when(mockReceiver.askSync(any[Heartbeat], any[RpcTimeout])(any))
-      .thenAnswer(new Answer[HeartbeatResponse] {
-        override def answer(invocation: InvocationOnMock): HeartbeatResponse = {
-          val args = invocation.getArguments()
-          val mock = invocation.getMock
-          heartbeats += args(0).asInstanceOf[Heartbeat]
-          HeartbeatResponse(false)
-        }
-      })
-    val receiverRef = executorClass.getDeclaredField("heartbeatReceiverRef")
-    receiverRef.setAccessible(true)
-    receiverRef.set(executor, mockReceiver)
+      // Save all heartbeats sent into an ArrayBuffer for verification
+      val heartbeats = ArrayBuffer[Heartbeat]()
+      val mockReceiver = mock[RpcEndpointRef]
+      when(mockReceiver.askSync(any[Heartbeat], any[RpcTimeout])(any))
+        .thenAnswer(new Answer[HeartbeatResponse] {
+          override def answer(invocation: InvocationOnMock): HeartbeatResponse = {
+            val args = invocation.getArguments()
+            val mock = invocation.getMock
+            heartbeats += args(0).asInstanceOf[Heartbeat]
+            HeartbeatResponse(false)
+          }
+        })
+      val receiverRef = executorClass.getDeclaredField("heartbeatReceiverRef")
+      receiverRef.setAccessible(true)
+      receiverRef.set(executor, mockReceiver)
 
-    f(executor, heartbeats)
+      f(executor, heartbeats)
+    }
   }
 
   private def heartbeatZeroAccumulatorUpdateTest(dropZeroMetrics: Boolean): Unit = {
@@ -351,9 +372,7 @@ class ExecutorSuite extends SparkFunSuite
     val taskDescription = createResultTaskDescription(serializer, taskBinary, rdd, 0)
 
     val mockBackend = mock[ExecutorBackend]
-    var executor: Executor = null
-    try {
-      executor = new Executor("id", "localhost", SparkEnv.get, userClassPath = Nil, isLocal = true)
+    withExecutor("id", "localhost", SparkEnv.get) { executor =>
       executor.launchTask(mockBackend, taskDescription)
 
       // Ensure that the executor's metricsPoller is polled so that values are recorded for
@@ -363,10 +382,6 @@ class ExecutorSuite extends SparkFunSuite
       ExecutorSuiteHelper.latches.latch2.countDown()
       eventually(timeout(5.seconds), interval(10.milliseconds)) {
         assert(executor.numRunningTasks === 0)
-      }
-    } finally {
-      if (executor != null) {
-        executor.stop()
       }
     }
 
@@ -461,11 +476,11 @@ class ExecutorSuite extends SparkFunSuite
       poll: Boolean = false): (TaskFailedReason, UncaughtExceptionHandler) = {
     val mockBackend = mock[ExecutorBackend]
     val mockUncaughtExceptionHandler = mock[UncaughtExceptionHandler]
-    var executor: Executor = null
     val timedOut = new AtomicBoolean(false)
-    try {
-      executor = new Executor("id", "localhost", SparkEnv.get, userClassPath = Nil, isLocal = true,
-        uncaughtExceptionHandler = mockUncaughtExceptionHandler)
+
+    withExecutor("id", "localhost", SparkEnv.get,
+        uncaughtExceptionHandler = mockUncaughtExceptionHandler) { executor =>
+
       // the task will be launched in a dedicated worker thread
       executor.launchTask(mockBackend, taskDescription)
       if (killTask) {
@@ -498,10 +513,6 @@ class ExecutorSuite extends SparkFunSuite
         assert(executor.numRunningTasks === 0)
       }
       assert(!timedOut.get(), "timed out waiting to be ready to kill tasks")
-    } finally {
-      if (executor != null) {
-        executor.stop()
-      }
     }
     val orderedMock = inOrder(mockBackend)
     val statusCaptor = ArgumentCaptor.forClass(classOf[ByteBuffer])

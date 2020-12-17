@@ -34,6 +34,12 @@ import com.typesafe.tools.mima.core.ProblemFilters._
  */
 object MimaExcludes {
 
+  // Exclude rules for 3.1.x
+  lazy val v31excludes = v30excludes ++ Seq(
+    // [SPARK-33790][CORE] Reduce the rpc call of getFileStatus in SingleFileEventLogFileReader
+    ProblemFilters.exclude[DirectMissingMethodProblem]("org.apache.spark.deploy.history.SingleFileEventLogFileReader.this")
+  )
+
   // Exclude rules for 3.0.x
   lazy val v30excludes = v24excludes ++ Seq(
     // [SPARK-26254][CORE] Extract Hive + Kafka dependencies from Core.

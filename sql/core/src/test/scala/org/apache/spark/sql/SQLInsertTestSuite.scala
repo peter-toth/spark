@@ -78,8 +78,7 @@ trait SQLInsertTestSuite extends QueryTest with SQLTestUtils {
     }
   }
 
-  // CDPD-7882 ignore the testcase because of CDPD-7882
-  ignore("insert with column list - follow table output order + partitioned table") {
+  test("insert with column list - follow table output order + partitioned table") {
     val cols = Seq("c1", "c2", "c3", "c4")
     val df = Seq((1, 2, 3, 4)).toDF(cols: _*)
     withTable("t1") {
@@ -121,8 +120,7 @@ trait SQLInsertTestSuite extends QueryTest with SQLTestUtils {
     }
   }
 
-  // CDPD-7882 ignore the testcase because of CDPD-7882
-  ignore("insert with column list - table output reorder + partitioned table") {
+  test("insert with column list - table output reorder + partitioned table") {
     val cols = Seq("c1", "c2", "c3", "c4")
     val df = Seq((1, 2, 3, 4)).toDF(cols: _*)
     withTable("t1") {

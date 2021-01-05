@@ -27,7 +27,7 @@
   "inExpressWizard" : true,
   "svgIcon": "images/icon.svg",
   "parcel" : {
-    "repoUrl" : "http://dummy",
+    "repoUrl" : "https://archive.cloudera.com/p/spark3/3.1.7270.0/parcels/",
     "requiredTags" : ["spark3", "cdh"],
     "optionalTags" : ["spark-plugin", "spark3-plugin"]
   },

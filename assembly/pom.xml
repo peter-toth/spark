@@ -54,6 +54,14 @@
           <groupId>org.apache.ranger</groupId>
           <artifactId>ranger-raz-hook-abfs</artifactId>
         </exclusion>
+        <exclusion>
+          <groupId>org.apache.ranger</groupId>
+          <artifactId>ranger-raz-hook-s3</artifactId>
+        </exclusion>
+        <exclusion>
+          <groupId>org.apache.ranger</groupId>
+          <artifactId>ranger-raz-s3-lib</artifactId>
+        </exclusion>
       </exclusions>
     </dependency>
     <dependency>

@@ -65,6 +65,10 @@
          "value" : "${spark_authenticate}"
        }
      ]
+    },
+    {
+      "type" : "clusterInfo",
+      "extensionId": "cluster_info"
     }
   ],
   "hdfsDirs" : [
@@ -386,6 +390,10 @@
               {
                 "key" : "spark.port.maxRetries",
                 "value" : "0"
+              },
+              {
+                "key": "spark.ssl.historyServer.keyStoreType",
+                "value": "${keystore_type}"
               }
             ]
           }

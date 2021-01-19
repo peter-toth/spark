@@ -476,133 +476,155 @@ private[hive] class SparkSQLCLIDriver extends CliDriver with Logging {
     }
   }
 
-// scalastyle:off
-//  // Adapted processLine from Hive 2.3's CliDriver.processLine.
-//  override def processLine(line: String, allowInterrupting: Boolean): Int = {
-//    var oldSignal: SignalHandler = null
-//    var interruptSignal: Signal = null
-//
-//    if (allowInterrupting) {
-//      // Remember all threads that were running at the time we started line processing.
-//      // Hook up the custom Ctrl+C handler while processing this line
-//      interruptSignal = new Signal("INT")
-//      oldSignal = Signal.handle(interruptSignal, new SignalHandler() {
-//        private var interruptRequested: Boolean = false
-//
-//        override def handle(signal: Signal): Unit {
-//          val initialRequest = !interruptRequested
-//          interruptRequested = true
-//
-//          // Kill the VM on second ctrl+c
-//          if (!initialRequest) {
-//            console.printInfo("Exiting the JVM")
-//            System.exit(127)
-//          }
-//
-//          // Interrupt the CLI thread to stop the current statement and return
-//          // to prompt
-//          console.printInfo("Interrupting... Be patient, this might take some time.")
-//          console.printInfo("Press Ctrl+C again to kill JVM")
-//
-//          HiveInterruptUtils.interrupt()
-//        }
-//      })
-//    }
-//
-//    try {
-//      var lastRet: Int = 0
-//
-//      // we can not use "split" function directly as ";" may be quoted
-//      val commands = splitSemiColon(line).asScala
-//      var command: String = ""
-//      for (oneCmd <- commands) {
-//        if (StringUtils.endsWith(oneCmd, "\\")) {
-//          command += StringUtils.chop(oneCmd) + ";"
-//        } else {
-//          command += oneCmd
-//          if (!StringUtils.isBlank(command)) {
-//            val ret = processCmd(command)
-//            command = ""
-//            lastRet = ret
-//            val ignoreErrors = HiveConf.getBoolVar(conf, HiveConf.ConfVars.CLIIGNOREERRORS)
-//            if (ret != 0 && !ignoreErrors) {
-//              CommandProcessorFactory.clean(conf.asInstanceOf[HiveConf])
-//              return ret
-//            }
-//          }
-//        }
-//      }
-//      CommandProcessorFactory.clean(conf.asInstanceOf[HiveConf])
-//      lastRet
-//    } finally {
-//      // Once we are done processing the line, restore the old handler
-//      if (oldSignal != null && interruptSignal != null) {
-//        Signal.handle(interruptSignal, oldSignal)
-//      }
-//    }
-//  }
-//
-//  // Adapted splitSemiColon from Hive 2.3's CliDriver.splitSemiColon.
-//  // Note: [SPARK-31595] if there is a `'` in a double quoted string, or a `"` in a single quoted
-//  // string, the origin implementation from Hive will not drop the trailing semicolon as expected,
-//  // hence we refined this function a little bit.
-//  private def splitSemiColon(line: String): JList[String] = {
-//    var insideSingleQuote = false
-//    var insideDoubleQuote = false
-//    var insideComment = false
-//    var escape = false
-//    var beginIndex = 0
-//    val ret = new JArrayList[String]
-//
-//    for (index <- 0 until line.length) {
-//      if (line.charAt(index) == '\'' && !insideComment) {
-//        // take a look to see if it is escaped
-//        // See the comment above about SPARK-31595
-//        if (!escape && !insideDoubleQuote) {
-//          // flip the boolean variable
-//          insideSingleQuote = !insideSingleQuote
-//        }
-//      } else if (line.charAt(index) == '\"' && !insideComment) {
-//        // take a look to see if it is escaped
-//        // See the comment above about SPARK-31595
-//        if (!escape && !insideSingleQuote) {
-//          // flip the boolean variable
-//          insideDoubleQuote = !insideDoubleQuote
-//        }
-//      } else if (line.charAt(index) == '-') {
-//        val hasNext = index + 1 < line.length
-//        if (insideDoubleQuote || insideSingleQuote || insideComment) {
-//          // Ignores '-' in any case of quotes or comment.
-//          // Avoids to start a comment(--) within a quoted segment or already in a comment.
-//          // Sample query: select "quoted value --"
-//          //                                    ^^ avoids starting a comment if it's inside quotes.
-//        } else if (hasNext && line.charAt(index + 1) == '-') {
-//          // ignore quotes and ;
-//          insideComment = true
-//        }
-//      } else if (line.charAt(index) == ';') {
-//        if (insideSingleQuote || insideDoubleQuote || insideComment) {
-//          // do not split
-//        } else {
-//          // split, do not include ; itself
-//          ret.add(line.substring(beginIndex, index))
-//          beginIndex = index + 1
-//        }
-//      } else if (line.charAt(index) == '\n') {
-//        // with a new line the inline comment should end.
-//        if (!escape) {
-//          insideComment = false
-//        }
-//      }
-//      // set the escape
-//      if (escape) {
-//        escape = false
-//      } else if (line.charAt(index) == '\\') {
-//        escape = true
-//      }
-//    }
-//    ret.add(line.substring(beginIndex))
-//    ret
-//  }
-// scalastyle:on
+  /*
+  // Adapted processLine from Hive 2.3's CliDriver.processLine.
+  override def processLine(line: String, allowInterrupting: Boolean): Int = {
+    var oldSignal: SignalHandler = null
+    var interruptSignal: Signal = null
+    if (allowInterrupting) {
+      // Remember all threads that were running at the time we started line processing.
+      // Hook up the custom Ctrl+C handler while processing this line
+      interruptSignal = new Signal("INT")
+      oldSignal = Signal.handle(interruptSignal, new SignalHandler() {
+        private var interruptRequested: Boolean = false
+        override def handle(signal: Signal): Unit = {
+          val initialRequest = !interruptRequested
+          interruptRequested = true
+          // Kill the VM on second ctrl+c
+          if (!initialRequest) {
+            console.printInfo("Exiting the JVM")
+            System.exit(127)
+          }
+          // Interrupt the CLI thread to stop the current statement and return
+          // to prompt
+          console.printInfo("Interrupting... Be patient, this might take some time.")
+          console.printInfo("Press Ctrl+C again to kill JVM")
+          HiveInterruptUtils.interrupt()
+        }
+      })
+    }
+    try {
+      var lastRet: Int = 0
+      // we can not use "split" function directly as ";" may be quoted
+      val commands = splitSemiColon(line).asScala
+      var command: String = ""
+      for (oneCmd <- commands) {
+        if (StringUtils.endsWith(oneCmd, "\\")) {
+          command += StringUtils.chop(oneCmd) + ";"
+        } else {
+          command += oneCmd
+          if (!StringUtils.isBlank(command)) {
+            val ret = processCmd(command)
+            command = ""
+            lastRet = ret
+            val ignoreErrors = HiveConf.getBoolVar(conf, HiveConf.ConfVars.CLIIGNOREERRORS)
+            if (ret != 0 && !ignoreErrors) {
+              CommandProcessorFactory.clean(conf.asInstanceOf[HiveConf])
+              return ret
+            }
+          }
+        }
+      }
+      CommandProcessorFactory.clean(conf.asInstanceOf[HiveConf])
+      lastRet
+    } finally {
+      // Once we are done processing the line, restore the old handler
+      if (oldSignal != null && interruptSignal != null) {
+        Signal.handle(interruptSignal, oldSignal)
+      }
+    }
+  }
+  // Adapted splitSemiColon from Hive 2.3's CliDriver.splitSemiColon.
+  // Note: [SPARK-31595] if there is a `'` in a double quoted string, or a `"` in a single quoted
+  // string, the origin implementation from Hive will not drop the trailing semicolon as expected,
+  // hence we refined this function a little bit.
+  // Note: [SPARK-33100] Ignore a semicolon inside a bracketed comment in spark-sql.
+  private def splitSemiColon(line: String): JList[String] = {
+    var insideSingleQuote = false
+    var insideDoubleQuote = false
+    var insideSimpleComment = false
+    var bracketedCommentLevel = 0
+    var escape = false
+    var beginIndex = 0
+    var leavingBracketedComment = false
+    var isStatement = false
+    val ret = new JArrayList[String]
+    def insideBracketedComment: Boolean = bracketedCommentLevel > 0
+    def insideComment: Boolean = insideSimpleComment || insideBracketedComment
+    def statementInProgress(index: Int): Boolean = isStatement || (!insideComment &&
+      index > beginIndex && !s"${line.charAt(index)}".trim.isEmpty)
+    for (index <- 0 until line.length) {
+      // Checks if we need to decrement a bracketed comment level; the last character '/' of
+      // bracketed comments is still inside the comment, so `insideBracketedComment` must keep true
+      // in the previous loop and we decrement the level here if needed.
+      if (leavingBracketedComment) {
+        bracketedCommentLevel -= 1
+        leavingBracketedComment = false
+      }
+      if (line.charAt(index) == '\'' && !insideComment) {
+        // take a look to see if it is escaped
+        // See the comment above about SPARK-31595
+        if (!escape && !insideDoubleQuote) {
+          // flip the boolean variable
+          insideSingleQuote = !insideSingleQuote
+        }
+      } else if (line.charAt(index) == '\"' && !insideComment) {
+        // take a look to see if it is escaped
+        // See the comment above about SPARK-31595
+        if (!escape && !insideSingleQuote) {
+          // flip the boolean variable
+          insideDoubleQuote = !insideDoubleQuote
+        }
+      } else if (line.charAt(index) == '-') {
+        val hasNext = index + 1 < line.length
+        if (insideDoubleQuote || insideSingleQuote || insideComment) {
+          // Ignores '-' in any case of quotes or comment.
+          // Avoids to start a comment(--) within a quoted segment or already in a comment.
+          // Sample query: select "quoted value --"
+          //                                    ^^ avoids starting a comment if it's inside quotes.
+        } else if (hasNext && line.charAt(index + 1) == '-') {
+          // ignore quotes and ; in simple comment
+          insideSimpleComment = true
+        }
+      } else if (line.charAt(index) == ';') {
+        if (insideSingleQuote || insideDoubleQuote || insideComment) {
+          // do not split
+        } else {
+          if (isStatement) {
+            // split, do not include ; itself
+            ret.add(line.substring(beginIndex, index))
+          }
+          beginIndex = index + 1
+          isStatement = false
+        }
+      } else if (line.charAt(index) == '\n') {
+        // with a new line the inline simple comment should end.
+        if (!escape) {
+          insideSimpleComment = false
+        }
+      } else if (line.charAt(index) == '/' && !insideSimpleComment) {
+        val hasNext = index + 1 < line.length
+        if (insideSingleQuote || insideDoubleQuote) {
+          // Ignores '/' in any case of quotes
+        } else if (insideBracketedComment && line.charAt(index - 1) == '*' ) {
+          // Decrements `bracketedCommentLevel` at the beginning of the next loop
+          leavingBracketedComment = true
+        } else if (hasNext && !insideBracketedComment && line.charAt(index + 1) == '*') {
+          bracketedCommentLevel += 1
+        }
+      }
+      // set the escape
+      if (escape) {
+        escape = false
+      } else if (line.charAt(index) == '\\') {
+        escape = true
+      }
+      isStatement = statementInProgress(index)
+    }
+    if (isStatement) {
+      ret.add(line.substring(beginIndex))
+    }
+    ret
+  }
+  */
 }

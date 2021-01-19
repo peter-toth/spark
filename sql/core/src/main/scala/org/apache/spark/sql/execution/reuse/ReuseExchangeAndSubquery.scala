@@ -20,7 +20,6 @@ package org.apache.spark.sql.execution.reuse
 import org.apache.spark.sql.catalyst.rules.Rule
 import org.apache.spark.sql.execution.{BaseSubqueryExec, ExecSubqueryExpression, ReusedSubqueryExec, SparkPlan}
 import org.apache.spark.sql.execution.exchange.{Exchange, ReusedExchangeExec}
-import org.apache.spark.sql.internal.SQLConf
 import org.apache.spark.sql.util.ReuseMap
 
 /**

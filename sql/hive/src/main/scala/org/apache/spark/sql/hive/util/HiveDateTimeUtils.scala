@@ -17,8 +17,7 @@
 
 package org.apache.spark.sql.hive.util
 
-import java.time.{LocalDate, LocalDateTime, LocalTime, ZoneOffset}
-import java.util.TimeZone
+import java.time.{LocalDateTime, ZoneOffset}
 
 import org.apache.hadoop.hive.common.`type`.{Date => HiveDate, Timestamp => HiveTimestamp}
 

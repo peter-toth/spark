@@ -33,7 +33,7 @@ import org.apache.spark.sql.catalyst.util.NumberConverter
 import org.apache.spark.unsafe.types.UTF8String
 
 @Ignore
-class SparkThriftServerProtocolVersionsSuite extends HiveThriftJdbcTest {
+class SparkThriftServerProtocolVersionsSuite extends HiveThriftServer2TestBase {
 
   override def mode: ServerMode.Value = ServerMode.binary
 

@@ -549,9 +549,9 @@ abstract class DDLSuite extends QueryTest with SQLTestUtils {
     import testImplicits._
     val df = sparkContext.parallelize(1 to 10).map(i => (i, i.toString)).toDF("num", "str")
 
-    // Case 1: with partitioning columns but no schema: Option("inexistentColumns")
+    // Case 1: with partitioning columns but no schema: Option("nonexistentColumns")
     // Case 2: without schema and partitioning columns: None
-    Seq(Option("inexistentColumns"), None).foreach { partitionCols =>
+    Seq(Option("nonexistentColumns"), None).foreach { partitionCols =>
       withTempPath { pathToPartitionedTable =>
         df.write.format("parquet").partitionBy("num")
           .save(pathToPartitionedTable.getCanonicalPath)
@@ -589,9 +589,9 @@ abstract class DDLSuite extends QueryTest with SQLTestUtils {
     import testImplicits._
     val df = sparkContext.parallelize(1 to 10).map(i => (i, i.toString)).toDF("num", "str")
 
-    // Case 1: with partitioning columns but no schema: Option("inexistentColumns")
+    // Case 1: with partitioning columns but no schema: Option("nonexistentColumns")
     // Case 2: without schema and partitioning columns: None
-    Seq(Option("inexistentColumns"), None).foreach { partitionCols =>
+    Seq(Option("nonexistentColumns"), None).foreach { partitionCols =>
       withTempPath { pathToNonPartitionedTable =>
         df.write.format("parquet").save(pathToNonPartitionedTable.getCanonicalPath)
         checkSchemaInCreatedDataSourceTable(
@@ -608,7 +608,7 @@ abstract class DDLSuite extends QueryTest with SQLTestUtils {
     import testImplicits._
     val df = sparkContext.parallelize(1 to 10).map(i => (i, i.toString)).toDF("num", "str")
 
-    // Case 1: with partitioning columns but no schema: Option("inexistentColumns")
+    // Case 1: with partitioning columns but no schema: Option("nonexistentColumns")
     // Case 2: without schema and partitioning columns: None
     Seq(Option("num"), None).foreach { partitionCols =>
       withTempPath { pathToNonPartitionedTable =>
@@ -1733,6 +1733,14 @@ abstract class DDLSuite extends QueryTest with SQLTestUtils {
     // use int literal as partition value for int type partition column
     sql("ALTER TABLE tab1 DROP PARTITION (a=9, b=9)")
     assert(catalog.listPartitions(tableIdent).isEmpty)
+
+    // null partition values
+    createTablePartition(catalog, Map("a" -> null, "b" -> null), tableIdent)
+    val nullPartValue = if (isUsingHiveMetastore) "__HIVE_DEFAULT_PARTITION__" else null
+    assert(catalog.listPartitions(tableIdent).map(_.spec).toSet ==
+      Set(Map("a" -> nullPartValue, "b" -> nullPartValue)))
+    sql("ALTER TABLE tab1 DROP PARTITION (a = null, b = null)")
+    assert(catalog.listPartitions(tableIdent).isEmpty)
   }
 
   protected def testRenamePartitions(isDatasourceTable: Boolean): Unit = {
@@ -1914,7 +1922,7 @@ abstract class DDLSuite extends QueryTest with SQLTestUtils {
              |OPTIONS (
              |  path '${tempDir.getCanonicalPath}'
              |)
-             |CLUSTERED BY (inexistentColumnA) SORTED BY (inexistentColumnB) INTO 2 BUCKETS
+             |CLUSTERED BY (nonexistentColumnA) SORTED BY (nonexistentColumnB) INTO 2 BUCKETS
            """.stripMargin)
         }
         assert(e.message == "Cannot specify bucketing information if the table schema is not " +
@@ -3124,6 +3132,19 @@ abstract class DDLSuite extends QueryTest with SQLTestUtils {
       assert(!spark.sessionState.catalog.isRegisteredFunction(rand))
       sql("REFRESH FUNCTION default.rand")
       assert(spark.sessionState.catalog.isRegisteredFunction(rand))
+    }
+  }
+
+  test("SPARK-33899: invalid multi-part identifier of namespaces") {
+    Seq(
+      "SHOW TABLES IN spark_catalog" -> "multi-part identifier cannot be empty",
+      "SHOW VIEWS IN spark_catalog" -> "multi-part identifier cannot be empty",
+      "SHOW TABLE EXTENDED IN spark_catalog LIKE '*tbl'" -> "Database 'spark_catalog' not found"
+    ).foreach { case (sqlCmd, expectedError) =>
+      val errMsg = intercept[AnalysisException] {
+        sql(sqlCmd)
+      }.getMessage
+      assert(errMsg.contains(expectedError))
     }
   }
 }

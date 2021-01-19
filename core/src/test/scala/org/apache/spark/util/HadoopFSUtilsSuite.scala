@@ -15,23 +15,19 @@
  * limitations under the License.
  */
 
-package org.apache.spark.sql.execution
+package org.apache.spark.util
 
-import org.apache.spark.sql.{DataFrame, Dataset, Row, SparkSession}
-import org.apache.spark.sql.catalyst.encoders.RowEncoder
-import org.apache.spark.sql.catalyst.plans.logical.LogicalPlan
+import org.apache.spark.SparkFunSuite
 
-/** Query execution that skips re-analysis and optimize. */
-class AlreadyOptimizedExecution(
-    session: SparkSession,
-    plan: LogicalPlan) extends QueryExecution(session, plan) {
-  override lazy val analyzed: LogicalPlan = plan
-  override lazy val optimizedPlan: LogicalPlan = plan
-}
-
-object AlreadyOptimized {
-  def dataFrame(sparkSession: SparkSession, optimized: LogicalPlan): DataFrame = {
-    val qe = new AlreadyOptimizedExecution(sparkSession, optimized)
-    new Dataset[Row](qe, RowEncoder(qe.analyzed.schema))
+class HadoopFSUtilsSuite extends SparkFunSuite {
+  test("HadoopFSUtils - file filtering") {
+    assert(!HadoopFSUtils.shouldFilterOutPathName("abcd"))
+    assert(HadoopFSUtils.shouldFilterOutPathName(".ab"))
+    assert(HadoopFSUtils.shouldFilterOutPathName("_cd"))
+    assert(!HadoopFSUtils.shouldFilterOutPathName("_metadata"))
+    assert(!HadoopFSUtils.shouldFilterOutPathName("_common_metadata"))
+    assert(HadoopFSUtils.shouldFilterOutPathName("_ab_metadata"))
+    assert(HadoopFSUtils.shouldFilterOutPathName("_cd_common_metadata"))
+    assert(HadoopFSUtils.shouldFilterOutPathName("a._COPYING_"))
   }
 }

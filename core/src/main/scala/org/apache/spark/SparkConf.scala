@@ -22,7 +22,6 @@ import java.util.concurrent.ConcurrentHashMap
 
 import scala.collection.JavaConverters._
 import scala.collection.mutable.LinkedHashSet
-import scala.concurrent.duration._
 
 import org.apache.avro.{Schema, SchemaNormalization}
 

@@ -37,6 +37,7 @@ import org.apache.spark.sql.internal.connector.SimpleTableProvider
 import org.apache.spark.sql.sources.SimpleScanSource
 import org.apache.spark.sql.types.{BooleanType, LongType, StringType, StructField, StructType}
 import org.apache.spark.sql.util.CaseInsensitiveStringMap
+import org.apache.spark.storage.StorageLevel
 import org.apache.spark.unsafe.types.UTF8String
 import org.apache.spark.util.Utils
 
@@ -285,7 +286,7 @@ class DataSourceV2SQLSuite
     }
   }
 
-  test("CreateTable/RepalceTable: invalid schema if has interval type") {
+  test("CreateTable/ReplaceTable: invalid schema if has interval type") {
     Seq("CREATE", "REPLACE").foreach { action =>
       val e1 = intercept[AnalysisException](
         sql(s"$action TABLE table_name (id int, value interval) USING $v2Format"))
@@ -741,8 +742,8 @@ class DataSourceV2SQLSuite
       val ex = intercept[UnsupportedOperationException] {
         sql ("DROP TABLE testcat.ns.t PURGE")
       }
-      // The default TableCatalog.dropTable implementation doesn't support the purge option.
-      assert(ex.getMessage.contains("Purge option is not supported"))
+      // The default TableCatalog.purgeTable implementation throws an exception.
+      assert(ex.getMessage.contains("Purge table is not supported"))
     }
   }
 
@@ -780,6 +781,23 @@ class DataSourceV2SQLSuite
 
         sql(s"DROP TABLE $t")
         assert(spark.sharedState.cacheManager.lookupCachedData(spark.table(view)).isEmpty)
+      }
+    }
+  }
+
+  test("SPARK-34039: ReplaceTable (atomic or non-atomic) should invalidate cache") {
+    Seq("testcat.ns.t", "testcat_atomic.ns.t").foreach { t =>
+      val view = "view"
+      withTable(t) {
+        withTempView(view) {
+          sql(s"CREATE TABLE $t USING foo AS SELECT id, data FROM source")
+          sql(s"CACHE TABLE $view AS SELECT id FROM $t")
+          checkAnswer(sql(s"SELECT * FROM $t"), spark.table("source"))
+          checkAnswer(sql(s"SELECT * FROM $view"), spark.table("source").select("id"))
+
+          sql(s"REPLACE TABLE $t (a bigint) USING foo")
+          assert(spark.sharedState.cacheManager.lookupCachedData(spark.table(view)).isEmpty)
+        }
       }
     }
   }
@@ -859,6 +877,24 @@ class DataSourceV2SQLSuite
         checkAnswer(sql(s"SELECT * FROM $t"), Row(2, "b", 1) :: Nil)
         checkAnswer(sql(s"SELECT * FROM $view"), Row(2) :: Nil)
       }
+    }
+  }
+
+  test("SPARK-33829: Renaming a table should recreate a cache while retaining the old cache info") {
+    withTable("testcat.ns.old", "testcat.ns.new") {
+      def getStorageLevel(tableName: String): StorageLevel = {
+        val table = spark.table(tableName)
+        val optCachedData = spark.sharedState.cacheManager.lookupCachedData(table)
+        assert(optCachedData.isDefined)
+        optCachedData.get.cachedRepresentation.cacheBuilder.storageLevel
+      }
+      sql("CREATE TABLE testcat.ns.old USING foo AS SELECT id, data FROM source")
+      sql("CACHE TABLE testcat.ns.old OPTIONS('storageLevel' 'MEMORY_ONLY')")
+      val oldStorageLevel = getStorageLevel("testcat.ns.old")
+
+      sql("ALTER TABLE testcat.ns.old RENAME TO ns.new")
+      val newStorageLevel = getStorageLevel("testcat.ns.new")
+      assert(oldStorageLevel === newStorageLevel)
     }
   }
 
@@ -1360,9 +1396,9 @@ class DataSourceV2SQLSuite
 
   test("ShowNamespaces: default v2 catalog doesn't support namespace") {
     spark.conf.set(
-      "spark.sql.catalog.testcat_no_namspace",
+      "spark.sql.catalog.testcat_no_namespace",
       classOf[BasicInMemoryTableCatalog].getName)
-    spark.conf.set(SQLConf.DEFAULT_CATALOG.key, "testcat_no_namspace")
+    spark.conf.set(SQLConf.DEFAULT_CATALOG.key, "testcat_no_namespace")
 
     val exception = intercept[AnalysisException] {
       sql("SHOW NAMESPACES")
@@ -1373,11 +1409,11 @@ class DataSourceV2SQLSuite
 
   test("ShowNamespaces: v2 catalog doesn't support namespace") {
     spark.conf.set(
-      "spark.sql.catalog.testcat_no_namspace",
+      "spark.sql.catalog.testcat_no_namespace",
       classOf[BasicInMemoryTableCatalog].getName)
 
     val exception = intercept[AnalysisException] {
-      sql("SHOW NAMESPACES in testcat_no_namspace")
+      sql("SHOW NAMESPACES in testcat_no_namespace")
     }
 
     assert(exception.getMessage.contains("does not support namespaces"))
@@ -1745,6 +1781,25 @@ class DataSourceV2SQLSuite
         sql(s"REFRESH TABLE $tblName")
         assert(spark.sharedState.cacheManager.lookupCachedData(spark.table("t")).isEmpty)
       }
+    }
+  }
+
+  test("SPARK-33653: REFRESH TABLE should recache the target table itself") {
+    val tblName = "testcat.ns.t"
+    withTable(tblName) {
+      sql(s"CREATE TABLE $tblName (id bigint) USING foo")
+
+      // if the table is not cached, refreshing it should not recache it
+      assert(spark.sharedState.cacheManager.lookupCachedData(spark.table(tblName)).isEmpty)
+      sql(s"REFRESH TABLE $tblName")
+      assert(spark.sharedState.cacheManager.lookupCachedData(spark.table(tblName)).isEmpty)
+
+      sql(s"CACHE TABLE $tblName")
+
+      // after caching & refreshing the table should be recached
+      assert(spark.sharedState.cacheManager.lookupCachedData(spark.table(tblName)).isDefined)
+      sql(s"REFRESH TABLE $tblName")
+      assert(spark.sharedState.cacheManager.lookupCachedData(spark.table(tblName)).isDefined)
     }
   }
 
@@ -2261,7 +2316,7 @@ class DataSourceV2SQLSuite
 
     val e = intercept[AnalysisException] {
       // Since the following multi-part name starts with `globalTempDB`, it is resolved to
-      // the session catalog, not the `gloabl_temp` v2 catalog.
+      // the session catalog, not the `global_temp` v2 catalog.
       sql(s"CREATE TABLE $globalTempDB.ns1.ns2.tbl (id bigint, data string) USING json")
     }
     assert(e.message.contains(

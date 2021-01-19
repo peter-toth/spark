@@ -107,12 +107,12 @@ class DataStreamTableAPISuite extends StreamTest with BeforeAndAfter {
   }
 
   test("read: read table without streaming capability support") {
-    val tableIdentifer = "testcat.table_name"
+    val tableIdentifier = "testcat.table_name"
 
-    spark.sql(s"CREATE TABLE $tableIdentifer (id bigint, data string) USING foo")
+    spark.sql(s"CREATE TABLE $tableIdentifier (id bigint, data string) USING foo")
 
     intercept[AnalysisException] {
-      spark.readStream.table(tableIdentifer)
+      spark.readStream.table(tableIdentifier)
     }.message.contains("does not support either micro-batch or continuous scan")
   }
 
@@ -213,7 +213,7 @@ class DataStreamTableAPISuite extends StreamTest with BeforeAndAfter {
   }
 
   test("write: write to non-exist table with custom catalog") {
-    val tableIdentifier = "testcat.nonexisttable"
+    val tableIdentifier = "testcat.nonexistenttable"
 
     withTable(tableIdentifier) {
       runTestWithStreamAppend(tableIdentifier)
@@ -275,7 +275,7 @@ class DataStreamTableAPISuite extends StreamTest with BeforeAndAfter {
       val tableName = "stream_test"
       withTable(tableName) {
         // The file written by batch will not be seen after the table was written by a streaming
-        // query. This is because we loads files from the metadata log instead of listing them
+        // query. This is because we load files from the metadata log instead of listing them
         // using HDFS API.
         Seq(4, 5, 6).toDF("value").write.format("parquet")
           .option("path", dir.getCanonicalPath).saveAsTable(tableName)
@@ -289,7 +289,7 @@ class DataStreamTableAPISuite extends StreamTest with BeforeAndAfter {
     val tableName = "stream_test"
     withTable(tableName) {
       // The file written by batch will not be seen after the table was written by a streaming
-      // query. This is because we loads files from the metadata log instead of listing them
+      // query. This is because we load files from the metadata log instead of listing them
       // using HDFS API.
       Seq(4, 5, 6).toDF("value").write.format("parquet").saveAsTable(tableName)
 
@@ -302,7 +302,7 @@ class DataStreamTableAPISuite extends StreamTest with BeforeAndAfter {
       val tableName = "stream_test"
       withTable(tableName) {
         // The file written by batch will not be seen after the table was written by a streaming
-        // query. This is because we loads files from the metadata log instead of listing them
+        // query. This is because we load files from the metadata log instead of listing them
         // using HDFS API.
         Seq(4, 5, 6).toDF("value").write
           .mode("append").format("parquet").save(dir.getCanonicalPath)

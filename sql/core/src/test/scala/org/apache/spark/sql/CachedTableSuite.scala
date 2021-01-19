@@ -17,8 +17,13 @@
 
 package org.apache.spark.sql
 
+import java.io.{File, FilenameFilter}
+import java.nio.file.{Files, Paths}
+
 import scala.collection.mutable.HashSet
 import scala.concurrent.duration._
+
+import org.apache.commons.io.FileUtils
 
 import org.apache.spark.CleanerListener
 import org.apache.spark.executor.DataReadMethod._
@@ -835,7 +840,7 @@ class CachedTableSuite extends QueryTest with SQLTestUtils
     }
   }
 
-  test("SPARK-19993 nested subquery caching and scalar + predicate subqueris") {
+  test("SPARK-19993 nested subquery caching and scalar + predicate subqueries") {
     withTempView("t1", "t2", "t3", "t4") {
       Seq(1).toDF("c1").createOrReplaceTempView("t1")
       Seq(2).toDF("c1").createOrReplaceTempView("t2")
@@ -886,17 +891,17 @@ class CachedTableSuite extends QueryTest with SQLTestUtils
   }
 
   private def checkIfNoJobTriggered[T](f: => T): T = {
-    var numJobTrigered = 0
+    var numJobTriggered = 0
     val jobListener = new SparkListener {
       override def onJobStart(jobStart: SparkListenerJobStart): Unit = {
-        numJobTrigered += 1
+        numJobTriggered += 1
       }
     }
     sparkContext.addSparkListener(jobListener)
     try {
       val result = f
       sparkContext.listenerBus.waitUntilEmpty()
-      assert(numJobTrigered === 0)
+      assert(numJobTriggered === 0)
       result
     } finally {
       sparkContext.removeSparkListener(jobListener)
@@ -1237,6 +1242,126 @@ class CachedTableSuite extends QueryTest with SQLTestUtils
           checkAnswer(sql("SELECT * FROM tempView2"), Seq.empty)
         }
       }
+    }
+  }
+
+  test("SPARK-33729: REFRESH TABLE should not use cached/stale plan") {
+    def moveParquetFiles(src: File, dst: File): Unit = {
+      src.listFiles(new FilenameFilter {
+        override def accept(dir: File, name: String): Boolean = name.endsWith("parquet")
+      }).foreach { f =>
+        Files.move(f.toPath, Paths.get(dst.getAbsolutePath, f.getName))
+      }
+      // cleanup the rest of the files
+      src.listFiles().foreach(_.delete())
+      src.delete()
+    }
+
+    withTable("t") {
+      withTempDir { dir =>
+        val path1 = new File(dir, "path1")
+        Seq((1 -> "a")).toDF("i", "j").write.parquet(path1.getCanonicalPath)
+        moveParquetFiles(path1, dir)
+        sql(s"CREATE TABLE t (i INT, j STRING) USING parquet LOCATION '${dir.toURI}'")
+        sql("CACHE TABLE t")
+        checkAnswer(sql("SELECT * FROM t"), Row(1, "a") :: Nil)
+
+        val path2 = new File(dir, "path2")
+        Seq(2 -> "b").toDF("i", "j").write.parquet(path2.getCanonicalPath)
+        moveParquetFiles(path2, dir)
+        sql("REFRESH TABLE t")
+        checkAnswer(sql("SELECT * FROM t"), Row(1, "a") :: Row(2, "b") :: Nil)
+      }
+    }
+  }
+
+  test("SPARK-33647: cache table support for permanent view") {
+    withView("v1") {
+      spark.catalog.clearCache()
+      sql("create or replace view v1 as select 1")
+      sql("cache table v1")
+      assert(spark.sharedState.cacheManager.lookupCachedData(sql("select 1")).isDefined)
+      sql("create or replace view v1 as select 1, 2")
+      assert(spark.sharedState.cacheManager.lookupCachedData(sql("select 1")).isEmpty)
+      sql("cache table v1")
+      assert(spark.sharedState.cacheManager.lookupCachedData(sql("select 1, 2")).isDefined)
+    }
+  }
+
+  test("SPARK-33786: Cache's storage level should be respected when a table name is altered.") {
+    withTable("old", "new") {
+      withTempPath { path =>
+        def getStorageLevel(tableName: String): StorageLevel = {
+          val table = spark.table(tableName)
+          val cachedData = spark.sharedState.cacheManager.lookupCachedData(table).get
+          cachedData.cachedRepresentation.cacheBuilder.storageLevel
+        }
+        Seq(1 -> "a").toDF("i", "j").write.parquet(path.getCanonicalPath)
+        sql(s"CREATE TABLE old USING parquet LOCATION '${path.toURI}'")
+        sql("CACHE TABLE old OPTIONS('storageLevel' 'MEMORY_ONLY')")
+        val oldStorageLevel = getStorageLevel("old")
+
+        sql("ALTER TABLE old RENAME TO new")
+        val newStorageLevel = getStorageLevel("new")
+        assert(oldStorageLevel === newStorageLevel)
+      }
+    }
+  }
+
+  test("SPARK-33950: refresh cache after partition dropping") {
+    withTable("t") {
+      sql(s"CREATE TABLE t (id int, part int) USING parquet PARTITIONED BY (part)")
+      sql("INSERT INTO t PARTITION (part=0) SELECT 0")
+      sql("INSERT INTO t PARTITION (part=1) SELECT 1")
+      assert(!spark.catalog.isCached("t"))
+      sql("CACHE TABLE t")
+      assert(spark.catalog.isCached("t"))
+      checkAnswer(sql("SELECT * FROM t"), Seq(Row(0, 0), Row(1, 1)))
+      sql("ALTER TABLE t DROP PARTITION (part=0)")
+      assert(spark.catalog.isCached("t"))
+      checkAnswer(sql("SELECT * FROM t"), Seq(Row(1, 1)))
+    }
+  }
+
+  test("SPARK-34011: refresh cache after partition renaming") {
+    withTable("t") {
+      sql("CREATE TABLE t (id int, part int) USING parquet PARTITIONED BY (part)")
+      sql("INSERT INTO t PARTITION (part=0) SELECT 0")
+      sql("INSERT INTO t PARTITION (part=1) SELECT 1")
+      assert(!spark.catalog.isCached("t"))
+      sql("CACHE TABLE t")
+      assert(spark.catalog.isCached("t"))
+      QueryTest.checkAnswer(sql("SELECT * FROM t"), Seq(Row(0, 0), Row(1, 1)))
+      sql("ALTER TABLE t PARTITION (part=0) RENAME TO PARTITION (part=2)")
+      assert(spark.catalog.isCached("t"))
+      QueryTest.checkAnswer(sql("SELECT * FROM t"), Seq(Row(0, 2), Row(1, 1)))
+    }
+  }
+
+  test("SPARK-34055: refresh cache in partition adding") {
+    withTable("t") {
+      sql("CREATE TABLE t (id int, part int) USING parquet PARTITIONED BY (part)")
+      sql("INSERT INTO t PARTITION (part=0) SELECT 0")
+      assert(!spark.catalog.isCached("t"))
+      sql("CACHE TABLE t")
+      assert(spark.catalog.isCached("t"))
+      checkAnswer(sql("SELECT * FROM t"), Seq(Row(0, 0)))
+
+      // Create new partition (part = 1) in the filesystem
+      val information = sql("SHOW TABLE EXTENDED LIKE 't' PARTITION (part = 0)")
+        .select("information")
+        .first().getString(0)
+      val part0Loc = information
+        .split("\\r?\\n")
+        .filter(_.startsWith("Location:"))
+        .head
+        .replace("Location: file:", "")
+      val part1Loc = part0Loc.replace("part=0", "part=1")
+      FileUtils.copyDirectory(new File(part0Loc), new File(part1Loc))
+
+      sql(s"ALTER TABLE t ADD PARTITION (part=1) LOCATION '$part1Loc'")
+      assert(spark.catalog.isCached("t"))
+      checkAnswer(sql("SELECT * FROM t"), Seq(Row(0, 0), Row(0, 1)))
     }
   }
 }

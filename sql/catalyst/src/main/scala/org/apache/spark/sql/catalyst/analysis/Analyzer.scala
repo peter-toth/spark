@@ -114,7 +114,8 @@ case class AnalysisContext(
     nestedViewDepth: Int = 0,
     maxNestedViewDepth: Int = -1,
     relationCache: mutable.Map[Seq[String], LogicalPlan] = mutable.Map.empty,
-    referredTempViewNames: Seq[Seq[String]] = Seq.empty)
+    referredTempViewNames: Seq[Seq[String]] = Seq.empty,
+    referredTempFunctionNames: Seq[String] = Seq.empty)
 
 object AnalysisContext {
   private val value = new ThreadLocal[AnalysisContext]() {
@@ -139,7 +140,8 @@ object AnalysisContext {
       originContext.nestedViewDepth + 1,
       maxNestedViewDepth,
       originContext.relationCache,
-      viewDesc.viewReferredTempViewNames)
+      viewDesc.viewReferredTempViewNames,
+      viewDesc.viewReferredTempFunctionNames)
     set(context)
     try f finally { set(originContext) }
   }
@@ -166,6 +168,7 @@ class Analyzer(override val catalogManager: CatalogManager)
   }
 
   def executeAndCheck(plan: LogicalPlan, tracker: QueryPlanningTracker): LogicalPlan = {
+    if (plan.analyzed) return plan
     AnalysisHelper.markInAnalyzer {
       val analyzed = executeAndTrack(plan, tracker)
       try {
@@ -2301,13 +2304,16 @@ class Analyzer(override val catalogManager: CatalogManager)
           val unresolvedSortOrders = sortOrder.filter { s =>
             !s.resolved || !s.references.subsetOf(aggregate.outputSet) || containsAggregate(s)
           }
-          val aliasedOrdering =
-            unresolvedSortOrders.map(o => Alias(o.child, "aggOrder")())
-          val aggregatedOrdering = aggregate.copy(aggregateExpressions = aliasedOrdering)
+          val aliasedOrdering = unresolvedSortOrders.map(o => Alias(o.child, "aggOrder")())
+
+          val aggregateWithExtraOrdering = aggregate.copy(
+            aggregateExpressions = aggregate.aggregateExpressions ++ aliasedOrdering)
+
           val resolvedAggregate: Aggregate =
-            executeSameContext(aggregatedOrdering).asInstanceOf[Aggregate]
-          val resolvedAliasedOrdering: Seq[Alias] =
-            resolvedAggregate.aggregateExpressions.asInstanceOf[Seq[Alias]]
+            executeSameContext(aggregateWithExtraOrdering).asInstanceOf[Aggregate]
+
+          val (reResolvedAggExprs, resolvedAliasedOrdering) =
+            resolvedAggregate.aggregateExpressions.splitAt(aggregate.aggregateExpressions.length)
 
           // If we pass the analysis check, then the ordering expressions should only reference to
           // aggregate expressions or grouping expressions, and it's safe to push them down to
@@ -2320,19 +2326,26 @@ class Analyzer(override val catalogManager: CatalogManager)
           // to push down this ordering expression and can reference the original aggregate
           // expression instead.
           val needsPushDown = ArrayBuffer.empty[NamedExpression]
-          val evaluatedOrderings = resolvedAliasedOrdering.zip(unresolvedSortOrders).map {
-            case (evaluated, order) =>
-              val index = originalAggExprs.indexWhere {
-                case Alias(child, _) => child semanticEquals evaluated.child
-                case other => other semanticEquals evaluated.child
-              }
+          val orderToAlias = unresolvedSortOrders.zip(aliasedOrdering)
+          val evaluatedOrderings =
+            resolvedAliasedOrdering.asInstanceOf[Seq[Alias]].zip(orderToAlias).map {
+              case (evaluated, (order, aliasOrder)) =>
+                val index = reResolvedAggExprs.indexWhere {
+                  case Alias(child, _) => child semanticEquals evaluated.child
+                  case other => other semanticEquals evaluated.child
+                }
 
-              if (index == -1) {
-                needsPushDown += evaluated
-                order.copy(child = evaluated.toAttribute)
-              } else {
-                order.copy(child = originalAggExprs(index).toAttribute)
-              }
+                if (index == -1) {
+                  if (hasCharVarchar(evaluated)) {
+                    needsPushDown += aliasOrder
+                    order.copy(child = aliasOrder)
+                  } else {
+                    needsPushDown += evaluated
+                    order.copy(child = evaluated.toAttribute)
+                  }
+                } else {
+                  order.copy(child = originalAggExprs(index).toAttribute)
+                }
           }
 
           val sortOrdersMap = unresolvedSortOrders
@@ -2355,6 +2368,13 @@ class Analyzer(override val catalogManager: CatalogManager)
           // just return the original plan.
           case ae: AnalysisException => sort
         }
+    }
+
+    def hasCharVarchar(expr: Alias): Boolean = {
+      expr.find {
+        case ne: NamedExpression => CharVarcharUtils.getRawType(ne.metadata).nonEmpty
+        case _ => false
+      }.nonEmpty
     }
 
     def containsAggregate(condition: Expression): Boolean = {
@@ -2945,7 +2965,10 @@ class Analyzer(override val catalogManager: CatalogManager)
 
     private def getNondeterToAttr(exprs: Seq[Expression]): Map[Expression, NamedExpression] = {
       exprs.filterNot(_.deterministic).flatMap { expr =>
-        val leafNondeterministic = expr.collect { case n: Nondeterministic => n }
+        val leafNondeterministic = expr.collect {
+          case n: Nondeterministic => n
+          case udf: UserDefinedExpression if !udf.deterministic => udf
+        }
         leafNondeterministic.distinct.map { e =>
           val ne = e match {
             case n: NamedExpression => n
@@ -3449,7 +3472,8 @@ class Analyzer(override val catalogManager: CatalogManager)
               Some(typeChange)
             } else {
               val (fieldNames, field) = fieldOpt.get
-              if (field.dataType == typeChange.newDataType()) {
+              val dt = CharVarcharUtils.getRawType(field.metadata).getOrElse(field.dataType)
+              if (dt == typeChange.newDataType()) {
                 // The user didn't want the field to change, so remove this change
                 None
               } else {

@@ -21,8 +21,6 @@ import java.sql.Timestamp
 
 import scala.util.Random
 
-import org.scalatest.Ignore
-
 import org.apache.spark.sql.{QueryTest, RandomDataGenerator}
 import org.apache.spark.sql.catalyst.TableIdentifier
 import org.apache.spark.sql.catalyst.util.{DateTimeTestUtils, DateTimeUtils}

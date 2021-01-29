@@ -1,24 +1,34 @@
-#!/bin/bash
+#!/bin/bash -ex
+
+# Simple script to publish locally built spark docker images
+# to a sandbox or other registry.
+
+DOCKER_REGISTRY=docker-private.infra.cloudera.com/cloudera
+PUBLISH_DOCKER_REGISTRY=docker-sandbox.infra.cloudera.com/$USER
+GBN=""
 
 usage() {
-  echo "Usage $0: REGISTRY"
-  echo "Example $0: docker-sandbox.infra.cloudera.com/denis.royz"
+  echo "Usage $0: PUBLISH_DOCKER_REGISTRY OS TAG GBN "
+  echo "Example: $0 docker-sandbox.infra.cloudera.com/$USER slim 3.1.1.3.1.7270.0-snapshot \"\""
   exit 1
 }
 
-if [[ $# -ne 1 ]]
+if [[ $# -ne 4 ]]
 then
   usage
 fi
 
-VERSION=$(build/mvn help:evaluate -Dexpression=project.version \
-  -Dcdpd.build=true -o -pl :spark-parent_2.12 2>/dev/null | \
-  grep -v "INFO" | tail -n 1)
+PUBLISH_DOCKER_REGISTRY=$1
+OS=$2
+TAG=$3
+GBN=$4
 
-REGISTRY=$1
+if [[ -n $GBN ]]; then
+  TAG=$TAG-$GBN
+fi
 
-docker tag cloudera/spark-py:"${VERSION}"-slim "${REGISTRY}"/spark-py:"${VERSION}"-slim
-docker tag cloudera/spark:"${VERSION}"-slim "${REGISTRY}"/spark:"${VERSION}"-slim
+docker tag ${DOCKER_REGISTRY}/spark-py${OS}:"${TAG}" "${PUBLISH_DOCKER_REGISTRY}"/spark-py${OS}:"${TAG}"
+docker tag ${DOCKER_REGISTRY}/spark${OS}:"${TAG}" "${PUBLISH_DOCKER_REGISTRY}"/spark${OS}:"${TAG}"
 
-docker push "${REGISTRY}"/spark:"${VERSION}"-slim
-docker push "${REGISTRY}"/spark-py:"${VERSION}"-slim
+docker push "${PUBLISH_DOCKER_REGISTRY}"/spark${OS}:${TAG}
+docker push "${PUBLISH_DOCKER_REGISTRY}"/spark-py${OS}:${TAG}

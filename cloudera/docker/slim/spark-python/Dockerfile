@@ -1,4 +1,4 @@
-# BASE_IMAGE_ARG Required
+# base_img Required
 ARG base_img
 ARG HADOOP_VERSION_ARG
 ARG CDP_ARTIFACT_URL_ARG

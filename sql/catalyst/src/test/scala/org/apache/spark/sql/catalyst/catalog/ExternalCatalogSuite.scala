@@ -837,8 +837,8 @@ abstract class ExternalCatalogSuite extends SparkFunSuite with BeforeAndAfterEac
     assert(exists(db.locationUri, "my_table"))
 
     catalog.renameTable("db1", "my_table", "your_table")
-    assert(!exists(db.locationUri, "my_table"))
-    assert(exists(db.locationUri, "your_table"))
+    assert(!catalog.tableExists("db1", "my_table"))
+    assert(catalog.tableExists("db1", "your_table"))
 
     catalog.dropTable("db1", "your_table", ignoreIfNotExists = false, purge = false)
     assert(!exists(db.locationUri, "your_table"))

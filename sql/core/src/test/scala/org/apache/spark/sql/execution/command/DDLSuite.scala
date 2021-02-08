@@ -2102,6 +2102,36 @@ abstract class DDLSuite extends QueryTest with SQLTestUtils {
     }
   }
 
+  test("truncate external table - allowed IFF external.table.purge='true'") {
+    import testImplicits._
+    Seq("true", "TRUE", "tRuE").foreach { booleanValue =>
+      withTempPath { tempDir =>
+        withTable("purgeable_ext_table") {
+          (1 to 10).map { i => (i, i) }.toDF().write.parquet(tempDir.getCanonicalPath)
+          sql(s"CREATE TABLE purgeable_ext_table using parquet " +
+            s"LOCATION '${tempDir.toURI}' TBLPROPERTIES('external.table.purge'='${booleanValue}')")
+          assert(sql(s"SELECT COUNT(*) from purgeable_ext_table").collect().head.getLong(0) == 10)
+          sql("TRUNCATE TABLE purgeable_ext_table")
+          assert(sql(s"SELECT COUNT(*) from purgeable_ext_table").collect().head.getLong(0) == 0,
+            s"truncate external table failed for 'external.table.purge'='${booleanValue}'")
+        }
+      }
+    }
+  }
+
+  test("truncate external table not allowed IF external.table.purge!='true'") {
+    import testImplicits._
+    withTempPath { tempDir =>
+      withTable("nonpurgeable_ext_table") {
+        (1 to 10).map { i => (i, i) }.toDF().write.parquet(tempDir.getCanonicalPath)
+        sql(s"CREATE TABLE nonpurgeable_ext_table using parquet " +
+          s"LOCATION '${tempDir.toURI}' TBLPROPERTIES('external.table.purge'='false')")
+        assert(sql(s"SELECT COUNT(*) from nonpurgeable_ext_table").collect().head.getLong(0) == 10)
+        assertUnsupported("TRUNCATE TABLE nonpurgeable_ext_table")
+      }
+    }
+  }
+
   test("truncate table - non-partitioned table (not allowed)") {
     withTable("my_tab") {
       sql("CREATE TABLE my_tab (age INT, name STRING) using parquet")

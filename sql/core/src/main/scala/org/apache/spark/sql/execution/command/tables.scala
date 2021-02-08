@@ -17,9 +17,7 @@
 
 package org.apache.spark.sql.execution.command
 
-import java.io.File
 import java.net.{URI, URISyntaxException}
-import java.nio.file.FileSystems
 
 import scala.collection.JavaConverters._
 import scala.collection.mutable.ArrayBuffer
@@ -45,7 +43,6 @@ import org.apache.spark.sql.execution.datasources.parquet.ParquetFileFormat
 import org.apache.spark.sql.internal.SQLConf
 import org.apache.spark.sql.types._
 import org.apache.spark.sql.util.SchemaUtils
-import org.apache.spark.util.Utils
 
 /**
  * A command to create a table with the same definition of the given existing table.
@@ -417,8 +414,10 @@ case class TruncateTableCommand(
     val catalog = spark.sessionState.catalog
     val table = catalog.getTableMetadata(tableName)
     val tableIdentWithDB = table.identifier.quotedString
+    val canPurge = table.properties.get("external.table.purge").map(_.toLowerCase)
+      .contains("true")
 
-    if (table.tableType == CatalogTableType.EXTERNAL) {
+    if (table.tableType == CatalogTableType.EXTERNAL && !canPurge) {
       throw new AnalysisException(
         s"Operation not allowed: TRUNCATE TABLE on external tables: $tableIdentWithDB")
     }

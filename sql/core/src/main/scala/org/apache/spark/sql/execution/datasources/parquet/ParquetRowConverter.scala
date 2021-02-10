@@ -138,6 +138,7 @@ private[parquet] class ParquetRowConverter(
     convertTz: Option[ZoneId],
     datetimeRebaseMode: LegacyBehaviorPolicy.Value,
     int96RebaseMode: LegacyBehaviorPolicy.Value,
+    int96CDPHive3Compatibility: Boolean,
     updater: ParentContainerUpdater)
   extends ParquetGroupConverter(updater) with Logging {
 
@@ -336,7 +337,8 @@ private[parquet] class ParquetRowConverter(
         new ParquetPrimitiveConverter(updater) {
           // Converts nanosecond timestamps stored as INT96
           override def addBinary(value: Binary): Unit = {
-            val julianMicros = ParquetRowConverter.binaryToSQLTimestamp(value)
+            val julianMicros =
+              ParquetRowConverter.binaryToSQLTimestamp(value, int96CDPHive3Compatibility)
             val gregorianMicros = int96RebaseFunc(julianMicros)
             val adjTime = convertTz.map(DateTimeUtils.convertTz(gregorianMicros, _, ZoneOffset.UTC))
               .getOrElse(gregorianMicros)
@@ -401,6 +403,7 @@ private[parquet] class ParquetRowConverter(
           convertTz,
           datetimeRebaseMode,
           int96RebaseMode,
+          int96CDPHive3Compatibility,
           wrappedUpdater)
 
       case t =>
@@ -772,12 +775,12 @@ private[parquet] object ParquetRowConverter {
     unscaled
   }
 
-  def binaryToSQLTimestamp(binary: Binary): Long = {
+  def binaryToSQLTimestamp(binary: Binary, int96CDPHive3Compatibility: Boolean): Long = {
     assert(binary.length() == 12, s"Timestamps (with nanoseconds) are expected to be stored in" +
       s" 12-byte long binaries. Found a ${binary.length()}-byte binary instead.")
     val buffer = binary.toByteBuffer.order(ByteOrder.LITTLE_ENDIAN)
     val timeOfDayNanos = buffer.getLong
     val julianDay = buffer.getInt
-    DateTimeUtils.fromJulianDayParquet(julianDay, timeOfDayNanos)
+    DateTimeUtils.fromJulianDayParquet(julianDay, timeOfDayNanos, int96CDPHive3Compatibility)
   }
 }

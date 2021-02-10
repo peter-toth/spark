@@ -26,7 +26,7 @@ import org.json4s.NoTypeHints
 import org.json4s.jackson.Serialization
 
 import org.apache.spark.SparkUpgradeException
-import org.apache.spark.sql.{SPARK_LEGACY_DATETIME, SPARK_LEGACY_INT96, SPARK_VERSION_METADATA_KEY}
+import org.apache.spark.sql.{SPARK_CDPHIVE3COMPATIBLE_INT96, SPARK_LEGACY_DATETIME, SPARK_LEGACY_INT96, SPARK_VERSION_METADATA_KEY}
 import org.apache.spark.sql.AnalysisException
 import org.apache.spark.sql.catalyst.catalog.{CatalogTable, CatalogUtils}
 import org.apache.spark.sql.catalyst.util.RebaseDateTime
@@ -129,6 +129,18 @@ object DataSourceUtils {
         LegacyBehaviorPolicy.CORRECTED
       }
     }.getOrElse(LegacyBehaviorPolicy.withName(modeByConfig))
+  }
+
+  def correctedInt96RebaseMode(
+      lookupFileMeta: String => String,
+      int96RebaseMode: LegacyBehaviorPolicy.Value,
+      int96CDPHive3CompatibilityByConfig: Boolean): (LegacyBehaviorPolicy.Value, Boolean) = {
+    if (lookupFileMeta(SPARK_CDPHIVE3COMPATIBLE_INT96) != null ||
+      int96CDPHive3CompatibilityByConfig) {
+      (LegacyBehaviorPolicy.CORRECTED, true)
+    } else {
+      (int96RebaseMode, false)
+    }
   }
 
   def newRebaseExceptionInRead(format: String): SparkUpgradeException = {

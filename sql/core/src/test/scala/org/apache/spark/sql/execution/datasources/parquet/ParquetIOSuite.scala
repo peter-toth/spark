@@ -947,7 +947,6 @@ class ParquetIOSuite extends QueryTest with ParquetTest with SharedSparkSession 
     }
   }
 
-  // TODO: CDPD-19484 (Parquet timestamp conversions)
   test("SPARK-31159: compatibility with Spark 2.4 in reading dates/timestamps") {
     val N = 8
     // test reading the existing 2.4 files and new 3.0 files (with rebase on/off) together.

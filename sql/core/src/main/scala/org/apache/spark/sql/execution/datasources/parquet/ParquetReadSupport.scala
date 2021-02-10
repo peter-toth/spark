@@ -55,7 +55,8 @@ class ParquetReadSupport(
     val convertTz: Option[ZoneId],
     enableVectorizedReader: Boolean,
     datetimeRebaseMode: LegacyBehaviorPolicy.Value,
-    int96RebaseMode: LegacyBehaviorPolicy.Value)
+    int96RebaseMode: LegacyBehaviorPolicy.Value,
+    int96CDPHive3Compatibility: Boolean)
   extends ReadSupport[InternalRow] with Logging {
   private var catalystRequestedSchema: StructType = _
 
@@ -67,7 +68,8 @@ class ParquetReadSupport(
       None,
       enableVectorizedReader = true,
       datetimeRebaseMode = LegacyBehaviorPolicy.CORRECTED,
-      int96RebaseMode = LegacyBehaviorPolicy.LEGACY)
+      int96RebaseMode = LegacyBehaviorPolicy.LEGACY,
+      int96CDPHive3Compatibility = false)
   }
 
   /**
@@ -137,7 +139,8 @@ class ParquetReadSupport(
       new ParquetToSparkSchemaConverter(conf),
       convertTz,
       datetimeRebaseMode,
-      int96RebaseMode)
+      int96RebaseMode,
+      int96CDPHive3Compatibility)
   }
 }
 

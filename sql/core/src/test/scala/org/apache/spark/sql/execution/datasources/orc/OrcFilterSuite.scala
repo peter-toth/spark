@@ -512,7 +512,7 @@ class OrcFilterSuite extends OrcTest with SharedSparkSession {
     }
   }
 
-  // CDPD-19484 This testcase is ignored as this testcase is failing with CDP Orc
+  // CDPD-19484: This testcase is ignored as this testcase is failing with CDP Orc
   ignore("SPARK-32622: case sensitivity in predicate pushdown") {
     withTempPath { dir =>
       val count = 10

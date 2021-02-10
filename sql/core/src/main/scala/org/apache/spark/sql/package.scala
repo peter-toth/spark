@@ -65,6 +65,11 @@ package object sql {
    * Parquet file metadata key to indicate that the file with INT96 column type was written
    * with rebasing.
    */
-  // CDPD-19484: how this is used exactly?
   private[sql] val SPARK_LEGACY_INT96 = "org.apache.spark.legacyINT96"
+
+  /**
+   * Parquet file metadata key to indicate that the file with INT96 column type was written in CDP
+   * Hive 3 compatible manner.
+   */
+  private[sql] val SPARK_CDPHIVE3COMPATIBLE_INT96 = "org.apache.spark.cdpHive3CompatibleINT96"
 }

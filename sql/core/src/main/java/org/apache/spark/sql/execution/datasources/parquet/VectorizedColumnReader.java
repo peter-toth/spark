@@ -107,6 +107,7 @@ public class VectorizedColumnReader {
   private static final ZoneId UTC = ZoneOffset.UTC;
   private final String datetimeRebaseMode;
   private final String int96RebaseMode;
+  private final boolean int96CDPHive3Compatibility;
 
   private boolean isDecimalTypeMatched(DataType dt) {
     DecimalType d = (DecimalType) dt;
@@ -137,7 +138,8 @@ public class VectorizedColumnReader {
       PageReader pageReader,
       ZoneId convertTz,
       String datetimeRebaseMode,
-      String int96RebaseMode) throws IOException {
+      String int96RebaseMode,
+      boolean int96CDPHive3Compatibility) throws IOException {
     this.descriptor = descriptor;
     this.pageReader = pageReader;
     this.convertTz = convertTz;
@@ -166,6 +168,7 @@ public class VectorizedColumnReader {
     assert "LEGACY".equals(int96RebaseMode) || "EXCEPTION".equals(int96RebaseMode) ||
       "CORRECTED".equals(int96RebaseMode);
     this.int96RebaseMode = int96RebaseMode;
+    this.int96CDPHive3Compatibility = int96CDPHive3Compatibility;
   }
 
   /**
@@ -446,14 +449,14 @@ public class VectorizedColumnReader {
               for (int i = rowId; i < rowId + num; ++i) {
                 if (!column.isNullAt(i)) {
                   Binary v = dictionary.decodeToBinary(dictionaryIds.getDictId(i));
-                  column.putLong(i, ParquetRowConverter.binaryToSQLTimestamp(v));
+                  column.putLong(i, ParquetRowConverter.binaryToSQLTimestamp(v, int96CDPHive3Compatibility));
                 }
               }
             } else {
               for (int i = rowId; i < rowId + num; ++i) {
                 if (!column.isNullAt(i)) {
                   Binary v = dictionary.decodeToBinary(dictionaryIds.getDictId(i));
-                  long julianMicros = ParquetRowConverter.binaryToSQLTimestamp(v);
+                  long julianMicros = ParquetRowConverter.binaryToSQLTimestamp(v, int96CDPHive3Compatibility);
                   long gregorianMicros = rebaseInt96(julianMicros, failIfRebase);
                   column.putLong(i, gregorianMicros);
                 }
@@ -464,7 +467,7 @@ public class VectorizedColumnReader {
               for (int i = rowId; i < rowId + num; ++i) {
                 if (!column.isNullAt(i)) {
                   Binary v = dictionary.decodeToBinary(dictionaryIds.getDictId(i));
-                  long gregorianMicros = ParquetRowConverter.binaryToSQLTimestamp(v);
+                  long gregorianMicros = ParquetRowConverter.binaryToSQLTimestamp(v, int96CDPHive3Compatibility);
                   long adjTime = DateTimeUtils.convertTz(gregorianMicros, convertTz, UTC);
                   column.putLong(i, adjTime);
                 }
@@ -473,7 +476,7 @@ public class VectorizedColumnReader {
               for (int i = rowId; i < rowId + num; ++i) {
                 if (!column.isNullAt(i)) {
                   Binary v = dictionary.decodeToBinary(dictionaryIds.getDictId(i));
-                  long julianMicros = ParquetRowConverter.binaryToSQLTimestamp(v);
+                  long julianMicros = ParquetRowConverter.binaryToSQLTimestamp(v, int96CDPHive3Compatibility);
                   long gregorianMicros = rebaseInt96(julianMicros, failIfRebase);
                   long adjTime = DateTimeUtils.convertTz(gregorianMicros, convertTz, UTC);
                   column.putLong(i, adjTime);
@@ -648,7 +651,7 @@ public class VectorizedColumnReader {
           for (int i = 0; i < num; i++) {
             if (defColumn.readInteger() == maxDefLevel) {
               // Read 12 bytes for INT96
-              long gregorianMicros = ParquetRowConverter.binaryToSQLTimestamp(data.readBinary(12));
+              long gregorianMicros = ParquetRowConverter.binaryToSQLTimestamp(data.readBinary(12), int96CDPHive3Compatibility);
               column.putLong(rowId + i, gregorianMicros);
             } else {
               column.putNull(rowId + i);
@@ -658,7 +661,7 @@ public class VectorizedColumnReader {
           for (int i = 0; i < num; i++) {
             if (defColumn.readInteger() == maxDefLevel) {
               // Read 12 bytes for INT96
-              long julianMicros = ParquetRowConverter.binaryToSQLTimestamp(data.readBinary(12));
+              long julianMicros = ParquetRowConverter.binaryToSQLTimestamp(data.readBinary(12), int96CDPHive3Compatibility);
               long gregorianMicros = rebaseInt96(julianMicros, failIfRebase);
               column.putLong(rowId + i, gregorianMicros);
             } else {
@@ -671,7 +674,7 @@ public class VectorizedColumnReader {
           for (int i = 0; i < num; i++) {
             if (defColumn.readInteger() == maxDefLevel) {
               // Read 12 bytes for INT96
-              long gregorianMicros = ParquetRowConverter.binaryToSQLTimestamp(data.readBinary(12));
+              long gregorianMicros = ParquetRowConverter.binaryToSQLTimestamp(data.readBinary(12), int96CDPHive3Compatibility);
               long adjTime = DateTimeUtils.convertTz(gregorianMicros, convertTz, UTC);
               column.putLong(rowId + i, adjTime);
             } else {
@@ -682,7 +685,7 @@ public class VectorizedColumnReader {
           for (int i = 0; i < num; i++) {
             if (defColumn.readInteger() == maxDefLevel) {
               // Read 12 bytes for INT96
-              long julianMicros = ParquetRowConverter.binaryToSQLTimestamp(data.readBinary(12));
+              long julianMicros = ParquetRowConverter.binaryToSQLTimestamp(data.readBinary(12), int96CDPHive3Compatibility);
               long gregorianMicros = rebaseInt96(julianMicros, failIfRebase);
               long adjTime = DateTimeUtils.convertTz(gregorianMicros, convertTz, UTC);
               column.putLong(rowId + i, adjTime);

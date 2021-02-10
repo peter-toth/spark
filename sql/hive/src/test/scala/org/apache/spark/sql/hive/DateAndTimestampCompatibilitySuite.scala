@@ -203,9 +203,10 @@ class DateAndTimestampCompatibilitySuite
     TestCase("8307-03-31", "04:20:58.928", "8307-03-31", "8307-03-31 04:20:58.928"),
 
     // The timestamp 0500-02-28 22:24:59.808 is tricky in some of the time zones. Without the
-    // `SQLConf.PARQUET_INT96_TIMESTAMP_HIVE3_COMPATIBILITY_ENABLED` flag and the new way of
-    // conversion in DateTimeUtils.fromHive3CompatibleJulianDay and
-    // DateTimeUtils.toHive3CompatibleJulianDay it returns 0500-03-01 22:24:59.808 in GMT-08:00.
+    // `SQLConf.PARQUET_INT96_TIMESTAMP_CDPHIVE3_COMPATIBILITY_IN_WRITE_ENABLED` flag and the new
+    // way of conversion in `DateTimeUtils.fromCDPHive3CompatibleJulianDay` and
+    // `DateTimeUtils.toCDPHive3CompatibleJulianDay` it returns
+    // 0500-03-01 22:24:59.808 in GMT-08:00.
     TestCase("0500-02-28", "22:24:59.808", "0500-02-28", "0500-02-28 22:24:59.808"),
 
     // The following test cases are taken from CDPD-14906
@@ -292,7 +293,8 @@ class DateAndTimestampCompatibilitySuite
     "Pacific/Auckland"
   )
   val formatsAndConfigs = Seq(
-    ("parquet", Some(HiveUtils.CONVERT_METASTORE_PARQUET.key), None),
+    ("parquet", Some(HiveUtils.CONVERT_METASTORE_PARQUET.key),
+      Some(SQLConf.PARQUET_VECTORIZED_READER_ENABLED.key -> Seq("true", "false"))),
     ("orc", Some(HiveUtils.CONVERT_METASTORE_ORC.key),
       Some(SQLConf.ORC_IMPLEMENTATION.key -> Seq("hive", "native"))),
     ("textfile", None, None)
@@ -439,15 +441,46 @@ class DateAndTimestampCompatibilitySuite
       withClue(s"spark writer: $formatConfigValue") {
         withTestTable(sqlType, timezone, format, formatConfigValue, formatConfigValue, otherConfigs,
           cases) { tableName =>
-          withClue(s"spark reader: $formatConfigValue)") {
+          withClue(s"spark reader: $formatConfigValue") {
             check(tableName, format)
+
+            // if we are testing parquet (int96) timestamps and the file was written with spark
+            // writer then the `org.apache.spark.cdpHive3CompatibleINT96` flag was placed in the
+            // file metadata and we should be able to read it back with spark reader correctly
+            // regardless the value of
+            // `spark.cloudera.sql.parquet.int96Timestamp.cdpHive3CompatibilityInRead.enabled` and
+            // `spark.sql.legacy.parquet.int96RebaseModeInRead`
+            if (sqlType == "TIMESTAMP" && format == "parquet" && formatConfigValue) {
+              withSQLConf(SQLConf.PARQUET_INT96_TIMESTAMP_CDPHIVE3_COMPATIBILITY_IN_READ_ENABLED.key
+                -> "false") {
+                withClue(s"${SQLConf.PARQUET_INT96_TIMESTAMP_CDPHIVE3_COMPATIBILITY_IN_READ_ENABLED
+                  .key} = false") {
+                  check(tableName, format)
+                  testExceptionAndLegacyInt96RebaseModeInRead()
+                }
+              }
+              testExceptionAndLegacyInt96RebaseModeInRead()
+
+              def testExceptionAndLegacyInt96RebaseModeInRead() = {
+                Seq(LegacyBehaviorPolicy.EXCEPTION, LegacyBehaviorPolicy.LEGACY).foreach {
+                  int96rebaseModeInRead =>
+                    withSQLConf(SQLConf.LEGACY_PARQUET_INT96_REBASE_MODE_IN_READ.key ->
+                      int96rebaseModeInRead.toString) {
+                      withClue(s"${SQLConf.LEGACY_PARQUET_INT96_REBASE_MODE_IN_READ.key} = " +
+                        s"$int96rebaseModeInRead") {
+                        check(tableName, format)
+                      }
+                    }
+                }
+              }
+            }
           }
         }
         if (formatConfigKey.isDefined) {
           withTestTable(sqlType, timezone, format, formatConfigValue, !formatConfigValue,
             otherConfigs, cases) { tableName =>
             withSQLConf(formatConfigKey.map(_ -> (!formatConfigValue).toString).toSeq: _*) {
-              withClue(s"spark reader: ${!formatConfigValue})") {
+              withClue(s"spark reader: ${!formatConfigValue}") {
                 check(tableName, format)
               }
             }
@@ -469,13 +502,10 @@ class DateAndTimestampCompatibilitySuite
         SQLConf.LEGACY_TIME_PARSER_POLICY.key -> LegacyBehaviorPolicy.LEGACY.toString,
         SQLConf.LEGACY_PARQUET_REBASE_MODE_IN_READ.key -> LegacyBehaviorPolicy.LEGACY.toString,
         SQLConf.LEGACY_PARQUET_REBASE_MODE_IN_WRITE.key -> LegacyBehaviorPolicy.LEGACY.toString,
-        // CDPD-19484 check these flags!
-        SQLConf.LEGACY_PARQUET_INT96_REBASE_MODE_IN_READ.key ->
-                  LegacyBehaviorPolicy.CORRECTED.toString,
-        SQLConf.LEGACY_PARQUET_INT96_REBASE_MODE_IN_WRITE.key ->
-                  LegacyBehaviorPolicy.CORRECTED.toString,
-        SQLConf.PARQUET_INT96_TIMESTAMP_HIVE3_COMPATIBILITY_ENABLED.key -> "true",
-        // TODO: why do we need this on Jenkins?
+        SQLConf.PARQUET_INT96_TIMESTAMP_CDPHIVE3_COMPATIBILITY_IN_READ_ENABLED.key -> "true",
+        SQLConf.PARQUET_INT96_TIMESTAMP_CDPHIVE3_COMPATIBILITY_IN_WRITE_ENABLED.key -> "true",
+        // TODO: this test suite doesn't test cases when session time zone is different to default
+        // time zone
         SQLConf.SESSION_LOCAL_TIMEZONE.key -> timezone) {
         // Insert into the table using hive-exec writer and then read with both hive-exec and
         // built-in reader and vice versa, insert into the table using built-in writer and then read

@@ -30,7 +30,6 @@ import sun.util.calendar.ZoneInfo
 
 import org.apache.spark.sql.catalyst.util.DateTimeConstants._
 import org.apache.spark.sql.catalyst.util.RebaseDateTime._
-import org.apache.spark.sql.internal.SQLConf
 import org.apache.spark.sql.types.Decimal
 import org.apache.spark.unsafe.types.{CalendarInterval, UTF8String}
 
@@ -168,7 +167,6 @@ object DateTimeUtils {
   /**
    * Returns the number of microseconds since epoch from Julian day and nanoseconds in a day.
    */
-  // CDPD-19484: check this method because it doesn't do rebase any more
   def fromJulianDay(days: Int, nanos: Long): Long = {
     // use Long to avoid rounding errors
     (days - JULIAN_DAY_OF_EPOCH).toLong * MICROS_PER_DAY + nanos / NANOS_PER_MICROS
@@ -176,17 +174,19 @@ object DateTimeUtils {
 
   /**
    * This is the CDP Hive 3 compatible version of `fromJulianDay`. Please find more details at
-   * `SQLConf.PARQUET_INT96_TIMESTAMP_HIVE3_COMPATIBILITY_ENABLED`.
+   * `SQLConf.PARQUET_INT96_TIMESTAMP_CDPHIVE3_COMPATIBILITY_IN_READ_ENABLED`.
    */
-  def fromHive3CompatibleJulianDay(day: Int, nanoseconds: Long): Long = {
+  def fromCDPHive3CompatibleJulianDay(day: Int, nanoseconds: Long): Long = {
     val rebased = rebaseJulianToGregorianDays(day - JULIAN_DAY_OF_EPOCH) * MICROS_PER_DAY +
       NANOSECONDS.toMicros(nanoseconds)
     rebased
   }
 
-  def fromJulianDayParquet(day: Int, nanoseconds: Long): Long = {
-    if (SQLConf.get.isParquetINT96TimestampHive3CompatibilityEnabled) {
-      DateTimeUtils.fromHive3CompatibleJulianDay(day, nanoseconds)
+  def fromJulianDayParquet(
+      day: Int, nanoseconds: Long,
+      int96CDPHive3Compatibility: Boolean): Long = {
+    if (int96CDPHive3Compatibility) {
+      DateTimeUtils.fromCDPHive3CompatibleJulianDay(day, nanoseconds)
     } else {
       DateTimeUtils.fromJulianDay(day, nanoseconds)
     }
@@ -197,7 +197,6 @@ object DateTimeUtils {
    *
    * Note: support timestamp since 4717 BC (without negative nanoseconds, compatible with Hive).
    */
-  // CDPD-19484: check this method because it doesn't do rebase any more
   def toJulianDay(micros: Long): (Int, Long) = {
     val julianUs = micros + JULIAN_DAY_OF_EPOCH * MICROS_PER_DAY
     val days = julianUs / MICROS_PER_DAY
@@ -207,9 +206,9 @@ object DateTimeUtils {
 
   /**
    * This is the CDP Hive 3 compatible version of `toJulianDay`. Please find more details at
-   * `SQLConf.PARQUET_INT96_TIMESTAMP_HIVE3_COMPATIBILITY_ENABLED`.
+   * `SQLConf.PARQUET_INT96_TIMESTAMP_CDPHIVE3_COMPATIBILITY_IN_WRITE_ENABLED`.
    */
-  def toHive3CompatibleJulianDay(us: Long): (Int, Long) = {
+  def toCDPHive3CompatibleJulianDay(us: Long): (Int, Long) = {
     var gregorianDays = (us / MICROS_PER_DAY).toInt
     var nanos = MICROSECONDS.toNanos(us % MICROS_PER_DAY)
     if (nanos < 0) {
@@ -220,9 +219,9 @@ object DateTimeUtils {
     (julianDays, nanos)
   }
 
-  def toJulianDayParquet(us: Long): (Int, Long) = {
-    if (SQLConf.get.isParquetINT96TimestampHive3CompatibilityEnabled) {
-      DateTimeUtils.toHive3CompatibleJulianDay(us)
+  def toJulianDayParquet(us: Long, int96CDPHive3Compatibility: Boolean): (Int, Long) = {
+    if (int96CDPHive3Compatibility) {
+      DateTimeUtils.toCDPHive3CompatibleJulianDay(us)
     } else {
       DateTimeUtils.toJulianDay(us)
     }

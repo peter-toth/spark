@@ -31,7 +31,7 @@ import org.apache.parquet.io.api.{Binary, RecordConsumer}
 
 import org.apache.spark.SPARK_VERSION_SHORT
 import org.apache.spark.internal.Logging
-import org.apache.spark.sql.{SPARK_LEGACY_DATETIME, SPARK_LEGACY_INT96, SPARK_VERSION_METADATA_KEY}
+import org.apache.spark.sql.{SPARK_CDPHIVE3COMPATIBLE_INT96, SPARK_LEGACY_DATETIME, SPARK_LEGACY_INT96, SPARK_VERSION_METADATA_KEY}
 import org.apache.spark.sql.catalyst.InternalRow
 import org.apache.spark.sql.catalyst.expressions.SpecializedGetters
 import org.apache.spark.sql.catalyst.util.DateTimeUtils
@@ -91,8 +91,17 @@ class ParquetWriteSupport extends WriteSupport[InternalRow] with Logging {
   private val int96RebaseMode = LegacyBehaviorPolicy.withName(
     SQLConf.get.getConf(SQLConf.LEGACY_PARQUET_INT96_REBASE_MODE_IN_WRITE))
 
+  private val int96CDPHive3Compatibility =
+    SQLConf.get.getConf(SQLConf.PARQUET_INT96_TIMESTAMP_CDPHIVE3_COMPATIBILITY_IN_WRITE_ENABLED)
+
+  private val correctedInt96RebaseMode = if (int96CDPHive3Compatibility) {
+    LegacyBehaviorPolicy.CORRECTED
+  } else {
+    int96RebaseMode
+  }
+
   private val int96RebaseFunc = DataSourceUtils.creteTimestampRebaseFuncInWrite(
-    int96RebaseMode, "Parquet INT96")
+    correctedInt96RebaseMode, "Parquet INT96")
 
   override def init(configuration: Configuration): WriteContext = {
     val schemaString = configuration.get(ParquetWriteSupport.SPARK_ROW_SCHEMA)
@@ -122,8 +131,14 @@ class ParquetWriteSupport extends WriteSupport[InternalRow] with Logging {
         None
       }
     } ++ {
-      if (int96RebaseMode == LegacyBehaviorPolicy.LEGACY) {
+      if (correctedInt96RebaseMode == LegacyBehaviorPolicy.LEGACY) {
         Some(SPARK_LEGACY_INT96 -> "")
+      } else {
+        None
+      }
+    } ++ {
+      if (int96CDPHive3Compatibility) {
+        Some(SPARK_CDPHIVE3COMPATIBLE_INT96 -> "")
       } else {
         None
       }
@@ -206,8 +221,8 @@ class ParquetWriteSupport extends WriteSupport[InternalRow] with Logging {
           case SQLConf.ParquetOutputTimestampType.INT96 =>
             (row: SpecializedGetters, ordinal: Int) =>
               val micros = int96RebaseFunc(row.getLong(ordinal))
-              // CDPD-19484: do we need still this?
-              val (julianDay, timeOfDayNanos) = DateTimeUtils.toJulianDayParquet(micros)
+              val (julianDay, timeOfDayNanos) =
+                DateTimeUtils.toJulianDayParquet(micros, int96CDPHive3Compatibility)
               val buf = ByteBuffer.wrap(timestampBuffer)
               buf.order(ByteOrder.LITTLE_ENDIAN).putLong(timeOfDayNanos).putInt(julianDay)
               recordConsumer.addBinary(Binary.fromReusedByteArray(timestampBuffer))

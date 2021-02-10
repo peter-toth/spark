@@ -645,29 +645,30 @@ object SQLConf {
     .booleanConf
     .createWithDefault(true)
 
-  // CDPD-19484: do we still need this?
-  // https://jira.cloudera.com/browse/CDPD-16035
-  // This change in CDP Hive:
-  // scalastyle:off
-  // https://github.infra.cloudera.com/CDH/hive/commit/6778d69a5c3b842278a32e2128464daf4b381d46#diff-133fe961a46ebd6c5d7daf683f2d6e00R46:
-  //   calendar.setGregorianChange(new Date(Long.MIN_VALUE));
-  // scalastyle:on
-  // (i.e. calendar is no longer a hybrid calendar, but it is a proleptic Gregorian Calendar)
-  // causes that when a timestamp is stored in parquet in "legacy" INT96 type then the nanosOfDay
-  // part no longer means Julian nanos, but it means proleptic Gregorian nanos and only the days
-  // part is transformed/interpreted as Julian days (see details of the conversion in
-  // NanoTimeUtils.getNanoTime and NanoTimeUtils.getTimestamp).
-  // This is actually a breaking change both with Hive 2 and with Spark 3 and we need a conversion
-  // in Spark 3 that follows that logic.
-  val PARQUET_INT96_TIMESTAMP_HIVE3_COMPATIBILITY_ENABLED =
-    buildConf("spark.cloudera.sql.parquet.int96Timestamp.hive3compatibility.enabled")
-      .doc("CDP Hive 3 has changed the conversion between Gregorian and Julian timestamps when " +
-        "storing them into INT96. This flag tells Spark SQL to use CDP Hive 3 way of conversion " +
-        "to provide compatibility with CDP Hive 3.")
-      .version("3.0.0")
+  // https://jira.cloudera.com/browse/CDPD-16035:
+  // A change in CDP Hive 3 that was backported from Apache Hive 4
+  // (https://issues.apache.org/jira/browse/HIVE-22589,
+  // https://github.infra.cloudera.com/CDH/hive/commit/6778d69a5c3b842278a32e2128464daf4b381d46)
+  // seems to be a breaking change both with previous Hive versions and with Spark and we need a
+  // conversion that follows that logic.
+  val PARQUET_INT96_TIMESTAMP_CDPHIVE3_COMPATIBILITY_IN_WRITE_ENABLED =
+    buildConf("spark.cloudera.sql.parquet.int96Timestamp.cdpHive3CompatibilityInWrite.enabled")
+      .withAlternative("spark.cloudera.sql.parquet.int96Timestamp.hive3compatibility.enabled")
+      .doc("CDP Hive 3 changed the conversion when storing parquet INT96 timestamps. This flag " +
+        "tells Spark to use CDP Hive 3 compatible mode when writing a parquet INT96 timestamp.")
+      .version("3.1.0")
       .internal()
       .booleanConf
       .createWithDefault(false)
+
+  val PARQUET_INT96_TIMESTAMP_CDPHIVE3_COMPATIBILITY_IN_READ_ENABLED =
+  buildConf("spark.cloudera.sql.parquet.int96Timestamp.cdpHive3CompatibilityInRead.enabled")
+    .doc("CDP Hive 3 changed the conversion when storing parquet INT96 timestamps. This flag " +
+      "tells Spark to use CDP Hive 3 compatible mode when reading a parquet INT96 timestamp.")
+    .version("3.1.0")
+    .internal()
+    .booleanConf
+    .createWithDefault(false)
 
   val PARQUET_INT96_TIMESTAMP_CONVERSION = buildConf("spark.sql.parquet.int96TimestampConversion")
     .doc("This controls whether timestamp adjustments should be applied to INT96 data when " +
@@ -2854,7 +2855,10 @@ object SQLConf {
         "the legacy hybrid (Julian + Gregorian) calendar when writing Parquet files. " +
         "When CORRECTED, Spark will not do rebase and write the timestamps as it is. " +
         "When EXCEPTION, which is the default, Spark will fail the writing if it sees ancient " +
-        "timestamps that are ambiguous between the two calendars.")
+        "timestamps that are ambiguous between the two calendars." +
+        s" If ${PARQUET_INT96_TIMESTAMP_CDPHIVE3_COMPATIBILITY_IN_WRITE_ENABLED.key} is enabled " +
+        "then INT96 timestamps are written out in CDP Hive 3 compatible way regardless the value " +
+        "of this config.")
       .version("3.1.0")
       .stringConf
       .transform(_.toUpperCase(Locale.ROOT))
@@ -2886,7 +2890,10 @@ object SQLConf {
         "When CORRECTED, Spark will not do rebase and read the timestamps as it is. " +
         "When EXCEPTION, which is the default, Spark will fail the reading if it sees ancient " +
         "timestamps that are ambiguous between the two calendars. This config is only effective " +
-        "if the writer info (like Spark, Hive) of the Parquet files is unknown.")
+        "if the writer info (like Spark, Hive) of the Parquet files is unknown." +
+        s" If ${PARQUET_INT96_TIMESTAMP_CDPHIVE3_COMPATIBILITY_IN_READ_ENABLED.key} is enabled " +
+        "then INT96 timestamps are read in in CDP Hive 3 compatible way regardless the value of " +
+        "this config.")
       .version("3.1.0")
       .stringConf
       .transform(_.toUpperCase(Locale.ROOT))
@@ -3445,9 +3452,6 @@ class SQLConf extends Serializable with Logging {
   def isParquetBinaryAsString: Boolean = getConf(PARQUET_BINARY_AS_STRING)
 
   def isParquetINT96AsTimestamp: Boolean = getConf(PARQUET_INT96_AS_TIMESTAMP)
-
-  def isParquetINT96TimestampHive3CompatibilityEnabled: Boolean =
-    getConf(PARQUET_INT96_TIMESTAMP_HIVE3_COMPATIBILITY_ENABLED)
 
   def isParquetINT96TimestampConversion: Boolean = getConf(PARQUET_INT96_TIMESTAMP_CONVERSION)
 

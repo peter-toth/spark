@@ -99,6 +99,12 @@ public class VectorizedParquetRecordReader extends SpecificParquetRecordReaderBa
   private final String int96RebaseMode;
 
   /**
+   * If the mode of rebasing INT96 timestamp from Julian to Proleptic Gregorian calendar should be
+   * CDP Hive 3 Compatible.
+   */
+  private final boolean int96CDPHive3Compatibility;
+
+  /**
    * columnBatch object that is used for batch decoding. This is created on first use and triggers
    * batched decoding. It is not valid to interleave calls to the batched interface with the row
    * by row RecordReader APIs.
@@ -130,18 +136,20 @@ public class VectorizedParquetRecordReader extends SpecificParquetRecordReaderBa
       ZoneId convertTz,
       String datetimeRebaseMode,
       String int96RebaseMode,
+      boolean int96CDPHive3Compatibility,
       boolean useOffHeap,
       int capacity) {
     this.convertTz = convertTz;
     this.datetimeRebaseMode = datetimeRebaseMode;
     this.int96RebaseMode = int96RebaseMode;
+    this.int96CDPHive3Compatibility = int96CDPHive3Compatibility;
     MEMORY_MODE = useOffHeap ? MemoryMode.OFF_HEAP : MemoryMode.ON_HEAP;
     this.capacity = capacity;
   }
 
   // For test only.
   public VectorizedParquetRecordReader(boolean useOffHeap, int capacity) {
-    this(null, "CORRECTED", "LEGACY", useOffHeap, capacity);
+    this(null, "CORRECTED", "LEGACY", false, useOffHeap, capacity);
   }
 
   /**
@@ -336,7 +344,8 @@ public class VectorizedParquetRecordReader extends SpecificParquetRecordReaderBa
         pages.getPageReader(columns.get(i)),
         convertTz,
         datetimeRebaseMode,
-        int96RebaseMode);
+        int96RebaseMode,
+        int96CDPHive3Compatibility);
     }
     totalCountLoadedSoFar += pages.getRowCount();
   }

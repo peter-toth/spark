@@ -305,6 +305,12 @@ class ParquetFileFormat
       val int96RebaseMode = DataSourceUtils.int96RebaseMode(
         footerFileMetaData.getKeyValueMetaData.get,
         SQLConf.get.getConf(SQLConf.LEGACY_PARQUET_INT96_REBASE_MODE_IN_READ))
+      val (correctedInt96RebaseMode, int96CDPHive3Compatibility) =
+        DataSourceUtils.correctedInt96RebaseMode(
+          footerFileMetaData.getKeyValueMetaData.get,
+          int96RebaseMode,
+          SQLConf.get.getConf(
+            SQLConf.PARQUET_INT96_TIMESTAMP_CDPHIVE3_COMPATIBILITY_IN_READ_ENABLED))
 
       val attemptId = new TaskAttemptID(new TaskID(new JobID(), TaskType.MAP, 0), 0)
       val hadoopAttemptContext =
@@ -320,7 +326,8 @@ class ParquetFileFormat
         val vectorizedReader = new VectorizedParquetRecordReader(
           convertTz.orNull,
           datetimeRebaseMode.toString,
-          int96RebaseMode.toString,
+          correctedInt96RebaseMode.toString,
+          int96CDPHive3Compatibility,
           enableOffHeapColumnVector && taskContext.isDefined,
           capacity)
         val iter = new RecordReaderIterator(vectorizedReader)
@@ -342,7 +349,8 @@ class ParquetFileFormat
           convertTz,
           enableVectorizedReader = false,
           datetimeRebaseMode,
-          int96RebaseMode)
+          correctedInt96RebaseMode,
+          int96CDPHive3Compatibility)
         val reader = if (pushed.isDefined && enableRecordFilter) {
           val parquetFilter = FilterCompat.get(pushed.get, null)
           new ParquetRecordReader[InternalRow](readSupport, parquetFilter)

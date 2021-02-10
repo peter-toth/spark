@@ -248,8 +248,8 @@ class CliSuite extends SparkFunSuite with BeforeAndAfterAll with Logging {
     metastore.delete()
     try {
       runCliWithin(2.minute,
-        extraArgs =
-          Seq("--conf", s"spark.hadoop.${ConfVars.METASTOREWAREHOUSE}=$sparkWareHouseDir"),
+        extraArgs = Seq("--conf",
+          s"spark.hadoop.${ConfVars.HIVE_METASTORE_WAREHOUSE_EXTERNAL}=$sparkWareHouseDir"),
         maybeWarehouse = None,
         useExternalHiveFile = true,
         metastore = metastore)(
@@ -260,7 +260,8 @@ class CliSuite extends SparkFunSuite with BeforeAndAfterAll with Logging {
 
       // override conf from --hiveconf too
       runCliWithin(2.minute,
-        extraArgs = Seq("--conf", s"spark.${ConfVars.METASTOREWAREHOUSE}=$sparkWareHouseDir"),
+        extraArgs = Seq("--conf",
+          s"spark.${ConfVars.HIVE_METASTORE_WAREHOUSE_EXTERNAL}=$sparkWareHouseDir"),
         metastore = metastore)(
         "desc database default;" -> sparkWareHouseDir.getAbsolutePath,
         "create database cliTestDb;" -> "",
@@ -278,8 +279,9 @@ class CliSuite extends SparkFunSuite with BeforeAndAfterAll with Logging {
     try {
       runCliWithin(2.minute,
         extraArgs = Seq(
-            "--conf", s"${StaticSQLConf.WAREHOUSE_PATH.key}=${sparkWareHouseDir}1",
-            "--conf", s"spark.hadoop.${ConfVars.METASTOREWAREHOUSE}=${sparkWareHouseDir}2"),
+          "--conf", s"${StaticSQLConf.WAREHOUSE_PATH.key}=${sparkWareHouseDir}1",
+          "--conf",
+          s"spark.hadoop.${ConfVars.HIVE_METASTORE_WAREHOUSE_EXTERNAL}=${sparkWareHouseDir}2"),
         metastore = metastore)(
         "desc database default;" -> sparkWareHouseDir.getAbsolutePath.concat("1"))
     } finally {

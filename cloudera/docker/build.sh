@@ -48,6 +48,8 @@ cp -r $SPARK_HOME/cloudera/docker/$OS $CTX_DIR/base/cloudera/$OS
 DOCKERFILE_PATH="cloudera/${OS}/spark-base"
 EXTRA_ARG=" -b DOCKERFILE_PATH_ARG=$DOCKERFILE_PATH "
 
+# -u 1345 user id is a special user id used by DEX
+# please contact the DEX team before modifying it
 echo "Building $OS based spark ${SPARK_VERSION} ${TAG}"
 (
   ${DOCKER_IMAGE_TOOL_CMD} \
@@ -55,6 +57,7 @@ echo "Building $OS based spark ${SPARK_VERSION} ${TAG}"
            -p "$CTX_DIR/base/cloudera/$OS/spark-python/Dockerfile" \
            -r "$PUBLISH_DOCKER_REGISTRY" \
            -t "$TAG" \
+           -u 1345 \
            -n \
            $EXTRA_ARG \
            build

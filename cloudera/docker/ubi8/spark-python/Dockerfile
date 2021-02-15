@@ -6,6 +6,10 @@ ARG CDP_ARTIFACT_URL_ARG
 
 FROM $base_img
 
+# 1345 user id is a special user id used by DEX
+# please contact the DEX team before modifying it
+ARG spark_uid=1345
+
 ENV BASE_IMAGE       $base_img
 ENV HADOOP_VERSION   $HADOOP_VERSION_ARG
 ENV CDP_ARTIFACT_URL $CDP_ARTIFACT_URL_ARG
@@ -25,12 +29,12 @@ RUN INSTALL_PKGS="glibc-langpack-en nss_wrapper httpd httpd-devel mod_ssl \
     rpm -e --nodeps redhat-logos-httpd && \
     yum $YUM_OPTS --enablerepo="*" clean all
 
-COPY python/lib ${SPARK_HOME}/python/lib
+RUN mkdir -p ${SPARK_HOME}/python/lib && chown -R ${spark_uid}:root ${SPARK_HOME}/python/lib
+COPY --chown=${spark_uid}:root python/lib ${SPARK_HOME}/python/lib
 ENV PYTHONPATH ${SPARK_HOME}/python/lib/pyspark.zip:${SPARK_HOME}/python/lib/py4j-*.zip
 
-WORKDIR /opt/spark/work-dir
+WORKDIR ${SPARK_WORKDIR}
 ENTRYPOINT [ "/opt/entrypoint.sh" ]
 
 # Specify the User that the actual main process will run as
-ARG spark_uid=185
 USER ${spark_uid}

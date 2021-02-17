@@ -63,8 +63,8 @@ echo "Building $OS based spark ${SPARK_VERSION} ${TAG}"
 docker tag ${PUBLISH_DOCKER_REGISTRY}/spark-py:"${TAG}" "${PUBLISH_DOCKER_REGISTRY}"/spark-py-${OS}:"${TAG}"
 docker tag ${PUBLISH_DOCKER_REGISTRY}/spark:"${TAG}" "${PUBLISH_DOCKER_REGISTRY}"/spark-${OS}:"${TAG}"
 
-echo "  spark-$OS: $PUBLISH_DOCKER_REGISTRY/spark-$OS:$TAG" >> $SPARK_HOME/cloudera/docker_images.yaml
-echo "  spark-py-$OS: $PUBLISH_DOCKER_REGISTRY/spark-py-$OS:$TAG" >> $SPARK_HOME/cloudera/docker_images.yaml
+echo "  spark-$OS: $PUBLISH_DOCKER_REGISTRY/spark-$OS" >> $SPARK_HOME/cloudera/docker_images.yaml
+echo "  spark-py-$OS: $PUBLISH_DOCKER_REGISTRY/spark-py-$OS" >> $SPARK_HOME/cloudera/docker_images.yaml
 
 docker image rm ${PUBLISH_DOCKER_REGISTRY}/spark:"${TAG}"
 docker image rm ${PUBLISH_DOCKER_REGISTRY}/spark-py:"${TAG}"

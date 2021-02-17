@@ -193,4 +193,11 @@ object StaticSQLConf extends Logging {
       .stringConf
       .toSequence
       .createWithDefault(Nil)
+
+  val DEFAULT_URL_STREAM_HANDLER_FACTORY_ENABLED =
+     buildStaticConf("spark.sql.defaultUrlStreamHandlerFactory.enabled")
+       .doc("When true, set FsUrlStreamHandlerFactory to support ADD JAR against HDFS locations")
+       .internal()
+       .booleanConf
+       .createWithDefault(true)
 }

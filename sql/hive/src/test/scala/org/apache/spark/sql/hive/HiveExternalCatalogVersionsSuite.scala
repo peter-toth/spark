@@ -33,6 +33,7 @@ import org.apache.spark.sql.{QueryTest, Row, SparkSession}
 import org.apache.spark.sql.catalyst.TableIdentifier
 import org.apache.spark.sql.catalyst.catalog.CatalogTableType
 import org.apache.spark.sql.test.SQLTestUtils
+import org.apache.spark.tags.SlowHiveTest
 import org.apache.spark.util.Utils
 
 /**
@@ -234,7 +235,7 @@ object PROCESS_TABLES extends QueryTest with SQLTestUtils {
         .filter(_ < org.apache.spark.SPARK_VERSION)
     } catch {
       // do not throw exception during object initialization.
-      case NonFatal(_) => Nil
+      case NonFatal(_) => Seq("2.3.4", "2.4.5") // A temporary fallback to use a specific version
     }
   }
 

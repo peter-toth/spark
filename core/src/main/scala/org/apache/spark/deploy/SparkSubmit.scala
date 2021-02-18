@@ -47,6 +47,7 @@ import org.apache.ivy.plugins.resolver.{ChainResolver, FileSystemResolver, IBibl
 
 import org.apache.spark._
 import org.apache.spark.api.r.RUtils
+import org.apache.spark.cloudera.HWCConf
 import org.apache.spark.deploy.rest._
 import org.apache.spark.internal.Logging
 import org.apache.spark.internal.config._
@@ -298,6 +299,20 @@ private[spark] class SparkSubmit extends Logging {
     val isKubernetesCluster = clusterManager == KUBERNETES && deployMode == CLUSTER
     val isMesosClient = clusterManager == MESOS && deployMode == CLIENT
 
+    args.sparkProperties.foreach { case (k, v) => sparkConf.set(k, v) }
+
+    if (sparkConf.get(USE_HWC)) {
+      val hwcJars = HWCConf.get.jars(sparkConf)
+      if (args.verbose) {
+        logInfo(s"Adding HWC jar(s):$hwcJars to --jars")
+      }
+      args.jars = mergeFileLists(args.jars, hwcJars)
+
+      val hwcConfs = HWCConf.get.configs(sparkConf)
+      logDebug(s"HWC Configs:\n${hwcConfs.mkString("\n")}")
+      hwcConfs.foreach { case (key, value) => sparkConf.set(key, value) }
+    }
+
     if (!isMesosCluster && !isStandAloneCluster) {
       // Resolve maven dependencies if there are any and add classpath to jars. Add them to py-files
       // too for packages that include Python code
@@ -319,7 +334,6 @@ private[spark] class SparkSubmit extends Logging {
       }
     }
 
-    args.sparkProperties.foreach { case (k, v) => sparkConf.set(k, v) }
     val hadoopConf = conf.getOrElse(SparkHadoopUtil.newConfiguration(sparkConf))
     val targetDir = Utils.createTempDir()
 

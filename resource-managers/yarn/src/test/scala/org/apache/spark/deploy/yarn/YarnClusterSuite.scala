@@ -18,12 +18,10 @@
 package org.apache.spark.deploy.yarn
 
 import java.io.File
-import java.lang.management.ManagementFactory
 import java.net.URL
 import java.nio.charset.StandardCharsets
 import java.util.{HashMap => JHashMap}
 
-import scala.collection.JavaConverters._
 import scala.collection.mutable
 import scala.concurrent.duration._
 import scala.io.Source
@@ -44,7 +42,7 @@ import org.apache.spark.scheduler.{SparkListener, SparkListenerApplicationStart,
   SparkListenerExecutorAdded}
 import org.apache.spark.scheduler.cluster.ExecutorInfo
 import org.apache.spark.tags.ExtendedYarnTest
-import org.apache.spark.util.{JavaVersion, Utils}
+import org.apache.spark.util.Utils
 
 /**
  * Integration tests for YARN; these tests use a mini Yarn cluster to run Spark-on-YARN
@@ -144,48 +142,6 @@ class YarnClusterSuite extends BaseYarnClusterSuite {
   }
 
   test("run Spark in yarn-cluster mode with additional jar") {
-    testWithAddJar(false)
-  }
-
-  test("run Spark in yarn-client mode default GC is Parallel on jdk 11") {
-    if (!JavaVersion.isVersionAtLeast(9)) {
-      cancel("Below jdk 9 default gc is not touched")
-    }
-    val driverResult = File.createTempFile("driver", null, tempDir)
-    val executorResult = File.createTempFile("executor", null, tempDir)
-    val finalState = runSpark(false, mainClassName(YarnGcTest.getClass),
-      appArgs = Seq(driverResult.getAbsolutePath(), executorResult.getAbsolutePath())
-    )
-    checkResult(finalState, driverResult, "-XX:+UseParallelGC")
-    checkResult(finalState, executorResult, "-XX:+UseParallelGC")
-    testWithAddJar(false)
-  }
-
-  test("run Spark in yarn-cluster mode with overriden GC") {
-    val driverResult = File.createTempFile("driver", null, tempDir)
-    val executorResult = File.createTempFile("executor", null, tempDir)
-    val finalState = runSpark(false, mainClassName(YarnGcTest.getClass),
-      appArgs = Seq(driverResult.getAbsolutePath(), executorResult.getAbsolutePath()),
-      sparkArgs = Seq("--conf" -> "spark.executor.extraJavaOptions=-XX:+UseG1GC",
-        "--conf" -> "spark.driver.extraJavaOptions=-XX:+UseG1GC"
-      )
-    )
-    checkResult(finalState, driverResult, "-XX:+UseG1GC")
-    checkResult(finalState, executorResult, "-XX:+UseG1GC")
-    testWithAddJar(false)
-  }
-
-  test("run Spark in yarn-cluster mode default GC is not touched on jdk 8") {
-    if (JavaVersion.isVersionAtLeast(9)) {
-      cancel("jdk 9 and above default gc is set")
-    }
-    val driverResult = File.createTempFile("driver", null, tempDir)
-    val executorResult = File.createTempFile("executor", null, tempDir)
-    val finalState = runSpark(false, mainClassName(YarnGcTest.getClass),
-      appArgs = Seq(driverResult.getAbsolutePath(), executorResult.getAbsolutePath())
-    )
-    checkResult(finalState, driverResult, "")
-    checkResult(finalState, executorResult, "")
     testWithAddJar(false)
   }
 
@@ -513,33 +469,7 @@ private object YarnClusterDriver extends Logging with Matchers {
 
 }
 
-abstract class YarnTestApp extends Logging with Serializable {
-  protected def readValue(): String
-
-  def main(args: Array[String]): Unit = {
-    checkArgs(args)
-
-    execute(args(0))
-    val sc = new SparkContext(new SparkConf())
-    try {
-      sc.parallelize(Seq(1)).foreach { _ => execute(args(1)) }
-    } finally {
-      sc.stop()
-    }
-  }
-
-  def checkArgs(args: Array[String]): Unit = {
-    if (args.length != 2) {
-      error(
-        s"""
-           |Invalid command line: ${args.mkString(" ")}
-
-           |
-        |Usage: ${getClass.getSimpleName} [driver result file] [executor result file]
-        """.stripMargin)
-    }
-  }
-
+private object YarnClasspathTest extends Logging {
   def error(m: String, ex: Throwable = null): Unit = {
     logError(m, ex)
     // scalastyle:off println
@@ -550,35 +480,41 @@ abstract class YarnTestApp extends Logging with Serializable {
     // scalastyle:on println
   }
 
-  private def execute(resultPath: String): Unit = {
-    val result: String =
-      try {
-        readValue()
-      } catch {
-        case t: Throwable =>
-          error(s"loading test.resource to $resultPath", t)
-          s"failure: ${t.getMessage}"
-      }
-    Files.write(result, new File(resultPath), StandardCharsets.UTF_8)
+  def main(args: Array[String]): Unit = {
+    if (args.length != 2) {
+      error(
+        s"""
+        |Invalid command line: ${args.mkString(" ")}
+        |
+        |Usage: YarnClasspathTest [driver result file] [executor result file]
+        """.stripMargin)
+      // scalastyle:on println
+    }
+
+    readResource(args(0))
+    val sc = new SparkContext(new SparkConf())
+    try {
+      sc.parallelize(Seq(1)).foreach { x => readResource(args(1)) }
+    } finally {
+      sc.stop()
+    }
   }
 
-}
-
-private object YarnClasspathTest extends YarnTestApp {
-  override protected def readValue(): String = {
-    val ccl = Thread.currentThread ().getContextClassLoader ()
-    val resource = ccl.getResourceAsStream ("test.resource")
-    val bytes = ByteStreams.toByteArray (resource)
-    new String (bytes, 0, bytes.length, StandardCharsets.UTF_8)
+  private def readResource(resultPath: String): Unit = {
+    var result = "failure"
+    try {
+      val ccl = Thread.currentThread().getContextClassLoader()
+      val resource = ccl.getResourceAsStream("test.resource")
+      val bytes = ByteStreams.toByteArray(resource)
+      result = new String(bytes, 0, bytes.length, StandardCharsets.UTF_8)
+    } catch {
+      case t: Throwable =>
+        error(s"loading test.resource to $resultPath", t)
+    } finally {
+      Files.write(result, new File(resultPath), StandardCharsets.UTF_8)
+    }
   }
-}
 
-private object YarnGcTest extends YarnTestApp {
-  override protected def readValue(): String = {
-     ManagementFactory.getRuntimeMXBean.getInputArguments.asScala
-       .filter(_.matches(".*Use.*GC.*"))
-       .sorted.distinct.mkString(",")
-  }
 }
 
 private object YarnLauncherTestApp {

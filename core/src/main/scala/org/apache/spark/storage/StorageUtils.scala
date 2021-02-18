@@ -22,11 +22,12 @@ import java.nio.{ByteBuffer, MappedByteBuffer}
 import scala.collection.Map
 import scala.collection.mutable
 
+import org.apache.commons.lang3.{JavaVersion, SystemUtils}
 import sun.misc.Unsafe
 import sun.nio.ch.DirectBuffer
 
 import org.apache.spark.internal.Logging
-import org.apache.spark.util.{JavaVersion, Utils}
+import org.apache.spark.util.Utils
 
 /**
  * Storage information for each BlockManager.
@@ -202,7 +203,7 @@ private[spark] object StorageUtils extends Logging {
   // reflection. However sun.misc.Unsafe added a invokeCleaner() method in JDK 9+ and this is
   // still accessible with reflection.
   private val bufferCleaner: DirectBuffer => Unit =
-    if (JavaVersion.isVersionAtLeast(9)) {
+    if (SystemUtils.isJavaVersionAtLeast(JavaVersion.JAVA_9)) {
       val cleanerMethod =
         Utils.classForName("sun.misc.Unsafe").getMethod("invokeCleaner", classOf[ByteBuffer])
       val unsafeField = classOf[Unsafe].getDeclaredField("theUnsafe")

@@ -25,7 +25,7 @@ import java.util
 import scala.util.Try
 
 import org.apache.commons.io.{FileUtils, IOUtils}
-import org.apache.commons.lang3.SystemUtils
+import org.apache.commons.lang3.{JavaVersion, SystemUtils}
 import org.apache.hadoop.conf.Configuration
 import org.apache.hadoop.hive.conf.HiveConf.ConfVars
 import org.apache.hadoop.hive.shims.ShimLoader
@@ -37,7 +37,7 @@ import org.apache.spark.sql.catalyst.util.quietly
 import org.apache.spark.sql.hive.HiveUtils
 import org.apache.spark.sql.internal.NonClosableMutableURLClassLoader
 import org.apache.spark.sql.internal.SQLConf
-import org.apache.spark.util.{JavaVersion, MutableURLClassLoader, Utils}
+import org.apache.spark.util.{MutableURLClassLoader, Utils}
 
 /** Factory for `IsolatedClientLoader` with specific versions of hive. */
 private[hive] object IsolatedClientLoader extends Logging {
@@ -228,7 +228,7 @@ private[hive] class IsolatedClientLoader(
           baseClassLoader
         } else {
           val rootClassLoader: ClassLoader =
-            if (JavaVersion.isVersionAtLeast(9)) {
+            if (SystemUtils.isJavaVersionAtLeast(JavaVersion.JAVA_9)) {
               // In Java 9, the boot classloader can see few JDK classes. The intended parent
               // classloader for delegation is now the platform classloader.
               // See http://java9.wtf/class-loading/

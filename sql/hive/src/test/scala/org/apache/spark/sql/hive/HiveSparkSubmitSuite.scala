@@ -36,6 +36,7 @@ import org.apache.spark.sql.hive.test.{HiveTestJars, TestHiveContext}
 import org.apache.spark.sql.internal.SQLConf.SHUFFLE_PARTITIONS
 import org.apache.spark.sql.internal.StaticSQLConf.WAREHOUSE_PATH
 import org.apache.spark.sql.types.{DecimalType, StructType}
+import org.apache.spark.tags.SlowHiveTest
 import org.apache.spark.util.{ResetSystemProperties, Utils}
 
 /**

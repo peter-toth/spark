@@ -25,7 +25,7 @@ import org.apache.spark.sql.catalyst.analysis.{UnresolvedFunction, UnresolvedRel
 import org.apache.spark.sql.catalyst.catalog.{CatalogStorageFormat, CatalogTable, CatalogTableType}
 import org.apache.spark.sql.catalyst.expressions.{Alias, SubqueryExpression}
 import org.apache.spark.sql.catalyst.plans.QueryPlan
-import org.apache.spark.sql.catalyst.plans.logical.{LogicalPlan, Project, View}
+import org.apache.spark.sql.catalyst.plans.logical.{LogicalPlan, Project, View, With}
 import org.apache.spark.sql.internal.StaticSQLConf
 import org.apache.spark.sql.types.MetadataBuilder
 import org.apache.spark.sql.util.SchemaUtils
@@ -211,6 +211,7 @@ case class CreateViewCommand(
           if sparkSession.sessionState.catalog.isTemporaryTable(s.tableIdentifier) =>
           throw new AnalysisException(s"Not allowed to create a permanent view $name by " +
             s"referencing a temporary view ${s.tableIdentifier}")
+          case w: With if !w.resolved => w.innerChildren.foreach(verify)
         case other if !other.resolved => other.expressions.flatMap(_.collect {
           // Disallow creating permanent views based on temporary UDFs.
           case e: UnresolvedFunction

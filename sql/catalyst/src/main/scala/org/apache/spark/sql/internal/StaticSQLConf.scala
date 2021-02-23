@@ -162,4 +162,42 @@ object StaticSQLConf extends Logging {
       .intConf
       .checkValue(thres => thres > 0 && thres <= 128, "The threshold must be in (0,128].")
       .createWithDefault(16)
+
+  val STREAMING_UI_ENABLED =
+    buildStaticConf("spark.sql.streaming.ui.enabled")
+      .doc("Whether to run the Structured Streaming Web UI for the Spark application when the " +
+        "Spark Web UI is enabled.")
+      .booleanConf
+      .createWithDefault(true)
+
+  val STREAMING_UI_RETAINED_PROGRESS_UPDATES =
+    buildStaticConf("spark.sql.streaming.ui.retainedProgressUpdates")
+      .doc("The number of progress updates to retain for a streaming query for Structured " +
+        "Streaming UI.")
+      .intConf
+      .createWithDefault(100)
+
+  val STREAMING_UI_RETAINED_QUERIES =
+    buildStaticConf("spark.sql.streaming.ui.retainedQueries")
+      .doc("The number of inactive queries to retain for Structured Streaming UI.")
+      .intConf
+      .createWithDefault(100)
+
+  val ENABLED_STREAMING_UI_CUSTOM_METRIC_LIST =
+    buildStaticConf("spark.sql.streaming.ui.enabledCustomMetricList")
+      .internal()
+      .doc("Configures a list of custom metrics on Structured Streaming UI, which are enabled. " +
+        "The list contains the name of the custom metrics separated by comma. In aggregation" +
+        "only sum used. The list of supported custom metrics is state store provider specific " +
+        "and it can be found out for example from query progress log entry.")
+      .stringConf
+      .toSequence
+      .createWithDefault(Nil)
+
+  val DEFAULT_URL_STREAM_HANDLER_FACTORY_ENABLED =
+     buildStaticConf("spark.sql.defaultUrlStreamHandlerFactory.enabled")
+       .doc("When true, set FsUrlStreamHandlerFactory to support ADD JAR against HDFS locations")
+       .internal()
+       .booleanConf
+       .createWithDefault(true)
 }

@@ -141,6 +141,7 @@ class KubernetesSuite extends SparkFunSuite
       .set("spark.kubernetes.container.image", image)
       .set("spark.kubernetes.driver.pod.name", driverPodName)
       .set("spark.kubernetes.driver.label.spark-app-locator", appLocator)
+      .set("spark.kubernetes.driverEnv.HTTP2_DISABLE", "true")
       .set("spark.kubernetes.executor.label.spark-app-locator", appLocator)
       .set(NETWORK_AUTH_ENABLED.key, "true")
     if (!kubernetesTestComponents.hasUserSpecifiedNamespace) {

@@ -17,8 +17,8 @@
 package org.apache.spark.scheduler.cluster.k8s
 
 import java.time.Instant
-import java.time.format.DateTimeParseException
-import java.util.concurrent.atomic.{AtomicBoolean, AtomicInteger, AtomicLong}
+import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.atomic.{AtomicInteger, AtomicLong}
 
 import io.fabric8.kubernetes.api.model.PodBuilder
 import io.fabric8.kubernetes.client.KubernetesClient
@@ -79,9 +79,14 @@ private[spark] class ExecutorPodsAllocator(
   // snapshot yet. Mapped to the timestamp when they were created.
   private val newlyCreatedExecutors = mutable.LinkedHashMap.empty[Long, Long]
 
+  // Executor IDs that have been requested from Kubernetes but have not been detected in any POD
+  // snapshot yet but already known by the scheduler backend.
+  private val schedulerKnownNewlyCreatedExecs = mutable.LinkedHashSet.empty[Long]
+
   private val dynamicAllocationEnabled = Utils.isDynamicAllocationEnabled(conf)
 
-  private val hasPendingPods = new AtomicBoolean()
+  // visible for tests
+  private[k8s] val numOutstandingPods = new AtomicInteger()
 
   private var lastSnapshot = ExecutorPodsSnapshot()
 
@@ -92,16 +97,16 @@ private[spark] class ExecutorPodsAllocator(
   // if they happen to come up before the deletion takes effect.
   @volatile private var deletedExecutorIds = Set.empty[Long]
 
-  def start(applicationId: String): Unit = {
+  def start(applicationId: String, schedulerBackend: KubernetesClusterSchedulerBackend): Unit = {
     snapshotsStore.addSubscriber(podAllocationDelay) {
-      onNewSnapshots(applicationId, _)
+      onNewSnapshots(applicationId, schedulerBackend, _)
     }
   }
 
   def setTotalExpectedExecutors(total: Int): Unit = {
     logDebug(s"Set totalExpectedExecutors to $total")
     totalExpectedExecutors.set(total)
-    if (!hasPendingPods.get()) {
+    if (numOutstandingPods.get() == 0) {
       snapshotsStore.notifySubscribers()
     }
   }
@@ -110,8 +115,19 @@ private[spark] class ExecutorPodsAllocator(
 
   private def onNewSnapshots(
       applicationId: String,
+      schedulerBackend: KubernetesClusterSchedulerBackend,
       snapshots: Seq[ExecutorPodsSnapshot]): Unit = {
-    newlyCreatedExecutors --= snapshots.flatMap(_.executorPods.keys)
+    val k8sKnownExecIds = snapshots.flatMap(_.executorPods.keys)
+    newlyCreatedExecutors --= k8sKnownExecIds
+    schedulerKnownNewlyCreatedExecs --= k8sKnownExecIds
+
+    // transfer the scheduler backend known executor requests from the newlyCreatedExecutors
+    // to the schedulerKnownNewlyCreatedExecs
+    val schedulerKnownExecs = schedulerBackend.getExecutorIds().map(_.toLong).toSet
+    schedulerKnownNewlyCreatedExecs ++=
+      newlyCreatedExecutors.filterKeys(schedulerKnownExecs.contains(_)).keySet
+    newlyCreatedExecutors --= schedulerKnownNewlyCreatedExecs
+
     // For all executors we've created against the API but have not seen in a snapshot
     // yet - check the current time. If the current time has exceeded some threshold,
     // assume that the pod was either never created (the API server never properly
@@ -152,25 +168,31 @@ private[spark] class ExecutorPodsAllocator(
       lastSnapshot = snapshots.last
     }
 
-    val currentRunningCount = lastSnapshot.executorPods.values.count {
-      case PodRunning(_) => true
-      case _ => false
-    }
-
-    val currentPendingExecutors = lastSnapshot.executorPods
-      .filter {
-        case (_, PodPending(_)) => true
-        case _ => false
-      }
-
     // Make a local, non-volatile copy of the reference since it's used multiple times. This
     // is the only method that modifies the list, so this is safe.
     var _deletedExecutorIds = deletedExecutorIds
 
+    val executorPods = lastSnapshot.executorPods.filterKeys(!_deletedExecutorIds.contains(_))
+
+    val currentRunningCount = executorPods.values.count {
+      case PodRunning(_) => true
+      case _ => false
+    }
+
+    val (schedulerKnownPendingExecs, currentPendingExecutors) = executorPods
+      .filter {
+        case (_, PodPending(_)) => true
+        case _ => false
+      }.partition { case (k, _) =>
+        schedulerKnownExecs.contains(k)
+      }
+
     if (snapshots.nonEmpty) {
       logDebug(s"Pod allocation status: $currentRunningCount running, " +
-        s"${currentPendingExecutors.size} pending, " +
-        s"${newlyCreatedExecutors.size} unacknowledged.")
+         s"${currentPendingExecutors.size} unknown pending, " +
+         s"${schedulerKnownPendingExecs.size} scheduler backend known pending, " +
+         s"${newlyCreatedExecutors.size} unknown newly created, " +
+         s"${schedulerKnownNewlyCreatedExecs.size} scheduler backend known newly created.")
 
       val existingExecs = lastSnapshot.executorPods.keySet
       _deletedExecutorIds = _deletedExecutorIds.filter(existingExecs.contains)
@@ -190,8 +212,9 @@ private[spark] class ExecutorPodsAllocator(
     //
     // TODO: with dynamic allocation off, handle edge cases if we end up with more running
     // executors than expected.
-    val knownPodCount = currentRunningCount + currentPendingExecutors.size +
-      newlyCreatedExecutors.size
+    val knownPodCount = currentRunningCount +
+       currentPendingExecutors.size + schedulerKnownPendingExecs.size +
+       newlyCreatedExecutors.size + schedulerKnownNewlyCreatedExecs.size
     if (knownPodCount > currentTotalExpectedExecutors) {
       val excess = knownPodCount - currentTotalExpectedExecutors
       val newlyCreatedToDelete = newlyCreatedExecutors
@@ -215,7 +238,7 @@ private[spark] class ExecutorPodsAllocator(
             .withLabel(SPARK_ROLE_LABEL, SPARK_POD_EXECUTOR_ROLE)
             .withLabelIn(SPARK_EXECUTOR_ID_LABEL, toDelete.sorted.map(_.toString): _*)
             .delete()
-          newlyCreatedExecutors --= toDelete
+          newlyCreatedExecutors --= newlyCreatedToDelete
           knownPendingCount -= knownPendingToDelete.size
         }
       }
@@ -258,8 +281,9 @@ private[spark] class ExecutorPodsAllocator(
     deletedExecutorIds = _deletedExecutorIds
 
     // Update the flag that helps the setTotalExpectedExecutors() callback avoid triggering this
-    // update method when not needed.
-    hasPendingPods.set(knownPendingCount + newlyCreatedExecutors.size > 0)
+    // update method when not needed. PODs known by the scheduler backend are not counted here as
+    // they considered running PODs and they should not block upscaling.
+    numOutstandingPods.set(knownPendingCount + newlyCreatedExecutors.size)
 
     // The code below just prints debug messages, which are only useful when there's a change
     // in the snapshot state. Since the messages are a little spammy, avoid them when we know

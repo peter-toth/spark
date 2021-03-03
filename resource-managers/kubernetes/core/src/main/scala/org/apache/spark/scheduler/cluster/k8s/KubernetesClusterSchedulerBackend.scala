@@ -76,7 +76,7 @@ private[spark] class KubernetesClusterSchedulerBackend(
     super.start()
     podAllocator.setTotalExpectedExecutors(initialExecutors)
     lifecycleEventHandler.start(this)
-    podAllocator.start(applicationId())
+    podAllocator.start(applicationId(), this)
     watchEvents.start(applicationId())
     pollEvents.start(applicationId())
   }

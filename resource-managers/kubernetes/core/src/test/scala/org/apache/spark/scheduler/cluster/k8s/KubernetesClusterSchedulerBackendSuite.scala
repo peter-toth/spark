@@ -114,7 +114,7 @@ class KubernetesClusterSchedulerBackendSuite extends SparkFunSuite with BeforeAn
   test("Start all components") {
     schedulerBackendUnderTest.start()
     verify(podAllocator).setTotalExpectedExecutors(3)
-    verify(podAllocator).start(TEST_SPARK_APP_ID)
+    verify(podAllocator).start(TEST_SPARK_APP_ID, schedulerBackendUnderTest)
     verify(lifecycleEventHandler).start(schedulerBackendUnderTest)
     verify(watchEvents).start(TEST_SPARK_APP_ID)
     verify(pollEvents).start(TEST_SPARK_APP_ID)

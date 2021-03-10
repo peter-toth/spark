@@ -237,8 +237,10 @@ case class DropTableCommand(
 
     if (isTempView || catalog.tableExists(tableName)) {
       try {
+        val hasViewText = isTempView &&
+          catalog.getTempViewOrPermanentTableMetadata(tableName).viewText.isDefined
         sparkSession.sharedState.cacheManager.uncacheQuery(
-          sparkSession.table(tableName), cascade = !isTempView)
+          sparkSession.table(tableName), cascade = !isTempView || hasViewText)
       } catch {
         case NonFatal(e) => log.warn(e.toString, e)
       }
@@ -469,7 +471,7 @@ case class AlterTableAddPartitionCommand(
     val parts = partitionSpecsAndLocs.map { case (spec, location) =>
       val normalizedSpec = PartitioningUtils.normalizePartitionSpec(
         spec,
-        table.partitionColumnNames,
+        table.partitionSchema,
         table.identifier.quotedString,
         sparkSession.sessionState.conf.resolver)
       // inherit table storage format (possibly except for location)
@@ -525,13 +527,13 @@ case class AlterTableRenamePartitionCommand(
 
     val normalizedOldPartition = PartitioningUtils.normalizePartitionSpec(
       oldPartition,
-      table.partitionColumnNames,
+      table.partitionSchema,
       table.identifier.quotedString,
       sparkSession.sessionState.conf.resolver)
 
     val normalizedNewPartition = PartitioningUtils.normalizePartitionSpec(
       newPartition,
-      table.partitionColumnNames,
+      table.partitionSchema,
       table.identifier.quotedString,
       sparkSession.sessionState.conf.resolver)
 
@@ -574,7 +576,7 @@ case class AlterTableDropPartitionCommand(
     val normalizedSpecs = specs.map { spec =>
       PartitioningUtils.normalizePartitionSpec(
         spec,
-        table.partitionColumnNames,
+        table.partitionSchema,
         table.identifier.quotedString,
         sparkSession.sessionState.conf.resolver)
     }
@@ -676,7 +678,7 @@ case class AlterTableRecoverPartitionsCommand(
     // This is always the case for Hive format tables, but is not true for Datasource tables created
     // before Spark 2.1 unless they are converted via `msck repair table`.
     spark.sessionState.catalog.alterTable(table.copy(tracksPartitionsInCatalog = true))
-    catalog.refreshTable(tableName)
+    spark.catalog.refreshTable(tableIdentWithDB)
     logInfo(s"Recovered all partitions ($total).")
     Seq.empty[Row]
   }
@@ -833,7 +835,7 @@ case class AlterTableSetLocationCommand(
         // No partition spec is specified, so we set the location for the table itself
         catalog.alterTable(table.withNewStorage(locationUri = Some(locUri)))
     }
-
+    sparkSession.catalog.refreshTable(table.identifier.quotedString)
     CommandUtils.updateTableStats(sparkSession, table)
     Seq.empty[Row]
   }

@@ -54,6 +54,7 @@ import org.apache.spark.sql.catalyst.catalog.CatalogTypes.TablePartitionSpec
 import org.apache.spark.sql.catalyst.catalog.CatalogUtils.TRANSLATION_LAYER_ACCESSTYPE_PROPERTY_TEST
 import org.apache.spark.sql.catalyst.expressions.Expression
 import org.apache.spark.sql.catalyst.parser.{CatalystSqlParser, ParseException}
+import org.apache.spark.sql.catalyst.util.CharVarcharUtils
 import org.apache.spark.sql.connector.catalog.SupportsNamespaces._
 import org.apache.spark.sql.hive.HiveExternalCatalog
 import org.apache.spark.sql.hive.HiveExternalCatalog.{DATASOURCE_SCHEMA, DATASOURCE_SCHEMA_NUMPARTS, DATASOURCE_SCHEMA_PART_PREFIX}
@@ -1051,7 +1052,11 @@ private[hive] class HiveClientImpl(
 private[hive] object HiveClientImpl extends Logging {
   /** Converts the native StructField to Hive's FieldSchema. */
   def toHiveColumn(c: StructField): FieldSchema = {
-    val typeString = HiveVoidType.replaceVoidType(c.dataType).catalogString
+    // For Hive Serde, we still need to to restore the raw type for char and varchar type.
+    // When reading data in parquet, orc, or avro file format with string type for char,
+    // the tailing spaces may lost if we are not going to pad it.
+    val typeString = CharVarcharUtils.getRawTypeString(c.metadata)
+      .getOrElse(HiveVoidType.replaceVoidType(c.dataType).catalogString)
     new FieldSchema(c.name, typeString, c.getComment().orNull)
   }
 
@@ -1331,7 +1336,7 @@ private[hive] object HiveClientImpl extends Logging {
   }
 }
 
-case object HiveVoidType extends DataType {
+private[hive] case object HiveVoidType extends DataType {
   override def defaultSize: Int = 1
   override def asNullable: DataType = HiveVoidType
   override def simpleString: String = "void"

@@ -392,7 +392,7 @@ private[spark] class SparkHadoopUtil extends Logging {
 
 }
 
-private[spark] object SparkHadoopUtil {
+private[spark] object SparkHadoopUtil extends Logging {
 
   private lazy val instance = new SparkHadoopUtil
 
@@ -450,12 +450,30 @@ private[spark] object SparkHadoopUtil {
           hadoopConf.set("fs.s3a.session.token", sessionToken)
         }
       }
+      appendHiveConfigs(hadoopConf)
       appendSparkHadoopConfigs(conf, hadoopConf)
       appendSparkHiveConfigs(conf, hadoopConf)
       val bufferSize = conf.get(BUFFER_SIZE).toString
       hadoopConf.set("io.file.buffer.size", bufferSize)
       // Workaround for timeline client Jersey conflicts.
       hadoopConf.set("yarn.timeline-service.enabled", "false")
+    }
+  }
+
+  private lazy val hiveConfKeys = {
+    val configFile = Utils.getContextOrSparkClassLoader.getResource("hive-site.xml")
+    if (configFile != null) {
+      val conf = new Configuration(false)
+      conf.addResource(configFile)
+      conf.iterator().asScala.toSeq
+    } else {
+      Nil
+    }
+  }
+
+  private def appendHiveConfigs(hadoopConf: Configuration): Unit = {
+    hiveConfKeys.foreach { kv =>
+      hadoopConf.set(kv.getKey, kv.getValue)
     }
   }
 

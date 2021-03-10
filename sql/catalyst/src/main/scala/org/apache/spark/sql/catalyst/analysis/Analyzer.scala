@@ -50,6 +50,7 @@ import org.apache.spark.sql.internal.SQLConf
 import org.apache.spark.sql.internal.SQLConf.{PartitionOverwriteMode, StoreAssignmentPolicy}
 import org.apache.spark.sql.types._
 import org.apache.spark.sql.util.{CaseInsensitiveStringMap, SchemaUtils}
+import org.apache.spark.unsafe.types.UTF8String
 import org.apache.spark.util.Utils
 
 /**
@@ -279,6 +280,8 @@ class Analyzer(override val catalogManager: CatalogManager)
       ResolveUnion ::
       TypeCoercion.typeCoercionRules ++
       extendedResolutionRules : _*),
+    Batch("Apply Char Padding", Once,
+      ApplyCharTypePadding),
     Batch("Post-Hoc Resolution", Once,
       Seq(ResolveNoopDropTable) ++
       postHocResolutionRules: _*),
@@ -949,11 +952,37 @@ class Analyzer(override val catalogManager: CatalogManager)
    * columns are not accidentally selected by *.
    */
   object AddMetadataColumns extends Rule[LogicalPlan] {
+    import org.apache.spark.sql.execution.datasources.v2.DataSourceV2Implicits._
+
+    private def hasMetadataCol(plan: LogicalPlan): Boolean = {
+      plan.expressions.exists(_.find {
+        case a: Attribute => a.isMetadataCol
+        case _ => false
+      }.isDefined)
+    }
+
+    private def addMetadataCol(plan: LogicalPlan): LogicalPlan = plan match {
+      case r: DataSourceV2Relation => r.withMetadataColumns()
+      case _ => plan.withNewChildren(plan.children.map(addMetadataCol))
+    }
+
     def apply(plan: LogicalPlan): LogicalPlan = plan resolveOperatorsUp {
-      case node if node.resolved && node.children.nonEmpty && node.missingInput.nonEmpty =>
-        node resolveOperatorsUp {
-          case rel: DataSourceV2Relation =>
-            rel.withMetadataColumns()
+      case node if node.children.nonEmpty && node.resolved && hasMetadataCol(node) =>
+        val inputAttrs = AttributeSet(node.children.flatMap(_.output))
+        val metaCols = node.expressions.flatMap(_.collect {
+          case a: Attribute if a.isMetadataCol && !inputAttrs.contains(a) => a
+        })
+        if (metaCols.isEmpty) {
+          node
+        } else {
+          val newNode = addMetadataCol(node)
+          // We should not change the output schema of the plan. We should project away the extr
+          // metadata columns if necessary.
+          if (newNode.sameOutput(node)) {
+            newNode
+          } else {
+            Project(node.output, newNode)
+          }
         }
     }
   }
@@ -1174,7 +1203,10 @@ class Analyzer(override val catalogManager: CatalogManager)
           }
           val key = catalog.name +: ident.namespace :+ ident.name
           AnalysisContext.get.relationCache.get(key).map(_.transform {
-            case multi: MultiInstanceRelation => multi.newInstance()
+            case multi: MultiInstanceRelation =>
+              val newRelation = multi.newInstance()
+              newRelation.copyTagsFrom(multi)
+              newRelation
           }).orElse {
             loaded.foreach(AnalysisContext.get.relationCache.update(key, _))
             loaded
@@ -1289,7 +1321,7 @@ class Analyzer(override val catalogManager: CatalogManager)
               // ResolveOutputRelation runs, using the query's column names that will match the
               // table names at that point. because resolution happens after a future rule, create
               // an UnresolvedAttribute.
-              EqualTo(UnresolvedAttribute(attr.name), Cast(Literal(value), attr.dataType))
+              EqualNullSafe(UnresolvedAttribute(attr.name), Cast(Literal(value), attr.dataType))
             case None =>
               throw QueryCompilationErrors.unknownStaticPartitionColError(name)
           }
@@ -1324,6 +1356,7 @@ class Analyzer(override val catalogManager: CatalogManager)
         case oldVersion: MultiInstanceRelation
             if oldVersion.outputSet.intersect(conflictingAttributes).nonEmpty =>
           val newVersion = oldVersion.newInstance()
+          newVersion.copyTagsFrom(oldVersion)
           Seq((oldVersion, newVersion))
 
         case oldVersion: SerializeFromObject
@@ -1355,6 +1388,14 @@ class Analyzer(override val catalogManager: CatalogManager)
           Nil
 
         case oldVersion @ FlatMapGroupsInPandas(_, _, output, _)
+            if oldVersion.outputSet.intersect(conflictingAttributes).nonEmpty =>
+          Seq((oldVersion, oldVersion.copy(output = output.map(_.newInstance()))))
+
+        case oldVersion @ FlatMapCoGroupsInPandas(_, _, _, output, _, _)
+            if oldVersion.outputSet.intersect(conflictingAttributes).nonEmpty =>
+          Seq((oldVersion, oldVersion.copy(output = output.map(_.newInstance()))))
+
+        case oldVersion @ MapInPandas(_, output, _)
             if oldVersion.outputSet.intersect(conflictingAttributes).nonEmpty =>
           Seq((oldVersion, oldVersion.copy(output = output.map(_.newInstance()))))
 
@@ -3851,5 +3892,85 @@ object UpdateOuterReferences extends Rule[LogicalPlan] {
             s.withNewPlan(updateOuterReferenceInSubquery(s.plan, outerAliases))
       }
     }
+  }
+}
+
+/**
+ * This rule performs string padding for char type comparison.
+ *
+ * When comparing char type column/field with string literal or char type column/field,
+ * right-pad the shorter one to the longer length.
+ */
+object ApplyCharTypePadding extends Rule[LogicalPlan] {
+
+  override def apply(plan: LogicalPlan): LogicalPlan = {
+    plan.resolveOperatorsUp {
+      case operator if operator.resolved => operator.transformExpressionsUp {
+        // String literal is treated as char type when it's compared to a char type column.
+        // We should pad the shorter one to the longer length.
+        case b @ BinaryComparison(attr: Attribute, lit) if lit.foldable =>
+          padAttrLitCmp(attr, lit).map { newChildren =>
+            b.withNewChildren(newChildren)
+          }.getOrElse(b)
+
+        case b @ BinaryComparison(lit, attr: Attribute) if lit.foldable =>
+          padAttrLitCmp(attr, lit).map { newChildren =>
+            b.withNewChildren(newChildren.reverse)
+          }.getOrElse(b)
+
+        case i @ In(attr: Attribute, list)
+          if attr.dataType == StringType && list.forall(_.foldable) =>
+          CharVarcharUtils.getRawType(attr.metadata).flatMap {
+            case CharType(length) =>
+              val (nulls, literalChars) =
+                list.map(_.eval().asInstanceOf[UTF8String]).partition(_ == null)
+              val literalCharLengths = literalChars.map(_.numChars())
+              val targetLen = (length +: literalCharLengths).max
+              Some(i.copy(
+                value = addPadding(attr, length, targetLen),
+                list = list.zip(literalCharLengths).map {
+                  case (lit, charLength) => addPadding(lit, charLength, targetLen)
+                } ++ nulls.map(Literal.create(_, StringType))))
+            case _ => None
+          }.getOrElse(i)
+
+        // For char type column or inner field comparison, pad the shorter one to the longer length.
+        case b @ BinaryComparison(left: Attribute, right: Attribute) =>
+          b.withNewChildren(CharVarcharUtils.addPaddingInStringComparison(Seq(left, right)))
+
+        case i @ In(attr: Attribute, list) if list.forall(_.isInstanceOf[Attribute]) =>
+          val newChildren = CharVarcharUtils.addPaddingInStringComparison(
+            attr +: list.map(_.asInstanceOf[Attribute]))
+          i.copy(value = newChildren.head, list = newChildren.tail)
+      }
+    }
+  }
+
+  private def padAttrLitCmp(attr: Attribute, lit: Expression): Option[Seq[Expression]] = {
+    if (attr.dataType == StringType) {
+      CharVarcharUtils.getRawType(attr.metadata).flatMap {
+        case CharType(length) =>
+          val str = lit.eval().asInstanceOf[UTF8String]
+          if (str == null) {
+            None
+          } else {
+            val stringLitLen = str.numChars()
+            if (length < stringLitLen) {
+              Some(Seq(StringRPad(attr, Literal(stringLitLen)), lit))
+            } else if (length > stringLitLen) {
+              Some(Seq(attr, StringRPad(lit, Literal(length))))
+            } else {
+              None
+            }
+          }
+        case _ => None
+      }
+    } else {
+      None
+    }
+  }
+
+  private def addPadding(expr: Expression, charLength: Int, targetLength: Int): Expression = {
+    if (targetLength > charLength) StringRPad(expr, Literal(targetLength)) else expr
   }
 }

@@ -2596,19 +2596,6 @@ object functions {
   }
 
   /**
-   * Extract all specific groups matched by a Java regex, from the specified string column.
-   * If the regex did not match, or the specified group did not match, return an empty array.
-   * if the specified group index exceeds the group count of regex, an IllegalArgumentException
-   * will be thrown.
-   *
-   * @group string_funcs
-   * @since 3.1.0
-   */
-  def regexp_extract_all(e: Column, exp: String, groupIdx: Int): Column = withExpr {
-    RegExpExtractAll(e.expr, lit(exp).expr, lit(groupIdx).expr)
-  }
-
-  /**
    * Replace all substrings of the specified string value that match regexp with rep.
    *
    * @group string_funcs
@@ -3353,7 +3340,7 @@ object functions {
    *
    * {{{
    *   val df = ... // schema => timestamp: TimestampType, stockId: StringType, price: DoubleType
-   *   df.groupBy(window($"time", "1 minute", "10 seconds", "5 seconds"), $"stockId")
+   *   df.groupBy(window($"timestamp", "1 minute", "10 seconds", "5 seconds"), $"stockId")
    *     .agg(mean("price"))
    * }}}
    *
@@ -3409,7 +3396,7 @@ object functions {
    *
    * {{{
    *   val df = ... // schema => timestamp: TimestampType, stockId: StringType, price: DoubleType
-   *   df.groupBy(window($"time", "1 minute", "10 seconds"), $"stockId")
+   *   df.groupBy(window($"timestamp", "1 minute", "10 seconds"), $"stockId")
    *     .agg(mean("price"))
    * }}}
    *
@@ -3454,7 +3441,7 @@ object functions {
    *
    * {{{
    *   val df = ... // schema => timestamp: TimestampType, stockId: StringType, price: DoubleType
-   *   df.groupBy(window($"time", "1 minute"), $"stockId")
+   *   df.groupBy(window($"timestamp", "1 minute"), $"stockId")
    *     .agg(mean("price"))
    * }}}
    *

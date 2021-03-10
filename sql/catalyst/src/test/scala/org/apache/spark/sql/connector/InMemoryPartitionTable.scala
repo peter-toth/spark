@@ -54,6 +54,7 @@ class InMemoryPartitionTable(
     if (memoryTablePartitions.containsKey(ident)) {
       throw new PartitionAlreadyExistsException(name, ident, partitionSchema)
     } else {
+      createPartitionKey(ident.toSeq(schema))
       memoryTablePartitions.put(ident, properties)
     }
   }
@@ -61,6 +62,7 @@ class InMemoryPartitionTable(
   def dropPartition(ident: InternalRow): Boolean = {
     if (memoryTablePartitions.containsKey(ident)) {
       memoryTablePartitions.remove(ident)
+      removePartitionKey(ident.toSeq(schema))
       true
     } else {
       false

@@ -23,6 +23,7 @@ import java.nio.charset.StandardCharsets
 import java.util.concurrent.{CountDownLatch, Semaphore, TimeUnit}
 
 import scala.concurrent.duration._
+import scala.io.Source
 
 import com.google.common.io.Files
 import org.apache.hadoop.conf.Configuration
@@ -153,7 +154,7 @@ class SparkContextSuite extends SparkFunSuite with LocalSparkContext with Eventu
           }
           x
         }).count()
-        assert(sc.listFiles().filter(_.contains("somesuffix1")).size == 1)
+        assert(sc.listFiles().count(_.contains("somesuffix1")) == 1)
       } finally {
         sc.stop()
       }
@@ -244,7 +245,7 @@ class SparkContextSuite extends SparkFunSuite with LocalSparkContext with Eventu
     try {
       sc = new SparkContext(new SparkConf().setAppName("test").setMaster("local"))
       sc.addJar(jarPath.toString)
-      assert(sc.listJars().filter(_.contains("TestUDTF.jar")).size == 1)
+      assert(sc.listJars().count(_.contains("TestUDTF.jar")) == 1)
     } finally {
       sc.stop()
     }
@@ -376,7 +377,7 @@ class SparkContextSuite extends SparkFunSuite with LocalSparkContext with Eventu
       sc.addFile(file1.getAbsolutePath)
       def getAddedFileContents(): String = {
         sc.parallelize(Seq(0)).map { _ =>
-          scala.io.Source.fromFile(SparkFiles.get("file")).mkString
+          Utils.tryWithResource(Source.fromFile(SparkFiles.get("file")))(_.mkString)
         }.first()
       }
       assert(getAddedFileContents() === "old")
@@ -1033,6 +1034,40 @@ class SparkContextSuite extends SparkFunSuite with LocalSparkContext with Eventu
       new SparkContext(new SparkConf().setAppName("test").setMaster("local")
         .set(EXECUTOR_ALLOW_SPARK_CONTEXT, true)).stop()
     }
+  }
+
+  test("SPARK-34346: hadoop configuration priority for spark/hive/hadoop configs") {
+    val testKey = "hadoop.tmp.dir"
+    val bufferKey = "io.file.buffer.size"
+    val hadoopConf0 = new Configuration()
+    hadoopConf0.set(testKey, "/tmp/hive_zero")
+
+    val hiveConfFile = Utils.getContextOrSparkClassLoader.getResource("hive-site.xml")
+    assert(hiveConfFile != null)
+    hadoopConf0.addResource(hiveConfFile)
+    assert(hadoopConf0.get(testKey) === "/tmp/hive_zero")
+    assert(hadoopConf0.get(bufferKey) === "201811")
+
+    val sparkConf = new SparkConf()
+      .setAppName("test")
+      .setMaster("local")
+      .set(BUFFER_SIZE, 65536)
+    sc = new SparkContext(sparkConf)
+    assert(sc.hadoopConfiguration.get(testKey) === "/tmp/hive_one",
+      "hive configs have higher priority than hadoop ones ")
+    assert(sc.hadoopConfiguration.get(bufferKey).toInt === 65536,
+      "spark configs have higher priority than hive ones")
+
+    resetSparkContext()
+
+    sparkConf
+      .set("spark.hadoop.hadoop.tmp.dir", "/tmp/hive_two")
+      .set(s"spark.hadoop.$bufferKey", "20181117")
+    sc = new SparkContext(sparkConf)
+    assert(sc.hadoopConfiguration.get(testKey) === "/tmp/hive_two",
+      "spark.hadoop configs have higher priority than hive/hadoop ones")
+    assert(sc.hadoopConfiguration.get(bufferKey).toInt === 65536,
+      "spark configs have higher priority than spark.hadoop configs")
   }
 }
 

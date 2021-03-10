@@ -308,7 +308,7 @@ case class LoadDataCommand(
     val normalizedSpec = partition.map { spec =>
       PartitioningUtils.normalizePartitionSpec(
         spec,
-        targetTable.partitionColumnNames,
+        targetTable.partitionSchema,
         tableIdentwithDB,
         sparkSession.sessionState.conf.resolver)
     }
@@ -392,8 +392,8 @@ case class LoadDataCommand(
         isSrcLocal = isLocal)
     }
 
-    // Refresh the metadata cache to ensure the data visible to the users
-    catalog.refreshTable(targetTable.identifier)
+    // Refresh the data and metadata cache to ensure the data visible to the users
+    sparkSession.catalog.refreshTable(tableIdentwithDB)
 
     CommandUtils.updateTableStats(sparkSession, targetTable)
     Seq.empty[Row]
@@ -475,7 +475,7 @@ case class TruncateTableCommand(
         val normalizedSpec = partitionSpec.map { spec =>
           PartitioningUtils.normalizePartitionSpec(
             spec,
-            partCols,
+            table.partitionSchema,
             table.identifier.quotedString,
             spark.sessionState.conf.resolver)
         }
@@ -889,7 +889,7 @@ case class ShowTablesCommand(
       val tableIdent = table.identifier
       val normalizedSpec = PartitioningUtils.normalizePartitionSpec(
         partitionSpec.get,
-        table.partitionColumnNames,
+        table.partitionSchema,
         tableIdent.quotedString,
         sparkSession.sessionState.conf.resolver)
       val partition = catalog.getPartition(tableIdent, normalizedSpec)
@@ -1020,7 +1020,7 @@ case class ShowPartitionsCommand(
      */
     val normalizedSpec = spec.map(partitionSpec => PartitioningUtils.normalizePartitionSpec(
       partitionSpec,
-      table.partitionColumnNames,
+      table.partitionSchema,
       table.identifier.quotedString,
       sparkSession.sessionState.conf.resolver))
 

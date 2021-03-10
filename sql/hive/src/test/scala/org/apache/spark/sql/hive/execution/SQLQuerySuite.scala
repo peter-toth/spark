@@ -2481,7 +2481,7 @@ abstract class SQLQuerySuiteBase extends QueryTest with SQLTestUtils with TestHi
       }
     }
   }
-  
+
   test("SPARK-29295: dynamic insert overwrite external partition should not have old data") {
     Seq("true", "false").foreach { convertParquet =>
       withTable("test") {

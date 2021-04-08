@@ -22,10 +22,9 @@ ENV JAVA_HOME="/usr/lib/jvm/java-1.8.0" \
 ADD https://github.com/krallin/tini/releases/download/${TINI_VERSION}/tini /usr/bin/tini
 
 RUN set -ex \
-    && chmod +x /usr/bin/tini \
     && yum install --disableplugin=subscription-manager -y java-1.8.0-openjdk-devel krb5-workstation openssl openblas \
     && yum clean all \
-    && chmod +x /usr/bin/tini \
+    && chmod +rx /usr/bin/tini \
     && mkdir -p /opt/spark \
     && mkdir -p /opt/spark/examples \
     && mkdir -p /opt/spark/work-dir \

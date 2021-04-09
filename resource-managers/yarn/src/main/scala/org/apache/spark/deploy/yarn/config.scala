@@ -80,7 +80,9 @@ package object config extends Logging {
       "this is set to `false`; for `no-hadoop` distribution, this is set to `true`.")
     .version("2.4.6")
     .booleanConf
-    .createWithDefault(isHadoopProvided())
+    // CDPD-24790: we need this in CDP so as to pick up some config files like ssl-client.xml from
+    // cluster with priority
+    .createWithDefault(true)
 
   private[spark] val GATEWAY_ROOT_PATH = ConfigBuilder("spark.yarn.config.gatewayPath")
     .doc("Root of configuration paths that is present on gateway nodes, and will be replaced " +

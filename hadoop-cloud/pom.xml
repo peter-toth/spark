@@ -257,9 +257,9 @@
         <dependency>
           <groupId>org.apache.hadoop</groupId>
           <artifactId>hadoop-cloud-storage</artifactId>
-          <!-- Because of CDPD-22611 we need to get dependencies
+          <!-- Because of CDPD-22611 and CDPD-24863 we need to get dependencies
           from public cloud version of hadoop cloud storage -->
-          <version>3.1.1.7.2.8.0-228</version>
+          <version>3.1.1.7.2.9.0-186</version>
           <scope>${hadoop.deps.scope}</scope>
           <exclusions>
             <exclusion>

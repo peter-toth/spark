@@ -37,8 +37,8 @@
     <!-- Package to use when relocating shaded classes. -->
     <spark.shaded.raz.packageName>org.apache.ranger</spark.shaded.raz.packageName>
     <!-- Because of raz integration we need to get dependencies
-      from public cloud version of hadoop CDPD-17044 -->
-    <ranger.version>2.1.0.7.2.7.0-184</ranger.version>
+      from 7.2.9 version of hadoop CDPD-22213 -->
+    <ranger.version>2.1.0.7.2.9.0-186</ranger.version>
     <codehaus.jackson.version>1.9.13</codehaus.jackson.version>
   </properties>
 

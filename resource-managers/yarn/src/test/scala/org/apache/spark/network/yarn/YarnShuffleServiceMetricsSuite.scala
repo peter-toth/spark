@@ -20,6 +20,7 @@ import scala.collection.JavaConverters._
 
 import org.apache.hadoop.metrics2.MetricsRecordBuilder
 import org.mockito.ArgumentMatchers.{any, anyDouble, anyInt, anyLong}
+import org.mockito.Matchers._
 import org.mockito.Mockito.{mock, times, verify, when}
 import org.scalatest.Matchers
 

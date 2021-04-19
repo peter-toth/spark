@@ -16,15 +16,13 @@
  */
 package org.apache.spark.deploy.k8s
 
-import io.fabric8.kubernetes.api.model.{DoneablePod, HasMetadata, Pod, PodList}
+import io.fabric8.kubernetes.api.model.{HasMetadata, Pod, PodList}
 import io.fabric8.kubernetes.client.Watch
 import io.fabric8.kubernetes.client.dsl.{FilterWatchListDeletable, MixedOperation, NamespaceListVisitFromServerGetDeleteRecreateWaitApplicable, PodResource}
 
 object Fabric8Aliases {
-  type PODS = MixedOperation[Pod, PodList, DoneablePod, PodResource[Pod, DoneablePod]]
-  type LABELED_PODS = FilterWatchListDeletable[
-    Pod, PodList, java.lang.Boolean, Watch]
-  type SINGLE_POD = PodResource[Pod, DoneablePod]
-  type RESOURCE_LIST = NamespaceListVisitFromServerGetDeleteRecreateWaitApplicable[
-    HasMetadata, Boolean]
+  type PODS = MixedOperation[Pod, PodList, PodResource[Pod]]
+  type LABELED_PODS = FilterWatchListDeletable[Pod, PodList]
+  type SINGLE_POD = PodResource[Pod]
+  type RESOURCE_LIST = NamespaceListVisitFromServerGetDeleteRecreateWaitApplicable[HasMetadata]
 }

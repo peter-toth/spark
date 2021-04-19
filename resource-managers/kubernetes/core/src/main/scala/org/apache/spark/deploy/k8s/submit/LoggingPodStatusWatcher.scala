@@ -19,7 +19,7 @@ package org.apache.spark.deploy.k8s.submit
 import java.util.concurrent.{CountDownLatch, TimeUnit}
 
 import io.fabric8.kubernetes.api.model.Pod
-import io.fabric8.kubernetes.client.{KubernetesClientException, Watcher}
+import io.fabric8.kubernetes.client.{Watcher, WatcherException}
 import io.fabric8.kubernetes.client.Watcher.Action
 
 import org.apache.spark.deploy.k8s.KubernetesUtils._
@@ -75,7 +75,7 @@ private[k8s] class LoggingPodStatusWatcherImpl(
     }
   }
 
-  override def onClose(e: KubernetesClientException): Unit = {
+  override def onClose(e: WatcherException): Unit = {
     logDebug(s"Stopping watching application $appId with last-observed phase $phase")
     closeWatch()
   }

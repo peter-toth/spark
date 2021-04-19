@@ -20,6 +20,7 @@ package org.apache.spark.deploy
 import java.io._
 import java.lang.reflect.{InvocationTargetException, Modifier, UndeclaredThrowableException}
 import java.net.{URI, URL}
+import java.nio.file.AccessDeniedException
 import java.security.PrivilegedExceptionAction
 import java.text.ParseException
 import java.util.UUID
@@ -353,12 +354,22 @@ private[spark] class SparkSubmit extends Logging {
         UserGroupInformation.loginUserFromKeytab(args.principal, args.keytab)
       }
     }
+    // DEX-1797: glob path resolution doesn't work at this point
+    def tryResolveGlobPath(path: String) = {
+      try {
+        resolveGlobPaths(path, hadoopConf)
+      } catch {
+        case x: AccessDeniedException =>
+          logInfo(s"Glob path resolution failed: $path", x)
+          path
+      }
+    }
 
     // Resolve glob path for different resources.
-    args.jars = Option(args.jars).map(resolveGlobPaths(_, hadoopConf)).orNull
-    args.files = Option(args.files).map(resolveGlobPaths(_, hadoopConf)).orNull
-    args.pyFiles = Option(args.pyFiles).map(resolveGlobPaths(_, hadoopConf)).orNull
-    args.archives = Option(args.archives).map(resolveGlobPaths(_, hadoopConf)).orNull
+    args.jars = Option(args.jars).map(tryResolveGlobPath).orNull
+    args.files = Option(args.files).map(tryResolveGlobPath).orNull
+    args.pyFiles = Option(args.pyFiles).map(tryResolveGlobPath).orNull
+    args.archives = Option(args.archives).map(tryResolveGlobPath).orNull
 
     lazy val secMgr = new SecurityManager(sparkConf)
 

@@ -176,6 +176,14 @@ private[spark] object Config extends Logging {
       .checkValue(value => value > 0, "Allocation batch size should be a positive integer")
       .createWithDefault(5)
 
+  val KUBERNETES_CLOUDERA_GANG_SCHEDULING =
+    ConfigBuilder("spark.cloudera.kubernetes.gang.scheduling.enabled")
+      .doc("Number of pods to launch for the first round of executor allocations should equal " +
+        "the minimum or initial number of executors, whichever is greater. As a result, the " +
+        "first batch size may be larger than the configured batch size")
+      .booleanConf
+      .createWithDefault(false)
+
   val KUBERNETES_ALLOCATION_BATCH_DELAY =
     ConfigBuilder("spark.kubernetes.allocation.batch.delay")
       .doc("Time to wait between each round of executor allocation.")

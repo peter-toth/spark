@@ -238,7 +238,7 @@ class ClientSuite extends SparkFunSuite with Matchers {
     cp should contain (buildPath(single.getAbsolutePath(), "*"))
   }
 
-  test("distribute jars archive") {
+  ignore("OPSAPS-60290: distribute jars archive") {
     val temp = Utils.createTempDir()
     val archive = TestUtils.createJarWithFiles(Map(), temp)
 

@@ -23,7 +23,7 @@ import io.fabric8.kubernetes.client.KubernetesClient
 import io.fabric8.kubernetes.client.dsl.PodResource
 import org.mockito.{ArgumentMatcher, Matchers, Mock, MockitoAnnotations}
 import org.mockito.ArgumentMatchers.{any, eq => meq}
-import org.mockito.Mockito.{never, times, verify, when}
+import org.mockito.Mockito.{never, timeout, times, verify, when}
 import org.mockito.invocation.InvocationOnMock
 import org.mockito.stubbing.Answer
 import org.scalatest.BeforeAndAfter
@@ -33,7 +33,7 @@ import org.apache.spark.deploy.k8s.{KubernetesExecutorConf, KubernetesTestConf, 
 import org.apache.spark.deploy.k8s.Config._
 import org.apache.spark.deploy.k8s.Constants._
 import org.apache.spark.deploy.k8s.Fabric8Aliases._
-import org.apache.spark.internal.config.DYN_ALLOCATION_EXECUTOR_IDLE_TIMEOUT
+import org.apache.spark.internal.config.{DYN_ALLOCATION_EXECUTOR_IDLE_TIMEOUT, DYN_ALLOCATION_INITIAL_EXECUTORS, DYN_ALLOCATION_MIN_EXECUTORS, EXECUTOR_INSTANCES}
 import org.apache.spark.scheduler.cluster.k8s.ExecutorLifecycleTestUtils._
 import org.apache.spark.util.ManualClock
 
@@ -95,6 +95,51 @@ class ExecutorPodsAllocatorSuite extends SparkFunSuite with BeforeAndAfter {
     podsAllocatorUnderTest = new ExecutorPodsAllocator(
       conf, secMgr, executorBuilder, kubernetesClient, snapshotsStore, waitForExecutorPodsClock)
     podsAllocatorUnderTest.start(TEST_SPARK_APP_ID)
+  }
+
+  Seq(
+    (EXECUTOR_INSTANCES.key, false),
+    (DYN_ALLOCATION_INITIAL_EXECUTORS.key, true),
+    (DYN_ALLOCATION_MIN_EXECUTORS.key, true)).foreach { case (targetCountConf, daEnabled) =>
+
+    // create a test for each method of expressing the initial target executor count
+    test("Use executor target for initial batch size when gang scheduling enabled: " +
+      targetCountConf) {
+      val batchSize = 5
+      val initialExecutorCount = (batchSize * 2) + 1
+      val conf = new SparkConf()
+        .set(KUBERNETES_DRIVER_POD_NAME, driverPodName)
+        .set(DYN_ALLOCATION_EXECUTOR_IDLE_TIMEOUT.key, "10s")
+        .set(KUBERNETES_CLOUDERA_GANG_SCHEDULING.key, "true")
+        .set(KUBERNETES_ALLOCATION_BATCH_SIZE, batchSize)
+        .set("spark.dynamicAllocation.enabled", daEnabled.toString)
+        .set(targetCountConf, initialExecutorCount.toString) // initial target count of executors
+
+      // we create our own mock here because we need a different conf
+      podsAllocatorUnderTest = new ExecutorPodsAllocator(
+        conf, secMgr, executorBuilder, kubernetesClient, snapshotsStore, waitForExecutorPodsClock)
+      podsAllocatorUnderTest.start(TEST_SPARK_APP_ID)
+
+      // we set the expected executor target in two places: In the conf above (in
+      // targetCountConf) and here. That's because ExecutorPodAllocator will use
+      // the below value to determine the executor target, but the conf to determine the
+      // batch size. In a real-world. non-mock environment, ExecutorAllocationManager
+      // will first set totalExpectedExecutors based on the value returned from
+      // Utils.getDynamicAllocationInitialExecutors, and ExecutorPodsAllocator
+      // will call the same method to get the initial batch size. Since ExecutorAllocationManager
+      // runs in its own thread and can keep updating totalExpectedExecutors, ExecutorPodsAllocator
+      // always uses getDynamicAllocationInitialExecutors to determine the initial batch size.
+      podsAllocatorUnderTest.setTotalExpectedExecutors(initialExecutorCount)
+
+      // check that ExecutorPodsAllocator created initialExecutorCount pods,
+      // not batchSize pods (contrast this with the next unit test)
+      for (nextId <- 1 to initialExecutorCount) {
+        verify(podOperations).create(podWithAttachedContainerForId(nextId))
+      }
+
+      // check that ExecutorPodsAllocator created no more than initialExecutorCount pods
+      verify(podOperations, never()).create(podWithAttachedContainerForId(initialExecutorCount + 1))
+    }
   }
 
   test("Initially request executors in batches. Do not request another batch if the" +

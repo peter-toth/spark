@@ -46,6 +46,12 @@ private[spark] class ExecutorPodsAllocator(
 
   private val podAllocationSize = conf.get(KUBERNETES_ALLOCATION_BATCH_SIZE)
 
+  private val initialPodAllocationSize = if (conf.get(KUBERNETES_CLOUDERA_GANG_SCHEDULING)) {
+    math.max(Utils.getDynamicAllocationInitialExecutors(conf), podAllocationSize)
+  } else {
+    podAllocationSize
+  }
+
   private val podAllocationDelay = conf.get(KUBERNETES_ALLOCATION_BATCH_DELAY)
 
   private val podCreationTimeout = math.max(
@@ -78,6 +84,8 @@ private[spark] class ExecutorPodsAllocator(
   private val hasPendingPods = new AtomicBoolean()
 
   private var lastSnapshot = ExecutorPodsSnapshot()
+
+  private var isFirstRound = true
 
   // Executors that have been deleted by this allocator but not yet detected as deleted in
   // a snapshot from the API server. This is used to deny registration from these executors
@@ -214,8 +222,17 @@ private[spark] class ExecutorPodsAllocator(
 
     if (newlyCreatedExecutors.isEmpty
         && knownPodCount < currentTotalExpectedExecutors) {
+
+      val _podAllocationSize = if (isFirstRound) {
+        isFirstRound = false
+        logInfo(s"First round of allocations: use batch size $initialPodAllocationSize")
+        initialPodAllocationSize
+      } else {
+        logDebug(s"Subsequent round of allocations: use batch size $podAllocationSize")
+        podAllocationSize
+      }
       val numExecutorsToAllocate = math.min(
-        currentTotalExpectedExecutors - knownPodCount, podAllocationSize)
+        currentTotalExpectedExecutors - knownPodCount, _podAllocationSize)
       logInfo(s"Going to request $numExecutorsToAllocate executors from Kubernetes.")
       for ( _ <- 0 until numExecutorsToAllocate) {
         val newExecutorId = EXECUTOR_ID_COUNTER.incrementAndGet()

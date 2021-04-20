@@ -212,6 +212,7 @@
     ./python/pyspark/sql/pandas/utils.py, and ./python/setup.py too.
     -->
     <arrow.version>2.0.0</arrow.version>
+    <netty.version>4.1.63.Final</netty.version>
     <!-- org.fusesource.leveldbjni will be used except on arm64 platform. -->
     <leveldbjni.group>org.fusesource.leveldbjni</leveldbjni.group>
 
@@ -766,7 +767,7 @@
       <dependency>
         <groupId>io.netty</groupId>
         <artifactId>netty-all</artifactId>
-        <version>4.1.51.Final</version>
+        <version>${netty.version}</version>
       </dependency>
       <dependency>
         <groupId>org.apache.derby</groupId>

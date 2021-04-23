@@ -17,12 +17,16 @@
 
 package org.apache.spark.sql.catalyst.util
 
+import java.sql.Timestamp
+import java.time.{DateTimeException, LocalDateTime}
 import java.util.TimeZone
+
+import org.apache.spark.internal.Logging
 
 /**
  * Helper functions for testing date and time functionality.
  */
-object DateTimeTestUtils {
+object DateTimeTestUtils extends Logging {
 
   val ALL_TIMEZONES: Seq[TimeZone] = TimeZone.getAvailableIDs.toSeq.map(TimeZone.getTimeZone)
 
@@ -46,6 +50,33 @@ object DateTimeTestUtils {
     } finally {
       TimeZone.setDefault(originalDefaultTimeZone)
       DateTimeUtils.resetThreadLocals()
+    }
+  }
+
+  def filterInvalidTimestamps(timestamps: Seq[Timestamp]): Seq[Timestamp] = {
+    timestamps.filter { ts =>
+      // filter out any random dates that cannot be represented in the gregorian calendar in the
+      // current timezone.
+      if (ts.getYear + 1900 <= 1582) {
+        try {
+          LocalDateTime.of(
+            ts.getYear + 1900,
+            ts.getMonth + 1,
+            ts.getDate,
+            ts.getHours,
+            ts.getMinutes,
+            ts.getSeconds,
+            ts.getNanos
+          )
+          true
+        } catch {
+          case d: DateTimeException =>
+            logDebug(d.getMessage)
+            false
+        }
+      } else {
+        true
+      }
     }
   }
 }

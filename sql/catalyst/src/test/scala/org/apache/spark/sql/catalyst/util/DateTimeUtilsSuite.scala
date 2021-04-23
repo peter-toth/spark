@@ -19,12 +19,14 @@ package org.apache.spark.sql.catalyst.util
 
 import java.sql.{Date, Timestamp}
 import java.text.SimpleDateFormat
-import java.util.{Calendar, Locale, TimeZone}
+import java.util.{Calendar, Locale, Random, TimeZone}
 
 import org.apache.commons.lang3.time.FastDateFormat
 
 import org.apache.spark.SparkFunSuite
+import org.apache.spark.sql.RandomDataGenerator
 import org.apache.spark.sql.catalyst.util.DateTimeUtils._
+import org.apache.spark.sql.types.TimestampType
 import org.apache.spark.unsafe.types.UTF8String
 
 class DateTimeUtilsSuite extends SparkFunSuite {
@@ -619,19 +621,64 @@ class DateTimeUtilsSuite extends SparkFunSuite {
     assert(time == None)
   }
 
-  test("truncTimestamp") {
-    def testTrunc(
-        level: Int,
-        expected: String,
-        inputTS: SQLTimestamp,
-        timezone: TimeZone = DateTimeUtils.defaultTimeZone()): Unit = {
-      val truncated =
-        DateTimeUtils.truncTimestamp(inputTS, level, timezone)
-      val expectedTS =
-        DateTimeUtils.stringToTimestamp(UTF8String.fromString(expected))
-      assert(truncated === expectedTS.get)
-    }
+  def testTrunc(
+      level: Int,
+      expected: String,
+      inputTS: SQLTimestamp,
+      timezone: TimeZone = DateTimeUtils.defaultTimeZone()): Unit = {
+    val truncated = DateTimeUtils.truncTimestamp(inputTS, level, timezone)
+    val expectedTS = DateTimeUtils.stringToTimestamp(UTF8String.fromString(expected))
+    assert(truncated === expectedTS.get,
+    s"TZ: ${timezone.getDisplayName}, Actual: ${DateTimeUtils.timestampToString(truncated)}," +
+      s" Expected: $expected")
+  }
 
+  test("CDPD-25568: truncTimestamp") {
+    val seed = System.currentTimeMillis()
+    logInfo(s"Seed: $seed")
+    val dataGenerator = RandomDataGenerator.forType(dataType = TimestampType,
+      nullable = false,
+      new Random(seed)).get
+    val formatter = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS")
+    val randomTS = (0 to 1000).map(_ => dataGenerator().asInstanceOf[Timestamp])
+
+    val userDefinedTestCases = Seq(
+      ("1764-10-24 01:09:03.678", "1764-10-24 00:00:00", "1764-10-24 01:00:00"),
+      ("1052-03-27 03:59:12", "1052-03-27 00:00:00", "1052-03-27 03:00:00"),
+      ("0800-02-29 18:55:35", "0800-02-29 00:00:00", "0800-02-29 18:00:00"),
+      ("1582-10-04 23:59:59", "1582-10-04 00:00:00", "1582-10-04 23:00:00"),
+      ("1582-10-15 10:59:59", "1582-10-15 00:00:00", "1582-10-15 10:00:00"),
+      ("2021-03-28 00:00:00", "2021-03-28 00:00:00", "2021-03-28 00:00:00"),
+      ("2021-03-28 01:59:59", "2021-03-28 00:00:00", "2021-03-28 01:00:00"),
+      ("2021-03-28 02:00:00", "2021-03-28 00:00:00", "2021-03-28 02:00:00"),
+      ("2021-03-28 02:00:01", "2021-03-28 00:00:00", "2021-03-28 02:00:00"),
+      ("2021-03-28 02:01:00", "2021-03-28 00:00:00", "2021-03-28 02:00:00"),
+      ("2021-03-28 02:59:59", "2021-03-28 00:00:00", "2021-03-28 02:00:00"),
+      ("2021-03-28 03:00:00", "2021-03-28 00:00:00", "2021-03-28 03:00:00"),
+      ("2021-03-28 03:00:01", "2021-03-28 00:00:00", "2021-03-28 03:00:00"),
+      ("2021-03-28 03:01:00", "2021-03-28 00:00:00", "2021-03-28 03:00:00"),
+      ("2021-03-28 16:00:00", "2021-03-28 00:00:00", "2021-03-28 16:00:00"))
+
+    for (tz <- DateTimeTestUtils.ALL_TIMEZONES) {
+      DateTimeTestUtils.withDefaultTimeZone(tz) {
+        // Filtering random timestamps that cannot be represented in this tz.
+        val randomTestCases = DateTimeTestUtils.filterInvalidTimestamps(randomTS).map { ts =>
+          val tsString = formatter.format(ts)
+          val dayTs = s"${tsString.substring(0, 11)}00:00:00"
+          val hourTs = s"${tsString.substring(0, 13)}:00:00"
+          (tsString, dayTs, hourTs)
+        }
+        (randomTestCases ++ userDefinedTestCases).foreach {
+          case (ts, expectedDayTruncTs, expectedHourTruncTs) =>
+            val inputTS = DateTimeUtils.stringToTimestamp(UTF8String.fromString(ts))
+            testTrunc(DateTimeUtils.TRUNC_TO_DAY, expectedDayTruncTs, inputTS.get)
+            testTrunc(DateTimeUtils.TRUNC_TO_HOUR, expectedHourTruncTs, inputTS.get)
+        }
+      }
+    }
+  }
+
+  test("truncTimestamp") {
     val defaultInputTS =
       DateTimeUtils.stringToTimestamp(UTF8String.fromString("2015-03-05T09:32:05.359"))
     val defaultInputTS1 =

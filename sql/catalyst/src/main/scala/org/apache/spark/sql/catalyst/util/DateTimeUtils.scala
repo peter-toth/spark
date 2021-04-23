@@ -20,7 +20,7 @@ package org.apache.spark.sql.catalyst.util
 import java.sql.{Date, Timestamp}
 import java.text.{DateFormat, ParsePosition, SimpleDateFormat}
 import java.time.{DateTimeException, Instant, LocalDate, LocalDateTime, LocalTime, ZonedDateTime, ZoneId, ZoneOffset}
-import java.time.temporal.ChronoField
+import java.time.temporal.{ChronoField, ChronoUnit}
 import java.util.{Calendar, GregorianCalendar, Locale, TimeZone}
 import java.util.Calendar.{DAY_OF_MONTH, DST_OFFSET, ERA, HOUR_OF_DAY, MINUTE, MONTH, SECOND, YEAR, ZONE_OFFSET}
 import java.util.concurrent.ConcurrentHashMap
@@ -473,6 +473,18 @@ object DateTimeUtils {
       }
     } else zonedDateTime
     instantToMicros(adjustedZdt.toInstant)
+  }
+
+  private def truncToUnit(micros: Long, zoneId: ZoneId, unit: ChronoUnit): Long = {
+    // Spark2 uses the hybrid Julian calendar, and java8 time API uses the proleptic gregorian
+    // calendar, thus we convert the micros to the proleptic gregorian calendar so that java8
+    // truncates it properly.
+    // E.g. without rebasing "1052-03-27 03:59:12" would return "1052-03-26 23:52:58" for the day
+    // truncation.
+    val prolepticMicros = rebaseJulianToGregorianMicros(zoneId, micros)
+    val prolepticTruncated = microsToInstant(prolepticMicros).atZone(zoneId).truncatedTo(unit)
+    val prolepticTruncatedMicros = instantToMicros(prolepticTruncated.toInstant)
+    rebaseGregorianToJulianMicros(zoneId, prolepticTruncatedMicros)
   }
 
   // End of taken from Spark 3
@@ -1265,8 +1277,9 @@ object DateTimeUtils {
    * Returns the trunc date time from original date time and trunc level.
    * Trunc level should be generated using `parseTruncLevel()`, should be between 1 and 8
    */
-  def truncTimestamp(t: SQLTimestamp, level: Int, timeZone: TimeZone): SQLTimestamp = {
-    var millis = t / MICROS_PER_MILLIS
+  def truncTimestamp(micros: SQLTimestamp, level: Int, timeZone: TimeZone): SQLTimestamp = {
+    val zoneId = timeZone.toZoneId
+    var millis = micros / MICROS_PER_MILLIS
     val truncated = level match {
       case TRUNC_TO_YEAR =>
         val dDays = millisToDays(millis, timeZone)
@@ -1274,14 +1287,8 @@ object DateTimeUtils {
       case TRUNC_TO_MONTH =>
         val dDays = millisToDays(millis, timeZone)
         daysToMillis(truncDate(dDays, level), timeZone)
-      case TRUNC_TO_DAY =>
-        val offset = timeZone.getOffset(millis)
-        millis += offset
-        millis - Math.floorMod(millis, MILLIS_PER_SECOND * SECONDS_PER_DAY) - offset
-      case TRUNC_TO_HOUR =>
-        val offset = timeZone.getOffset(millis)
-        millis += offset
-        millis - Math.floorMod(millis, 60 * 60 * MILLIS_PER_SECOND) - offset
+      case TRUNC_TO_DAY => truncToUnit(micros, zoneId, ChronoUnit.DAYS) / MICROS_PER_MILLIS
+      case TRUNC_TO_HOUR => truncToUnit(micros, zoneId, ChronoUnit.HOURS) / MICROS_PER_MILLIS
       case TRUNC_TO_MINUTE =>
         millis - Math.floorMod(millis, 60 * MILLIS_PER_SECOND)
       case TRUNC_TO_SECOND =>

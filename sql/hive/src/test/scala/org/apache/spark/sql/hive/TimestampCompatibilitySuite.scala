@@ -27,6 +27,7 @@ import org.scalatest.BeforeAndAfterEach
 
 import org.apache.spark.sql.{Dataset, QueryTest, RandomDataGenerator, Row}
 import org.apache.spark.sql.catalyst.TableIdentifier
+import org.apache.spark.sql.catalyst.util.DateTimeTestUtils
 import org.apache.spark.sql.hive.HiveUtils.{CONVERT_METASTORE_ORC, CONVERT_METASTORE_PARQUET}
 import org.apache.spark.sql.hive.test.TestHiveSingleton
 import org.apache.spark.sql.internal.SQLConf
@@ -97,30 +98,7 @@ class TimestampCompatibilitySuite extends QueryTest with SQLTestUtils with TestH
   }
 
   private def getRandomTimestamps(): Seq[TestTimestamp] = {
-    val candidates = rawTimestamps.filter { ts =>
-      // filter out any random dates that cannot be represented in the gregorian calendar
-      if (ts.getYear + 1900 <= 1582) {
-        try {
-          LocalDateTime.of(
-            ts.getYear + 1900,
-            ts.getMonth + 1,
-            ts.getDate,
-            ts.getHours,
-            ts.getMinutes,
-            ts.getSeconds,
-            ts.getNanos
-          )
-          true
-        } catch {
-          case d: DateTimeException =>
-            logDebug(d.getMessage)
-            false
-        }
-      } else {
-        true
-      }
-    }
-
+    val candidates = DateTimeTestUtils.filterInvalidTimestamps(rawTimestamps)
     candidates.map { ts =>
       // unfortunately, we can't use SimpleDateFormat, as it insists on adding trailing zeroes to
       // milliseconds, even with a single "S", which screws up comparisons because

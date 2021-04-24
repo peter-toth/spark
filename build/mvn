@@ -79,7 +79,7 @@ install_mvn() {
     local MVN_DETECTED_VERSION="$(mvn --version | head -n1 | awk '{print $3}')"
   fi
   if [ $(version $MVN_DETECTED_VERSION) -lt $(version $MVN_VERSION) ]; then
-    local APACHE_MIRROR=${APACHE_MIRROR:-'https://archive.apache.org/dist'}
+    local APACHE_MIRROR=${APACHE_MIRROR:-'https://www.apache.org/dyn/closer.lua?action=download&filename='}
         
     if [ $(command -v curl) ]; then
       local TEST_MIRROR_URL="${APACHE_MIRROR}/maven/maven-3/${MVN_VERSION}/binaries/apache-maven-${MVN_VERSION}-bin.tar.gz"

@@ -157,7 +157,7 @@ class HiveOrcSourceSuite extends OrcSuite with TestHiveSingleton {
   test("Enforce direct encoding column-wise selectively") {
     Seq(true, false).foreach { convertMetastore =>
       withSQLConf(HiveUtils.CONVERT_METASTORE_ORC.key -> s"$convertMetastore") {
-        testSelectiveDictionaryEncoding(isSelective = false, isHiveOrc = true, convertMetastore)
+        testSelectiveDictionaryEncoding(isSelective = false, isHiveOrc = true)
       }
     }
   }

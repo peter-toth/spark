@@ -122,9 +122,7 @@ abstract class OrcSuite extends OrcTest with BeforeAndAfterAll with CommonFileDa
     }
   }
 
-  protected def testSelectiveDictionaryEncoding(isSelective: Boolean,
-      isHiveOrc: Boolean = false,
-      nativeOrc: Boolean = false): Unit = {
+  protected def testSelectiveDictionaryEncoding(isSelective: Boolean, isHiveOrc: Boolean): Unit = {
     val tableName = "orcTable"
 
     withTempDir { dir =>
@@ -176,13 +174,7 @@ abstract class OrcSuite extends OrcTest with BeforeAndAfterAll with CommonFileDa
           // further refined as to whether they use RLE v1 or v2. RLE v1 is used by
           // Hive 0.11 and RLE v2 is introduced in Hive 0.12 ORC with more improvements.
           // For more details, see https://orc.apache.org/specification/
-          // CDPD-3881: It looks like encoding has changed with CDP Hive 3, this is weird a bit as
-          // CDP Hive 3 and Spark 3 uses the exact same downstream ORC version.
-          if (isHiveOrc && !nativeOrc) {
-            assert(stripe.getColumns(1).getKind === DIRECT_V2)
-          } else {
-            assert(stripe.getColumns(1).getKind === DICTIONARY_V2)
-          }
+          assert(stripe.getColumns(1).getKind === DICTIONARY_V2)
           if (isSelective || isHiveOrc) {
             assert(stripe.getColumns(2).getKind === DIRECT_V2)
           } else {
@@ -589,7 +581,7 @@ class OrcSourceSuite extends OrcSuite with SharedSparkSession {
   }
 
   test("Enforce direct encoding column-wise selectively") {
-    testSelectiveDictionaryEncoding(isSelective = true)
+    testSelectiveDictionaryEncoding(isSelective = true, isHiveOrc = false)
   }
 
   test("SPARK-11412 read and merge orc schemas in parallel") {

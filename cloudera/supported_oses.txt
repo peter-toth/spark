@@ -9,3 +9,4 @@ SLES11
 SLES12
 Ubuntu1604
 Ubuntu1804
+Ubuntu2004

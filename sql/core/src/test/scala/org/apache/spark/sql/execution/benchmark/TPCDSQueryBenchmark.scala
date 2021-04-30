@@ -106,8 +106,15 @@ object TPCDSQueryBenchmark extends SqlBasedBenchmark with Logging {
       }
       val numRows = queryRelations.map(tableSizes.getOrElse(_, 0L)).sum
       val benchmark = new Benchmark(s"TPCDS Snappy", numRows, 2, output = output)
-      benchmark.addCase(s"$name$nameSuffix") { _ =>
-        spark.sql(queryString).noop()
+      benchmark.addCase(s"$name$nameSuffix - without PullOutGroupingExpressions") { _ =>
+        withSQLConf(SQLConf.PULLOUT_GROUPING_EXPRESSIONS.key -> "false") {
+          spark.sql(queryString).noop()
+        }
+      }
+      benchmark.addCase(s"$name$nameSuffix - with PullOutGroupingExpressions") { _ =>
+        withSQLConf(SQLConf.PULLOUT_GROUPING_EXPRESSIONS.key -> "true") {
+          spark.sql(queryString).noop()
+        }
       }
       benchmark.run()
     }

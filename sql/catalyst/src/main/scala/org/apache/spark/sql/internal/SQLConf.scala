@@ -199,6 +199,13 @@ object SQLConf {
     }
   }
 
+  val PULLOUT_GROUPING_EXPRESSIONS = buildConf("spark.sql.pulloutgroupingexpressions.enabled")
+    .internal()
+    .doc("PullOutGroupingExpressions.")
+    .version("3.2.0")
+    .booleanConf
+    .createWithDefault(false)
+
   val ANALYZER_MAX_ITERATIONS = buildConf("spark.sql.analyzer.maxIterations")
     .internal()
     .doc("The max number of iterations the analyzer runs.")

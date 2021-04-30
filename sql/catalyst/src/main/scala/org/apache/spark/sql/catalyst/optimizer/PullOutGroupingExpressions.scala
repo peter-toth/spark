@@ -23,6 +23,7 @@ import org.apache.spark.sql.catalyst.expressions.{Alias, Expression, NamedExpres
 import org.apache.spark.sql.catalyst.expressions.aggregate.AggregateExpression
 import org.apache.spark.sql.catalyst.plans.logical.{Aggregate, LogicalPlan, Project}
 import org.apache.spark.sql.catalyst.rules.Rule
+import org.apache.spark.sql.internal.SQLConf
 
 /**
  * This rule ensures that [[Aggregate]] nodes doesn't contain complex grouping expressions in the
@@ -46,34 +47,39 @@ import org.apache.spark.sql.catalyst.rules.Rule
  */
 object PullOutGroupingExpressions extends Rule[LogicalPlan] {
   override def apply(plan: LogicalPlan): LogicalPlan = {
-    plan transform {
-      case a: Aggregate if a.resolved =>
-        val complexGroupingExpressionMap = mutable.LinkedHashMap.empty[Expression, NamedExpression]
-        val newGroupingExpressions = a.groupingExpressions.map {
-          case e if !e.foldable && e.children.nonEmpty =>
-            complexGroupingExpressionMap
-              .getOrElseUpdate(e.canonicalized, Alias(e, s"_groupingexpression")())
-              .toAttribute
-          case o => o
-        }
-        if (complexGroupingExpressionMap.nonEmpty) {
-          def replaceComplexGroupingExpressions(e: Expression): Expression = {
-            e match {
-              case _ if AggregateExpression.isAggregate(e) => e
-              case _ if e.foldable => e
-              case _ if complexGroupingExpressionMap.contains(e.canonicalized) =>
-                complexGroupingExpressionMap.get(e.canonicalized).map(_.toAttribute).getOrElse(e)
-              case _ => e.mapChildren(replaceComplexGroupingExpressions)
-            }
+    if (SQLConf.get.getConf(SQLConf.PULLOUT_GROUPING_EXPRESSIONS)) {
+      plan transform {
+        case a: Aggregate if a.resolved =>
+          val complexGroupingExpressionMap =
+            mutable.LinkedHashMap.empty[Expression, NamedExpression]
+          val newGroupingExpressions = a.groupingExpressions.map {
+            case e if !e.foldable && e.children.nonEmpty =>
+              complexGroupingExpressionMap
+                .getOrElseUpdate(e.canonicalized, Alias(e, s"_groupingexpression")())
+                .toAttribute
+            case o => o
           }
+          if (complexGroupingExpressionMap.nonEmpty) {
+            def replaceComplexGroupingExpressions(e: Expression): Expression = {
+              e match {
+                case _ if AggregateExpression.isAggregate(e) => e
+                case _ if e.foldable => e
+                case _ if complexGroupingExpressionMap.contains(e.canonicalized) =>
+                  complexGroupingExpressionMap.get(e.canonicalized).map(_.toAttribute).getOrElse(e)
+                case _ => e.mapChildren(replaceComplexGroupingExpressions)
+              }
+            }
 
-          val newAggregateExpressions = a.aggregateExpressions
-            .map(replaceComplexGroupingExpressions(_).asInstanceOf[NamedExpression])
-          val newChild = Project(a.child.output ++ complexGroupingExpressionMap.values, a.child)
-          Aggregate(newGroupingExpressions, newAggregateExpressions, newChild)
-        } else {
-          a
-        }
+            val newAggregateExpressions = a.aggregateExpressions
+              .map(replaceComplexGroupingExpressions(_).asInstanceOf[NamedExpression])
+            val newChild = Project(a.child.output ++ complexGroupingExpressionMap.values, a.child)
+            Aggregate(newGroupingExpressions, newAggregateExpressions, newChild)
+          } else {
+            a
+          }
+      }
+    } else {
+      plan
     }
   }
 }

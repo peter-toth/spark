@@ -1,810 +1,945 @@
-OpenJDK 64-Bit Server VM 1.8.0_232-8u232-b09-0ubuntu1~18.04.1-b09 on Linux 4.15.0-1044-aws
-Intel(R) Xeon(R) CPU E5-2670 v2 @ 2.50GHz
+OpenJDK 64-Bit Server VM 1.8.0_232-b09 on Linux 4.4.0-171-generic
+Intel(R) Xeon(R) CPU @ 2.30GHz
 TPCDS Snappy:                             Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
 ------------------------------------------------------------------------------------------------------------------------
-q1                                                 1626           1675          69          0.0      Infinity       1.0X
+q1 - without PullOutGroupingExpressions            4543           4796         357          0.0      Infinity       1.0X
+q1 - with PullOutGroupingExpressions               3755           3951         278          0.0      Infinity       1.2X
 
-OpenJDK 64-Bit Server VM 1.8.0_232-8u232-b09-0ubuntu1~18.04.1-b09 on Linux 4.15.0-1044-aws
-Intel(R) Xeon(R) CPU E5-2670 v2 @ 2.50GHz
+OpenJDK 64-Bit Server VM 1.8.0_232-b09 on Linux 4.4.0-171-generic
+Intel(R) Xeon(R) CPU @ 2.30GHz
 TPCDS Snappy:                             Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
 ------------------------------------------------------------------------------------------------------------------------
-q2                                                 2166           2277         158          0.0      Infinity       1.0X
+q2 - without PullOutGroupingExpressions           11276          12318        1473          0.0      Infinity       1.0X
+q2 - with PullOutGroupingExpressions              10999          11162         232          0.0      Infinity       1.0X
 
-OpenJDK 64-Bit Server VM 1.8.0_232-8u232-b09-0ubuntu1~18.04.1-b09 on Linux 4.15.0-1044-aws
-Intel(R) Xeon(R) CPU E5-2670 v2 @ 2.50GHz
+OpenJDK 64-Bit Server VM 1.8.0_232-b09 on Linux 4.4.0-171-generic
+Intel(R) Xeon(R) CPU @ 2.30GHz
 TPCDS Snappy:                             Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
 ------------------------------------------------------------------------------------------------------------------------
-q3                                                  465            505          65          0.0      Infinity       1.0X
+q3 - without PullOutGroupingExpressions             832            973         123          0.0      Infinity       1.0X
+q3 - with PullOutGroupingExpressions                785            849          85          0.0      Infinity       1.1X
 
-OpenJDK 64-Bit Server VM 1.8.0_232-8u232-b09-0ubuntu1~18.04.1-b09 on Linux 4.15.0-1044-aws
-Intel(R) Xeon(R) CPU E5-2670 v2 @ 2.50GHz
+OpenJDK 64-Bit Server VM 1.8.0_232-b09 on Linux 4.4.0-171-generic
+Intel(R) Xeon(R) CPU @ 2.30GHz
 TPCDS Snappy:                             Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
 ------------------------------------------------------------------------------------------------------------------------
-q4                                                15108          15662         784          0.0      Infinity       1.0X
+q4 - without PullOutGroupingExpressions          114171         114977        1139          0.0      Infinity       1.0X
+q4 - with PullOutGroupingExpressions             114483         127345         NaN          0.0      Infinity       1.0X
 
-OpenJDK 64-Bit Server VM 1.8.0_232-8u232-b09-0ubuntu1~18.04.1-b09 on Linux 4.15.0-1044-aws
-Intel(R) Xeon(R) CPU E5-2670 v2 @ 2.50GHz
+OpenJDK 64-Bit Server VM 1.8.0_232-b09 on Linux 4.4.0-171-generic
+Intel(R) Xeon(R) CPU @ 2.30GHz
 TPCDS Snappy:                             Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
 ------------------------------------------------------------------------------------------------------------------------
-q5                                                 3087           3281         274          0.0      Infinity       1.0X
+q5 - without PullOutGroupingExpressions            7797           7875         110          0.0      Infinity       1.0X
+q5 - with PullOutGroupingExpressions               7003           7146         202          0.0      Infinity       1.1X
 
-OpenJDK 64-Bit Server VM 1.8.0_232-8u232-b09-0ubuntu1~18.04.1-b09 on Linux 4.15.0-1044-aws
-Intel(R) Xeon(R) CPU E5-2670 v2 @ 2.50GHz
+OpenJDK 64-Bit Server VM 1.8.0_232-b09 on Linux 4.4.0-171-generic
+Intel(R) Xeon(R) CPU @ 2.30GHz
 TPCDS Snappy:                             Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
 ------------------------------------------------------------------------------------------------------------------------
-q6                                                 1780           1873         132          0.0      Infinity       1.0X
+q6 - without PullOutGroupingExpressions           11954          12067         160          0.0      Infinity       1.0X
+q6 - with PullOutGroupingExpressions              12124          12207         117          0.0      Infinity       1.0X
 
-OpenJDK 64-Bit Server VM 1.8.0_232-8u232-b09-0ubuntu1~18.04.1-b09 on Linux 4.15.0-1044-aws
-Intel(R) Xeon(R) CPU E5-2670 v2 @ 2.50GHz
+OpenJDK 64-Bit Server VM 1.8.0_232-b09 on Linux 4.4.0-171-generic
+Intel(R) Xeon(R) CPU @ 2.30GHz
 TPCDS Snappy:                             Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
 ------------------------------------------------------------------------------------------------------------------------
-q7                                                 1103           1137          49          0.0      Infinity       1.0X
+q7 - without PullOutGroupingExpressions            2284           2445         227          0.0      Infinity       1.0X
+q7 - with PullOutGroupingExpressions               2289           2306          24          0.0      Infinity       1.0X
 
-OpenJDK 64-Bit Server VM 1.8.0_232-8u232-b09-0ubuntu1~18.04.1-b09 on Linux 4.15.0-1044-aws
-Intel(R) Xeon(R) CPU E5-2670 v2 @ 2.50GHz
+OpenJDK 64-Bit Server VM 1.8.0_232-b09 on Linux 4.4.0-171-generic
+Intel(R) Xeon(R) CPU @ 2.30GHz
 TPCDS Snappy:                             Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
 ------------------------------------------------------------------------------------------------------------------------
-q8                                                  998           1019          30          0.0      Infinity       1.0X
+q8 - without PullOutGroupingExpressions            1480           1550          98          0.0      Infinity       1.0X
+q8 - with PullOutGroupingExpressions               1377           1487         156          0.0      Infinity       1.1X
 
-OpenJDK 64-Bit Server VM 1.8.0_232-8u232-b09-0ubuntu1~18.04.1-b09 on Linux 4.15.0-1044-aws
-Intel(R) Xeon(R) CPU E5-2670 v2 @ 2.50GHz
+OpenJDK 64-Bit Server VM 1.8.0_232-b09 on Linux 4.4.0-171-generic
+Intel(R) Xeon(R) CPU @ 2.30GHz
 TPCDS Snappy:                             Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
 ------------------------------------------------------------------------------------------------------------------------
-q9                                                 2445           2463          25          0.0      Infinity       1.0X
+q9 - without PullOutGroupingExpressions           61528          61669         199          0.0      Infinity       1.0X
+q9 - with PullOutGroupingExpressions              60386          60937         779          0.0      Infinity       1.0X
 
-OpenJDK 64-Bit Server VM 1.8.0_232-8u232-b09-0ubuntu1~18.04.1-b09 on Linux 4.15.0-1044-aws
-Intel(R) Xeon(R) CPU E5-2670 v2 @ 2.50GHz
+OpenJDK 64-Bit Server VM 1.8.0_232-b09 on Linux 4.4.0-171-generic
+Intel(R) Xeon(R) CPU @ 2.30GHz
 TPCDS Snappy:                             Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
 ------------------------------------------------------------------------------------------------------------------------
-q10                                                4853           5233         537          0.0      Infinity       1.0X
+q10 - without PullOutGroupingExpressions           3388           3399          16          0.0      Infinity       1.0X
+q10 - with PullOutGroupingExpressions              3232           3497         374          0.0      Infinity       1.0X
 
-OpenJDK 64-Bit Server VM 1.8.0_232-8u232-b09-0ubuntu1~18.04.1-b09 on Linux 4.15.0-1044-aws
-Intel(R) Xeon(R) CPU E5-2670 v2 @ 2.50GHz
+OpenJDK 64-Bit Server VM 1.8.0_232-b09 on Linux 4.4.0-171-generic
+Intel(R) Xeon(R) CPU @ 2.30GHz
 TPCDS Snappy:                             Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
 ------------------------------------------------------------------------------------------------------------------------
-q11                                                3370           3417          67          0.0      Infinity       1.0X
+q11 - without PullOutGroupingExpressions          13093          13216         173          0.0      Infinity       1.0X
+q11 - with PullOutGroupingExpressions             12814          13281         661          0.0      Infinity       1.0X
 
-OpenJDK 64-Bit Server VM 1.8.0_232-8u232-b09-0ubuntu1~18.04.1-b09 on Linux 4.15.0-1044-aws
-Intel(R) Xeon(R) CPU E5-2670 v2 @ 2.50GHz
+OpenJDK 64-Bit Server VM 1.8.0_232-b09 on Linux 4.4.0-171-generic
+Intel(R) Xeon(R) CPU @ 2.30GHz
 TPCDS Snappy:                             Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
 ------------------------------------------------------------------------------------------------------------------------
-q12                                                 442            538          67          0.0      Infinity       1.0X
+q12 - without PullOutGroupingExpressions            610            646          51          0.0      Infinity       1.0X
+q12 - with PullOutGroupingExpressions               537            572          52          0.0      Infinity       1.1X
 
-OpenJDK 64-Bit Server VM 1.8.0_232-8u232-b09-0ubuntu1~18.04.1-b09 on Linux 4.15.0-1044-aws
-Intel(R) Xeon(R) CPU E5-2670 v2 @ 2.50GHz
+OpenJDK 64-Bit Server VM 1.8.0_232-b09 on Linux 4.4.0-171-generic
+Intel(R) Xeon(R) CPU @ 2.30GHz
 TPCDS Snappy:                             Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
 ------------------------------------------------------------------------------------------------------------------------
-q13                                                2589           2767         253          0.0      Infinity       1.0X
+q13 - without PullOutGroupingExpressions           2357           2544         264          0.0      Infinity       1.0X
+q13 - with PullOutGroupingExpressions              2201           2221          27          0.0      Infinity       1.1X
 
-OpenJDK 64-Bit Server VM 1.8.0_232-8u232-b09-0ubuntu1~18.04.1-b09 on Linux 4.15.0-1044-aws
-Intel(R) Xeon(R) CPU E5-2670 v2 @ 2.50GHz
-TPCDS Snappy:                             Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
-------------------------------------------------------------------------------------------------------------------------
-q14a                                              23714          24391         957          0.0      Infinity       1.0X
+OpenJDK 64-Bit Server VM 1.8.0_232-b09 on Linux 4.4.0-171-generic
+Intel(R) Xeon(R) CPU @ 2.30GHz
+TPCDS Snappy:                              Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
+-------------------------------------------------------------------------------------------------------------------------
+q14a - without PullOutGroupingExpressions         114408         114828         594          0.0      Infinity       1.0X
+q14a - with PullOutGroupingExpressions            112389         112699         439          0.0      Infinity       1.0X
 
-OpenJDK 64-Bit Server VM 1.8.0_232-8u232-b09-0ubuntu1~18.04.1-b09 on Linux 4.15.0-1044-aws
-Intel(R) Xeon(R) CPU E5-2670 v2 @ 2.50GHz
-TPCDS Snappy:                             Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
-------------------------------------------------------------------------------------------------------------------------
-q14b                                              19056          19103          66          0.0      Infinity       1.0X
+OpenJDK 64-Bit Server VM 1.8.0_232-b09 on Linux 4.4.0-171-generic
+Intel(R) Xeon(R) CPU @ 2.30GHz
+TPCDS Snappy:                              Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
+-------------------------------------------------------------------------------------------------------------------------
+q14b - without PullOutGroupingExpressions          90475          91074         847          0.0      Infinity       1.0X
+q14b - with PullOutGroupingExpressions             88152          88224         102          0.0      Infinity       1.0X
 
-OpenJDK 64-Bit Server VM 1.8.0_232-8u232-b09-0ubuntu1~18.04.1-b09 on Linux 4.15.0-1044-aws
-Intel(R) Xeon(R) CPU E5-2670 v2 @ 2.50GHz
+OpenJDK 64-Bit Server VM 1.8.0_232-b09 on Linux 4.4.0-171-generic
+Intel(R) Xeon(R) CPU @ 2.30GHz
 TPCDS Snappy:                             Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
 ------------------------------------------------------------------------------------------------------------------------
-q15                                                 771            797          24          0.0      Infinity       1.0X
+q15 - without PullOutGroupingExpressions            759            813          49          0.0      Infinity       1.0X
+q15 - with PullOutGroupingExpressions               857            873          14          0.0      Infinity       0.9X
 
-OpenJDK 64-Bit Server VM 1.8.0_232-8u232-b09-0ubuntu1~18.04.1-b09 on Linux 4.15.0-1044-aws
-Intel(R) Xeon(R) CPU E5-2670 v2 @ 2.50GHz
+OpenJDK 64-Bit Server VM 1.8.0_232-b09 on Linux 4.4.0-171-generic
+Intel(R) Xeon(R) CPU @ 2.30GHz
 TPCDS Snappy:                             Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
 ------------------------------------------------------------------------------------------------------------------------
-q16                                                1658           1707          69          0.0      Infinity       1.0X
+q16 - without PullOutGroupingExpressions          21564          30267        1981          0.0      Infinity       1.0X
+q16 - with PullOutGroupingExpressions             21725          21859         189          0.0      Infinity       1.0X
 
-OpenJDK 64-Bit Server VM 1.8.0_232-8u232-b09-0ubuntu1~18.04.1-b09 on Linux 4.15.0-1044-aws
-Intel(R) Xeon(R) CPU E5-2670 v2 @ 2.50GHz
+OpenJDK 64-Bit Server VM 1.8.0_232-b09 on Linux 4.4.0-171-generic
+Intel(R) Xeon(R) CPU @ 2.30GHz
 TPCDS Snappy:                             Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
 ------------------------------------------------------------------------------------------------------------------------
-q17                                                2905           2979         104          0.0      Infinity       1.0X
+q17 - without PullOutGroupingExpressions          51092          51422         467          0.0      Infinity       1.0X
+q17 - with PullOutGroupingExpressions             50943          51407         656          0.0      Infinity       1.0X
 
-OpenJDK 64-Bit Server VM 1.8.0_232-8u232-b09-0ubuntu1~18.04.1-b09 on Linux 4.15.0-1044-aws
-Intel(R) Xeon(R) CPU E5-2670 v2 @ 2.50GHz
+OpenJDK 64-Bit Server VM 1.8.0_232-b09 on Linux 4.4.0-171-generic
+Intel(R) Xeon(R) CPU @ 2.30GHz
 TPCDS Snappy:                             Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
 ------------------------------------------------------------------------------------------------------------------------
-q18                                                2272           2423         213          0.0      Infinity       1.0X
+q18 - without PullOutGroupingExpressions           4594           4613          28          0.0      Infinity       1.0X
+q18 - with PullOutGroupingExpressions              4010           4025          22          0.0      Infinity       1.1X
 
-OpenJDK 64-Bit Server VM 1.8.0_232-8u232-b09-0ubuntu1~18.04.1-b09 on Linux 4.15.0-1044-aws
-Intel(R) Xeon(R) CPU E5-2670 v2 @ 2.50GHz
+OpenJDK 64-Bit Server VM 1.8.0_232-b09 on Linux 4.4.0-171-generic
+Intel(R) Xeon(R) CPU @ 2.30GHz
 TPCDS Snappy:                             Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
 ------------------------------------------------------------------------------------------------------------------------
-q19                                                 707            730          35          0.0      Infinity       1.0X
+q19 - without PullOutGroupingExpressions            679            732          49          0.0      Infinity       1.0X
+q19 - with PullOutGroupingExpressions               706            756          44          0.0      Infinity       1.0X
 
-OpenJDK 64-Bit Server VM 1.8.0_232-8u232-b09-0ubuntu1~18.04.1-b09 on Linux 4.15.0-1044-aws
-Intel(R) Xeon(R) CPU E5-2670 v2 @ 2.50GHz
+OpenJDK 64-Bit Server VM 1.8.0_232-b09 on Linux 4.4.0-171-generic
+Intel(R) Xeon(R) CPU @ 2.30GHz
 TPCDS Snappy:                             Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
 ------------------------------------------------------------------------------------------------------------------------
-q20                                                 449            506          42          0.0      Infinity       1.0X
+q20 - without PullOutGroupingExpressions            573            591          25          0.0      Infinity       1.0X
+q20 - with PullOutGroupingExpressions               540            563          23          0.0      Infinity       1.1X
 
-OpenJDK 64-Bit Server VM 1.8.0_232-8u232-b09-0ubuntu1~18.04.1-b09 on Linux 4.15.0-1044-aws
-Intel(R) Xeon(R) CPU E5-2670 v2 @ 2.50GHz
+OpenJDK 64-Bit Server VM 1.8.0_232-b09 on Linux 4.4.0-171-generic
+Intel(R) Xeon(R) CPU @ 2.30GHz
 TPCDS Snappy:                             Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
 ------------------------------------------------------------------------------------------------------------------------
-q21                                                1154           1167          19          0.0      Infinity       1.0X
+q21 - without PullOutGroupingExpressions            502            522          38          0.0      Infinity       1.0X
+q21 - with PullOutGroupingExpressions               483            530          53          0.0      Infinity       1.0X
 
-OpenJDK 64-Bit Server VM 1.8.0_232-8u232-b09-0ubuntu1~18.04.1-b09 on Linux 4.15.0-1044-aws
-Intel(R) Xeon(R) CPU E5-2670 v2 @ 2.50GHz
+OpenJDK 64-Bit Server VM 1.8.0_232-b09 on Linux 4.4.0-171-generic
+Intel(R) Xeon(R) CPU @ 2.30GHz
 TPCDS Snappy:                             Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
 ------------------------------------------------------------------------------------------------------------------------
-q22                                                4056           4476         594          0.0      Infinity       1.0X
+q22 - without PullOutGroupingExpressions          19705          19821         164          0.0      Infinity       1.0X
+q22 - with PullOutGroupingExpressions             19785          19807          31          0.0      Infinity       1.0X
 
-OpenJDK 64-Bit Server VM 1.8.0_232-8u232-b09-0ubuntu1~18.04.1-b09 on Linux 4.15.0-1044-aws
-Intel(R) Xeon(R) CPU E5-2670 v2 @ 2.50GHz
-TPCDS Snappy:                             Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
-------------------------------------------------------------------------------------------------------------------------
-q23a                                              14557          14780         317          0.0      Infinity       1.0X
+OpenJDK 64-Bit Server VM 1.8.0_232-b09 on Linux 4.4.0-171-generic
+Intel(R) Xeon(R) CPU @ 2.30GHz
+TPCDS Snappy:                              Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
+-------------------------------------------------------------------------------------------------------------------------
+q23a - without PullOutGroupingExpressions          98853          99037         261          0.0      Infinity       1.0X
+q23a - with PullOutGroupingExpressions             91766          94486         NaN          0.0      Infinity       1.1X
 
-OpenJDK 64-Bit Server VM 1.8.0_232-8u232-b09-0ubuntu1~18.04.1-b09 on Linux 4.15.0-1044-aws
-Intel(R) Xeon(R) CPU E5-2670 v2 @ 2.50GHz
-TPCDS Snappy:                             Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
-------------------------------------------------------------------------------------------------------------------------
-q23b                                              17887          18451         799          0.0      Infinity       1.0X
+OpenJDK 64-Bit Server VM 1.8.0_232-b09 on Linux 4.4.0-171-generic
+Intel(R) Xeon(R) CPU @ 2.30GHz
+TPCDS Snappy:                              Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
+-------------------------------------------------------------------------------------------------------------------------
+q23b - without PullOutGroupingExpressions         102413         102586         245          0.0      Infinity       1.0X
+q23b - with PullOutGroupingExpressions             95796          95992         276          0.0      Infinity       1.1X
 
-OpenJDK 64-Bit Server VM 1.8.0_232-8u232-b09-0ubuntu1~18.04.1-b09 on Linux 4.15.0-1044-aws
-Intel(R) Xeon(R) CPU E5-2670 v2 @ 2.50GHz
-TPCDS Snappy:                             Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
-------------------------------------------------------------------------------------------------------------------------
-q24a                                               2930           3193         372          0.0      Infinity       1.0X
+OpenJDK 64-Bit Server VM 1.8.0_232-b09 on Linux 4.4.0-171-generic
+Intel(R) Xeon(R) CPU @ 2.30GHz
+TPCDS Snappy:                              Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
+-------------------------------------------------------------------------------------------------------------------------
+q24a - without PullOutGroupingExpressions          27124          27144          29          0.0      Infinity       1.0X
+q24a - with PullOutGroupingExpressions             26678          26774         136          0.0      Infinity       1.0X
 
-OpenJDK 64-Bit Server VM 1.8.0_232-8u232-b09-0ubuntu1~18.04.1-b09 on Linux 4.15.0-1044-aws
-Intel(R) Xeon(R) CPU E5-2670 v2 @ 2.50GHz
-TPCDS Snappy:                             Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
-------------------------------------------------------------------------------------------------------------------------
-q24b                                               2760           2958         280          0.0      Infinity       1.0X
+OpenJDK 64-Bit Server VM 1.8.0_232-b09 on Linux 4.4.0-171-generic
+Intel(R) Xeon(R) CPU @ 2.30GHz
+TPCDS Snappy:                              Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
+-------------------------------------------------------------------------------------------------------------------------
+q24b - without PullOutGroupingExpressions          26817          27097         395          0.0      Infinity       1.0X
+q24b - with PullOutGroupingExpressions             26669          26830         227          0.0      Infinity       1.0X
 
-OpenJDK 64-Bit Server VM 1.8.0_232-8u232-b09-0ubuntu1~18.04.1-b09 on Linux 4.15.0-1044-aws
-Intel(R) Xeon(R) CPU E5-2670 v2 @ 2.50GHz
+OpenJDK 64-Bit Server VM 1.8.0_232-b09 on Linux 4.4.0-171-generic
+Intel(R) Xeon(R) CPU @ 2.30GHz
 TPCDS Snappy:                             Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
 ------------------------------------------------------------------------------------------------------------------------
-q25                                                2913           3150         335          0.0      Infinity       1.0X
+q25 - without PullOutGroupingExpressions          50165          50486         454          0.0      Infinity       1.0X
+q25 - with PullOutGroupingExpressions             50187          50423         334          0.0      Infinity       1.0X
 
-OpenJDK 64-Bit Server VM 1.8.0_232-8u232-b09-0ubuntu1~18.04.1-b09 on Linux 4.15.0-1044-aws
-Intel(R) Xeon(R) CPU E5-2670 v2 @ 2.50GHz
+OpenJDK 64-Bit Server VM 1.8.0_232-b09 on Linux 4.4.0-171-generic
+Intel(R) Xeon(R) CPU @ 2.30GHz
 TPCDS Snappy:                             Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
 ------------------------------------------------------------------------------------------------------------------------
-q26                                                 810            819          15          0.0      Infinity       1.0X
+q26 - without PullOutGroupingExpressions           1919           1974          77          0.0      Infinity       1.0X
+q26 - with PullOutGroupingExpressions              1920           1966          66          0.0      Infinity       1.0X
 
-OpenJDK 64-Bit Server VM 1.8.0_232-8u232-b09-0ubuntu1~18.04.1-b09 on Linux 4.15.0-1044-aws
-Intel(R) Xeon(R) CPU E5-2670 v2 @ 2.50GHz
+OpenJDK 64-Bit Server VM 1.8.0_232-b09 on Linux 4.4.0-171-generic
+Intel(R) Xeon(R) CPU @ 2.30GHz
 TPCDS Snappy:                             Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
 ------------------------------------------------------------------------------------------------------------------------
-q27                                                1171           1217          65          0.0      Infinity       1.0X
+q27 - without PullOutGroupingExpressions           2449           2485          51          0.0      Infinity       1.0X
+q27 - with PullOutGroupingExpressions              2413           2432          27          0.0      Infinity       1.0X
 
-OpenJDK 64-Bit Server VM 1.8.0_232-8u232-b09-0ubuntu1~18.04.1-b09 on Linux 4.15.0-1044-aws
-Intel(R) Xeon(R) CPU E5-2670 v2 @ 2.50GHz
+OpenJDK 64-Bit Server VM 1.8.0_232-b09 on Linux 4.4.0-171-generic
+Intel(R) Xeon(R) CPU @ 2.30GHz
 TPCDS Snappy:                             Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
 ------------------------------------------------------------------------------------------------------------------------
-q28                                                3212           3273          86          0.0      Infinity       1.0X
+q28 - without PullOutGroupingExpressions          45173          45223          70          0.0      Infinity       1.0X
+q28 - with PullOutGroupingExpressions             44547          44710         231          0.0      Infinity       1.0X
 
-OpenJDK 64-Bit Server VM 1.8.0_232-8u232-b09-0ubuntu1~18.04.1-b09 on Linux 4.15.0-1044-aws
-Intel(R) Xeon(R) CPU E5-2670 v2 @ 2.50GHz
+OpenJDK 64-Bit Server VM 1.8.0_232-b09 on Linux 4.4.0-171-generic
+Intel(R) Xeon(R) CPU @ 2.30GHz
 TPCDS Snappy:                             Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
 ------------------------------------------------------------------------------------------------------------------------
-q29                                                2917           3107         270          0.0      Infinity       1.0X
+q29 - without PullOutGroupingExpressions          50572          51005         612          0.0      Infinity       1.0X
+q29 - with PullOutGroupingExpressions             50446          50661         304          0.0      Infinity       1.0X
 
-OpenJDK 64-Bit Server VM 1.8.0_232-8u232-b09-0ubuntu1~18.04.1-b09 on Linux 4.15.0-1044-aws
-Intel(R) Xeon(R) CPU E5-2670 v2 @ 2.50GHz
+OpenJDK 64-Bit Server VM 1.8.0_232-b09 on Linux 4.4.0-171-generic
+Intel(R) Xeon(R) CPU @ 2.30GHz
 TPCDS Snappy:                             Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
 ------------------------------------------------------------------------------------------------------------------------
-q30                                                1248           1277          40          0.0      Infinity       1.0X
+q30 - without PullOutGroupingExpressions           3970           4049         112          0.0      Infinity       1.0X
+q30 - with PullOutGroupingExpressions              3835           3851          23          0.0      Infinity       1.0X
 
-OpenJDK 64-Bit Server VM 1.8.0_232-8u232-b09-0ubuntu1~18.04.1-b09 on Linux 4.15.0-1044-aws
-Intel(R) Xeon(R) CPU E5-2670 v2 @ 2.50GHz
+OpenJDK 64-Bit Server VM 1.8.0_232-b09 on Linux 4.4.0-171-generic
+Intel(R) Xeon(R) CPU @ 2.30GHz
 TPCDS Snappy:                             Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
 ------------------------------------------------------------------------------------------------------------------------
-q31                                                1924           2091         237          0.0      Infinity       1.0X
+q31 - without PullOutGroupingExpressions           3380           3415          49          0.0      Infinity       1.0X
+q31 - with PullOutGroupingExpressions              3313           3528         304          0.0      Infinity       1.0X
 
-OpenJDK 64-Bit Server VM 1.8.0_232-8u232-b09-0ubuntu1~18.04.1-b09 on Linux 4.15.0-1044-aws
-Intel(R) Xeon(R) CPU E5-2670 v2 @ 2.50GHz
+OpenJDK 64-Bit Server VM 1.8.0_232-b09 on Linux 4.4.0-171-generic
+Intel(R) Xeon(R) CPU @ 2.30GHz
 TPCDS Snappy:                             Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
 ------------------------------------------------------------------------------------------------------------------------
-q32                                                 559            597          26          0.0      Infinity       1.0X
+q32 - without PullOutGroupingExpressions            771            841          73          0.0      Infinity       1.0X
+q32 - with PullOutGroupingExpressions               797            811          23          0.0      Infinity       1.0X
 
-OpenJDK 64-Bit Server VM 1.8.0_232-8u232-b09-0ubuntu1~18.04.1-b09 on Linux 4.15.0-1044-aws
-Intel(R) Xeon(R) CPU E5-2670 v2 @ 2.50GHz
+OpenJDK 64-Bit Server VM 1.8.0_232-b09 on Linux 4.4.0-171-generic
+Intel(R) Xeon(R) CPU @ 2.30GHz
 TPCDS Snappy:                             Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
 ------------------------------------------------------------------------------------------------------------------------
-q33                                                1314           1325          16          0.0      Infinity       1.0X
+q33 - without PullOutGroupingExpressions           1193           1204          15          0.0      Infinity       1.0X
+q33 - with PullOutGroupingExpressions              1168           1185          24          0.0      Infinity       1.0X
 
-OpenJDK 64-Bit Server VM 1.8.0_232-8u232-b09-0ubuntu1~18.04.1-b09 on Linux 4.15.0-1044-aws
-Intel(R) Xeon(R) CPU E5-2670 v2 @ 2.50GHz
+OpenJDK 64-Bit Server VM 1.8.0_232-b09 on Linux 4.4.0-171-generic
+Intel(R) Xeon(R) CPU @ 2.30GHz
 TPCDS Snappy:                             Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
 ------------------------------------------------------------------------------------------------------------------------
-q34                                                 761            773          11          0.0      Infinity       1.0X
+q34 - without PullOutGroupingExpressions           1489           1515          37          0.0      Infinity       1.0X
+q34 - with PullOutGroupingExpressions              1569           1609          56          0.0      Infinity       0.9X
 
-OpenJDK 64-Bit Server VM 1.8.0_232-8u232-b09-0ubuntu1~18.04.1-b09 on Linux 4.15.0-1044-aws
-Intel(R) Xeon(R) CPU E5-2670 v2 @ 2.50GHz
+OpenJDK 64-Bit Server VM 1.8.0_232-b09 on Linux 4.4.0-171-generic
+Intel(R) Xeon(R) CPU @ 2.30GHz
 TPCDS Snappy:                             Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
 ------------------------------------------------------------------------------------------------------------------------
-q35                                                4967           4984          24          0.0      Infinity       1.0X
+q35 - without PullOutGroupingExpressions           4765           4868         145          0.0      Infinity       1.0X
+q35 - with PullOutGroupingExpressions              4951           5169         308          0.0      Infinity       1.0X
 
-OpenJDK 64-Bit Server VM 1.8.0_232-8u232-b09-0ubuntu1~18.04.1-b09 on Linux 4.15.0-1044-aws
-Intel(R) Xeon(R) CPU E5-2670 v2 @ 2.50GHz
+OpenJDK 64-Bit Server VM 1.8.0_232-b09 on Linux 4.4.0-171-generic
+Intel(R) Xeon(R) CPU @ 2.30GHz
 TPCDS Snappy:                             Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
 ------------------------------------------------------------------------------------------------------------------------
-q36                                                1109           1116           9          0.0      Infinity       1.0X
+q36 - without PullOutGroupingExpressions           3459           3515          79          0.0      Infinity       1.0X
+q36 - with PullOutGroupingExpressions              3379           3420          57          0.0      Infinity       1.0X
 
-OpenJDK 64-Bit Server VM 1.8.0_232-8u232-b09-0ubuntu1~18.04.1-b09 on Linux 4.15.0-1044-aws
-Intel(R) Xeon(R) CPU E5-2670 v2 @ 2.50GHz
+OpenJDK 64-Bit Server VM 1.8.0_232-b09 on Linux 4.4.0-171-generic
+Intel(R) Xeon(R) CPU @ 2.30GHz
 TPCDS Snappy:                             Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
 ------------------------------------------------------------------------------------------------------------------------
-q37                                                1200           1234          48          0.0      Infinity       1.0X
+q37 - without PullOutGroupingExpressions           7700           7746          65          0.0      Infinity       1.0X
+q37 - with PullOutGroupingExpressions              7638           7668          44          0.0      Infinity       1.0X
 
-OpenJDK 64-Bit Server VM 1.8.0_232-8u232-b09-0ubuntu1~18.04.1-b09 on Linux 4.15.0-1044-aws
-Intel(R) Xeon(R) CPU E5-2670 v2 @ 2.50GHz
+OpenJDK 64-Bit Server VM 1.8.0_232-b09 on Linux 4.4.0-171-generic
+Intel(R) Xeon(R) CPU @ 2.30GHz
 TPCDS Snappy:                             Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
 ------------------------------------------------------------------------------------------------------------------------
-q38                                                1898           2035         194          0.0      Infinity       1.0X
+q38 - without PullOutGroupingExpressions           5957           5960           5          0.0      Infinity       1.0X
+q38 - with PullOutGroupingExpressions              6019           6048          42          0.0      Infinity       1.0X
 
-OpenJDK 64-Bit Server VM 1.8.0_232-8u232-b09-0ubuntu1~18.04.1-b09 on Linux 4.15.0-1044-aws
-Intel(R) Xeon(R) CPU E5-2670 v2 @ 2.50GHz
-TPCDS Snappy:                             Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
-------------------------------------------------------------------------------------------------------------------------
-q39a                                               2252           2362         155          0.0      Infinity       1.0X
+OpenJDK 64-Bit Server VM 1.8.0_232-b09 on Linux 4.4.0-171-generic
+Intel(R) Xeon(R) CPU @ 2.30GHz
+TPCDS Snappy:                              Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
+-------------------------------------------------------------------------------------------------------------------------
+q39a - without PullOutGroupingExpressions           2231           2256          35          0.0      Infinity       1.0X
+q39a - with PullOutGroupingExpressions              2069           2094          36          0.0      Infinity       1.1X
 
-OpenJDK 64-Bit Server VM 1.8.0_232-8u232-b09-0ubuntu1~18.04.1-b09 on Linux 4.15.0-1044-aws
-Intel(R) Xeon(R) CPU E5-2670 v2 @ 2.50GHz
-TPCDS Snappy:                             Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
-------------------------------------------------------------------------------------------------------------------------
-q39b                                               2142           2248         150          0.0      Infinity       1.0X
+OpenJDK 64-Bit Server VM 1.8.0_232-b09 on Linux 4.4.0-171-generic
+Intel(R) Xeon(R) CPU @ 2.30GHz
+TPCDS Snappy:                              Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
+-------------------------------------------------------------------------------------------------------------------------
+q39b - without PullOutGroupingExpressions           2125           2165          56          0.0      Infinity       1.0X
+q39b - with PullOutGroupingExpressions              2156           2168          17          0.0      Infinity       1.0X
 
-OpenJDK 64-Bit Server VM 1.8.0_232-8u232-b09-0ubuntu1~18.04.1-b09 on Linux 4.15.0-1044-aws
-Intel(R) Xeon(R) CPU E5-2670 v2 @ 2.50GHz
+OpenJDK 64-Bit Server VM 1.8.0_232-b09 on Linux 4.4.0-171-generic
+Intel(R) Xeon(R) CPU @ 2.30GHz
 TPCDS Snappy:                             Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
 ------------------------------------------------------------------------------------------------------------------------
-q40                                                 654            687          57          0.0      Infinity       1.0X
+q40 - without PullOutGroupingExpressions           5254           5339         121          0.0      Infinity       1.0X
+q40 - with PullOutGroupingExpressions              5024           5083          83          0.0      Infinity       1.0X
 
-OpenJDK 64-Bit Server VM 1.8.0_232-8u232-b09-0ubuntu1~18.04.1-b09 on Linux 4.15.0-1044-aws
-Intel(R) Xeon(R) CPU E5-2670 v2 @ 2.50GHz
+OpenJDK 64-Bit Server VM 1.8.0_232-b09 on Linux 4.4.0-171-generic
+Intel(R) Xeon(R) CPU @ 2.30GHz
 TPCDS Snappy:                             Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
 ------------------------------------------------------------------------------------------------------------------------
-q41                                                 383            448          51          0.0      Infinity       1.0X
+q41 - without PullOutGroupingExpressions            302            348          50          0.0      Infinity       1.0X
+q41 - with PullOutGroupingExpressions               301            357          50          0.0      Infinity       1.0X
 
-OpenJDK 64-Bit Server VM 1.8.0_232-8u232-b09-0ubuntu1~18.04.1-b09 on Linux 4.15.0-1044-aws
-Intel(R) Xeon(R) CPU E5-2670 v2 @ 2.50GHz
+OpenJDK 64-Bit Server VM 1.8.0_232-b09 on Linux 4.4.0-171-generic
+Intel(R) Xeon(R) CPU @ 2.30GHz
 TPCDS Snappy:                             Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
 ------------------------------------------------------------------------------------------------------------------------
-q42                                                 358            383          21          0.0      Infinity       1.0X
+q42 - without PullOutGroupingExpressions            355            371          16          0.0      Infinity       1.0X
+q42 - with PullOutGroupingExpressions               353            370          16          0.0      Infinity       1.0X
 
-OpenJDK 64-Bit Server VM 1.8.0_232-8u232-b09-0ubuntu1~18.04.1-b09 on Linux 4.15.0-1044-aws
-Intel(R) Xeon(R) CPU E5-2670 v2 @ 2.50GHz
+OpenJDK 64-Bit Server VM 1.8.0_232-b09 on Linux 4.4.0-171-generic
+Intel(R) Xeon(R) CPU @ 2.30GHz
 TPCDS Snappy:                             Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
 ------------------------------------------------------------------------------------------------------------------------
-q43                                                 577            619          37          0.0      Infinity       1.0X
+q43 - without PullOutGroupingExpressions           2120           2144          34          0.0      Infinity       1.0X
+q43 - with PullOutGroupingExpressions              2181           2188          10          0.0      Infinity       1.0X
 
-OpenJDK 64-Bit Server VM 1.8.0_232-8u232-b09-0ubuntu1~18.04.1-b09 on Linux 4.15.0-1044-aws
-Intel(R) Xeon(R) CPU E5-2670 v2 @ 2.50GHz
+OpenJDK 64-Bit Server VM 1.8.0_232-b09 on Linux 4.4.0-171-generic
+Intel(R) Xeon(R) CPU @ 2.30GHz
 TPCDS Snappy:                             Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
 ------------------------------------------------------------------------------------------------------------------------
-q44                                                1188           1234          65          0.0      Infinity       1.0X
+q44 - without PullOutGroupingExpressions          11710          12050         481          0.0      Infinity       1.0X
+q44 - with PullOutGroupingExpressions             11458          11516          82          0.0      Infinity       1.0X
 
-OpenJDK 64-Bit Server VM 1.8.0_232-8u232-b09-0ubuntu1~18.04.1-b09 on Linux 4.15.0-1044-aws
-Intel(R) Xeon(R) CPU E5-2670 v2 @ 2.50GHz
+OpenJDK 64-Bit Server VM 1.8.0_232-b09 on Linux 4.4.0-171-generic
+Intel(R) Xeon(R) CPU @ 2.30GHz
 TPCDS Snappy:                             Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
 ------------------------------------------------------------------------------------------------------------------------
-q45                                                 529            562          25          0.0      Infinity       1.0X
+q45 - without PullOutGroupingExpressions            963           1034         101          0.0      Infinity       1.0X
+q45 - with PullOutGroupingExpressions               919            960          46          0.0      Infinity       1.0X
 
-OpenJDK 64-Bit Server VM 1.8.0_232-8u232-b09-0ubuntu1~18.04.1-b09 on Linux 4.15.0-1044-aws
-Intel(R) Xeon(R) CPU E5-2670 v2 @ 2.50GHz
+OpenJDK 64-Bit Server VM 1.8.0_232-b09 on Linux 4.4.0-171-generic
+Intel(R) Xeon(R) CPU @ 2.30GHz
 TPCDS Snappy:                             Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
 ------------------------------------------------------------------------------------------------------------------------
-q46                                                 993           1023          42          0.0      Infinity       1.0X
+q46 - without PullOutGroupingExpressions           2028           2193         234          0.0      Infinity       1.0X
+q46 - with PullOutGroupingExpressions              2023           2073          70          0.0      Infinity       1.0X
 
-OpenJDK 64-Bit Server VM 1.8.0_232-8u232-b09-0ubuntu1~18.04.1-b09 on Linux 4.15.0-1044-aws
-Intel(R) Xeon(R) CPU E5-2670 v2 @ 2.50GHz
+OpenJDK 64-Bit Server VM 1.8.0_232-b09 on Linux 4.4.0-171-generic
+Intel(R) Xeon(R) CPU @ 2.30GHz
 TPCDS Snappy:                             Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
 ------------------------------------------------------------------------------------------------------------------------
-q47                                                4547           4741         274          0.0      Infinity       1.0X
+q47 - without PullOutGroupingExpressions          18373          18834         652          0.0      Infinity       1.0X
+q47 - with PullOutGroupingExpressions             18215          18560         487          0.0      Infinity       1.0X
 
-OpenJDK 64-Bit Server VM 1.8.0_232-8u232-b09-0ubuntu1~18.04.1-b09 on Linux 4.15.0-1044-aws
-Intel(R) Xeon(R) CPU E5-2670 v2 @ 2.50GHz
+OpenJDK 64-Bit Server VM 1.8.0_232-b09 on Linux 4.4.0-171-generic
+Intel(R) Xeon(R) CPU @ 2.30GHz
 TPCDS Snappy:                             Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
 ------------------------------------------------------------------------------------------------------------------------
-q48                                                2303           2426         174          0.0      Infinity       1.0X
+q48 - without PullOutGroupingExpressions           2491           2552          86          0.0      Infinity       1.0X
+q48 - with PullOutGroupingExpressions              2517           2517           0          0.0      Infinity       1.0X
 
-OpenJDK 64-Bit Server VM 1.8.0_232-8u232-b09-0ubuntu1~18.04.1-b09 on Linux 4.15.0-1044-aws
-Intel(R) Xeon(R) CPU E5-2670 v2 @ 2.50GHz
+OpenJDK 64-Bit Server VM 1.8.0_232-b09 on Linux 4.4.0-171-generic
+Intel(R) Xeon(R) CPU @ 2.30GHz
 TPCDS Snappy:                             Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
 ------------------------------------------------------------------------------------------------------------------------
-q49                                                2080           2086           9          0.0      Infinity       1.0X
+q49 - without PullOutGroupingExpressions          14744          15129         544          0.0      Infinity       1.0X
+q49 - with PullOutGroupingExpressions             14762          14804          60          0.0      Infinity       1.0X
 
-OpenJDK 64-Bit Server VM 1.8.0_232-8u232-b09-0ubuntu1~18.04.1-b09 on Linux 4.15.0-1044-aws
-Intel(R) Xeon(R) CPU E5-2670 v2 @ 2.50GHz
+OpenJDK 64-Bit Server VM 1.8.0_232-b09 on Linux 4.4.0-171-generic
+Intel(R) Xeon(R) CPU @ 2.30GHz
 TPCDS Snappy:                             Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
 ------------------------------------------------------------------------------------------------------------------------
-q50                                                1371           1388          24          0.0      Infinity       1.0X
+q50 - without PullOutGroupingExpressions          25688          26333         913          0.0      Infinity       1.0X
+q50 - with PullOutGroupingExpressions             25439          25443           6          0.0      Infinity       1.0X
 
-OpenJDK 64-Bit Server VM 1.8.0_232-8u232-b09-0ubuntu1~18.04.1-b09 on Linux 4.15.0-1044-aws
-Intel(R) Xeon(R) CPU E5-2670 v2 @ 2.50GHz
+OpenJDK 64-Bit Server VM 1.8.0_232-b09 on Linux 4.4.0-171-generic
+Intel(R) Xeon(R) CPU @ 2.30GHz
 TPCDS Snappy:                             Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
 ------------------------------------------------------------------------------------------------------------------------
-q51                                                4373           4513         197          0.0      Infinity       1.0X
+q51 - without PullOutGroupingExpressions          23340          23480         198          0.0      Infinity       1.0X
+q51 - with PullOutGroupingExpressions             22852          22868          23          0.0      Infinity       1.0X
 
-OpenJDK 64-Bit Server VM 1.8.0_232-8u232-b09-0ubuntu1~18.04.1-b09 on Linux 4.15.0-1044-aws
-Intel(R) Xeon(R) CPU E5-2670 v2 @ 2.50GHz
+OpenJDK 64-Bit Server VM 1.8.0_232-b09 on Linux 4.4.0-171-generic
+Intel(R) Xeon(R) CPU @ 2.30GHz
 TPCDS Snappy:                             Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
 ------------------------------------------------------------------------------------------------------------------------
-q52                                                 360            379          28          0.0      Infinity       1.0X
+q52 - without PullOutGroupingExpressions            360            381          26          0.0      Infinity       1.0X
+q52 - with PullOutGroupingExpressions               360            370          11          0.0      Infinity       1.0X
 
-OpenJDK 64-Bit Server VM 1.8.0_232-8u232-b09-0ubuntu1~18.04.1-b09 on Linux 4.15.0-1044-aws
-Intel(R) Xeon(R) CPU E5-2670 v2 @ 2.50GHz
+OpenJDK 64-Bit Server VM 1.8.0_232-b09 on Linux 4.4.0-171-generic
+Intel(R) Xeon(R) CPU @ 2.30GHz
 TPCDS Snappy:                             Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
 ------------------------------------------------------------------------------------------------------------------------
-q53                                                 661            677          23          0.0      Infinity       1.0X
+q53 - without PullOutGroupingExpressions           1560           1573          19          0.0      Infinity       1.0X
+q53 - with PullOutGroupingExpressions              1460           1465           7          0.0      Infinity       1.1X
 
-OpenJDK 64-Bit Server VM 1.8.0_232-8u232-b09-0ubuntu1~18.04.1-b09 on Linux 4.15.0-1044-aws
-Intel(R) Xeon(R) CPU E5-2670 v2 @ 2.50GHz
+OpenJDK 64-Bit Server VM 1.8.0_232-b09 on Linux 4.4.0-171-generic
+Intel(R) Xeon(R) CPU @ 2.30GHz
 TPCDS Snappy:                             Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
 ------------------------------------------------------------------------------------------------------------------------
-q54                                                3454           3611         222          0.0      Infinity       1.0X
+q54 - without PullOutGroupingExpressions          10570          10630          85          0.0      Infinity       1.0X
+q54 - with PullOutGroupingExpressions             10666          10688          32          0.0      Infinity       1.0X
 
-OpenJDK 64-Bit Server VM 1.8.0_232-8u232-b09-0ubuntu1~18.04.1-b09 on Linux 4.15.0-1044-aws
-Intel(R) Xeon(R) CPU E5-2670 v2 @ 2.50GHz
+OpenJDK 64-Bit Server VM 1.8.0_232-b09 on Linux 4.4.0-171-generic
+Intel(R) Xeon(R) CPU @ 2.30GHz
 TPCDS Snappy:                             Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
 ------------------------------------------------------------------------------------------------------------------------
-q55                                                 360            383          37          0.0      Infinity       1.0X
+q55 - without PullOutGroupingExpressions            334            360          30          0.0      Infinity       1.0X
+q55 - with PullOutGroupingExpressions               341            373          45          0.0      Infinity       1.0X
 
-OpenJDK 64-Bit Server VM 1.8.0_232-8u232-b09-0ubuntu1~18.04.1-b09 on Linux 4.15.0-1044-aws
-Intel(R) Xeon(R) CPU E5-2670 v2 @ 2.50GHz
+OpenJDK 64-Bit Server VM 1.8.0_232-b09 on Linux 4.4.0-171-generic
+Intel(R) Xeon(R) CPU @ 2.30GHz
 TPCDS Snappy:                             Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
 ------------------------------------------------------------------------------------------------------------------------
-q56                                                1350           1388          53          0.0      Infinity       1.0X
+q56 - without PullOutGroupingExpressions           1179           1262         116          0.0      Infinity       1.0X
+q56 - with PullOutGroupingExpressions              1169           1178          13          0.0      Infinity       1.0X
 
-OpenJDK 64-Bit Server VM 1.8.0_232-8u232-b09-0ubuntu1~18.04.1-b09 on Linux 4.15.0-1044-aws
-Intel(R) Xeon(R) CPU E5-2670 v2 @ 2.50GHz
+OpenJDK 64-Bit Server VM 1.8.0_232-b09 on Linux 4.4.0-171-generic
+Intel(R) Xeon(R) CPU @ 2.30GHz
 TPCDS Snappy:                             Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
 ------------------------------------------------------------------------------------------------------------------------
-q57                                                2910           3156         349          0.0      Infinity       1.0X
+q57 - without PullOutGroupingExpressions          12898          13026         180          0.0      Infinity       1.0X
+q57 - with PullOutGroupingExpressions             12728          13033         432          0.0      Infinity       1.0X
 
-OpenJDK 64-Bit Server VM 1.8.0_232-8u232-b09-0ubuntu1~18.04.1-b09 on Linux 4.15.0-1044-aws
-Intel(R) Xeon(R) CPU E5-2670 v2 @ 2.50GHz
+OpenJDK 64-Bit Server VM 1.8.0_232-b09 on Linux 4.4.0-171-generic
+Intel(R) Xeon(R) CPU @ 2.30GHz
 TPCDS Snappy:                             Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
 ------------------------------------------------------------------------------------------------------------------------
-q58                                                1733           1762          42          0.0      Infinity       1.0X
+q58 - without PullOutGroupingExpressions          16819          17049         325          0.0      Infinity       1.0X
+q58 - with PullOutGroupingExpressions             16855          16936         115          0.0      Infinity       1.0X
 
-OpenJDK 64-Bit Server VM 1.8.0_232-8u232-b09-0ubuntu1~18.04.1-b09 on Linux 4.15.0-1044-aws
-Intel(R) Xeon(R) CPU E5-2670 v2 @ 2.50GHz
+OpenJDK 64-Bit Server VM 1.8.0_232-b09 on Linux 4.4.0-171-generic
+Intel(R) Xeon(R) CPU @ 2.30GHz
 TPCDS Snappy:                             Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
 ------------------------------------------------------------------------------------------------------------------------
-q59                                                2021           2044          33          0.0      Infinity       1.0X
+q59 - without PullOutGroupingExpressions           8515           8604         125          0.0      Infinity       1.0X
+q59 - with PullOutGroupingExpressions              8294           8416         173          0.0      Infinity       1.0X
 
-OpenJDK 64-Bit Server VM 1.8.0_232-8u232-b09-0ubuntu1~18.04.1-b09 on Linux 4.15.0-1044-aws
-Intel(R) Xeon(R) CPU E5-2670 v2 @ 2.50GHz
+OpenJDK 64-Bit Server VM 1.8.0_232-b09 on Linux 4.4.0-171-generic
+Intel(R) Xeon(R) CPU @ 2.30GHz
 TPCDS Snappy:                             Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
 ------------------------------------------------------------------------------------------------------------------------
-q60                                                1356           1404          67          0.0      Infinity       1.0X
+q60 - without PullOutGroupingExpressions           1235           1276          58          0.0      Infinity       1.0X
+q60 - with PullOutGroupingExpressions              1217           1242          35          0.0      Infinity       1.0X
 
-OpenJDK 64-Bit Server VM 1.8.0_232-8u232-b09-0ubuntu1~18.04.1-b09 on Linux 4.15.0-1044-aws
-Intel(R) Xeon(R) CPU E5-2670 v2 @ 2.50GHz
+OpenJDK 64-Bit Server VM 1.8.0_232-b09 on Linux 4.4.0-171-generic
+Intel(R) Xeon(R) CPU @ 2.30GHz
 TPCDS Snappy:                             Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
 ------------------------------------------------------------------------------------------------------------------------
-q61                                                1290           1292           3          0.0      Infinity       1.0X
+q61 - without PullOutGroupingExpressions            952            968          14          0.0      Infinity       1.0X
+q61 - with PullOutGroupingExpressions               961            981          20          0.0      Infinity       1.0X
 
-OpenJDK 64-Bit Server VM 1.8.0_232-8u232-b09-0ubuntu1~18.04.1-b09 on Linux 4.15.0-1044-aws
-Intel(R) Xeon(R) CPU E5-2670 v2 @ 2.50GHz
+OpenJDK 64-Bit Server VM 1.8.0_232-b09 on Linux 4.4.0-171-generic
+Intel(R) Xeon(R) CPU @ 2.30GHz
 TPCDS Snappy:                             Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
 ------------------------------------------------------------------------------------------------------------------------
-q62                                                 479            506          33          0.0      Infinity       1.0X
+q62 - without PullOutGroupingExpressions           6253           6255           3          0.0      Infinity       1.0X
+q62 - with PullOutGroupingExpressions              6033           6068          51          0.0      Infinity       1.0X
 
-OpenJDK 64-Bit Server VM 1.8.0_232-8u232-b09-0ubuntu1~18.04.1-b09 on Linux 4.15.0-1044-aws
-Intel(R) Xeon(R) CPU E5-2670 v2 @ 2.50GHz
+OpenJDK 64-Bit Server VM 1.8.0_232-b09 on Linux 4.4.0-171-generic
+Intel(R) Xeon(R) CPU @ 2.30GHz
 TPCDS Snappy:                             Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
 ------------------------------------------------------------------------------------------------------------------------
-q63                                                 619            647          20          0.0      Infinity       1.0X
+q63 - without PullOutGroupingExpressions           1539           1544           6          0.0      Infinity       1.0X
+q63 - with PullOutGroupingExpressions              1500           1532          46          0.0      Infinity       1.0X
 
-OpenJDK 64-Bit Server VM 1.8.0_232-8u232-b09-0ubuntu1~18.04.1-b09 on Linux 4.15.0-1044-aws
-Intel(R) Xeon(R) CPU E5-2670 v2 @ 2.50GHz
+OpenJDK 64-Bit Server VM 1.8.0_232-b09 on Linux 4.4.0-171-generic
+Intel(R) Xeon(R) CPU @ 2.30GHz
 TPCDS Snappy:                             Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
 ------------------------------------------------------------------------------------------------------------------------
-q64                                                7745           8352         859          0.0      Infinity       1.0X
+q64 - without PullOutGroupingExpressions          41345          41362          23          0.0      Infinity       1.0X
+q64 - with PullOutGroupingExpressions             39253          40262        1427          0.0      Infinity       1.1X
 
-OpenJDK 64-Bit Server VM 1.8.0_232-8u232-b09-0ubuntu1~18.04.1-b09 on Linux 4.15.0-1044-aws
-Intel(R) Xeon(R) CPU E5-2670 v2 @ 2.50GHz
+OpenJDK 64-Bit Server VM 1.8.0_232-b09 on Linux 4.4.0-171-generic
+Intel(R) Xeon(R) CPU @ 2.30GHz
 TPCDS Snappy:                             Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
 ------------------------------------------------------------------------------------------------------------------------
-q65                                                1307           1337          43          0.0      Infinity       1.0X
+q65 - without PullOutGroupingExpressions          10952          11070         167          0.0      Infinity       1.0X
+q65 - with PullOutGroupingExpressions             10983          11085         144          0.0      Infinity       1.0X
 
-OpenJDK 64-Bit Server VM 1.8.0_232-8u232-b09-0ubuntu1~18.04.1-b09 on Linux 4.15.0-1044-aws
-Intel(R) Xeon(R) CPU E5-2670 v2 @ 2.50GHz
+OpenJDK 64-Bit Server VM 1.8.0_232-b09 on Linux 4.4.0-171-generic
+Intel(R) Xeon(R) CPU @ 2.30GHz
 TPCDS Snappy:                             Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
 ------------------------------------------------------------------------------------------------------------------------
-q66                                                1879           2128         352          0.0      Infinity       1.0X
+q66 - without PullOutGroupingExpressions           4603           4666          89          0.0      Infinity       1.0X
+q66 - with PullOutGroupingExpressions              4550           4588          53          0.0      Infinity       1.0X
 
-OpenJDK 64-Bit Server VM 1.8.0_232-8u232-b09-0ubuntu1~18.04.1-b09 on Linux 4.15.0-1044-aws
-Intel(R) Xeon(R) CPU E5-2670 v2 @ 2.50GHz
+OpenJDK 64-Bit Server VM 1.8.0_232-b09 on Linux 4.4.0-171-generic
+Intel(R) Xeon(R) CPU @ 2.30GHz
 TPCDS Snappy:                             Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
 ------------------------------------------------------------------------------------------------------------------------
-q67                                                9682           9703          29          0.0      Infinity       1.0X
+q67 - without PullOutGroupingExpressions          64223          64367         204          0.0      Infinity       1.0X
+q67 - with PullOutGroupingExpressions             64274          65478        1703          0.0      Infinity       1.0X
 
-OpenJDK 64-Bit Server VM 1.8.0_232-8u232-b09-0ubuntu1~18.04.1-b09 on Linux 4.15.0-1044-aws
-Intel(R) Xeon(R) CPU E5-2670 v2 @ 2.50GHz
+OpenJDK 64-Bit Server VM 1.8.0_232-b09 on Linux 4.4.0-171-generic
+Intel(R) Xeon(R) CPU @ 2.30GHz
 TPCDS Snappy:                             Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
 ------------------------------------------------------------------------------------------------------------------------
-q68                                                 928            952          34          0.0      Infinity       1.0X
+q68 - without PullOutGroupingExpressions            931            963          28          0.0      Infinity       1.0X
+q68 - with PullOutGroupingExpressions               956            981          28          0.0      Infinity       1.0X
 
-OpenJDK 64-Bit Server VM 1.8.0_232-8u232-b09-0ubuntu1~18.04.1-b09 on Linux 4.15.0-1044-aws
-Intel(R) Xeon(R) CPU E5-2670 v2 @ 2.50GHz
+OpenJDK 64-Bit Server VM 1.8.0_232-b09 on Linux 4.4.0-171-generic
+Intel(R) Xeon(R) CPU @ 2.30GHz
 TPCDS Snappy:                             Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
 ------------------------------------------------------------------------------------------------------------------------
-q69                                                4261           4330          97          0.0      Infinity       1.0X
+q69 - without PullOutGroupingExpressions           3059           3102          60          0.0      Infinity       1.0X
+q69 - with PullOutGroupingExpressions              3081           3336         361          0.0      Infinity       1.0X
 
-OpenJDK 64-Bit Server VM 1.8.0_232-8u232-b09-0ubuntu1~18.04.1-b09 on Linux 4.15.0-1044-aws
-Intel(R) Xeon(R) CPU E5-2670 v2 @ 2.50GHz
+OpenJDK 64-Bit Server VM 1.8.0_232-b09 on Linux 4.4.0-171-generic
+Intel(R) Xeon(R) CPU @ 2.30GHz
 TPCDS Snappy:                             Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
 ------------------------------------------------------------------------------------------------------------------------
-q70                                                1345           1361          23          0.0      Infinity       1.0X
+q70 - without PullOutGroupingExpressions           4233           4262          40          0.0      Infinity       1.0X
+q70 - with PullOutGroupingExpressions              4303           4312          13          0.0      Infinity       1.0X
 
-OpenJDK 64-Bit Server VM 1.8.0_232-8u232-b09-0ubuntu1~18.04.1-b09 on Linux 4.15.0-1044-aws
-Intel(R) Xeon(R) CPU E5-2670 v2 @ 2.50GHz
+OpenJDK 64-Bit Server VM 1.8.0_232-b09 on Linux 4.4.0-171-generic
+Intel(R) Xeon(R) CPU @ 2.30GHz
 TPCDS Snappy:                             Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
 ------------------------------------------------------------------------------------------------------------------------
-q71                                                1103           1119          22          0.0      Infinity       1.0X
+q71 - without PullOutGroupingExpressions            997           1044          66          0.0      Infinity       1.0X
+q71 - with PullOutGroupingExpressions               969            986          17          0.0      Infinity       1.0X
 
-OpenJDK 64-Bit Server VM 1.8.0_232-8u232-b09-0ubuntu1~18.04.1-b09 on Linux 4.15.0-1044-aws
-Intel(R) Xeon(R) CPU E5-2670 v2 @ 2.50GHz
+OpenJDK 64-Bit Server VM 1.8.0_232-b09 on Linux 4.4.0-171-generic
+Intel(R) Xeon(R) CPU @ 2.30GHz
 TPCDS Snappy:                             Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
 ------------------------------------------------------------------------------------------------------------------------
-q72                                               20211          21316        1562          0.0      Infinity       1.0X
+q72 - without PullOutGroupingExpressions         123361         124690        1881          0.0      Infinity       1.0X
+q72 - with PullOutGroupingExpressions            122937         123254         449          0.0      Infinity       1.0X
 
-OpenJDK 64-Bit Server VM 1.8.0_232-8u232-b09-0ubuntu1~18.04.1-b09 on Linux 4.15.0-1044-aws
-Intel(R) Xeon(R) CPU E5-2670 v2 @ 2.50GHz
+OpenJDK 64-Bit Server VM 1.8.0_232-b09 on Linux 4.4.0-171-generic
+Intel(R) Xeon(R) CPU @ 2.30GHz
 TPCDS Snappy:                             Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
 ------------------------------------------------------------------------------------------------------------------------
-q73                                                 680            725          49          0.0      Infinity       1.0X
+q73 - without PullOutGroupingExpressions            873            923          47          0.0      Infinity       1.0X
+q73 - with PullOutGroupingExpressions               859            900          35          0.0      Infinity       1.0X
 
-OpenJDK 64-Bit Server VM 1.8.0_232-8u232-b09-0ubuntu1~18.04.1-b09 on Linux 4.15.0-1044-aws
-Intel(R) Xeon(R) CPU E5-2670 v2 @ 2.50GHz
+OpenJDK 64-Bit Server VM 1.8.0_232-b09 on Linux 4.4.0-171-generic
+Intel(R) Xeon(R) CPU @ 2.30GHz
 TPCDS Snappy:                             Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
 ------------------------------------------------------------------------------------------------------------------------
-q74                                                3007           3109         144          0.0      Infinity       1.0X
+q74 - without PullOutGroupingExpressions           9622           9831         295          0.0      Infinity       1.0X
+q74 - with PullOutGroupingExpressions              9498           9661         230          0.0      Infinity       1.0X
 
-OpenJDK 64-Bit Server VM 1.8.0_232-8u232-b09-0ubuntu1~18.04.1-b09 on Linux 4.15.0-1044-aws
-Intel(R) Xeon(R) CPU E5-2670 v2 @ 2.50GHz
+OpenJDK 64-Bit Server VM 1.8.0_232-b09 on Linux 4.4.0-171-generic
+Intel(R) Xeon(R) CPU @ 2.30GHz
 TPCDS Snappy:                             Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
 ------------------------------------------------------------------------------------------------------------------------
-q75                                                4597           4942         487          0.0      Infinity       1.0X
+q75 - without PullOutGroupingExpressions          26383          26832         635          0.0      Infinity       1.0X
+q75 - with PullOutGroupingExpressions             26607          26623          23          0.0      Infinity       1.0X
 
-OpenJDK 64-Bit Server VM 1.8.0_232-8u232-b09-0ubuntu1~18.04.1-b09 on Linux 4.15.0-1044-aws
-Intel(R) Xeon(R) CPU E5-2670 v2 @ 2.50GHz
+OpenJDK 64-Bit Server VM 1.8.0_232-b09 on Linux 4.4.0-171-generic
+Intel(R) Xeon(R) CPU @ 2.30GHz
 TPCDS Snappy:                             Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
 ------------------------------------------------------------------------------------------------------------------------
-q76                                                 899            937          38          0.0      Infinity       1.0X
+q76 - without PullOutGroupingExpressions          18474          18679         289          0.0      Infinity       1.0X
+q76 - with PullOutGroupingExpressions             18425          18460          50          0.0      Infinity       1.0X
 
-OpenJDK 64-Bit Server VM 1.8.0_232-8u232-b09-0ubuntu1~18.04.1-b09 on Linux 4.15.0-1044-aws
-Intel(R) Xeon(R) CPU E5-2670 v2 @ 2.50GHz
+OpenJDK 64-Bit Server VM 1.8.0_232-b09 on Linux 4.4.0-171-generic
+Intel(R) Xeon(R) CPU @ 2.30GHz
 TPCDS Snappy:                             Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
 ------------------------------------------------------------------------------------------------------------------------
-q77                                                1794           2086         412          0.0      Infinity       1.0X
+q77 - without PullOutGroupingExpressions           1619           1655          51          0.0      Infinity       1.0X
+q77 - with PullOutGroupingExpressions              1543           1568          35          0.0      Infinity       1.0X
 
-OpenJDK 64-Bit Server VM 1.8.0_232-8u232-b09-0ubuntu1~18.04.1-b09 on Linux 4.15.0-1044-aws
-Intel(R) Xeon(R) CPU E5-2670 v2 @ 2.50GHz
+OpenJDK 64-Bit Server VM 1.8.0_232-b09 on Linux 4.4.0-171-generic
+Intel(R) Xeon(R) CPU @ 2.30GHz
 TPCDS Snappy:                             Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
 ------------------------------------------------------------------------------------------------------------------------
-q78                                                4717           4827         155          0.0      Infinity       1.0X
+q78 - without PullOutGroupingExpressions          34868          35619        1062          0.0      Infinity       1.0X
+q78 - with PullOutGroupingExpressions             34617          34639          31          0.0      Infinity       1.0X
 
-OpenJDK 64-Bit Server VM 1.8.0_232-8u232-b09-0ubuntu1~18.04.1-b09 on Linux 4.15.0-1044-aws
-Intel(R) Xeon(R) CPU E5-2670 v2 @ 2.50GHz
+OpenJDK 64-Bit Server VM 1.8.0_232-b09 on Linux 4.4.0-171-generic
+Intel(R) Xeon(R) CPU @ 2.30GHz
 TPCDS Snappy:                             Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
 ------------------------------------------------------------------------------------------------------------------------
-q79                                                 830            880          47          0.0      Infinity       1.0X
+q79 - without PullOutGroupingExpressions           1404           1452          68          0.0      Infinity       1.0X
+q79 - with PullOutGroupingExpressions              1331           1336           8          0.0      Infinity       1.1X
 
-OpenJDK 64-Bit Server VM 1.8.0_232-8u232-b09-0ubuntu1~18.04.1-b09 on Linux 4.15.0-1044-aws
-Intel(R) Xeon(R) CPU E5-2670 v2 @ 2.50GHz
+OpenJDK 64-Bit Server VM 1.8.0_232-b09 on Linux 4.4.0-171-generic
+Intel(R) Xeon(R) CPU @ 2.30GHz
 TPCDS Snappy:                             Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
 ------------------------------------------------------------------------------------------------------------------------
-q80                                                3233           3315         116          0.0      Infinity       1.0X
+q80 - without PullOutGroupingExpressions          62870          62938          96          0.0      Infinity       1.0X
+q80 - with PullOutGroupingExpressions             61296          61384         124          0.0      Infinity       1.0X
 
-OpenJDK 64-Bit Server VM 1.8.0_232-8u232-b09-0ubuntu1~18.04.1-b09 on Linux 4.15.0-1044-aws
-Intel(R) Xeon(R) CPU E5-2670 v2 @ 2.50GHz
+OpenJDK 64-Bit Server VM 1.8.0_232-b09 on Linux 4.4.0-171-generic
+Intel(R) Xeon(R) CPU @ 2.30GHz
 TPCDS Snappy:                             Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
 ------------------------------------------------------------------------------------------------------------------------
-q81                                                 982           1070         123          0.0      Infinity       1.0X
+q81 - without PullOutGroupingExpressions           3792           3801          12          0.0      Infinity       1.0X
+q81 - with PullOutGroupingExpressions              3625           3698         103          0.0      Infinity       1.0X
 
-OpenJDK 64-Bit Server VM 1.8.0_232-8u232-b09-0ubuntu1~18.04.1-b09 on Linux 4.15.0-1044-aws
-Intel(R) Xeon(R) CPU E5-2670 v2 @ 2.50GHz
+OpenJDK 64-Bit Server VM 1.8.0_232-b09 on Linux 4.4.0-171-generic
+Intel(R) Xeon(R) CPU @ 2.30GHz
 TPCDS Snappy:                             Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
 ------------------------------------------------------------------------------------------------------------------------
-q82                                                1674           1738          89          0.0      Infinity       1.0X
+q82 - without PullOutGroupingExpressions          10216          10359         202          0.0      Infinity       1.0X
+q82 - with PullOutGroupingExpressions              9711           9752          58          0.0      Infinity       1.1X
 
-OpenJDK 64-Bit Server VM 1.8.0_232-8u232-b09-0ubuntu1~18.04.1-b09 on Linux 4.15.0-1044-aws
-Intel(R) Xeon(R) CPU E5-2670 v2 @ 2.50GHz
+OpenJDK 64-Bit Server VM 1.8.0_232-b09 on Linux 4.4.0-171-generic
+Intel(R) Xeon(R) CPU @ 2.30GHz
 TPCDS Snappy:                             Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
 ------------------------------------------------------------------------------------------------------------------------
-q83                                                1067           1104          52          0.0      Infinity       1.0X
+q83 - without PullOutGroupingExpressions          15642          15720         110          0.0      Infinity       1.0X
+q83 - with PullOutGroupingExpressions             15545          16656        1571          0.0      Infinity       1.0X
 
-OpenJDK 64-Bit Server VM 1.8.0_232-8u232-b09-0ubuntu1~18.04.1-b09 on Linux 4.15.0-1044-aws
-Intel(R) Xeon(R) CPU E5-2670 v2 @ 2.50GHz
+OpenJDK 64-Bit Server VM 1.8.0_232-b09 on Linux 4.4.0-171-generic
+Intel(R) Xeon(R) CPU @ 2.30GHz
 TPCDS Snappy:                             Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
 ------------------------------------------------------------------------------------------------------------------------
-q84                                                1166           1210          62          0.0      Infinity       1.0X
+q84 - without PullOutGroupingExpressions           4517           4616         141          0.0      Infinity       1.0X
+q84 - with PullOutGroupingExpressions              4493           4552          83          0.0      Infinity       1.0X
 
-OpenJDK 64-Bit Server VM 1.8.0_232-8u232-b09-0ubuntu1~18.04.1-b09 on Linux 4.15.0-1044-aws
-Intel(R) Xeon(R) CPU E5-2670 v2 @ 2.50GHz
+OpenJDK 64-Bit Server VM 1.8.0_232-b09 on Linux 4.4.0-171-generic
+Intel(R) Xeon(R) CPU @ 2.30GHz
 TPCDS Snappy:                             Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
 ------------------------------------------------------------------------------------------------------------------------
-q85                                                3682           3831         211          0.0      Infinity       1.0X
+q85 - without PullOutGroupingExpressions           8429           8584         219          0.0      Infinity       1.0X
+q85 - with PullOutGroupingExpressions              8106           8389         400          0.0      Infinity       1.0X
 
-OpenJDK 64-Bit Server VM 1.8.0_232-8u232-b09-0ubuntu1~18.04.1-b09 on Linux 4.15.0-1044-aws
-Intel(R) Xeon(R) CPU E5-2670 v2 @ 2.50GHz
+OpenJDK 64-Bit Server VM 1.8.0_232-b09 on Linux 4.4.0-171-generic
+Intel(R) Xeon(R) CPU @ 2.30GHz
 TPCDS Snappy:                             Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
 ------------------------------------------------------------------------------------------------------------------------
-q86                                                 616            635          18          0.0      Infinity       1.0X
+q86 - without PullOutGroupingExpressions           1974           2017          61          0.0      Infinity       1.0X
+q86 - with PullOutGroupingExpressions              1999           2031          44          0.0      Infinity       1.0X
 
-OpenJDK 64-Bit Server VM 1.8.0_232-8u232-b09-0ubuntu1~18.04.1-b09 on Linux 4.15.0-1044-aws
-Intel(R) Xeon(R) CPU E5-2670 v2 @ 2.50GHz
+OpenJDK 64-Bit Server VM 1.8.0_232-b09 on Linux 4.4.0-171-generic
+Intel(R) Xeon(R) CPU @ 2.30GHz
 TPCDS Snappy:                             Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
 ------------------------------------------------------------------------------------------------------------------------
-q87                                                2101           2230         183          0.0      Infinity       1.0X
+q87 - without PullOutGroupingExpressions           6475           6476           1          0.0      Infinity       1.0X
+q87 - with PullOutGroupingExpressions              6599           6599           0          0.0      Infinity       1.0X
 
-OpenJDK 64-Bit Server VM 1.8.0_232-8u232-b09-0ubuntu1~18.04.1-b09 on Linux 4.15.0-1044-aws
-Intel(R) Xeon(R) CPU E5-2670 v2 @ 2.50GHz
+OpenJDK 64-Bit Server VM 1.8.0_232-b09 on Linux 4.4.0-171-generic
+Intel(R) Xeon(R) CPU @ 2.30GHz
 TPCDS Snappy:                             Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
 ------------------------------------------------------------------------------------------------------------------------
-q88                                                2415           2523         153          0.0      Infinity       1.0X
+q88 - without PullOutGroupingExpressions          35016          35684         945          0.0      Infinity       1.0X
+q88 - with PullOutGroupingExpressions             34727          34857         184          0.0      Infinity       1.0X
 
-OpenJDK 64-Bit Server VM 1.8.0_232-8u232-b09-0ubuntu1~18.04.1-b09 on Linux 4.15.0-1044-aws
-Intel(R) Xeon(R) CPU E5-2670 v2 @ 2.50GHz
+OpenJDK 64-Bit Server VM 1.8.0_232-b09 on Linux 4.4.0-171-generic
+Intel(R) Xeon(R) CPU @ 2.30GHz
 TPCDS Snappy:                             Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
 ------------------------------------------------------------------------------------------------------------------------
-q89                                                 677            732          47          0.0      Infinity       1.0X
+q89 - without PullOutGroupingExpressions           2011           2063          73          0.0      Infinity       1.0X
+q89 - with PullOutGroupingExpressions              1912           1948          52          0.0      Infinity       1.1X
 
-OpenJDK 64-Bit Server VM 1.8.0_232-8u232-b09-0ubuntu1~18.04.1-b09 on Linux 4.15.0-1044-aws
-Intel(R) Xeon(R) CPU E5-2670 v2 @ 2.50GHz
+OpenJDK 64-Bit Server VM 1.8.0_232-b09 on Linux 4.4.0-171-generic
+Intel(R) Xeon(R) CPU @ 2.30GHz
 TPCDS Snappy:                             Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
 ------------------------------------------------------------------------------------------------------------------------
-q90                                                 414            429          19          0.0      Infinity       1.0X
+q90 - without PullOutGroupingExpressions           8024           8024           0          0.0      Infinity       1.0X
+q90 - with PullOutGroupingExpressions              8003           8012          13          0.0      Infinity       1.0X
 
-OpenJDK 64-Bit Server VM 1.8.0_232-8u232-b09-0ubuntu1~18.04.1-b09 on Linux 4.15.0-1044-aws
-Intel(R) Xeon(R) CPU E5-2670 v2 @ 2.50GHz
+OpenJDK 64-Bit Server VM 1.8.0_232-b09 on Linux 4.4.0-171-generic
+Intel(R) Xeon(R) CPU @ 2.30GHz
 TPCDS Snappy:                             Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
 ------------------------------------------------------------------------------------------------------------------------
-q91                                                 793            814          19          0.0      Infinity       1.0X
+q91 - without PullOutGroupingExpressions            962           1024          88          0.0      Infinity       1.0X
+q91 - with PullOutGroupingExpressions              1013           1019           7          0.0      Infinity       0.9X
 
-OpenJDK 64-Bit Server VM 1.8.0_232-8u232-b09-0ubuntu1~18.04.1-b09 on Linux 4.15.0-1044-aws
-Intel(R) Xeon(R) CPU E5-2670 v2 @ 2.50GHz
+OpenJDK 64-Bit Server VM 1.8.0_232-b09 on Linux 4.4.0-171-generic
+Intel(R) Xeon(R) CPU @ 2.30GHz
 TPCDS Snappy:                             Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
 ------------------------------------------------------------------------------------------------------------------------
-q92                                                 508            530          24          0.0      Infinity       1.0X
+q92 - without PullOutGroupingExpressions            807            829          32          0.0      Infinity       1.0X
+q92 - with PullOutGroupingExpressions               778            808          33          0.0      Infinity       1.0X
 
-OpenJDK 64-Bit Server VM 1.8.0_232-8u232-b09-0ubuntu1~18.04.1-b09 on Linux 4.15.0-1044-aws
-Intel(R) Xeon(R) CPU E5-2670 v2 @ 2.50GHz
+OpenJDK 64-Bit Server VM 1.8.0_232-b09 on Linux 4.4.0-171-generic
+Intel(R) Xeon(R) CPU @ 2.30GHz
 TPCDS Snappy:                             Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
 ------------------------------------------------------------------------------------------------------------------------
-q93                                                1138           1155          24          0.0      Infinity       1.0X
+q93 - without PullOutGroupingExpressions          47307          47383         108          0.0      Infinity       1.0X
+q93 - with PullOutGroupingExpressions             48078          48079           0          0.0      Infinity       1.0X
 
-OpenJDK 64-Bit Server VM 1.8.0_232-8u232-b09-0ubuntu1~18.04.1-b09 on Linux 4.15.0-1044-aws
-Intel(R) Xeon(R) CPU E5-2670 v2 @ 2.50GHz
+OpenJDK 64-Bit Server VM 1.8.0_232-b09 on Linux 4.4.0-171-generic
+Intel(R) Xeon(R) CPU @ 2.30GHz
 TPCDS Snappy:                             Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
 ------------------------------------------------------------------------------------------------------------------------
-q94                                                 979           1060         115          0.0      Infinity       1.0X
+q94 - without PullOutGroupingExpressions          16018          16140         173          0.0      Infinity       1.0X
+q94 - with PullOutGroupingExpressions             16302          16317          22          0.0      Infinity       1.0X
 
-OpenJDK 64-Bit Server VM 1.8.0_232-8u232-b09-0ubuntu1~18.04.1-b09 on Linux 4.15.0-1044-aws
-Intel(R) Xeon(R) CPU E5-2670 v2 @ 2.50GHz
+OpenJDK 64-Bit Server VM 1.8.0_232-b09 on Linux 4.4.0-171-generic
+Intel(R) Xeon(R) CPU @ 2.30GHz
 TPCDS Snappy:                             Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
 ------------------------------------------------------------------------------------------------------------------------
-q95                                                5805           6024         310          0.0      Infinity       1.0X
+q95 - without PullOutGroupingExpressions          37316          37337          30          0.0      Infinity       1.0X
+q95 - with PullOutGroupingExpressions             37531          37599          97          0.0      Infinity       1.0X
 
-OpenJDK 64-Bit Server VM 1.8.0_232-8u232-b09-0ubuntu1~18.04.1-b09 on Linux 4.15.0-1044-aws
-Intel(R) Xeon(R) CPU E5-2670 v2 @ 2.50GHz
+OpenJDK 64-Bit Server VM 1.8.0_232-b09 on Linux 4.4.0-171-generic
+Intel(R) Xeon(R) CPU @ 2.30GHz
 TPCDS Snappy:                             Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
 ------------------------------------------------------------------------------------------------------------------------
-q96                                                 337            345          10          0.0      Infinity       1.0X
+q96 - without PullOutGroupingExpressions           4403           4419          23          0.0      Infinity       1.0X
+q96 - with PullOutGroupingExpressions              4354           4379          34          0.0      Infinity       1.0X
 
-OpenJDK 64-Bit Server VM 1.8.0_232-8u232-b09-0ubuntu1~18.04.1-b09 on Linux 4.15.0-1044-aws
-Intel(R) Xeon(R) CPU E5-2670 v2 @ 2.50GHz
+OpenJDK 64-Bit Server VM 1.8.0_232-b09 on Linux 4.4.0-171-generic
+Intel(R) Xeon(R) CPU @ 2.30GHz
 TPCDS Snappy:                             Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
 ------------------------------------------------------------------------------------------------------------------------
-q97                                                1641           1748         152          0.0      Infinity       1.0X
+q97 - without PullOutGroupingExpressions          11842          11896          76          0.0      Infinity       1.0X
+q97 - with PullOutGroupingExpressions             11888          11985         137          0.0      Infinity       1.0X
 
-OpenJDK 64-Bit Server VM 1.8.0_232-8u232-b09-0ubuntu1~18.04.1-b09 on Linux 4.15.0-1044-aws
-Intel(R) Xeon(R) CPU E5-2670 v2 @ 2.50GHz
+OpenJDK 64-Bit Server VM 1.8.0_232-b09 on Linux 4.4.0-171-generic
+Intel(R) Xeon(R) CPU @ 2.30GHz
 TPCDS Snappy:                             Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
 ------------------------------------------------------------------------------------------------------------------------
-q98                                                 538            587          61          0.0      Infinity       1.0X
+q98 - without PullOutGroupingExpressions            736            790          64          0.0      Infinity       1.0X
+q98 - with PullOutGroupingExpressions               707            724          21          0.0      Infinity       1.0X
 
-OpenJDK 64-Bit Server VM 1.8.0_232-8u232-b09-0ubuntu1~18.04.1-b09 on Linux 4.15.0-1044-aws
-Intel(R) Xeon(R) CPU E5-2670 v2 @ 2.50GHz
+OpenJDK 64-Bit Server VM 1.8.0_232-b09 on Linux 4.4.0-171-generic
+Intel(R) Xeon(R) CPU @ 2.30GHz
 TPCDS Snappy:                             Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
 ------------------------------------------------------------------------------------------------------------------------
-q99                                                 619            633          19          0.0      Infinity       1.0X
+q99 - without PullOutGroupingExpressions           6661           6742         115          0.0      Infinity       1.0X
+q99 - with PullOutGroupingExpressions              6716           6735          27          0.0      Infinity       1.0X
 
-OpenJDK 64-Bit Server VM 1.8.0_232-8u232-b09-0ubuntu1~18.04.1-b09 on Linux 4.15.0-1044-aws
-Intel(R) Xeon(R) CPU E5-2670 v2 @ 2.50GHz
-TPCDS Snappy:                             Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
-------------------------------------------------------------------------------------------------------------------------
-q5a-v2.7                                           4861           4954         132          0.0      Infinity       1.0X
+OpenJDK 64-Bit Server VM 1.8.0_232-b09 on Linux 4.4.0-171-generic
+Intel(R) Xeon(R) CPU @ 2.30GHz
+TPCDS Snappy:                                  Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
+-----------------------------------------------------------------------------------------------------------------------------
+q5a-v2.7 - without PullOutGroupingExpressions          20807          21065         365          0.0      Infinity       1.0X
+q5a-v2.7 - with PullOutGroupingExpressions             20354          20392          54          0.0      Infinity       1.0X
 
-OpenJDK 64-Bit Server VM 1.8.0_232-8u232-b09-0ubuntu1~18.04.1-b09 on Linux 4.15.0-1044-aws
-Intel(R) Xeon(R) CPU E5-2670 v2 @ 2.50GHz
-TPCDS Snappy:                             Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
-------------------------------------------------------------------------------------------------------------------------
-q6-v2.7                                            1798           1861          89          0.0      Infinity       1.0X
+OpenJDK 64-Bit Server VM 1.8.0_232-b09 on Linux 4.4.0-171-generic
+Intel(R) Xeon(R) CPU @ 2.30GHz
+TPCDS Snappy:                                 Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
+----------------------------------------------------------------------------------------------------------------------------
+q6-v2.7 - without PullOutGroupingExpressions          11530          11678         211          0.0      Infinity       1.0X
+q6-v2.7 - with PullOutGroupingExpressions             11800          11875         107          0.0      Infinity       1.0X
 
-OpenJDK 64-Bit Server VM 1.8.0_232-8u232-b09-0ubuntu1~18.04.1-b09 on Linux 4.15.0-1044-aws
-Intel(R) Xeon(R) CPU E5-2670 v2 @ 2.50GHz
-TPCDS Snappy:                             Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
-------------------------------------------------------------------------------------------------------------------------
-q10a-v2.7                                          4093           4209         164          0.0      Infinity       1.0X
+OpenJDK 64-Bit Server VM 1.8.0_232-b09 on Linux 4.4.0-171-generic
+Intel(R) Xeon(R) CPU @ 2.30GHz
+TPCDS Snappy:                                   Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
+------------------------------------------------------------------------------------------------------------------------------
+q10a-v2.7 - without PullOutGroupingExpressions           3287           3326          55          0.0      Infinity       1.0X
+q10a-v2.7 - with PullOutGroupingExpressions              3097           3418         454          0.0      Infinity       1.1X
 
-OpenJDK 64-Bit Server VM 1.8.0_232-8u232-b09-0ubuntu1~18.04.1-b09 on Linux 4.15.0-1044-aws
-Intel(R) Xeon(R) CPU E5-2670 v2 @ 2.50GHz
-TPCDS Snappy:                             Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
-------------------------------------------------------------------------------------------------------------------------
-q11-v2.7                                           3336           3404          96          0.0      Infinity       1.0X
+OpenJDK 64-Bit Server VM 1.8.0_232-b09 on Linux 4.4.0-171-generic
+Intel(R) Xeon(R) CPU @ 2.30GHz
+TPCDS Snappy:                                  Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
+-----------------------------------------------------------------------------------------------------------------------------
+q11-v2.7 - without PullOutGroupingExpressions          13076          13175         140          0.0      Infinity       1.0X
+q11-v2.7 - with PullOutGroupingExpressions             13349          13482         187          0.0      Infinity       1.0X
 
-OpenJDK 64-Bit Server VM 1.8.0_232-8u232-b09-0ubuntu1~18.04.1-b09 on Linux 4.15.0-1044-aws
-Intel(R) Xeon(R) CPU E5-2670 v2 @ 2.50GHz
-TPCDS Snappy:                             Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
-------------------------------------------------------------------------------------------------------------------------
-q12-v2.7                                            380            408          30          0.0      Infinity       1.0X
+OpenJDK 64-Bit Server VM 1.8.0_232-b09 on Linux 4.4.0-171-generic
+Intel(R) Xeon(R) CPU @ 2.30GHz
+TPCDS Snappy:                                  Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
+-----------------------------------------------------------------------------------------------------------------------------
+q12-v2.7 - without PullOutGroupingExpressions            528            560          47          0.0      Infinity       1.0X
+q12-v2.7 - with PullOutGroupingExpressions               496            516          25          0.0      Infinity       1.1X
 
-OpenJDK 64-Bit Server VM 1.8.0_232-8u232-b09-0ubuntu1~18.04.1-b09 on Linux 4.15.0-1044-aws
-Intel(R) Xeon(R) CPU E5-2670 v2 @ 2.50GHz
-TPCDS Snappy:                             Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
-------------------------------------------------------------------------------------------------------------------------
-q14-v2.7                                          17331          17776         629          0.0      Infinity       1.0X
+OpenJDK 64-Bit Server VM 1.8.0_232-b09 on Linux 4.4.0-171-generic
+Intel(R) Xeon(R) CPU @ 2.30GHz
+TPCDS Snappy:                                  Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
+-----------------------------------------------------------------------------------------------------------------------------
+q14-v2.7 - without PullOutGroupingExpressions          86272          86889         872          0.0      Infinity       1.0X
+q14-v2.7 - with PullOutGroupingExpressions             85596          86241         912          0.0      Infinity       1.0X
 
-OpenJDK 64-Bit Server VM 1.8.0_232-8u232-b09-0ubuntu1~18.04.1-b09 on Linux 4.15.0-1044-aws
-Intel(R) Xeon(R) CPU E5-2670 v2 @ 2.50GHz
-TPCDS Snappy:                             Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
-------------------------------------------------------------------------------------------------------------------------
-q14a-v2.7                                        111982         112268         404          0.0      Infinity       1.0X
+OpenJDK 64-Bit Server VM 1.8.0_232-b09 on Linux 4.4.0-171-generic
+Intel(R) Xeon(R) CPU @ 2.30GHz
+TPCDS Snappy:                                   Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
+------------------------------------------------------------------------------------------------------------------------------
+q14a-v2.7 - without PullOutGroupingExpressions         399081         405336        2114          0.0      Infinity       1.0X
+q14a-v2.7 - with PullOutGroupingExpressions            399163         401864         NaN          0.0      Infinity       1.0X
 
-OpenJDK 64-Bit Server VM 1.8.0_232-8u232-b09-0ubuntu1~18.04.1-b09 on Linux 4.15.0-1044-aws
-Intel(R) Xeon(R) CPU E5-2670 v2 @ 2.50GHz
-TPCDS Snappy:                             Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
-------------------------------------------------------------------------------------------------------------------------
-q18a-v2.7                                          4063           4659         843          0.0      Infinity       1.0X
+OpenJDK 64-Bit Server VM 1.8.0_232-b09 on Linux 4.4.0-171-generic
+Intel(R) Xeon(R) CPU @ 2.30GHz
+TPCDS Snappy:                                   Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
+------------------------------------------------------------------------------------------------------------------------------
+q18a-v2.7 - without PullOutGroupingExpressions          10360          10444         119          0.0      Infinity       1.0X
+q18a-v2.7 - with PullOutGroupingExpressions             10429          10651         313          0.0      Infinity       1.0X
 
-OpenJDK 64-Bit Server VM 1.8.0_232-8u232-b09-0ubuntu1~18.04.1-b09 on Linux 4.15.0-1044-aws
-Intel(R) Xeon(R) CPU E5-2670 v2 @ 2.50GHz
-TPCDS Snappy:                             Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
-------------------------------------------------------------------------------------------------------------------------
-q20-v2.7                                            420            446          29          0.0      Infinity       1.0X
+OpenJDK 64-Bit Server VM 1.8.0_232-b09 on Linux 4.4.0-171-generic
+Intel(R) Xeon(R) CPU @ 2.30GHz
+TPCDS Snappy:                                  Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
+-----------------------------------------------------------------------------------------------------------------------------
+q20-v2.7 - without PullOutGroupingExpressions            541            587          90          0.0      Infinity       1.0X
+q20-v2.7 - with PullOutGroupingExpressions               523            541          21          0.0      Infinity       1.0X
 
-OpenJDK 64-Bit Server VM 1.8.0_232-8u232-b09-0ubuntu1~18.04.1-b09 on Linux 4.15.0-1044-aws
-Intel(R) Xeon(R) CPU E5-2670 v2 @ 2.50GHz
-TPCDS Snappy:                             Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
-------------------------------------------------------------------------------------------------------------------------
-q22-v2.7                                          18976          19164         265          0.0      Infinity       1.0X
+OpenJDK 64-Bit Server VM 1.8.0_232-b09 on Linux 4.4.0-171-generic
+Intel(R) Xeon(R) CPU @ 2.30GHz
+TPCDS Snappy:                                  Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
+-----------------------------------------------------------------------------------------------------------------------------
+q22-v2.7 - without PullOutGroupingExpressions          79364          79585         312          0.0      Infinity       1.0X
+q22-v2.7 - with PullOutGroupingExpressions             79486          79911         602          0.0      Infinity       1.0X
 
-OpenJDK 64-Bit Server VM 1.8.0_232-8u232-b09-0ubuntu1~18.04.1-b09 on Linux 4.15.0-1044-aws
-Intel(R) Xeon(R) CPU E5-2670 v2 @ 2.50GHz
-TPCDS Snappy:                             Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
-------------------------------------------------------------------------------------------------------------------------
-q22a-v2.7                                          9087           9281         275          0.0      Infinity       1.0X
+OpenJDK 64-Bit Server VM 1.8.0_232-b09 on Linux 4.4.0-171-generic
+Intel(R) Xeon(R) CPU @ 2.30GHz
+TPCDS Snappy:                                   Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
+------------------------------------------------------------------------------------------------------------------------------
+q22a-v2.7 - without PullOutGroupingExpressions          34177          34803         886          0.0      Infinity       1.0X
+q22a-v2.7 - with PullOutGroupingExpressions             34221          34435         303          0.0      Infinity       1.0X
 
-OpenJDK 64-Bit Server VM 1.8.0_232-8u232-b09-0ubuntu1~18.04.1-b09 on Linux 4.15.0-1044-aws
-Intel(R) Xeon(R) CPU E5-2670 v2 @ 2.50GHz
-TPCDS Snappy:                             Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
-------------------------------------------------------------------------------------------------------------------------
-q24-v2.7                                           2817           2834          24          0.0      Infinity       1.0X
+OpenJDK 64-Bit Server VM 1.8.0_232-b09 on Linux 4.4.0-171-generic
+Intel(R) Xeon(R) CPU @ 2.30GHz
+TPCDS Snappy:                                  Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
+-----------------------------------------------------------------------------------------------------------------------------
+q24-v2.7 - without PullOutGroupingExpressions          26565          26648         117          0.0      Infinity       1.0X
+q24-v2.7 - with PullOutGroupingExpressions             26065          26286         313          0.0      Infinity       1.0X
 
-OpenJDK 64-Bit Server VM 1.8.0_232-8u232-b09-0ubuntu1~18.04.1-b09 on Linux 4.15.0-1044-aws
-Intel(R) Xeon(R) CPU E5-2670 v2 @ 2.50GHz
-TPCDS Snappy:                             Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
-------------------------------------------------------------------------------------------------------------------------
-q27a-v2.7                                          2301           2401         141          0.0      Infinity       1.0X
+OpenJDK 64-Bit Server VM 1.8.0_232-b09 on Linux 4.4.0-171-generic
+Intel(R) Xeon(R) CPU @ 2.30GHz
+TPCDS Snappy:                                   Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
+------------------------------------------------------------------------------------------------------------------------------
+q27a-v2.7 - without PullOutGroupingExpressions           5717           5739          31          0.0      Infinity       1.0X
+q27a-v2.7 - with PullOutGroupingExpressions              5262           5324          87          0.0      Infinity       1.1X
 
-OpenJDK 64-Bit Server VM 1.8.0_232-8u232-b09-0ubuntu1~18.04.1-b09 on Linux 4.15.0-1044-aws
-Intel(R) Xeon(R) CPU E5-2670 v2 @ 2.50GHz
-TPCDS Snappy:                             Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
-------------------------------------------------------------------------------------------------------------------------
-q34-v2.7                                            700            731          48          0.0      Infinity       1.0X
+OpenJDK 64-Bit Server VM 1.8.0_232-b09 on Linux 4.4.0-171-generic
+Intel(R) Xeon(R) CPU @ 2.30GHz
+TPCDS Snappy:                                  Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
+-----------------------------------------------------------------------------------------------------------------------------
+q34-v2.7 - without PullOutGroupingExpressions           1563           1581          26          0.0      Infinity       1.0X
+q34-v2.7 - with PullOutGroupingExpressions              1478           1500          32          0.0      Infinity       1.1X
 
-OpenJDK 64-Bit Server VM 1.8.0_232-8u232-b09-0ubuntu1~18.04.1-b09 on Linux 4.15.0-1044-aws
-Intel(R) Xeon(R) CPU E5-2670 v2 @ 2.50GHz
-TPCDS Snappy:                             Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
-------------------------------------------------------------------------------------------------------------------------
-q35-v2.7                                           4158           4513         503          0.0      Infinity       1.0X
+OpenJDK 64-Bit Server VM 1.8.0_232-b09 on Linux 4.4.0-171-generic
+Intel(R) Xeon(R) CPU @ 2.30GHz
+TPCDS Snappy:                                  Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
+-----------------------------------------------------------------------------------------------------------------------------
+q35-v2.7 - without PullOutGroupingExpressions           5085           5639         783          0.0      Infinity       1.0X
+q35-v2.7 - with PullOutGroupingExpressions              4767           5081         443          0.0      Infinity       1.1X
 
-OpenJDK 64-Bit Server VM 1.8.0_232-8u232-b09-0ubuntu1~18.04.1-b09 on Linux 4.15.0-1044-aws
-Intel(R) Xeon(R) CPU E5-2670 v2 @ 2.50GHz
-TPCDS Snappy:                             Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
-------------------------------------------------------------------------------------------------------------------------
-q35a-v2.7                                          3904           3979         106          0.0      Infinity       1.0X
+OpenJDK 64-Bit Server VM 1.8.0_232-b09 on Linux 4.4.0-171-generic
+Intel(R) Xeon(R) CPU @ 2.30GHz
+TPCDS Snappy:                                   Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
+------------------------------------------------------------------------------------------------------------------------------
+q35a-v2.7 - without PullOutGroupingExpressions           4620           4726         151          0.0      Infinity       1.0X
+q35a-v2.7 - with PullOutGroupingExpressions              4796           5304         718          0.0      Infinity       1.0X
 
-OpenJDK 64-Bit Server VM 1.8.0_232-8u232-b09-0ubuntu1~18.04.1-b09 on Linux 4.15.0-1044-aws
-Intel(R) Xeon(R) CPU E5-2670 v2 @ 2.50GHz
-TPCDS Snappy:                             Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
-------------------------------------------------------------------------------------------------------------------------
-q36a-v2.7                                          2430           2534         147          0.0      Infinity       1.0X
+OpenJDK 64-Bit Server VM 1.8.0_232-b09 on Linux 4.4.0-171-generic
+Intel(R) Xeon(R) CPU @ 2.30GHz
+TPCDS Snappy:                                   Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
+------------------------------------------------------------------------------------------------------------------------------
+q36a-v2.7 - without PullOutGroupingExpressions           8173           8329         221          0.0      Infinity       1.0X
+q36a-v2.7 - with PullOutGroupingExpressions              8409           8484         105          0.0      Infinity       1.0X
 
-OpenJDK 64-Bit Server VM 1.8.0_232-8u232-b09-0ubuntu1~18.04.1-b09 on Linux 4.15.0-1044-aws
-Intel(R) Xeon(R) CPU E5-2670 v2 @ 2.50GHz
-TPCDS Snappy:                             Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
-------------------------------------------------------------------------------------------------------------------------
-q47-v2.7                                           4502           4808         433          0.0      Infinity       1.0X
+OpenJDK 64-Bit Server VM 1.8.0_232-b09 on Linux 4.4.0-171-generic
+Intel(R) Xeon(R) CPU @ 2.30GHz
+TPCDS Snappy:                                  Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
+-----------------------------------------------------------------------------------------------------------------------------
+q47-v2.7 - without PullOutGroupingExpressions          18202          18333         185          0.0      Infinity       1.0X
+q47-v2.7 - with PullOutGroupingExpressions             17860          18138         392          0.0      Infinity       1.0X
 
-OpenJDK 64-Bit Server VM 1.8.0_232-8u232-b09-0ubuntu1~18.04.1-b09 on Linux 4.15.0-1044-aws
-Intel(R) Xeon(R) CPU E5-2670 v2 @ 2.50GHz
-TPCDS Snappy:                             Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
-------------------------------------------------------------------------------------------------------------------------
-q49-v2.7                                           1904           2159         360          0.0      Infinity       1.0X
+OpenJDK 64-Bit Server VM 1.8.0_232-b09 on Linux 4.4.0-171-generic
+Intel(R) Xeon(R) CPU @ 2.30GHz
+TPCDS Snappy:                                  Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
+-----------------------------------------------------------------------------------------------------------------------------
+q49-v2.7 - without PullOutGroupingExpressions          14987          15092         149          0.0      Infinity       1.0X
+q49-v2.7 - with PullOutGroupingExpressions             14966          14979          19          0.0      Infinity       1.0X
 
-OpenJDK 64-Bit Server VM 1.8.0_232-8u232-b09-0ubuntu1~18.04.1-b09 on Linux 4.15.0-1044-aws
-Intel(R) Xeon(R) CPU E5-2670 v2 @ 2.50GHz
-TPCDS Snappy:                             Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
-------------------------------------------------------------------------------------------------------------------------
-q51a-v2.7                                         27939          28264         460          0.0      Infinity       1.0X
+OpenJDK 64-Bit Server VM 1.8.0_232-b09 on Linux 4.4.0-171-generic
+Intel(R) Xeon(R) CPU @ 2.30GHz
+TPCDS Snappy:                                   Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
+------------------------------------------------------------------------------------------------------------------------------
+q51a-v2.7 - without PullOutGroupingExpressions         259675         260383        1001          0.0      Infinity       1.0X
+q51a-v2.7 - with PullOutGroupingExpressions            259902         260239         477          0.0      Infinity       1.0X
 
-OpenJDK 64-Bit Server VM 1.8.0_232-8u232-b09-0ubuntu1~18.04.1-b09 on Linux 4.15.0-1044-aws
-Intel(R) Xeon(R) CPU E5-2670 v2 @ 2.50GHz
-TPCDS Snappy:                             Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
-------------------------------------------------------------------------------------------------------------------------
-q57-v2.7                                           2813           2981         237          0.0      Infinity       1.0X
+OpenJDK 64-Bit Server VM 1.8.0_232-b09 on Linux 4.4.0-171-generic
+Intel(R) Xeon(R) CPU @ 2.30GHz
+TPCDS Snappy:                                  Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
+-----------------------------------------------------------------------------------------------------------------------------
+q57-v2.7 - without PullOutGroupingExpressions          13097          13246         211          0.0      Infinity       1.0X
+q57-v2.7 - with PullOutGroupingExpressions             12784          12791          10          0.0      Infinity       1.0X
 
-OpenJDK 64-Bit Server VM 1.8.0_232-8u232-b09-0ubuntu1~18.04.1-b09 on Linux 4.15.0-1044-aws
-Intel(R) Xeon(R) CPU E5-2670 v2 @ 2.50GHz
-TPCDS Snappy:                             Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
-------------------------------------------------------------------------------------------------------------------------
-q64-v2.7                                           8413           8612         282          0.0      Infinity       1.0X
+OpenJDK 64-Bit Server VM 1.8.0_232-b09 on Linux 4.4.0-171-generic
+Intel(R) Xeon(R) CPU @ 2.30GHz
+TPCDS Snappy:                                  Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
+-----------------------------------------------------------------------------------------------------------------------------
+q64-v2.7 - without PullOutGroupingExpressions          40289          41724        2030          0.0      Infinity       1.0X
+q64-v2.7 - with PullOutGroupingExpressions             39870          40878        1425          0.0      Infinity       1.0X
 
-OpenJDK 64-Bit Server VM 1.8.0_232-8u232-b09-0ubuntu1~18.04.1-b09 on Linux 4.15.0-1044-aws
-Intel(R) Xeon(R) CPU E5-2670 v2 @ 2.50GHz
-TPCDS Snappy:                             Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
-------------------------------------------------------------------------------------------------------------------------
-q67a-v2.7                                         17696          17858         230          0.0      Infinity       1.0X
+OpenJDK 64-Bit Server VM 1.8.0_232-b09 on Linux 4.4.0-171-generic
+Intel(R) Xeon(R) CPU @ 2.30GHz
+TPCDS Snappy:                                   Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
+------------------------------------------------------------------------------------------------------------------------------
+q67a-v2.7 - without PullOutGroupingExpressions         156698         163770        2794          0.0      Infinity       1.0X
+q67a-v2.7 - with PullOutGroupingExpressions            154947         155341         557          0.0      Infinity       1.0X
 
-OpenJDK 64-Bit Server VM 1.8.0_232-8u232-b09-0ubuntu1~18.04.1-b09 on Linux 4.15.0-1044-aws
-Intel(R) Xeon(R) CPU E5-2670 v2 @ 2.50GHz
-TPCDS Snappy:                             Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
-------------------------------------------------------------------------------------------------------------------------
-q70a-v2.7                                          2511           2562          71          0.0      Infinity       1.0X
+OpenJDK 64-Bit Server VM 1.8.0_232-b09 on Linux 4.4.0-171-generic
+Intel(R) Xeon(R) CPU @ 2.30GHz
+TPCDS Snappy:                                   Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
+------------------------------------------------------------------------------------------------------------------------------
+q70a-v2.7 - without PullOutGroupingExpressions          10173          10782         860          0.0      Infinity       1.0X
+q70a-v2.7 - with PullOutGroupingExpressions             10186          10408         315          0.0      Infinity       1.0X
 
-OpenJDK 64-Bit Server VM 1.8.0_232-8u232-b09-0ubuntu1~18.04.1-b09 on Linux 4.15.0-1044-aws
-Intel(R) Xeon(R) CPU E5-2670 v2 @ 2.50GHz
-TPCDS Snappy:                             Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
-------------------------------------------------------------------------------------------------------------------------
-q72-v2.7                                          20209          22083        2650          0.0      Infinity       1.0X
+OpenJDK 64-Bit Server VM 1.8.0_232-b09 on Linux 4.4.0-171-generic
+Intel(R) Xeon(R) CPU @ 2.30GHz
+TPCDS Snappy:                                  Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
+-----------------------------------------------------------------------------------------------------------------------------
+q72-v2.7 - without PullOutGroupingExpressions         122605         123860        1774          0.0      Infinity       1.0X
+q72-v2.7 - with PullOutGroupingExpressions            121772         125963         NaN          0.0      Infinity       1.0X
 
-OpenJDK 64-Bit Server VM 1.8.0_232-8u232-b09-0ubuntu1~18.04.1-b09 on Linux 4.15.0-1044-aws
-Intel(R) Xeon(R) CPU E5-2670 v2 @ 2.50GHz
-TPCDS Snappy:                             Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
-------------------------------------------------------------------------------------------------------------------------
-q74-v2.7                                           2870           2912          60          0.0      Infinity       1.0X
+OpenJDK 64-Bit Server VM 1.8.0_232-b09 on Linux 4.4.0-171-generic
+Intel(R) Xeon(R) CPU @ 2.30GHz
+TPCDS Snappy:                                  Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
+-----------------------------------------------------------------------------------------------------------------------------
+q74-v2.7 - without PullOutGroupingExpressions           9796           9866          99          0.0      Infinity       1.0X
+q74-v2.7 - with PullOutGroupingExpressions              9549           9989         622          0.0      Infinity       1.0X
 
-OpenJDK 64-Bit Server VM 1.8.0_232-8u232-b09-0ubuntu1~18.04.1-b09 on Linux 4.15.0-1044-aws
-Intel(R) Xeon(R) CPU E5-2670 v2 @ 2.50GHz
-TPCDS Snappy:                             Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
-------------------------------------------------------------------------------------------------------------------------
-q75-v2.7                                           4534           4870         475          0.0      Infinity       1.0X
+OpenJDK 64-Bit Server VM 1.8.0_232-b09 on Linux 4.4.0-171-generic
+Intel(R) Xeon(R) CPU @ 2.30GHz
+TPCDS Snappy:                                  Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
+-----------------------------------------------------------------------------------------------------------------------------
+q75-v2.7 - without PullOutGroupingExpressions          26773          27139         519          0.0      Infinity       1.0X
+q75-v2.7 - with PullOutGroupingExpressions             26297          26633         474          0.0      Infinity       1.0X
 
-OpenJDK 64-Bit Server VM 1.8.0_232-8u232-b09-0ubuntu1~18.04.1-b09 on Linux 4.15.0-1044-aws
-Intel(R) Xeon(R) CPU E5-2670 v2 @ 2.50GHz
-TPCDS Snappy:                             Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
-------------------------------------------------------------------------------------------------------------------------
-q77a-v2.7                                          4010           4285         388          0.0      Infinity       1.0X
+OpenJDK 64-Bit Server VM 1.8.0_232-b09 on Linux 4.4.0-171-generic
+Intel(R) Xeon(R) CPU @ 2.30GHz
+TPCDS Snappy:                                   Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
+------------------------------------------------------------------------------------------------------------------------------
+q77a-v2.7 - without PullOutGroupingExpressions           4920           5065         204          0.0      Infinity       1.0X
+q77a-v2.7 - with PullOutGroupingExpressions              4852           4945         133          0.0      Infinity       1.0X
 
-OpenJDK 64-Bit Server VM 1.8.0_232-8u232-b09-0ubuntu1~18.04.1-b09 on Linux 4.15.0-1044-aws
-Intel(R) Xeon(R) CPU E5-2670 v2 @ 2.50GHz
-TPCDS Snappy:                             Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
-------------------------------------------------------------------------------------------------------------------------
-q78-v2.7                                           4879           4969         127          0.0      Infinity       1.0X
+OpenJDK 64-Bit Server VM 1.8.0_232-b09 on Linux 4.4.0-171-generic
+Intel(R) Xeon(R) CPU @ 2.30GHz
+TPCDS Snappy:                                  Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
+-----------------------------------------------------------------------------------------------------------------------------
+q78-v2.7 - without PullOutGroupingExpressions          35541          35963         597          0.0      Infinity       1.0X
+q78-v2.7 - with PullOutGroupingExpressions             35367          35694         462          0.0      Infinity       1.0X
 
-OpenJDK 64-Bit Server VM 1.8.0_232-8u232-b09-0ubuntu1~18.04.1-b09 on Linux 4.15.0-1044-aws
-Intel(R) Xeon(R) CPU E5-2670 v2 @ 2.50GHz
-TPCDS Snappy:                             Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
-------------------------------------------------------------------------------------------------------------------------
-q80a-v2.7                                          5338           5728         552          0.0      Infinity       1.0X
+OpenJDK 64-Bit Server VM 1.8.0_232-b09 on Linux 4.4.0-171-generic
+Intel(R) Xeon(R) CPU @ 2.30GHz
+TPCDS Snappy:                                   Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
+------------------------------------------------------------------------------------------------------------------------------
+q80a-v2.7 - without PullOutGroupingExpressions          73180          73258         110          0.0      Infinity       1.0X
+q80a-v2.7 - with PullOutGroupingExpressions             73007          73129         173          0.0      Infinity       1.0X
 
-OpenJDK 64-Bit Server VM 1.8.0_232-8u232-b09-0ubuntu1~18.04.1-b09 on Linux 4.15.0-1044-aws
-Intel(R) Xeon(R) CPU E5-2670 v2 @ 2.50GHz
-TPCDS Snappy:                             Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
-------------------------------------------------------------------------------------------------------------------------
-q86a-v2.7                                          1370           1391          29          0.0      Infinity       1.0X
+OpenJDK 64-Bit Server VM 1.8.0_232-b09 on Linux 4.4.0-171-generic
+Intel(R) Xeon(R) CPU @ 2.30GHz
+TPCDS Snappy:                                   Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
+------------------------------------------------------------------------------------------------------------------------------
+q86a-v2.7 - without PullOutGroupingExpressions           6022           6770        1058          0.0      Infinity       1.0X
+q86a-v2.7 - with PullOutGroupingExpressions              5449           5665         306          0.0      Infinity       1.1X
 
-OpenJDK 64-Bit Server VM 1.8.0_232-8u232-b09-0ubuntu1~18.04.1-b09 on Linux 4.15.0-1044-aws
-Intel(R) Xeon(R) CPU E5-2670 v2 @ 2.50GHz
-TPCDS Snappy:                             Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
-------------------------------------------------------------------------------------------------------------------------
-q98-v2.7                                            577            612          31          0.0      Infinity       1.0X
+OpenJDK 64-Bit Server VM 1.8.0_232-b09 on Linux 4.4.0-171-generic
+Intel(R) Xeon(R) CPU @ 2.30GHz
+TPCDS Snappy:                                  Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
+-----------------------------------------------------------------------------------------------------------------------------
+q98-v2.7 - without PullOutGroupingExpressions            707            736          38          0.0      Infinity       1.0X
+q98-v2.7 - with PullOutGroupingExpressions               702            705           2          0.0      Infinity       1.0X
 

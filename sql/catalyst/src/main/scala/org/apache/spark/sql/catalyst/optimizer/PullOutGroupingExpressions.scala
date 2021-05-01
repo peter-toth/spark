@@ -57,18 +57,14 @@ object PullOutGroupingExpressions extends Rule[LogicalPlan] {
           case o => o
         }
         if (complexGroupingExpressionMap.nonEmpty) {
-          def replaceComplexGroupingExpressions(e: Expression): Expression = {
-            e match {
-              case _ if AggregateExpression.isAggregate(e) => e
-              case _ if e.foldable => e
-              case _ if complexGroupingExpressionMap.contains(e.canonicalized) =>
-                complexGroupingExpressionMap.get(e.canonicalized).map(_.toAttribute).getOrElse(e)
-              case _ => e.mapChildren(replaceComplexGroupingExpressions)
-            }
-          }
+          val newAggregateExpressions = a.aggregateExpressions.map(_.transformWithPruning(tpb => {
+            val e = tpb.asInstanceOf[Expression]
+            !(AggregateExpression.isAggregate(e) || e.foldable)
+          }) {
+            case e if complexGroupingExpressionMap.contains(e.canonicalized) =>
+              complexGroupingExpressionMap.get(e.canonicalized).map(_.toAttribute).getOrElse(e)
+          }.asInstanceOf[NamedExpression])
 
-          val newAggregateExpressions = a.aggregateExpressions
-            .map(replaceComplexGroupingExpressions(_).asInstanceOf[NamedExpression])
           val newChild = Project(a.child.output ++ complexGroupingExpressionMap.values, a.child)
           Aggregate(newGroupingExpressions, newAggregateExpressions, newChild)
         } else {

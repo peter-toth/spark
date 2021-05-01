@@ -57,10 +57,8 @@ object PullOutGroupingExpressions extends Rule[LogicalPlan] {
           case o => o
         }
         if (complexGroupingExpressionMap.nonEmpty) {
-          val newAggregateExpressions = a.aggregateExpressions.map(_.transformWithPruning(tpb => {
-            val e = tpb.asInstanceOf[Expression]
-            !(AggregateExpression.isAggregate(e) || e.foldable)
-          }) {
+          val newAggregateExpressions = a.aggregateExpressions.map(_.transformWithPruning(
+            e => !(AggregateExpression.isAggregate(e) || e.foldable)) {
             case e if complexGroupingExpressionMap.contains(e.canonicalized) =>
               complexGroupingExpressionMap.get(e.canonicalized).map(_.toAttribute).getOrElse(e)
           }.asInstanceOf[NamedExpression])

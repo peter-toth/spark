@@ -724,7 +724,7 @@ object LikeSimplification extends Rule[LogicalPlan] {
   }
 
   def apply(plan: LogicalPlan): LogicalPlan = plan.transformAllExpressionsWithPruning(
-    _.containsPattern(LIKE_FAMLIY), ruleId) {
+    AlwaysProcess.fn, _.containsPattern(LIKE_FAMLIY), ruleId) {
     case l @ Like(input, Literal(pattern, StringType), escapeChar) =>
       if (pattern == null) {
         // If pattern is null, return null value directly, since "col like null" == null.
@@ -933,7 +933,7 @@ object FoldablePropagation extends Rule[LogicalPlan] {
  */
 object SimplifyCasts extends Rule[LogicalPlan] {
   def apply(plan: LogicalPlan): LogicalPlan = plan.transformAllExpressionsWithPruning(
-    _.containsPattern(CAST), ruleId) {
+    AlwaysProcess.fn, _.containsPattern(CAST), ruleId) {
     case Cast(e, dataType, _) if e.dataType == dataType => e
     case c @ Cast(e, dataType, _) => (e.dataType, dataType) match {
       case (ArrayType(from, false), ArrayType(to, true)) if from == to => e
@@ -950,7 +950,7 @@ object SimplifyCasts extends Rule[LogicalPlan] {
  */
 object RemoveDispensableExpressions extends Rule[LogicalPlan] {
   def apply(plan: LogicalPlan): LogicalPlan = plan.transformAllExpressionsWithPruning(
-    _.containsPattern(UNARY_POSITIVE), ruleId) {
+    AlwaysProcess.fn, _.containsPattern(UNARY_POSITIVE), ruleId) {
     case UnaryPositive(child) => child
   }
 }
@@ -1006,7 +1006,7 @@ object CombineConcats extends Rule[LogicalPlan] {
   }
 
   def apply(plan: LogicalPlan): LogicalPlan = plan.transformAllExpressionsWithPruning(
-    _.containsPattern(CONCAT), ruleId) {
+    AlwaysProcess.fn, _.containsPattern(CONCAT), ruleId) {
     case concat: Concat if hasNestedConcats(concat) =>
       flattenConcats(concat)
   }

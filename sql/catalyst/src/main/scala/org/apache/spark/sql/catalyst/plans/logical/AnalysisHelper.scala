@@ -21,7 +21,7 @@ import org.apache.spark.sql.catalyst.expressions.{Attribute, AttributeMap, Expre
 import org.apache.spark.sql.catalyst.plans.QueryPlan
 import org.apache.spark.sql.catalyst.rules.RuleId
 import org.apache.spark.sql.catalyst.rules.UnknownRuleId
-import org.apache.spark.sql.catalyst.trees.{AlwaysProcess, CurrentOrigin, TreePatternBits}
+import org.apache.spark.sql.catalyst.trees.{AlwaysProcess, CurrentOrigin}
 import org.apache.spark.util.Utils
 
 
@@ -92,7 +92,7 @@ trait AnalysisHelper extends QueryPlan[LogicalPlan] { self: LogicalPlan =>
    *               subtree. Do not pass it if the rule is not purely functional and reads a
    *               varying initial state for different invocations.
    */
-  def resolveOperatorsWithPruning(cond: TreePatternBits => Boolean,
+  def resolveOperatorsWithPruning(cond: LogicalPlan => Boolean,
     ruleId: RuleId = UnknownRuleId)(rule: PartialFunction[LogicalPlan, LogicalPlan])
   : LogicalPlan = {
     resolveOperatorsDownWithPruning(cond, ruleId)(rule)
@@ -126,7 +126,7 @@ trait AnalysisHelper extends QueryPlan[LogicalPlan] { self: LogicalPlan =>
    *               subtree. Do not pass it if the rule is not purely functional and reads a
    *               varying initial state for different invocations.
    */
-  def resolveOperatorsUpWithPruning(cond: TreePatternBits => Boolean,
+  def resolveOperatorsUpWithPruning(cond: LogicalPlan => Boolean,
     ruleId: RuleId = UnknownRuleId)(rule: PartialFunction[LogicalPlan, LogicalPlan])
   : LogicalPlan = {
     if (!analyzed && cond.apply(self) && !isRuleIneffective(ruleId)) {
@@ -160,7 +160,7 @@ trait AnalysisHelper extends QueryPlan[LogicalPlan] { self: LogicalPlan =>
   }
 
   /** Similar to [[resolveOperatorsUpWithPruning]], but does it top-down. */
-  def resolveOperatorsDownWithPruning(cond: TreePatternBits => Boolean,
+  def resolveOperatorsDownWithPruning(cond: LogicalPlan => Boolean,
     ruleId: RuleId = UnknownRuleId)(rule: PartialFunction[LogicalPlan, LogicalPlan])
   : LogicalPlan = {
     if (!analyzed && cond.apply(self) && !isRuleIneffective(ruleId)) {
@@ -221,7 +221,7 @@ trait AnalysisHelper extends QueryPlan[LogicalPlan] { self: LogicalPlan =>
    * been analyzed.
    */
   def resolveExpressions(r: PartialFunction[Expression, Expression]): LogicalPlan = {
-    resolveExpressionsWithPruning(AlwaysProcess.fn, UnknownRuleId)(r)
+    resolveExpressionsWithPruning(AlwaysProcess.fn, AlwaysProcess.fn, UnknownRuleId)(r)
   }
 
   /**
@@ -238,10 +238,10 @@ trait AnalysisHelper extends QueryPlan[LogicalPlan] { self: LogicalPlan =>
    *               subtree. Do not pass it if the rule is not purely functional and reads a
    *               varying initial state for different invocations.
    */
-  def resolveExpressionsWithPruning(cond: TreePatternBits => Boolean,
+  def resolveExpressionsWithPruning(cond: LogicalPlan => Boolean, exprCond: Expression => Boolean,
     ruleId: RuleId = UnknownRuleId)(rule: PartialFunction[Expression, Expression]): LogicalPlan = {
     resolveOperatorsWithPruning(cond, ruleId) {
-      case p => p.transformExpressionsWithPruning(cond, ruleId)(rule)
+      case p => p.transformExpressionsWithPruning(exprCond, ruleId)(rule)
     }
   }
 
@@ -259,7 +259,7 @@ trait AnalysisHelper extends QueryPlan[LogicalPlan] { self: LogicalPlan =>
    * the scope of a [[resolveOperatorsDown()]] call.
    * @see [[org.apache.spark.sql.catalyst.trees.TreeNode.transformDownWithPruning()]].
    */
-  override def transformDownWithPruning(cond: TreePatternBits => Boolean,
+  override def transformDownWithPruning(cond: LogicalPlan => Boolean,
     ruleId: RuleId = UnknownRuleId)(rule: PartialFunction[LogicalPlan, LogicalPlan])
   : LogicalPlan = {
     assertNotAnalysisRule()
@@ -271,7 +271,7 @@ trait AnalysisHelper extends QueryPlan[LogicalPlan] { self: LogicalPlan =>
    *
    * @see [[org.apache.spark.sql.catalyst.trees.TreeNode.transformUpWithPruning()]]
    */
-  override def transformUpWithPruning(cond: TreePatternBits => Boolean,
+  override def transformUpWithPruning(cond: LogicalPlan => Boolean,
     ruleId: RuleId = UnknownRuleId)(rule: PartialFunction[LogicalPlan, LogicalPlan])
   : LogicalPlan = {
     assertNotAnalysisRule()
@@ -283,11 +283,12 @@ trait AnalysisHelper extends QueryPlan[LogicalPlan] { self: LogicalPlan =>
    * @see [[QueryPlan.transformAllExpressionsWithPruning()]]
    */
   override def transformAllExpressionsWithPruning(
-    cond: TreePatternBits => Boolean,
+    cond: LogicalPlan => Boolean,
+    exprCond: Expression => Boolean,
     ruleId: RuleId = UnknownRuleId)(rule: PartialFunction[Expression, Expression])
   : this.type = {
     assertNotAnalysisRule()
-    super.transformAllExpressionsWithPruning(cond, ruleId)(rule)
+    super.transformAllExpressionsWithPruning(cond, exprCond, ruleId)(rule)
   }
 
   override def clone(): LogicalPlan = {

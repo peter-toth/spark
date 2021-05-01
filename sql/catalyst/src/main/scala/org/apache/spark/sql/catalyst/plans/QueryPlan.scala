@@ -25,7 +25,6 @@ import org.apache.spark.sql.catalyst.expressions._
 import org.apache.spark.sql.catalyst.rules.RuleId
 import org.apache.spark.sql.catalyst.rules.UnknownRuleId
 import org.apache.spark.sql.catalyst.trees.{AlwaysProcess, CurrentOrigin, TreeNode, TreeNodeTag}
-import org.apache.spark.sql.catalyst.trees.TreePatternBits
 import org.apache.spark.sql.internal.SQLConf
 import org.apache.spark.sql.types.{DataType, StructType}
 import org.apache.spark.util.collection.BitSet
@@ -116,7 +115,7 @@ abstract class QueryPlan[PlanType <: QueryPlan[PlanType]]
    *               subtree. Do not pass it if the rule is not purely functional and reads a
    *               varying initial state for different invocations.
    */
-  def transformExpressionsWithPruning(cond: TreePatternBits => Boolean,
+  def transformExpressionsWithPruning(cond: Expression => Boolean,
     ruleId: RuleId = UnknownRuleId)(rule: PartialFunction[Expression, Expression])
   : this.type = {
     transformExpressionsDownWithPruning(cond, ruleId)(rule)
@@ -145,7 +144,7 @@ abstract class QueryPlan[PlanType <: QueryPlan[PlanType]]
    *               subtree. Do not pass it if the rule is not purely functional and reads a
    *               varying initial state for different invocations.
    */
-  def transformExpressionsDownWithPruning(cond: TreePatternBits => Boolean,
+  def transformExpressionsDownWithPruning(cond: Expression => Boolean,
     ruleId: RuleId = UnknownRuleId)(rule: PartialFunction[Expression, Expression])
   : this.type = {
     mapExpressions(_.transformDownWithPruning(cond, ruleId)(rule))
@@ -174,7 +173,7 @@ abstract class QueryPlan[PlanType <: QueryPlan[PlanType]]
    *               subtree. Do not pass it if the rule is not purely functional and reads a
    *               varying initial state for different invocations.
    */
-  def transformExpressionsUpWithPruning(cond: TreePatternBits => Boolean,
+  def transformExpressionsUpWithPruning(cond: Expression => Boolean,
     ruleId: RuleId = UnknownRuleId)(rule: PartialFunction[Expression, Expression])
   : this.type = {
     mapExpressions(_.transformUpWithPruning(cond, ruleId)(rule))
@@ -220,19 +219,20 @@ abstract class QueryPlan[PlanType <: QueryPlan[PlanType]]
    * and all its children. Note that this method skips expressions inside subqueries.
    */
   def transformAllExpressions(rule: PartialFunction[Expression, Expression]): this.type = {
-    transformAllExpressionsWithPruning(AlwaysProcess.fn, UnknownRuleId)(rule)
+    transformAllExpressionsWithPruning(AlwaysProcess.fn, AlwaysProcess.fn, UnknownRuleId)(rule)
   }
 
   /**
    * Returns the result of running [[transformExpressionsWithPruning]] on this node
    * and all its children. Note that this method skips expressions inside subqueries.
    */
-  def transformAllExpressionsWithPruning(cond: TreePatternBits => Boolean,
+  def transformAllExpressionsWithPruning(cond: PlanType => Boolean,
+    exprCond: Expression => Boolean,
     ruleId: RuleId = UnknownRuleId)(rule: PartialFunction[Expression, Expression])
   : this.type = {
     transformWithPruning(cond, ruleId) {
       case q: QueryPlan[_] =>
-        q.transformExpressionsWithPruning(cond, ruleId)(rule).asInstanceOf[PlanType]
+        q.transformExpressionsWithPruning(exprCond, ruleId)(rule).asInstanceOf[PlanType]
     }.asInstanceOf[this.type]
   }
 

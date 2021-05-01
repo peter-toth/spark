@@ -39,7 +39,7 @@ import org.apache.spark.sql.catalyst.plans._
 import org.apache.spark.sql.catalyst.plans.logical._
 import org.apache.spark.sql.catalyst.rules._
 import org.apache.spark.sql.catalyst.streaming.StreamingRelationV2
-import org.apache.spark.sql.catalyst.trees.TreeNodeRef
+import org.apache.spark.sql.catalyst.trees.{AlwaysProcess, TreeNodeRef}
 import org.apache.spark.sql.catalyst.trees.TreePattern._
 import org.apache.spark.sql.catalyst.util.{toPrettySQL, CharVarcharUtils}
 import org.apache.spark.sql.connector.catalog._
@@ -2297,8 +2297,8 @@ class Analyzer(override val catalogManager: CatalogManager)
      *     outer plan to get evaluated.
      */
     private def resolveSubQueries(plan: LogicalPlan, plans: Seq[LogicalPlan]): LogicalPlan = {
-      plan.transformAllExpressionsWithPruning(_.containsAnyPattern(SCALAR_SUBQUERY,
-        EXISTS_SUBQUERY, IN_SUBQUERY), ruleId) {
+      plan.transformAllExpressionsWithPruning(AlwaysProcess.fn,
+        _.containsAnyPattern(SCALAR_SUBQUERY, EXISTS_SUBQUERY, IN_SUBQUERY), ruleId) {
         case s @ ScalarSubquery(sub, _, exprId) if !sub.resolved =>
           resolveSubQuery(s, plans)(ScalarSubquery(_, _, exprId))
         case e @ Exists(sub, _, exprId) if !sub.resolved =>
@@ -3128,7 +3128,7 @@ class Analyzer(override val catalogManager: CatalogManager)
    */
   object ResolveWindowFrame extends Rule[LogicalPlan] {
     def apply(plan: LogicalPlan): LogicalPlan = plan.resolveExpressionsWithPruning(
-      _.containsPattern(WINDOW_EXPRESSION), ruleId) {
+      AlwaysProcess.fn, _.containsPattern(WINDOW_EXPRESSION), ruleId) {
       case WindowExpression(wf: FrameLessOffsetWindowFunction,
         WindowSpecDefinition(_, _, f: SpecifiedWindowFrame)) if wf.frame != f =>
         throw QueryCompilationErrors.cannotSpecifyWindowFrameError(wf.prettyName)
@@ -3154,7 +3154,7 @@ class Analyzer(override val catalogManager: CatalogManager)
    */
   object ResolveWindowOrder extends Rule[LogicalPlan] {
     def apply(plan: LogicalPlan): LogicalPlan = plan.resolveExpressionsWithPruning(
-      _.containsPattern(WINDOW_EXPRESSION), ruleId) {
+      AlwaysProcess.fn, _.containsPattern(WINDOW_EXPRESSION), ruleId) {
       case WindowExpression(wf: WindowFunction, spec) if spec.orderSpec.isEmpty =>
         throw QueryCompilationErrors.windowFunctionWithWindowFrameNotOrderedError(wf)
       case WindowExpression(rank: RankLike, spec) if spec.resolved =>

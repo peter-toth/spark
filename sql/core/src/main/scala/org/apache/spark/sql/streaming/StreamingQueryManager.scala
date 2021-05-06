@@ -241,11 +241,13 @@ class StreamingQueryManager private[sql] (sparkSession: SparkSession) extends Lo
       }
     }
 
+    val fileManager = CheckpointFileManager.create(
+      new Path(checkpointLocation), df.sparkSession.sessionState.newHadoopConf())
+
     // If offsets have already been created, we trying to resume a query.
     if (!recoverFromCheckpointLocation) {
       val checkpointPath = new Path(checkpointLocation, "offsets")
-      val fs = checkpointPath.getFileSystem(df.sparkSession.sessionState.newHadoopConf())
-      if (fs.exists(checkpointPath)) {
+      if (fileManager.exists(checkpointPath)) {
         throw new AnalysisException(
           s"This query does not support recovering from checkpoint location. " +
             s"Delete $checkpointPath to start over.")

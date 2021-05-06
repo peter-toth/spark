@@ -84,12 +84,11 @@ abstract class StreamExecution(
   private val startLatch = new CountDownLatch(1)
   private val terminationLatch = new CountDownLatch(1)
 
-  val resolvedCheckpointRoot = {
-    val checkpointPath = new Path(checkpointRoot)
-    val fs = checkpointPath.getFileSystem(sparkSession.sessionState.newHadoopConf())
-    fs.mkdirs(checkpointPath)
-    checkpointPath.makeQualified(fs.getUri, fs.getWorkingDirectory).toUri.toString
-  }
+  /** All checkpoint file operations should be performed through `CheckpointFileManager`. */
+  private val fileManager = CheckpointFileManager.create(new Path(checkpointRoot),
+      sparkSession.sessionState.newHadoopConf)
+
+  val resolvedCheckpointRoot = fileManager.createCheckpointDirectory().toUri.toString
 
   def logicalPlan: LogicalPlan
 
@@ -335,8 +334,8 @@ abstract class StreamExecution(
         if (deleteCheckpointOnStop && exception.isEmpty) {
           val checkpointPath = new Path(resolvedCheckpointRoot)
           try {
-            val fs = checkpointPath.getFileSystem(sparkSession.sessionState.newHadoopConf())
-            fs.delete(checkpointPath, true)
+            logInfo(s"Deleting checkpoint $checkpointPath.")
+            fileManager.delete(checkpointPath)
           } catch {
             case NonFatal(e) =>
               // Deleting temp checkpoint folder is best effort, don't throw non fatal exceptions

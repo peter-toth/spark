@@ -161,7 +161,7 @@
     <commons.httpclient.version>4.5.13</commons.httpclient.version>
     <commons.httpcore.version>4.4.13</commons.httpcore.version>
     <!--  commons-httpclient/commons-httpclient-->
-    <httpclient.classic.version>3.1</httpclient.classic.version>
+    <!-- CDPD-23461: EOL and contains CVE <httpclient.classic.version>3.1</httpclient.classic.version> -->
     <commons.math3.version>3.4.1</commons.math3.version>
     <!-- managed up from 3.2.1 for SPARK-11652 -->
     <commons.collections.version>3.2.2</commons.collections.version>
@@ -612,11 +612,11 @@
         <artifactId>jsr305</artifactId>
         <version>${jsr305.version}</version>
       </dependency>
-      <dependency>
+      <!-- CDPD-23461: EOL and contains CVE <dependency>
         <groupId>commons-httpclient</groupId>
         <artifactId>commons-httpclient</artifactId>
         <version>${httpclient.classic.version}</version>
-      </dependency>
+      </dependency> -->
       <dependency>
         <groupId>org.apache.httpcomponents</groupId>
         <artifactId>httpclient</artifactId>
@@ -1857,10 +1857,10 @@
             <groupId>commons-codec</groupId>
             <artifactId>commons-codec</artifactId>
           </exclusion>
-          <exclusion>
+          <!-- HIVE-19228: removed from hive-exec <exclusion>
             <groupId>commons-httpclient</groupId>
             <artifactId>commons-httpclient</artifactId>
-          </exclusion>
+          </exclusion> -->
           <exclusion>
             <groupId>org.apache.avro</groupId>
             <artifactId>avro-mapred</artifactId>

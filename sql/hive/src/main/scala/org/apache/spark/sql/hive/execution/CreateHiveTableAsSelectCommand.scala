@@ -54,6 +54,10 @@ trait CreateHiveTableAsSelectBase extends DataWritingCommand {
       val command = getWritingCommand(catalog, tableDesc, tableExists = true)
       command.run(sparkSession, child)
     } else {
+        tableDesc.storage.locationUri.foreach { p =>
+          DataWritingCommand.assertEmptyRootPath(
+            p, mode, sparkSession.sparkContext.hadoopConfiguration)
+        }
       // TODO ideally, we should get the output data ready first and then
       // add the relation into catalog, just in case of failure occurs while data
       // processing.

@@ -1019,6 +1019,14 @@ object SQLConf {
         "must be positive.")
       .createWithDefault(100)
 
+  val ALLOW_NON_EMPTY_LOCATION_IN_CTAS =
+    buildConf("spark.sql.legacy.allowNonEmptyLocationInCTAS")
+      .internal()
+      .doc("When false, CTAS with LOCATION throws an analysis exception if the " +
+        "location is not empty.")
+      .booleanConf
+      .createWithDefault(false)
+
   val STREAMING_FILE_COMMIT_PROTOCOL_CLASS =
     buildConf("spark.sql.streaming.commitProtocolClass")
       .internal()
@@ -2052,6 +2060,9 @@ class SQLConf extends Serializable with Logging {
     getConf(CARTESIAN_PRODUCT_EXEC_BUFFER_SPILL_THRESHOLD)
 
   def maxNestedViewDepth: Int = getConf(SQLConf.MAX_NESTED_VIEW_DEPTH)
+
+  def allowNonEmptyLocationInCTAS: Boolean =
+    getConf(SQLConf.ALLOW_NON_EMPTY_LOCATION_IN_CTAS)
 
   def starSchemaDetection: Boolean = getConf(STARSCHEMA_DETECTION)
 

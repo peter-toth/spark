@@ -194,13 +194,14 @@
     <maven-antrun.version>1.8</maven-antrun.version>
     <commons-crypto.version>1.0.0</commons-crypto.version>
     <!--
-    If you are changing Arrow version specification, please check ./python/pyspark/sql/utils.py,
-    ./python/run-tests.py and ./python/setup.py too.
+      If you are changing Arrow version specification, please check ./python/pyspark/sql/utils.py,
+      ./python/run-tests.py and ./python/setup.py too.
     -->
     <arrow.version>0.10.0</arrow.version>
     <netty.version>4.1.77.Final</netty.version>
     <guava.version>28.2-jre</guava.version>
-    <kubernetes-client.version>5.3.1</kubernetes-client.version>
+
+    <kubernetes-client.version>5.4.0</kubernetes-client.version>
 
     <test.java.home>${java.home}</test.java.home>
     <test.exclude.tags />

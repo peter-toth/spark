@@ -64,6 +64,8 @@ license: |
     * `ALTER TABLE .. ADD PARTITION` throws `PartitionsAlreadyExistException` if new partition exists already
     * `ALTER TABLE .. DROP PARTITION` throws `NoSuchPartitionsException` for not existing partitions
 
+  - In Spark 3.1, `CREATE TABLE AS SELECT` with non-empty `LOCATION` will throw `AnalysisException`. To restore the behavior before Spark 3.1, you can set `spark.sql.legacy.allowNonEmptyLocationInCTAS` to `true`.
+
 ## Upgrading from Spark SQL 3.0.1 to 3.0.2
 
   - In Spark 3.0.2, `AnalysisException` is replaced by its sub-classes that are thrown for tables from Hive external catalog in the following situations:

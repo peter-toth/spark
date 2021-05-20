@@ -17,14 +17,17 @@
 
 package org.apache.spark.sql.execution.command
 
+import java.net.URI
+
 import org.apache.hadoop.conf.Configuration
 
-import org.apache.spark.sql.{Row, SparkSession}
+import org.apache.spark.sql.{AnalysisException, Row, SaveMode, SparkSession}
 import org.apache.spark.sql.catalyst.expressions.Attribute
 import org.apache.spark.sql.catalyst.plans.logical.{Command, LogicalPlan}
 import org.apache.spark.sql.execution.SparkPlan
 import org.apache.spark.sql.execution.datasources.BasicWriteJobStatsTracker
 import org.apache.spark.sql.execution.metric.SQLMetric
+import org.apache.spark.sql.internal.SQLConf
 import org.apache.spark.util.SerializableConfiguration
 
 /**
@@ -71,6 +74,30 @@ object DataWritingCommand {
       "The length of provided names doesn't match the length of output attributes.")
     outputAttributes.zip(names).map { case (attr, outputName) =>
       attr.withName(outputName)
+    }
+  }
+
+  /**
+   * When execute CTAS operators, if the  location is not empty,
+   * Spark SQL will throw[[AnalysisException]].
+   * For CTAS, the SaveMode is always [[ErrorIfExists]]
+   *
+   * @param tablePath Table location.
+   * @param saveMode  Save mode of the table.
+   * @param hadoopConf Configuration.
+   */
+  def assertEmptyRootPath(tablePath: URI, saveMode: SaveMode, hadoopConf: Configuration) {
+    if (saveMode == SaveMode.ErrorIfExists && !SQLConf.get.allowNonEmptyLocationInCTAS) {
+      val filePath = new org.apache.hadoop.fs.Path(tablePath)
+      val fs = filePath.getFileSystem(hadoopConf)
+      if (fs.exists(filePath) &&
+          fs.getFileStatus(filePath).isDirectory &&
+          fs.listStatus(filePath).length != 0) {
+        throw new AnalysisException(
+          s"CREATE-TABLE-AS-SELECT cannot create table with location to a non-empty directory " +
+            s"${tablePath} . To allow overwriting the existing non-empty directory, " +
+            s"set '${SQLConf.ALLOW_NON_EMPTY_LOCATION_IN_CTAS.key}' to true.")
+      }
     }
   }
 }

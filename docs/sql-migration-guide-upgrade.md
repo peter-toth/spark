@@ -13,6 +13,10 @@ displayTitle: Spark SQL Upgrading Guide
     * `ALTER TABLE .. ADD PARTITION` throws `PartitionsAlreadyExistException` if new partition exists already
     * `ALTER TABLE .. DROP PARTITION` throws `NoSuchPartitionsException` for not existing partitions
 
+## Upgrading from Spark SQL 2.4.6 to 2.4.7
+
+  - In Spark 2.4.7, `CREATE TABLE AS SELECT` with non-empty `LOCATION` will throw `AnalysisException`. To restore the behavior before Spark 2.4.7, you can set `spark.sql.legacy.allowNonEmptyLocationInCTAS` to `true`.
+
 ## Upgrading from Spark SQL 2.4.5 to 2.4.6
 
  - In Spark 2.4.6, the `RESET` command does not reset the static SQL configuration values to the default. It only clears the runtime SQL configuration values.

@@ -31,4 +31,18 @@ else
 fi
 
 export APACHE_MIRROR=http://mirror.infra.cloudera.com/apache
-./build/mvn -B $MAVEN_ARGS -Dcdpd.build=true package -fae -Dmaven.repo.local="$MVN_REPO_LOCAL"
+./build/mvn -B $MAVEN_ARGS -Dcdpd.build=true package -Dmaven.repo.local="$MVN_REPO_LOCAL" \
+-Dmaven.test.failure.ignore=true
+
+# Generating surefire reports for test failures
+./build/mvn -B $MAVEN_ARGS -Dcdpd.build=true surefire-report:report-only -DshowSuccess=false \
+-Daggregate=true
+
+GIT_ROOT=$(git rev-parse --show-toplevel | xargs -I {} basename {})
+# We have to grep for the required text since ./build/mvn echos logs to stdout.
+SUREFIRE_REPORT_DIRS=$(./build/mvn -B $MAVEN_ARGS -Dcdpd.build=true -Dexec.executable='echo' \
+ -Dexec.args='${surefireReportsDirectory}' exec:exec -q | grep "$GIT_ROOT")
+# Since we only need the name of the report file, running maven command only on "core" module.
+SUREFIRE_REPORT_TXT_FILE=$(./build/mvn -B $MAVEN_ARGS -Dcdpd.build=true -Dexec.executable='echo' \
+ -Dexec.args='${surefireFileReporterFile}' exec:exec -q -pl core | grep ".txt")
+./cloudera/validate_test_run.py "$SUREFIRE_REPORT_DIRS" "$SUREFIRE_REPORT_TXT_FILE"

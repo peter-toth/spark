@@ -249,6 +249,9 @@
     <test.method.keys />
 
     <gbn.repo.url>http://cloudera-build-us-west-1.vpc.cloudera.com/s3/build/${env.SPARK_DEV_BUILD_GBN}/cdh/7.x/maven-repository/</gbn.repo.url>
+
+    <surefireReportsDirectory>${project.build.directory}/surefire-reports</surefireReportsDirectory>
+    <surefireFileReporterFile>SparkTestSuite.txt</surefireFileReporterFile>
   </properties>
   <repositories>
     <repository>
@@ -2543,7 +2546,7 @@
               <include>**/*TestCase.java</include>
               <include>**/*Suite.java</include>
             </includes>
-            <reportsDirectory>${project.build.directory}/surefire-reports</reportsDirectory>
+            <reportsDirectory>${surefireReportsDirectory}</reportsDirectory>
             <argLine>-ea -Xmx4g -Xss4m -XX:ReservedCodeCacheSize=${CodeCacheSize}</argLine>
             <environmentVariables>
               <!--
@@ -2592,9 +2595,9 @@
           <version>1.0</version>
           <!-- Note config is repeated in surefire config -->
           <configuration>
-            <reportsDirectory>${project.build.directory}/surefire-reports</reportsDirectory>
+            <reportsDirectory>${surefireReportsDirectory}</reportsDirectory>
             <junitxml>.</junitxml>
-            <filereports>SparkTestSuite.txt</filereports>
+            <filereports>${surefireFileReporterFile}</filereports>
             <argLine>-ea -Xmx4g -Xss4m -XX:ReservedCodeCacheSize=${CodeCacheSize}</argLine>
             <stderr />
             <environmentVariables>

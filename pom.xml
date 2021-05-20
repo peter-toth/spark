@@ -245,6 +245,9 @@
      to name individual keyed test case methods. If unset: run all.
       -->
     <test.method.keys />
+
+    <surefireReportsDirectory>${project.build.directory}/surefire-reports</surefireReportsDirectory>
+    <surefireFileReporterFile>SparkTestSuite.txt</surefireFileReporterFile>
   </properties>
   <repositories>
     <repository>
@@ -2539,7 +2542,7 @@
               <include>**/*TestCase.java</include>
               <include>**/*Suite.java</include>
             </includes>
-            <reportsDirectory>${project.build.directory}/surefire-reports</reportsDirectory>
+            <reportsDirectory>${surefireReportsDirectory}</reportsDirectory>
             <argLine>-ea -Xmx4g -Xss4m -XX:ReservedCodeCacheSize=${CodeCacheSize}</argLine>
             <environmentVariables>
               <!--
@@ -2588,9 +2591,9 @@
           <version>1.0</version>
           <!-- Note config is repeated in surefire config -->
           <configuration>
-            <reportsDirectory>${project.build.directory}/surefire-reports</reportsDirectory>
+            <reportsDirectory>${surefireReportsDirectory}</reportsDirectory>
             <junitxml>.</junitxml>
-            <filereports>SparkTestSuite.txt</filereports>
+            <filereports>${surefireFileReporterFile}</filereports>
             <argLine>-ea -Xmx4g -Xss4m -XX:ReservedCodeCacheSize=${CodeCacheSize}</argLine>
             <stderr />
             <environmentVariables>

@@ -654,7 +654,8 @@ object TestHiveUtils {
   def newCatalogConfig(
                         conf: SparkConf,
                         hadoopConf: Configuration,
-                        createMetastoreDir: Boolean = false): (SparkConf, Configuration) = {
+                        createMetastoreDir: Boolean = false,
+                        setWarehouseDir: Boolean = false): (SparkConf, Configuration) = {
     val (catalogConf, hiveConf) = if (SystemUtils.isJavaVersionAtLeast(JavaVersion.JAVA_9)) {
       val _hconf = new Configuration(hadoopConf)
       _hconf.set("hive.metastore.schema.verification", "false")
@@ -681,6 +682,19 @@ object TestHiveUtils {
       hiveConf.set(ConfVars.METASTORECONNECTURLKEY.varname,
         s"jdbc:derby:;databaseName=$metastorePath;create=true")
       catalogConf.set(WAREHOUSE_PATH, warehousePath.toURI().toString())
+      // After CDPD-23328, when Spark creates a database, Hive will create a managed directory,
+      // even if Spark's create request specifies only an external location.
+      // As a result, we need to set METASTOREWAREHOUSE or Hive will potentially choose a
+      // location that does not exist on the machine in which tests are running.
+      // SharedState will set METASTOREWAREHOUSE when creating an external catalog, so for
+      // most Hive-related tests, we don't need to do anything special.
+      // However, if we are creating the external catalog outside of SharedState
+      // (which is the case for HiveExternalCatalogSuite), we must set METASTOREWAREHOUSE here.
+      // We must *not* set METASTOREWAREHOUSE here when the external catalog is created via
+      // SharedState, because that will mess all the other Hive-related tests.
+      if (setWarehouseDir) {
+        hiveConf.set(ConfVars.METASTOREWAREHOUSE.varname, warehousePath.toURI().toString())
+      }
     }
 
     (catalogConf, hiveConf)

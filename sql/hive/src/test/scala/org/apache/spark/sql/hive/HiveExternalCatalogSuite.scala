@@ -33,7 +33,7 @@ class HiveExternalCatalogSuite extends ExternalCatalogSuite {
 
   private val externalCatalog: HiveExternalCatalog = {
     val (sparkConf, hadoopConf) = TestHiveUtils.newCatalogConfig(new SparkConf(),
-      new Configuration(), createMetastoreDir = true)
+      new Configuration(), createMetastoreDir = true, setWarehouseDir = true)
     val catalog = new HiveExternalCatalog(sparkConf, hadoopConf)
     catalog.client.reset()
     catalog

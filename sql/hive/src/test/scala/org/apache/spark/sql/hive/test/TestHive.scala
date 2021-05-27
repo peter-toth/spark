@@ -695,11 +695,25 @@ object TestHiveUtils {
 
   // CDPD-12036: change the path of Derby database that is used for backend of in-memory HMS to a
   // temporary directory
-  def newCatalogConfig(hadoopConf: Configuration): Configuration = {
+  def newCatalogConfig(conf: SparkConf, hadoopConf: Configuration): (SparkConf, Configuration) = {
     val metastorePath = new File(Utils.createTempDir(), "metastore").getAbsolutePath()
     hadoopConf.set(ConfVars.METASTORECONNECTURLKEY.varname,
       s"jdbc:derby:;databaseName=$metastorePath;create=true")
 
-    hadoopConf
+    // After CDPD-23328, when Spark creates a database, Hive will create a managed directory,
+    // even if Spark's create request specifies only an external location.
+    // As a result, we need to set METASTOREWAREHOUSE or Hive will potentially choose a
+    // location that does not exist on the machine in which tests are running.
+    // SharedState will set METASTOREWAREHOUSE when creating an external catalog, so for
+    // most Hive-related tests, we don't need to do anything special.
+    // However, if we are creating the external catalog outside of SharedState
+    // (which is the case for HiveExternalCatalogSuite), we must set METASTOREWAREHOUSE here.
+    // We must *not* set METASTOREWAREHOUSE here when the external catalog is created via
+    // SharedState, because that will mess all the other Hive-related tests.
+    val warehousePath = Utils.createTempDir()
+    conf.set(WAREHOUSE_PATH, warehousePath.toURI().toString())
+    hadoopConf.set(ConfVars.METASTOREWAREHOUSE.varname, warehousePath.toURI().toString())
+
+    (conf, hadoopConf)
   }
 }

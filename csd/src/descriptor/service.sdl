@@ -637,7 +637,8 @@
         "DEPLOY_MODE" : "${spark_deploy_mode}",
         "PYTHON_PATH" : "${spark_python_path}",
         "ATLAS_KAFKA_BROKERS_LIST" : "${atlas_kafka_bootstrap_servers}",
-        "ATLAS_ZK_CONNECT" : "${atlas_kafka_zk_connect}"
+        "ATLAS_ZK_CONNECT" : "${atlas_kafka_zk_connect}",
+        "KAFKA_SECURITY_PROTOCOL": "${atlas_kafka_security_protocol}"
       }
     },
     "logging" : {

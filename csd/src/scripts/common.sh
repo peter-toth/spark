@@ -494,7 +494,7 @@ function deploy_client_config {
     ATLAS_CLIENT_FILE="$CONF_DIR/atlas-conf/atlas-client.properties"
     if [ -f "$ATLAS_SERVER_FILE" ]; then
       # Copy the contents
-      . ${CONF_DIR}/scripts/generate_atlas_client_configs.sh ${ATLAS_SERVER_FILE} ${ATLAS_CONF_FILE} ${ATLAS_ZK_CONNECT} ${ATLAS_KAFKA_BROKERS_LIST} ${ATLAS_CLIENT_FILE}
+      . ${CONF_DIR}/scripts/generate_atlas_client_configs.sh ${ATLAS_SERVER_FILE} ${ATLAS_CONF_FILE} ${ATLAS_ZK_CONNECT} ${ATLAS_KAFKA_BROKERS_LIST} ${ATLAS_CLIENT_FILE} ${KAFKA_SECURITY_PROTOCOL}
 
       # Update atlas-application.properties
       echo "atlas.notification.hook.topic.name=ATLAS_SPARK_HOOK" >> "$ATLAS_CONF_FILE"

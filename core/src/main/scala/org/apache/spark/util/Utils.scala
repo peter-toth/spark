@@ -2862,6 +2862,13 @@ private[spark] object Utils extends Logging {
   def isClientMode(conf: SparkConf): Boolean = {
     "client".equals(conf.get(SparkLauncher.DEPLOY_MODE, "client"))
   }
+
+  def executorTimeoutMs(conf: SparkConf): Long = {
+    // "spark.network.timeout" uses "seconds", while `spark.storage.blockManagerSlaveTimeoutMs` uses
+    // "milliseconds"
+    conf.getTimeAsMs("spark.storage.blockManagerSlaveTimeoutMs",
+      s"${conf.getTimeAsSeconds("spark.network.timeout", "120s")}s")
+  }
 }
 
 private[util] object CallerContext extends Logging {

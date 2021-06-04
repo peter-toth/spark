@@ -18,6 +18,7 @@ package org.apache.spark.scheduler.cluster.k8s
 
 import java.time.Instant
 import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.{AtomicInteger, AtomicLong}
 
 import io.fabric8.kubernetes.api.model.PodBuilder
@@ -57,6 +58,8 @@ private[spark] class ExecutorPodsAllocator(
   private val podCreationTimeout = math.max(
     podAllocationDelay * 5,
     conf.get(KUBERNETES_ALLOCATION_EXECUTOR_TIMEOUT))
+
+  private val driverPodReadinessTimeout = conf.get(KUBERNETES_ALLOCATION_DRIVER_READINESS_TIMEOUT)
 
   private val executorIdleTimeout = conf.get(DYN_ALLOCATION_EXECUTOR_IDLE_TIMEOUT) * 1000
 
@@ -98,6 +101,14 @@ private[spark] class ExecutorPodsAllocator(
   @volatile private var deletedExecutorIds = Set.empty[Long]
 
   def start(applicationId: String, schedulerBackend: KubernetesClusterSchedulerBackend): Unit = {
+    // Wait until the driver pod is ready before starting executors, as the headless service won't
+    // be resolvable by DNS until the driver pod is ready.
+    Utils.tryLogNonFatalError {
+      kubernetesClient
+        .pods()
+        .withName(kubernetesDriverPodName.get)
+        .waitUntilReady(driverPodReadinessTimeout, TimeUnit.SECONDS)
+    }
     snapshotsStore.addSubscriber(podAllocationDelay) {
       onNewSnapshots(applicationId, schedulerBackend, _)
     }

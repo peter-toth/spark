@@ -20,7 +20,6 @@ package org.apache.spark.deploy
 import java.io._
 import java.lang.reflect.{InvocationTargetException, Modifier, UndeclaredThrowableException}
 import java.net.{URI, URL}
-import java.nio.file.AccessDeniedException
 import java.security.PrivilegedExceptionAction
 import java.text.ParseException
 import java.util.UUID
@@ -359,7 +358,8 @@ private[spark] class SparkSubmit extends Logging {
       try {
         resolveGlobPaths(path, hadoopConf)
       } catch {
-        case x: AccessDeniedException =>
+        case x: SparkException => throw x
+        case x: Exception =>
           logInfo(s"Glob path resolution failed: $path", x)
           path
       }

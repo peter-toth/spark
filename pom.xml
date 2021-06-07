@@ -204,7 +204,7 @@
     -->
     <arrow.version>0.10.0</arrow.version>
     <netty.version>4.1.68.Final</netty.version>
-    <kubernetes-client.version>5.4.0</kubernetes-client.version>
+    <kubernetes-client.version>5.4.1</kubernetes-client.version>
 
     <test.java.home>${java.home}</test.java.home>
     <!--

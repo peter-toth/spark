@@ -23,7 +23,7 @@
   <!-- no parent declaration here, b/c for some reason that messes up the shading rules -->
   <groupId>org.apache.spark</groupId>
   <artifactId>spark-shaded-raz</artifactId>
-  <version>3.1.1.3.1.7270.0-SNAPSHOT</version>
+  <version>3.1.1.3.1.7290.3-SNAPSHOT</version>
   <packaging>jar</packaging>
   <name>Spark shaded raz directories</name>
   <description>

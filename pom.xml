@@ -25,7 +25,7 @@
   </parent>
   <groupId>org.apache.spark</groupId>
   <artifactId>spark-parent_2.12</artifactId>
-  <version>3.1.1.3.1.7270.0-SNAPSHOT</version>
+  <version>3.1.1.3.1.7290.3-SNAPSHOT</version>
   <packaging>pom</packaging>
   <name>Spark Project Parent POM</name>
   <url>http://spark.apache.org/</url>
@@ -120,24 +120,24 @@
     <sbt.project.name>spark</sbt.project.name>
     <slf4j.version>1.7.30</slf4j.version>
     <log4j.version>1.2.17-cloudera1</log4j.version>
-    <hadoop.version>3.1.1.7.2.7.0-SNAPSHOT</hadoop.version>
+    <hadoop.version>3.1.1.7.2.9.0-203</hadoop.version>
     <protobuf.version>2.5.0</protobuf.version>
     <yarn.version>${hadoop.version}</yarn.version>
-    <zookeeper.version>3.5.5.7.2.7.0-SNAPSHOT</zookeeper.version>
-    <curator.version>4.3.0.7.2.7.0-SNAPSHOT</curator.version>
+    <zookeeper.version>3.5.5.7.2.9.0-203</zookeeper.version>
+    <curator.version>4.3.0.7.2.9.0-203</curator.version>
     <hive.group>org.apache.hive</hive.group>
     <!-- If core used as upstream then java.lang.NoClassDefFoundError: org/apache/hadoop/hive/llap/io/api/LlapProxy -->
     <hive.classifier />
     <!-- Version used in Maven Hive dependency -->
-    <hive.version>3.1.3000.7.2.7.0-SNAPSHOT</hive.version>
+    <hive.version>3.1.3000.7.2.9.0-203</hive.version>
     <hive23.version>2.3.7</hive23.version>
     <!-- Version used for internal directory structure -->
     <hive.version.short>2.3</hive.version.short>
     <!-- note that this should be compatible with Kafka brokers version 0.10 and up -->
-    <kafka.version>2.5.0.7.2.7.0-SNAPSHOT</kafka.version>
+    <kafka.version>2.5.0.7.2.9.0-203</kafka.version>
     <derby.version>10.14.2.0</derby.version>
-    <parquet.version>1.10.99.7.2.7.0-SNAPSHOT</parquet.version>
-    <orc.version>1.5.1.7.2.7.0-SNAPSHOT</orc.version>
+    <parquet.version>1.10.99.7.2.9.0-203</parquet.version>
+    <orc.version>1.5.1.7.2.9.0-203</orc.version>
     <hive.parquet.group>org.apache.parquet</hive.parquet.group>
     <hive.parquet.version>${parquet.version}</hive.parquet.version>
     <jetty.version>9.4.36.v20210114</jetty.version>
@@ -150,7 +150,7 @@
     the link to metrics.dropwizard.io in docs/monitoring.md.
     -->
     <codahale.metrics.version>4.1.1</codahale.metrics.version>
-    <avro.version>1.8.2.7.2.7.0-SNAPSHOT</avro.version>
+    <avro.version>1.8.2.7.2.9.0-203</avro.version>
     <avro.mapred.classifier>hadoop2</avro.mapred.classifier>
     <aws.kinesis.client.version>1.12.0</aws.kinesis.client.version>
     <!-- Should be consistent with Kinesis client dependency -->
@@ -177,7 +177,7 @@
     <fasterxml.jackson.databind.version>2.10.5.1</fasterxml.jackson.databind.version>
     <snappy.version>1.1.8.2</snappy.version>
     <netlib.java.version>1.1.2</netlib.java.version>
-    <calcite.version>1.21.0.7.2.7.0-SNAPSHOT</calcite.version>
+    <calcite.version>1.21.0.7.2.9.0-203</calcite.version>
     <commons-codec.version>1.10</commons-codec.version>
     <commons-compress.version>1.20</commons-compress.version>
     <commons-io.version>2.5</commons-io.version>

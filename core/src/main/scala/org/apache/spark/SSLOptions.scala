@@ -47,6 +47,9 @@ import org.apache.spark.internal.Logging
  * @param trustStoreType      the type of the trust-store
  * @param protocol            SSL protocol (remember that SSLv3 was compromised) supported by Java
  * @param enabledAlgorithms   a set of encryption algorithms that may be used
+ * @param excludedAlgorithms  an optional set of regular expressions to exclude algorithms
+ * @param includedProtocols   an optional set of regular expressions to include protocols
+ * @param excludedProtocols   an optional set of regular expressions to exclude protocols
  */
 private[spark] case class SSLOptions(
     enabled: Boolean = false,
@@ -60,7 +63,10 @@ private[spark] case class SSLOptions(
     trustStorePassword: Option[String] = None,
     trustStoreType: Option[String] = None,
     protocol: Option[String] = None,
-    enabledAlgorithms: Set[String] = Set.empty)
+    enabledAlgorithms: Set[String] = Set.empty,
+    excludedAlgorithms: Option[Set[String]] = None,
+    includedProtocols: Option[Set[String]] = None,
+    excludedProtocols: Option[Set[String]] = None)
     extends Logging {
 
   /**
@@ -82,6 +88,15 @@ private[spark] case class SSLOptions(
       protocol.foreach(sslContextFactory.setProtocol)
       if (supportedAlgorithms.nonEmpty) {
         sslContextFactory.setIncludeCipherSuites(supportedAlgorithms.toSeq: _*)
+      }
+      excludedAlgorithms.foreach {
+        ea => sslContextFactory.setExcludeCipherSuites(ea.toSeq: _*)
+      }
+      includedProtocols.foreach {
+        ip => sslContextFactory.setIncludeProtocols(ip.toSeq: _*)
+      }
+      excludedProtocols.foreach {
+        ep => sslContextFactory.setExcludeProtocols(ep.toSeq: _*)
       }
 
       Some(sslContextFactory)
@@ -132,7 +147,9 @@ private[spark] case class SSLOptions(
   override def toString: String = s"SSLOptions{enabled=$enabled, port=$port, " +
       s"keyStore=$keyStore, keyStorePassword=${keyStorePassword.map(_ => "xxx")}, " +
       s"trustStore=$trustStore, trustStorePassword=${trustStorePassword.map(_ => "xxx")}, " +
-      s"protocol=$protocol, enabledAlgorithms=$enabledAlgorithms}"
+      s"protocol=$protocol, enabledAlgorithms=$enabledAlgorithms, " +
+      s"excludedAlgorithms=$excludedAlgorithms, includedProtocols=$includedProtocols, " +
+      s"excludedProtocols=$excludedProtocols}"
 
 }
 
@@ -155,6 +172,12 @@ private[spark] object SSLOptions extends Logging {
    * $ - `[ns].trustStoreType` - the type of trust-store
    * $ - `[ns].protocol` - a protocol name supported by a particular Java version
    * $ - `[ns].enabledAlgorithms` - a comma separated list of ciphers
+   * $ - `[ns].excludedAlgorithms` - a comma separated list of regular expressions to exclude
+   *                                 algorithms
+   * $ - `[ns].includedProtocols` - a comma separated list of regular expressions to include
+   *                                protocols
+   * $ - `[ns].excludedProtocols` - a comma separated list of regular expressions to exclude
+   *                                protocols
    *
    * For a list of protocols and ciphers supported by particular Java versions, you may go to
    * <a href="https://blogs.oracle.com/java-platform-group/entry/diagnosing_tls_ssl_and_https">
@@ -216,6 +239,18 @@ private[spark] object SSLOptions extends Logging {
         .orElse(defaults.map(_.enabledAlgorithms))
         .getOrElse(Set.empty)
 
+    val excludedAlgorithms = conf.getWithSubstitution(s"$ns.excludedAlgorithms")
+      .map(_.split(",").map(_.trim).filter(_.nonEmpty).toSet)
+      .orElse(defaults.flatMap(_.excludedAlgorithms))
+
+    val includedProtocols = conf.getWithSubstitution(s"$ns.includedProtocols")
+      .map(_.split(",").map(_.trim).filter(_.nonEmpty).toSet)
+      .orElse(defaults.flatMap(_.includedProtocols))
+
+    val excludedProtocols = conf.getWithSubstitution(s"$ns.excludedProtocols")
+      .map(_.split(",").map(_.trim).filter(_.nonEmpty).toSet)
+      .orElse(defaults.flatMap(_.excludedProtocols))
+
     new SSLOptions(
       enabled,
       port,
@@ -228,7 +263,10 @@ private[spark] object SSLOptions extends Logging {
       trustStorePassword,
       trustStoreType,
       protocol,
-      enabledAlgorithms)
+      enabledAlgorithms,
+      excludedAlgorithms,
+      includedProtocols,
+      excludedProtocols)
   }
 
 }

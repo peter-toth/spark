@@ -87,6 +87,9 @@ elif [ "$PYSPARK_MAJOR_PYTHON_VERSION" == "3" ]; then
     export PYSPARK_DRIVER_PYTHON="python3"
 fi
 
+# Allow the bind address to be overridden. Supports sidecar proxies such as Istio Envoy
+SPARK_DRIVER_BIND_ADDRESS=${SPARK_DRIVER_BIND_ADDRESS_OVERRIDE:-${SPARK_DRIVER_BIND_ADDRESS}}
+
 case "$SPARK_K8S_CMD" in
   driver)
     CMD=(

@@ -21,6 +21,8 @@ import java.sql.Timestamp
 
 import scala.util.Random
 
+import org.scalatest.Ignore
+
 import org.apache.spark.sql.{QueryTest, RandomDataGenerator}
 import org.apache.spark.sql.catalyst.TableIdentifier
 import org.apache.spark.sql.catalyst.util.{DateTimeTestUtils, DateTimeUtils}
@@ -30,6 +32,7 @@ import org.apache.spark.sql.internal.SQLConf.LegacyBehaviorPolicy
 import org.apache.spark.sql.test.SQLTestUtils
 import org.apache.spark.sql.types.TimestampType
 
+@Ignore
 class DateAndTimestampCompatibilitySuite
     extends QueryTest with SQLTestUtils with TestHiveSingleton {
   // Depending on timezone, format, if the writer is spark native writer, if the reader is spark

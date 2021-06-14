@@ -378,6 +378,17 @@ function start_history_server {
     replace_spark_conf "spark.history.store.path" "" "$CONF_FILE"
   fi
 
+  # Set FIPS related configs
+  FIPS_ENABLED_SYSTEM_PROPERTY='com.safelogic.cryptocomply.fips.approved_only=true'
+  if [[ "${CSD_JAVA_OPTS}" == *"${FIPS_ENABLED_SYSTEM_PROPERTY}"* ]]; then
+    # By default, Jetty's SSL cipher blacklist is defined using the following regular expression: '^.*_(MD5|SHA|SHA1)$, ^TLS_RSA_.*$, ^SSL_.*$, ^.*_NULL_.*$, ^.*_anon_.*$'
+    # To support the new bctls-safelogic.jar, we need to allow 'SHA' (therefore we remove that from the above regex)
+    replace_spark_conf "spark.ssl.historyServer.excludedAlgorithms" "^.*_(MD5|SHA1)$, ^TLS_RSA_.*$, ^SSL_.*$, ^.*_NULL_.*$, ^.*_anon_.*$" "$CONF_FILE"
+
+    # We want to allow TLSv1.2 only
+    replace_spark_conf "spark.ssl.historyServer.includedProtocols" "TLSv1.2" "$CONF_FILE"
+  fi
+
   ARGS=(
     "org.apache.spark.deploy.history.HistoryServer"
     "--properties-file"

@@ -168,7 +168,10 @@ class HiveOrcSourceSuite extends OrcSuite with TestHiveSingleton {
 
   test("SPARK-25993 CREATE EXTERNAL TABLE with subdirectories") {
     Seq(true, false).foreach { convertMetastore =>
-      withSQLConf(HiveUtils.CONVERT_METASTORE_ORC.key -> s"$convertMetastore") {
+      withSQLConf(
+        HiveUtils.CONVERT_METASTORE_ORC.key -> s"$convertMetastore",
+        "mapreduce.input.fileinputformat.input.dir.recursive" -> "true"
+      ) {
         withTempDir { dir =>
           withTable("orc_tbl1", "orc_tbl2", "orc_tbl3") {
             val orcTblStatement1 =

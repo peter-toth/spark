@@ -38,6 +38,7 @@ import org.apache.spark.sql.execution.adaptive.{AdaptiveExecutionContext, Insert
 import org.apache.spark.sql.execution.bucketing.{CoalesceBucketsInJoin, DisableUnnecessaryBucketedScan}
 import org.apache.spark.sql.execution.dynamicpruning.PlanDynamicPruningFilters
 import org.apache.spark.sql.execution.exchange.EnsureRequirements
+import org.apache.spark.sql.execution.exchange.ReuseExchange
 import org.apache.spark.sql.execution.reuse.ReuseExchangeAndSubquery
 import org.apache.spark.sql.execution.streaming.{IncrementalExecution, OffsetSeqMetadata}
 import org.apache.spark.sql.expressions.CommandResult
@@ -417,10 +418,19 @@ object QueryExecution {
       DisableUnnecessaryBucketedScan,
       ApplyColumnarRulesAndInsertTransitions(sparkSession.sessionState.columnarRules),
       CollapseCodegenStages()) ++
-      (if (subquery) {
-        Nil
+      (if (SQLConf.get.wholePlanReuseEnabled) {
+        if (subquery) {
+          Nil
+        } else {
+          // This rule must be last so that the reuse nodes that this rule inserts remain valid.
+          // I.e. no further transformation happens on the exchange and subquery instances
+          // referenced by the reuse nodes.
+          Seq(ReuseExchangeAndSubquery)
+        }
       } else {
-        Seq(ReuseExchangeAndSubquery)
+        Seq(
+          ReuseExchange,
+          ReuseSubquery)
       })
   }
 

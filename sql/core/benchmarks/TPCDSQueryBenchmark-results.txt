@@ -1,810 +1,1215 @@
-OpenJDK 64-Bit Server VM 1.8.0_232-8u232-b09-0ubuntu1~18.04.1-b09 on Linux 4.15.0-1044-aws
-Intel(R) Xeon(R) CPU E5-2670 v2 @ 2.50GHz
+OpenJDK 64-Bit Server VM 1.8.0_232-b09 on Linux 4.4.0-171-generic
+Intel(R) Xeon(R) CPU @ 2.30GHz
 TPCDS Snappy:                             Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
 ------------------------------------------------------------------------------------------------------------------------
-q1                                                 1626           1675          69          0.0      Infinity       1.0X
+q1 - AQE off - master                              4765           5081         446          0.0      Infinity       1.0X
+q1 - AQE off - whole plan reuse fix                4312           4322          15          0.0      Infinity       1.1X
+q1 - AQE on - master                               3788           3830          59          0.0      Infinity       1.3X
+q1 - AQE on - whole plan reuse fix                 3504           3743         338          0.0      Infinity       1.4X
 
-OpenJDK 64-Bit Server VM 1.8.0_232-8u232-b09-0ubuntu1~18.04.1-b09 on Linux 4.15.0-1044-aws
-Intel(R) Xeon(R) CPU E5-2670 v2 @ 2.50GHz
+OpenJDK 64-Bit Server VM 1.8.0_232-b09 on Linux 4.4.0-171-generic
+Intel(R) Xeon(R) CPU @ 2.30GHz
 TPCDS Snappy:                             Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
 ------------------------------------------------------------------------------------------------------------------------
-q2                                                 2166           2277         158          0.0      Infinity       1.0X
+q2 - AQE off - master                             11882          11950          96          0.0      Infinity       1.0X
+q2 - AQE off - whole plan reuse fix               11147          11173          37          0.0      Infinity       1.1X
+q2 - AQE on - master                              10747          10836         127          0.0      Infinity       1.1X
+q2 - AQE on - whole plan reuse fix                10595          10612          24          0.0      Infinity       1.1X
 
-OpenJDK 64-Bit Server VM 1.8.0_232-8u232-b09-0ubuntu1~18.04.1-b09 on Linux 4.15.0-1044-aws
-Intel(R) Xeon(R) CPU E5-2670 v2 @ 2.50GHz
+OpenJDK 64-Bit Server VM 1.8.0_232-b09 on Linux 4.4.0-171-generic
+Intel(R) Xeon(R) CPU @ 2.30GHz
 TPCDS Snappy:                             Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
 ------------------------------------------------------------------------------------------------------------------------
-q3                                                  465            505          65          0.0      Infinity       1.0X
+q3 - AQE off - master                               780            804          34          0.0      Infinity       1.0X
+q3 - AQE off - whole plan reuse fix                 729            850         137          0.0      Infinity       1.1X
+q3 - AQE on - master                                668            702          49          0.0      Infinity       1.2X
+q3 - AQE on - whole plan reuse fix                  684            710          38          0.0      Infinity       1.1X
 
-OpenJDK 64-Bit Server VM 1.8.0_232-8u232-b09-0ubuntu1~18.04.1-b09 on Linux 4.15.0-1044-aws
-Intel(R) Xeon(R) CPU E5-2670 v2 @ 2.50GHz
+OpenJDK 64-Bit Server VM 1.8.0_232-b09 on Linux 4.4.0-171-generic
+Intel(R) Xeon(R) CPU @ 2.30GHz
 TPCDS Snappy:                             Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
 ------------------------------------------------------------------------------------------------------------------------
-q4                                                15108          15662         784          0.0      Infinity       1.0X
+q4 - AQE off - master                            105973         106157         261          0.0      Infinity       1.0X
+q4 - AQE off - whole plan reuse fix              104309         104778         664          0.0      Infinity       1.0X
+q4 - AQE on - master                             104311         105323        1431          0.0      Infinity       1.0X
+q4 - AQE on - whole plan reuse fix               104820         117767        1803          0.0      Infinity       1.0X
 
-OpenJDK 64-Bit Server VM 1.8.0_232-8u232-b09-0ubuntu1~18.04.1-b09 on Linux 4.15.0-1044-aws
-Intel(R) Xeon(R) CPU E5-2670 v2 @ 2.50GHz
+OpenJDK 64-Bit Server VM 1.8.0_232-b09 on Linux 4.4.0-171-generic
+Intel(R) Xeon(R) CPU @ 2.30GHz
 TPCDS Snappy:                             Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
 ------------------------------------------------------------------------------------------------------------------------
-q5                                                 3087           3281         274          0.0      Infinity       1.0X
+q5 - AQE off - master                              7690           7691           1          0.0      Infinity       1.0X
+q5 - AQE off - whole plan reuse fix                7532           7585          75          0.0      Infinity       1.0X
+q5 - AQE on - master                               7023           7259         334          0.0      Infinity       1.1X
+q5 - AQE on - whole plan reuse fix                 7064           7078          20          0.0      Infinity       1.1X
 
-OpenJDK 64-Bit Server VM 1.8.0_232-8u232-b09-0ubuntu1~18.04.1-b09 on Linux 4.15.0-1044-aws
-Intel(R) Xeon(R) CPU E5-2670 v2 @ 2.50GHz
+OpenJDK 64-Bit Server VM 1.8.0_232-b09 on Linux 4.4.0-171-generic
+Intel(R) Xeon(R) CPU @ 2.30GHz
 TPCDS Snappy:                             Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
 ------------------------------------------------------------------------------------------------------------------------
-q6                                                 1780           1873         132          0.0      Infinity       1.0X
+q6 - AQE off - master                              1856           1921          92          0.0      Infinity       1.0X
+q6 - AQE off - whole plan reuse fix                1749           1795          64          0.0      Infinity       1.1X
+q6 - AQE on - master                               1129           1141          16          0.0      Infinity       1.6X
+q6 - AQE on - whole plan reuse fix                 1092           1111          27          0.0      Infinity       1.7X
 
-OpenJDK 64-Bit Server VM 1.8.0_232-8u232-b09-0ubuntu1~18.04.1-b09 on Linux 4.15.0-1044-aws
-Intel(R) Xeon(R) CPU E5-2670 v2 @ 2.50GHz
+OpenJDK 64-Bit Server VM 1.8.0_232-b09 on Linux 4.4.0-171-generic
+Intel(R) Xeon(R) CPU @ 2.30GHz
 TPCDS Snappy:                             Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
 ------------------------------------------------------------------------------------------------------------------------
-q7                                                 1103           1137          49          0.0      Infinity       1.0X
+q7 - AQE off - master                              2206           2212           9          0.0      Infinity       1.0X
+q7 - AQE off - whole plan reuse fix                2252           2287          50          0.0      Infinity       1.0X
+q7 - AQE on - master                               2125           2138          18          0.0      Infinity       1.0X
+q7 - AQE on - whole plan reuse fix                 2242           2276          48          0.0      Infinity       1.0X
 
-OpenJDK 64-Bit Server VM 1.8.0_232-8u232-b09-0ubuntu1~18.04.1-b09 on Linux 4.15.0-1044-aws
-Intel(R) Xeon(R) CPU E5-2670 v2 @ 2.50GHz
+OpenJDK 64-Bit Server VM 1.8.0_232-b09 on Linux 4.4.0-171-generic
+Intel(R) Xeon(R) CPU @ 2.30GHz
 TPCDS Snappy:                             Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
 ------------------------------------------------------------------------------------------------------------------------
-q8                                                  998           1019          30          0.0      Infinity       1.0X
+q8 - AQE off - master                              1582           1632          70          0.0      Infinity       1.0X
+q8 - AQE off - whole plan reuse fix                1547           1598          72          0.0      Infinity       1.0X
+q8 - AQE on - master                               1283           1437         219          0.0      Infinity       1.2X
+q8 - AQE on - whole plan reuse fix                 1193           1215          31          0.0      Infinity       1.3X
 
-OpenJDK 64-Bit Server VM 1.8.0_232-8u232-b09-0ubuntu1~18.04.1-b09 on Linux 4.15.0-1044-aws
-Intel(R) Xeon(R) CPU E5-2670 v2 @ 2.50GHz
+OpenJDK 64-Bit Server VM 1.8.0_232-b09 on Linux 4.4.0-171-generic
+Intel(R) Xeon(R) CPU @ 2.30GHz
 TPCDS Snappy:                             Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
 ------------------------------------------------------------------------------------------------------------------------
-q9                                                 2445           2463          25          0.0      Infinity       1.0X
+q9 - AQE off - master                             66009          66510         709          0.0      Infinity       1.0X
+q9 - AQE off - whole plan reuse fix               62154          62438         401          0.0      Infinity       1.1X
+q9 - AQE on - master                              63431          64578        1622          0.0      Infinity       1.0X
+q9 - AQE on - whole plan reuse fix                64412          64721         437          0.0      Infinity       1.0X
 
-OpenJDK 64-Bit Server VM 1.8.0_232-8u232-b09-0ubuntu1~18.04.1-b09 on Linux 4.15.0-1044-aws
-Intel(R) Xeon(R) CPU E5-2670 v2 @ 2.50GHz
+OpenJDK 64-Bit Server VM 1.8.0_232-b09 on Linux 4.4.0-171-generic
+Intel(R) Xeon(R) CPU @ 2.30GHz
 TPCDS Snappy:                             Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
 ------------------------------------------------------------------------------------------------------------------------
-q10                                                4853           5233         537          0.0      Infinity       1.0X
+q10 - AQE off - master                             4723           4928         290          0.0      Infinity       1.0X
+q10 - AQE off - whole plan reuse fix               4932           5065         188          0.0      Infinity       1.0X
+q10 - AQE on - master                              3319           3392         104          0.0      Infinity       1.4X
+q10 - AQE on - whole plan reuse fix                3095           3509         585          0.0      Infinity       1.5X
 
-OpenJDK 64-Bit Server VM 1.8.0_232-8u232-b09-0ubuntu1~18.04.1-b09 on Linux 4.15.0-1044-aws
-Intel(R) Xeon(R) CPU E5-2670 v2 @ 2.50GHz
+OpenJDK 64-Bit Server VM 1.8.0_232-b09 on Linux 4.4.0-171-generic
+Intel(R) Xeon(R) CPU @ 2.30GHz
 TPCDS Snappy:                             Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
 ------------------------------------------------------------------------------------------------------------------------
-q11                                                3370           3417          67          0.0      Infinity       1.0X
+q11 - AQE off - master                            14067          14129          88          0.0      Infinity       1.0X
+q11 - AQE off - whole plan reuse fix              13671          13750         111          0.0      Infinity       1.0X
+q11 - AQE on - master                             12713          12734          29          0.0      Infinity       1.1X
+q11 - AQE on - whole plan reuse fix               14349          14494         204          0.0      Infinity       1.0X
 
-OpenJDK 64-Bit Server VM 1.8.0_232-8u232-b09-0ubuntu1~18.04.1-b09 on Linux 4.15.0-1044-aws
-Intel(R) Xeon(R) CPU E5-2670 v2 @ 2.50GHz
+OpenJDK 64-Bit Server VM 1.8.0_232-b09 on Linux 4.4.0-171-generic
+Intel(R) Xeon(R) CPU @ 2.30GHz
 TPCDS Snappy:                             Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
 ------------------------------------------------------------------------------------------------------------------------
-q12                                                 442            538          67          0.0      Infinity       1.0X
+q12 - AQE off - master                              793            841          71          0.0      Infinity       1.0X
+q12 - AQE off - whole plan reuse fix                719            824          92          0.0      Infinity       1.1X
+q12 - AQE on - master                               518            573          46          0.0      Infinity       1.5X
+q12 - AQE on - whole plan reuse fix                 522            536          10          0.0      Infinity       1.5X
 
-OpenJDK 64-Bit Server VM 1.8.0_232-8u232-b09-0ubuntu1~18.04.1-b09 on Linux 4.15.0-1044-aws
-Intel(R) Xeon(R) CPU E5-2670 v2 @ 2.50GHz
+OpenJDK 64-Bit Server VM 1.8.0_232-b09 on Linux 4.4.0-171-generic
+Intel(R) Xeon(R) CPU @ 2.30GHz
 TPCDS Snappy:                             Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
 ------------------------------------------------------------------------------------------------------------------------
-q13                                                2589           2767         253          0.0      Infinity       1.0X
+q13 - AQE off - master                             2214           2360         206          0.0      Infinity       1.0X
+q13 - AQE off - whole plan reuse fix               2119           2124           7          0.0      Infinity       1.0X
+q13 - AQE on - master                              2181           2181           1          0.0      Infinity       1.0X
+q13 - AQE on - whole plan reuse fix                2127           2134          10          0.0      Infinity       1.0X
 
-OpenJDK 64-Bit Server VM 1.8.0_232-8u232-b09-0ubuntu1~18.04.1-b09 on Linux 4.15.0-1044-aws
-Intel(R) Xeon(R) CPU E5-2670 v2 @ 2.50GHz
+OpenJDK 64-Bit Server VM 1.8.0_232-b09 on Linux 4.4.0-171-generic
+Intel(R) Xeon(R) CPU @ 2.30GHz
 TPCDS Snappy:                             Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
 ------------------------------------------------------------------------------------------------------------------------
-q14a                                              23714          24391         957          0.0      Infinity       1.0X
+q14a - AQE off - master                           53055          54471        2004          0.0      Infinity       1.0X
+q14a - AQE off - whole plan reuse fix             34219          34798         818          0.0      Infinity       1.6X
+q14a - AQE on - master                            34689          35556        1226          0.0      Infinity       1.5X
+q14a - AQE on - whole plan reuse fix              34535          34618         118          0.0      Infinity       1.5X
 
-OpenJDK 64-Bit Server VM 1.8.0_232-8u232-b09-0ubuntu1~18.04.1-b09 on Linux 4.15.0-1044-aws
-Intel(R) Xeon(R) CPU E5-2670 v2 @ 2.50GHz
+OpenJDK 64-Bit Server VM 1.8.0_232-b09 on Linux 4.4.0-171-generic
+Intel(R) Xeon(R) CPU @ 2.30GHz
 TPCDS Snappy:                             Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
 ------------------------------------------------------------------------------------------------------------------------
-q14b                                              19056          19103          66          0.0      Infinity       1.0X
+q14b - AQE off - master                           51489          51607         167          0.0      Infinity       1.0X
+q14b - AQE off - whole plan reuse fix             31670          32305         898          0.0      Infinity       1.6X
+q14b - AQE on - master                            32530          33074         769          0.0      Infinity       1.6X
+q14b - AQE on - whole plan reuse fix              31677          31906         325          0.0      Infinity       1.6X
 
-OpenJDK 64-Bit Server VM 1.8.0_232-8u232-b09-0ubuntu1~18.04.1-b09 on Linux 4.15.0-1044-aws
-Intel(R) Xeon(R) CPU E5-2670 v2 @ 2.50GHz
+OpenJDK 64-Bit Server VM 1.8.0_232-b09 on Linux 4.4.0-171-generic
+Intel(R) Xeon(R) CPU @ 2.30GHz
 TPCDS Snappy:                             Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
 ------------------------------------------------------------------------------------------------------------------------
-q15                                                 771            797          24          0.0      Infinity       1.0X
+q15 - AQE off - master                              814            824           9          0.0      Infinity       1.0X
+q15 - AQE off - whole plan reuse fix                812            860          42          0.0      Infinity       1.0X
+q15 - AQE on - master                               768            807          43          0.0      Infinity       1.1X
+q15 - AQE on - whole plan reuse fix                 754            770          14          0.0      Infinity       1.1X
 
-OpenJDK 64-Bit Server VM 1.8.0_232-8u232-b09-0ubuntu1~18.04.1-b09 on Linux 4.15.0-1044-aws
-Intel(R) Xeon(R) CPU E5-2670 v2 @ 2.50GHz
+OpenJDK 64-Bit Server VM 1.8.0_232-b09 on Linux 4.4.0-171-generic
+Intel(R) Xeon(R) CPU @ 2.30GHz
 TPCDS Snappy:                             Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
 ------------------------------------------------------------------------------------------------------------------------
-q16                                                1658           1707          69          0.0      Infinity       1.0X
+q16 - AQE off - master                            22068          22308         339          0.0      Infinity       1.0X
+q16 - AQE off - whole plan reuse fix              22208          22397         267          0.0      Infinity       1.0X
+q16 - AQE on - master                             21502          21556          76          0.0      Infinity       1.0X
+q16 - AQE on - whole plan reuse fix               21643          21682          56          0.0      Infinity       1.0X
 
-OpenJDK 64-Bit Server VM 1.8.0_232-8u232-b09-0ubuntu1~18.04.1-b09 on Linux 4.15.0-1044-aws
-Intel(R) Xeon(R) CPU E5-2670 v2 @ 2.50GHz
+OpenJDK 64-Bit Server VM 1.8.0_232-b09 on Linux 4.4.0-171-generic
+Intel(R) Xeon(R) CPU @ 2.30GHz
 TPCDS Snappy:                             Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
 ------------------------------------------------------------------------------------------------------------------------
-q17                                                2905           2979         104          0.0      Infinity       1.0X
+q17 - AQE off - master                             4171           4243         101          0.0      Infinity       1.0X
+q17 - AQE off - whole plan reuse fix               4201           4209          12          0.0      Infinity       1.0X
+q17 - AQE on - master                              3264           3316          74          0.0      Infinity       1.3X
+q17 - AQE on - whole plan reuse fix                3200           3244          63          0.0      Infinity       1.3X
 
-OpenJDK 64-Bit Server VM 1.8.0_232-8u232-b09-0ubuntu1~18.04.1-b09 on Linux 4.15.0-1044-aws
-Intel(R) Xeon(R) CPU E5-2670 v2 @ 2.50GHz
+OpenJDK 64-Bit Server VM 1.8.0_232-b09 on Linux 4.4.0-171-generic
+Intel(R) Xeon(R) CPU @ 2.30GHz
 TPCDS Snappy:                             Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
 ------------------------------------------------------------------------------------------------------------------------
-q18                                                2272           2423         213          0.0      Infinity       1.0X
+q18 - AQE off - master                             4022           4111         126          0.0      Infinity       1.0X
+q18 - AQE off - whole plan reuse fix               3852           4012         226          0.0      Infinity       1.0X
+q18 - AQE on - master                              3847           3899          74          0.0      Infinity       1.0X
+q18 - AQE on - whole plan reuse fix                3809           3820          15          0.0      Infinity       1.1X
 
-OpenJDK 64-Bit Server VM 1.8.0_232-8u232-b09-0ubuntu1~18.04.1-b09 on Linux 4.15.0-1044-aws
-Intel(R) Xeon(R) CPU E5-2670 v2 @ 2.50GHz
+OpenJDK 64-Bit Server VM 1.8.0_232-b09 on Linux 4.4.0-171-generic
+Intel(R) Xeon(R) CPU @ 2.30GHz
 TPCDS Snappy:                             Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
 ------------------------------------------------------------------------------------------------------------------------
-q19                                                 707            730          35          0.0      Infinity       1.0X
+q19 - AQE off - master                              764            787          22          0.0      Infinity       1.0X
+q19 - AQE off - whole plan reuse fix                694            803         103          0.0      Infinity       1.1X
+q19 - AQE on - master                               621            709          83          0.0      Infinity       1.2X
+q19 - AQE on - whole plan reuse fix                 618            650          22          0.0      Infinity       1.2X
 
-OpenJDK 64-Bit Server VM 1.8.0_232-8u232-b09-0ubuntu1~18.04.1-b09 on Linux 4.15.0-1044-aws
-Intel(R) Xeon(R) CPU E5-2670 v2 @ 2.50GHz
+OpenJDK 64-Bit Server VM 1.8.0_232-b09 on Linux 4.4.0-171-generic
+Intel(R) Xeon(R) CPU @ 2.30GHz
 TPCDS Snappy:                             Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
 ------------------------------------------------------------------------------------------------------------------------
-q20                                                 449            506          42          0.0      Infinity       1.0X
+q20 - AQE off - master                              695            741          42          0.0      Infinity       1.0X
+q20 - AQE off - whole plan reuse fix                697            744          41          0.0      Infinity       1.0X
+q20 - AQE on - master                               520            544          19          0.0      Infinity       1.3X
+q20 - AQE on - whole plan reuse fix                 522            549          25          0.0      Infinity       1.3X
 
-OpenJDK 64-Bit Server VM 1.8.0_232-8u232-b09-0ubuntu1~18.04.1-b09 on Linux 4.15.0-1044-aws
-Intel(R) Xeon(R) CPU E5-2670 v2 @ 2.50GHz
+OpenJDK 64-Bit Server VM 1.8.0_232-b09 on Linux 4.4.0-171-generic
+Intel(R) Xeon(R) CPU @ 2.30GHz
 TPCDS Snappy:                             Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
 ------------------------------------------------------------------------------------------------------------------------
-q21                                                1154           1167          19          0.0      Infinity       1.0X
+q21 - AQE off - master                              549            594          57          0.0      Infinity       1.0X
+q21 - AQE off - whole plan reuse fix                536            578          30          0.0      Infinity       1.0X
+q21 - AQE on - master                               460            484          20          0.0      Infinity       1.2X
+q21 - AQE on - whole plan reuse fix                 461            484          37          0.0      Infinity       1.2X
 
-OpenJDK 64-Bit Server VM 1.8.0_232-8u232-b09-0ubuntu1~18.04.1-b09 on Linux 4.15.0-1044-aws
-Intel(R) Xeon(R) CPU E5-2670 v2 @ 2.50GHz
+OpenJDK 64-Bit Server VM 1.8.0_232-b09 on Linux 4.4.0-171-generic
+Intel(R) Xeon(R) CPU @ 2.30GHz
 TPCDS Snappy:                             Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
 ------------------------------------------------------------------------------------------------------------------------
-q22                                                4056           4476         594          0.0      Infinity       1.0X
+q22 - AQE off - master                            19484          19544          85          0.0      Infinity       1.0X
+q22 - AQE off - whole plan reuse fix              19579          19649          98          0.0      Infinity       1.0X
+q22 - AQE on - master                             19571          19589          25          0.0      Infinity       1.0X
+q22 - AQE on - whole plan reuse fix               19390          19682         414          0.0      Infinity       1.0X
 
-OpenJDK 64-Bit Server VM 1.8.0_232-8u232-b09-0ubuntu1~18.04.1-b09 on Linux 4.15.0-1044-aws
-Intel(R) Xeon(R) CPU E5-2670 v2 @ 2.50GHz
+OpenJDK 64-Bit Server VM 1.8.0_232-b09 on Linux 4.4.0-171-generic
+Intel(R) Xeon(R) CPU @ 2.30GHz
 TPCDS Snappy:                             Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
 ------------------------------------------------------------------------------------------------------------------------
-q23a                                              14557          14780         317          0.0      Infinity       1.0X
+q23a - AQE off - master                           82564          83149         827          0.0      Infinity       1.0X
+q23a - AQE off - whole plan reuse fix             55855          55960         149          0.0      Infinity       1.5X
+q23a - AQE on - master                            55428          55680         356          0.0      Infinity       1.5X
+q23a - AQE on - whole plan reuse fix              54758          55199         625          0.0      Infinity       1.5X
 
-OpenJDK 64-Bit Server VM 1.8.0_232-8u232-b09-0ubuntu1~18.04.1-b09 on Linux 4.15.0-1044-aws
-Intel(R) Xeon(R) CPU E5-2670 v2 @ 2.50GHz
+OpenJDK 64-Bit Server VM 1.8.0_232-b09 on Linux 4.4.0-171-generic
+Intel(R) Xeon(R) CPU @ 2.30GHz
 TPCDS Snappy:                             Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
 ------------------------------------------------------------------------------------------------------------------------
-q23b                                              17887          18451         799          0.0      Infinity       1.0X
+q23b - AQE off - master                           98725          99930        1705          0.0      Infinity       1.0X
+q23b - AQE off - whole plan reuse fix             58677          59057         538          0.0      Infinity       1.7X
+q23b - AQE on - master                            58609          59152         768          0.0      Infinity       1.7X
+q23b - AQE on - whole plan reuse fix              59020          59080          86          0.0      Infinity       1.7X
 
-OpenJDK 64-Bit Server VM 1.8.0_232-8u232-b09-0ubuntu1~18.04.1-b09 on Linux 4.15.0-1044-aws
-Intel(R) Xeon(R) CPU E5-2670 v2 @ 2.50GHz
+OpenJDK 64-Bit Server VM 1.8.0_232-b09 on Linux 4.4.0-171-generic
+Intel(R) Xeon(R) CPU @ 2.30GHz
 TPCDS Snappy:                             Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
 ------------------------------------------------------------------------------------------------------------------------
-q24a                                               2930           3193         372          0.0      Infinity       1.0X
+q24a - AQE off - master                           31061          31089          39          0.0      Infinity       1.0X
+q24a - AQE off - whole plan reuse fix             25948          26592         911          0.0      Infinity       1.2X
+q24a - AQE on - master                            27879          27879           1          0.0      Infinity       1.1X
+q24a - AQE on - whole plan reuse fix              26269          27135        1225          0.0      Infinity       1.2X
 
-OpenJDK 64-Bit Server VM 1.8.0_232-8u232-b09-0ubuntu1~18.04.1-b09 on Linux 4.15.0-1044-aws
-Intel(R) Xeon(R) CPU E5-2670 v2 @ 2.50GHz
+OpenJDK 64-Bit Server VM 1.8.0_232-b09 on Linux 4.4.0-171-generic
+Intel(R) Xeon(R) CPU @ 2.30GHz
 TPCDS Snappy:                             Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
 ------------------------------------------------------------------------------------------------------------------------
-q24b                                               2760           2958         280          0.0      Infinity       1.0X
+q24b - AQE off - master                           30541          30780         338          0.0      Infinity       1.0X
+q24b - AQE off - whole plan reuse fix             26017          26049          45          0.0      Infinity       1.2X
+q24b - AQE on - master                            26335          26722         547          0.0      Infinity       1.2X
+q24b - AQE on - whole plan reuse fix              27212          28085        1234          0.0      Infinity       1.1X
 
-OpenJDK 64-Bit Server VM 1.8.0_232-8u232-b09-0ubuntu1~18.04.1-b09 on Linux 4.15.0-1044-aws
-Intel(R) Xeon(R) CPU E5-2670 v2 @ 2.50GHz
+OpenJDK 64-Bit Server VM 1.8.0_232-b09 on Linux 4.4.0-171-generic
+Intel(R) Xeon(R) CPU @ 2.30GHz
 TPCDS Snappy:                             Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
 ------------------------------------------------------------------------------------------------------------------------
-q25                                                2913           3150         335          0.0      Infinity       1.0X
+q25 - AQE off - master                             3301           3335          47          0.0      Infinity       1.0X
+q25 - AQE off - whole plan reuse fix               3168           3238          99          0.0      Infinity       1.0X
+q25 - AQE on - master                              2382           2389           9          0.0      Infinity       1.4X
+q25 - AQE on - whole plan reuse fix                2388           2401          19          0.0      Infinity       1.4X
 
-OpenJDK 64-Bit Server VM 1.8.0_232-8u232-b09-0ubuntu1~18.04.1-b09 on Linux 4.15.0-1044-aws
-Intel(R) Xeon(R) CPU E5-2670 v2 @ 2.50GHz
+OpenJDK 64-Bit Server VM 1.8.0_232-b09 on Linux 4.4.0-171-generic
+Intel(R) Xeon(R) CPU @ 2.30GHz
 TPCDS Snappy:                             Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
 ------------------------------------------------------------------------------------------------------------------------
-q26                                                 810            819          15          0.0      Infinity       1.0X
+q26 - AQE off - master                             1970           1994          34          0.0      Infinity       1.0X
+q26 - AQE off - whole plan reuse fix               1954           2011          81          0.0      Infinity       1.0X
+q26 - AQE on - master                              1867           1924          81          0.0      Infinity       1.1X
+q26 - AQE on - whole plan reuse fix                1851           1861          15          0.0      Infinity       1.1X
 
-OpenJDK 64-Bit Server VM 1.8.0_232-8u232-b09-0ubuntu1~18.04.1-b09 on Linux 4.15.0-1044-aws
-Intel(R) Xeon(R) CPU E5-2670 v2 @ 2.50GHz
+OpenJDK 64-Bit Server VM 1.8.0_232-b09 on Linux 4.4.0-171-generic
+Intel(R) Xeon(R) CPU @ 2.30GHz
 TPCDS Snappy:                             Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
 ------------------------------------------------------------------------------------------------------------------------
-q27                                                1171           1217          65          0.0      Infinity       1.0X
+q27 - AQE off - master                             2362           2465         146          0.0      Infinity       1.0X
+q27 - AQE off - whole plan reuse fix               2510           2518          11          0.0      Infinity       0.9X
+q27 - AQE on - master                              2298           2299           0          0.0      Infinity       1.0X
+q27 - AQE on - whole plan reuse fix                2299           2303           6          0.0      Infinity       1.0X
 
-OpenJDK 64-Bit Server VM 1.8.0_232-8u232-b09-0ubuntu1~18.04.1-b09 on Linux 4.15.0-1044-aws
-Intel(R) Xeon(R) CPU E5-2670 v2 @ 2.50GHz
+OpenJDK 64-Bit Server VM 1.8.0_232-b09 on Linux 4.4.0-171-generic
+Intel(R) Xeon(R) CPU @ 2.30GHz
 TPCDS Snappy:                             Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
 ------------------------------------------------------------------------------------------------------------------------
-q28                                                3212           3273          86          0.0      Infinity       1.0X
+q28 - AQE off - master                            44449          44866         590          0.0      Infinity       1.0X
+q28 - AQE off - whole plan reuse fix              44568          44583          22          0.0      Infinity       1.0X
+q28 - AQE on - master                             44258          44596         478          0.0      Infinity       1.0X
+q28 - AQE on - whole plan reuse fix               44899          45049         212          0.0      Infinity       1.0X
 
-OpenJDK 64-Bit Server VM 1.8.0_232-8u232-b09-0ubuntu1~18.04.1-b09 on Linux 4.15.0-1044-aws
-Intel(R) Xeon(R) CPU E5-2670 v2 @ 2.50GHz
+OpenJDK 64-Bit Server VM 1.8.0_232-b09 on Linux 4.4.0-171-generic
+Intel(R) Xeon(R) CPU @ 2.30GHz
 TPCDS Snappy:                             Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
 ------------------------------------------------------------------------------------------------------------------------
-q29                                                2917           3107         270          0.0      Infinity       1.0X
+q29 - AQE off - master                            10024          10032          11          0.0      Infinity       1.0X
+q29 - AQE off - whole plan reuse fix              10029          10065          50          0.0      Infinity       1.0X
+q29 - AQE on - master                              6781           6812          44          0.0      Infinity       1.5X
+q29 - AQE on - whole plan reuse fix                6928           6993          93          0.0      Infinity       1.4X
 
-OpenJDK 64-Bit Server VM 1.8.0_232-8u232-b09-0ubuntu1~18.04.1-b09 on Linux 4.15.0-1044-aws
-Intel(R) Xeon(R) CPU E5-2670 v2 @ 2.50GHz
+OpenJDK 64-Bit Server VM 1.8.0_232-b09 on Linux 4.4.0-171-generic
+Intel(R) Xeon(R) CPU @ 2.30GHz
 TPCDS Snappy:                             Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
 ------------------------------------------------------------------------------------------------------------------------
-q30                                                1248           1277          40          0.0      Infinity       1.0X
+q30 - AQE off - master                             4849           4870          31          0.0      Infinity       1.0X
+q30 - AQE off - whole plan reuse fix               4518           4566          69          0.0      Infinity       1.1X
+q30 - AQE on - master                              3802           3835          47          0.0      Infinity       1.3X
+q30 - AQE on - whole plan reuse fix                3578           3836         365          0.0      Infinity       1.4X
 
-OpenJDK 64-Bit Server VM 1.8.0_232-8u232-b09-0ubuntu1~18.04.1-b09 on Linux 4.15.0-1044-aws
-Intel(R) Xeon(R) CPU E5-2670 v2 @ 2.50GHz
+OpenJDK 64-Bit Server VM 1.8.0_232-b09 on Linux 4.4.0-171-generic
+Intel(R) Xeon(R) CPU @ 2.30GHz
 TPCDS Snappy:                             Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
 ------------------------------------------------------------------------------------------------------------------------
-q31                                                1924           2091         237          0.0      Infinity       1.0X
+q31 - AQE off - master                             4455           4474          26          0.0      Infinity       1.0X
+q31 - AQE off - whole plan reuse fix               4311           4357          65          0.0      Infinity       1.0X
+q31 - AQE on - master                              3259           3319          86          0.0      Infinity       1.4X
+q31 - AQE on - whole plan reuse fix                3303           3459         219          0.0      Infinity       1.3X
 
-OpenJDK 64-Bit Server VM 1.8.0_232-8u232-b09-0ubuntu1~18.04.1-b09 on Linux 4.15.0-1044-aws
-Intel(R) Xeon(R) CPU E5-2670 v2 @ 2.50GHz
+OpenJDK 64-Bit Server VM 1.8.0_232-b09 on Linux 4.4.0-171-generic
+Intel(R) Xeon(R) CPU @ 2.30GHz
 TPCDS Snappy:                             Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
 ------------------------------------------------------------------------------------------------------------------------
-q32                                                 559            597          26          0.0      Infinity       1.0X
+q32 - AQE off - master                             1019           1048          41          0.0      Infinity       1.0X
+q32 - AQE off - whole plan reuse fix                960            980          18          0.0      Infinity       1.1X
+q32 - AQE on - master                               816            930         134          0.0      Infinity       1.2X
+q32 - AQE on - whole plan reuse fix                 780            792          16          0.0      Infinity       1.3X
 
-OpenJDK 64-Bit Server VM 1.8.0_232-8u232-b09-0ubuntu1~18.04.1-b09 on Linux 4.15.0-1044-aws
-Intel(R) Xeon(R) CPU E5-2670 v2 @ 2.50GHz
+OpenJDK 64-Bit Server VM 1.8.0_232-b09 on Linux 4.4.0-171-generic
+Intel(R) Xeon(R) CPU @ 2.30GHz
 TPCDS Snappy:                             Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
 ------------------------------------------------------------------------------------------------------------------------
-q33                                                1314           1325          16          0.0      Infinity       1.0X
+q33 - AQE off - master                             1433           1472          55          0.0      Infinity       1.0X
+q33 - AQE off - whole plan reuse fix               1376           1399          32          0.0      Infinity       1.0X
+q33 - AQE on - master                               920            950          26          0.0      Infinity       1.6X
+q33 - AQE on - whole plan reuse fix                 954            972          24          0.0      Infinity       1.5X
 
-OpenJDK 64-Bit Server VM 1.8.0_232-8u232-b09-0ubuntu1~18.04.1-b09 on Linux 4.15.0-1044-aws
-Intel(R) Xeon(R) CPU E5-2670 v2 @ 2.50GHz
+OpenJDK 64-Bit Server VM 1.8.0_232-b09 on Linux 4.4.0-171-generic
+Intel(R) Xeon(R) CPU @ 2.30GHz
 TPCDS Snappy:                             Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
 ------------------------------------------------------------------------------------------------------------------------
-q34                                                 761            773          11          0.0      Infinity       1.0X
+q34 - AQE off - master                             1976           1981           6          0.0      Infinity       1.0X
+q34 - AQE off - whole plan reuse fix               1920           1924           6          0.0      Infinity       1.0X
+q34 - AQE on - master                              1471           1485          20          0.0      Infinity       1.3X
+q34 - AQE on - whole plan reuse fix                1445           1526         114          0.0      Infinity       1.4X
 
-OpenJDK 64-Bit Server VM 1.8.0_232-8u232-b09-0ubuntu1~18.04.1-b09 on Linux 4.15.0-1044-aws
-Intel(R) Xeon(R) CPU E5-2670 v2 @ 2.50GHz
+OpenJDK 64-Bit Server VM 1.8.0_232-b09 on Linux 4.4.0-171-generic
+Intel(R) Xeon(R) CPU @ 2.30GHz
 TPCDS Snappy:                             Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
 ------------------------------------------------------------------------------------------------------------------------
-q35                                                4967           4984          24          0.0      Infinity       1.0X
+q35 - AQE off - master                             6235           6482         350          0.0      Infinity       1.0X
+q35 - AQE off - whole plan reuse fix               6059           6367         436          0.0      Infinity       1.0X
+q35 - AQE on - master                              4542           4701         226          0.0      Infinity       1.4X
+q35 - AQE on - whole plan reuse fix                4697           4913         305          0.0      Infinity       1.3X
 
-OpenJDK 64-Bit Server VM 1.8.0_232-8u232-b09-0ubuntu1~18.04.1-b09 on Linux 4.15.0-1044-aws
-Intel(R) Xeon(R) CPU E5-2670 v2 @ 2.50GHz
+OpenJDK 64-Bit Server VM 1.8.0_232-b09 on Linux 4.4.0-171-generic
+Intel(R) Xeon(R) CPU @ 2.30GHz
 TPCDS Snappy:                             Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
 ------------------------------------------------------------------------------------------------------------------------
-q36                                                1109           1116           9          0.0      Infinity       1.0X
+q36 - AQE off - master                             3653           3664          16          0.0      Infinity       1.0X
+q36 - AQE off - whole plan reuse fix               3815           4267         640          0.0      Infinity       1.0X
+q36 - AQE on - master                              3473           3550         110          0.0      Infinity       1.1X
+q36 - AQE on - whole plan reuse fix                3632           3666          49          0.0      Infinity       1.0X
 
-OpenJDK 64-Bit Server VM 1.8.0_232-8u232-b09-0ubuntu1~18.04.1-b09 on Linux 4.15.0-1044-aws
-Intel(R) Xeon(R) CPU E5-2670 v2 @ 2.50GHz
+OpenJDK 64-Bit Server VM 1.8.0_232-b09 on Linux 4.4.0-171-generic
+Intel(R) Xeon(R) CPU @ 2.30GHz
 TPCDS Snappy:                             Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
 ------------------------------------------------------------------------------------------------------------------------
-q37                                                1200           1234          48          0.0      Infinity       1.0X
+q37 - AQE off - master                             6878           6888          14          0.0      Infinity       1.0X
+q37 - AQE off - whole plan reuse fix               6771           6778          10          0.0      Infinity       1.0X
+q37 - AQE on - master                              7663           7722          83          0.0      Infinity       0.9X
+q37 - AQE on - whole plan reuse fix                7796           7819          32          0.0      Infinity       0.9X
 
-OpenJDK 64-Bit Server VM 1.8.0_232-8u232-b09-0ubuntu1~18.04.1-b09 on Linux 4.15.0-1044-aws
-Intel(R) Xeon(R) CPU E5-2670 v2 @ 2.50GHz
+OpenJDK 64-Bit Server VM 1.8.0_232-b09 on Linux 4.4.0-171-generic
+Intel(R) Xeon(R) CPU @ 2.30GHz
 TPCDS Snappy:                             Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
 ------------------------------------------------------------------------------------------------------------------------
-q38                                                1898           2035         194          0.0      Infinity       1.0X
+q38 - AQE off - master                             7261           7314          75          0.0      Infinity       1.0X
+q38 - AQE off - whole plan reuse fix               7155           7297         202          0.0      Infinity       1.0X
+q38 - AQE on - master                              6121           6173          73          0.0      Infinity       1.2X
+q38 - AQE on - whole plan reuse fix                6108           6133          36          0.0      Infinity       1.2X
 
-OpenJDK 64-Bit Server VM 1.8.0_232-8u232-b09-0ubuntu1~18.04.1-b09 on Linux 4.15.0-1044-aws
-Intel(R) Xeon(R) CPU E5-2670 v2 @ 2.50GHz
+OpenJDK 64-Bit Server VM 1.8.0_232-b09 on Linux 4.4.0-171-generic
+Intel(R) Xeon(R) CPU @ 2.30GHz
 TPCDS Snappy:                             Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
 ------------------------------------------------------------------------------------------------------------------------
-q39a                                               2252           2362         155          0.0      Infinity       1.0X
+q39a - AQE off - master                            2564           2602          54          0.0      Infinity       1.0X
+q39a - AQE off - whole plan reuse fix              2550           2551           2          0.0      Infinity       1.0X
+q39a - AQE on - master                             2110           2214         146          0.0      Infinity       1.2X
+q39a - AQE on - whole plan reuse fix               2113           2162          70          0.0      Infinity       1.2X
 
-OpenJDK 64-Bit Server VM 1.8.0_232-8u232-b09-0ubuntu1~18.04.1-b09 on Linux 4.15.0-1044-aws
-Intel(R) Xeon(R) CPU E5-2670 v2 @ 2.50GHz
+OpenJDK 64-Bit Server VM 1.8.0_232-b09 on Linux 4.4.0-171-generic
+Intel(R) Xeon(R) CPU @ 2.30GHz
 TPCDS Snappy:                             Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
 ------------------------------------------------------------------------------------------------------------------------
-q39b                                               2142           2248         150          0.0      Infinity       1.0X
+q39b - AQE off - master                            2559           2818         367          0.0      Infinity       1.0X
+q39b - AQE off - whole plan reuse fix              2472           2498          38          0.0      Infinity       1.0X
+q39b - AQE on - master                             2123           2198         105          0.0      Infinity       1.2X
+q39b - AQE on - whole plan reuse fix               2019           2061          59          0.0      Infinity       1.3X
 
-OpenJDK 64-Bit Server VM 1.8.0_232-8u232-b09-0ubuntu1~18.04.1-b09 on Linux 4.15.0-1044-aws
-Intel(R) Xeon(R) CPU E5-2670 v2 @ 2.50GHz
+OpenJDK 64-Bit Server VM 1.8.0_232-b09 on Linux 4.4.0-171-generic
+Intel(R) Xeon(R) CPU @ 2.30GHz
 TPCDS Snappy:                             Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
 ------------------------------------------------------------------------------------------------------------------------
-q40                                                 654            687          57          0.0      Infinity       1.0X
+q40 - AQE off - master                             5331           5462         185          0.0      Infinity       1.0X
+q40 - AQE off - whole plan reuse fix               5302           5361          85          0.0      Infinity       1.0X
+q40 - AQE on - master                              5362           5443         115          0.0      Infinity       1.0X
+q40 - AQE on - whole plan reuse fix                5262           5267           6          0.0      Infinity       1.0X
 
-OpenJDK 64-Bit Server VM 1.8.0_232-8u232-b09-0ubuntu1~18.04.1-b09 on Linux 4.15.0-1044-aws
-Intel(R) Xeon(R) CPU E5-2670 v2 @ 2.50GHz
+OpenJDK 64-Bit Server VM 1.8.0_232-b09 on Linux 4.4.0-171-generic
+Intel(R) Xeon(R) CPU @ 2.30GHz
 TPCDS Snappy:                             Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
 ------------------------------------------------------------------------------------------------------------------------
-q41                                                 383            448          51          0.0      Infinity       1.0X
+q41 - AQE off - master                              430            503          61          0.0      Infinity       1.0X
+q41 - AQE off - whole plan reuse fix                417            473          52          0.0      Infinity       1.0X
+q41 - AQE on - master                               301            350          51          0.0      Infinity       1.4X
+q41 - AQE on - whole plan reuse fix                 305            368          66          0.0      Infinity       1.4X
 
-OpenJDK 64-Bit Server VM 1.8.0_232-8u232-b09-0ubuntu1~18.04.1-b09 on Linux 4.15.0-1044-aws
-Intel(R) Xeon(R) CPU E5-2670 v2 @ 2.50GHz
+OpenJDK 64-Bit Server VM 1.8.0_232-b09 on Linux 4.4.0-171-generic
+Intel(R) Xeon(R) CPU @ 2.30GHz
 TPCDS Snappy:                             Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
 ------------------------------------------------------------------------------------------------------------------------
-q42                                                 358            383          21          0.0      Infinity       1.0X
+q42 - AQE off - master                              412            448          27          0.0      Infinity       1.0X
+q42 - AQE off - whole plan reuse fix                394            408          10          0.0      Infinity       1.0X
+q42 - AQE on - master                               351            394          46          0.0      Infinity       1.2X
+q42 - AQE on - whole plan reuse fix                 340            388          50          0.0      Infinity       1.2X
 
-OpenJDK 64-Bit Server VM 1.8.0_232-8u232-b09-0ubuntu1~18.04.1-b09 on Linux 4.15.0-1044-aws
-Intel(R) Xeon(R) CPU E5-2670 v2 @ 2.50GHz
+OpenJDK 64-Bit Server VM 1.8.0_232-b09 on Linux 4.4.0-171-generic
+Intel(R) Xeon(R) CPU @ 2.30GHz
 TPCDS Snappy:                             Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
 ------------------------------------------------------------------------------------------------------------------------
-q43                                                 577            619          37          0.0      Infinity       1.0X
+q43 - AQE off - master                             2257           2260           4          0.0      Infinity       1.0X
+q43 - AQE off - whole plan reuse fix               2298           2307          13          0.0      Infinity       1.0X
+q43 - AQE on - master                              2161           2205          63          0.0      Infinity       1.0X
+q43 - AQE on - whole plan reuse fix                2196           2198           3          0.0      Infinity       1.0X
 
-OpenJDK 64-Bit Server VM 1.8.0_232-8u232-b09-0ubuntu1~18.04.1-b09 on Linux 4.15.0-1044-aws
-Intel(R) Xeon(R) CPU E5-2670 v2 @ 2.50GHz
+OpenJDK 64-Bit Server VM 1.8.0_232-b09 on Linux 4.4.0-171-generic
+Intel(R) Xeon(R) CPU @ 2.30GHz
 TPCDS Snappy:                             Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
 ------------------------------------------------------------------------------------------------------------------------
-q44                                                1188           1234          65          0.0      Infinity       1.0X
+q44 - AQE off - master                            11835          11895          85          0.0      Infinity       1.0X
+q44 - AQE off - whole plan reuse fix              12027          12083          79          0.0      Infinity       1.0X
+q44 - AQE on - master                             11883          11991         154          0.0      Infinity       1.0X
+q44 - AQE on - whole plan reuse fix               11702          11766          90          0.0      Infinity       1.0X
 
-OpenJDK 64-Bit Server VM 1.8.0_232-8u232-b09-0ubuntu1~18.04.1-b09 on Linux 4.15.0-1044-aws
-Intel(R) Xeon(R) CPU E5-2670 v2 @ 2.50GHz
+OpenJDK 64-Bit Server VM 1.8.0_232-b09 on Linux 4.4.0-171-generic
+Intel(R) Xeon(R) CPU @ 2.30GHz
 TPCDS Snappy:                             Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
 ------------------------------------------------------------------------------------------------------------------------
-q45                                                 529            562          25          0.0      Infinity       1.0X
+q45 - AQE off - master                             1012           1032          29          0.0      Infinity       1.0X
+q45 - AQE off - whole plan reuse fix                986           1000          20          0.0      Infinity       1.0X
+q45 - AQE on - master                               965           1040         107          0.0      Infinity       1.0X
+q45 - AQE on - whole plan reuse fix                 957            987          29          0.0      Infinity       1.1X
 
-OpenJDK 64-Bit Server VM 1.8.0_232-8u232-b09-0ubuntu1~18.04.1-b09 on Linux 4.15.0-1044-aws
-Intel(R) Xeon(R) CPU E5-2670 v2 @ 2.50GHz
+OpenJDK 64-Bit Server VM 1.8.0_232-b09 on Linux 4.4.0-171-generic
+Intel(R) Xeon(R) CPU @ 2.30GHz
 TPCDS Snappy:                             Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
 ------------------------------------------------------------------------------------------------------------------------
-q46                                                 993           1023          42          0.0      Infinity       1.0X
+q46 - AQE off - master                             2232           2255          32          0.0      Infinity       1.0X
+q46 - AQE off - whole plan reuse fix               2220           2235          22          0.0      Infinity       1.0X
+q46 - AQE on - master                              2035           2117         115          0.0      Infinity       1.1X
+q46 - AQE on - whole plan reuse fix                2153           2176          33          0.0      Infinity       1.0X
 
-OpenJDK 64-Bit Server VM 1.8.0_232-8u232-b09-0ubuntu1~18.04.1-b09 on Linux 4.15.0-1044-aws
-Intel(R) Xeon(R) CPU E5-2670 v2 @ 2.50GHz
+OpenJDK 64-Bit Server VM 1.8.0_232-b09 on Linux 4.4.0-171-generic
+Intel(R) Xeon(R) CPU @ 2.30GHz
 TPCDS Snappy:                             Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
 ------------------------------------------------------------------------------------------------------------------------
-q47                                                4547           4741         274          0.0      Infinity       1.0X
+q47 - AQE off - master                            14563          14714         214          0.0      Infinity       1.0X
+q47 - AQE off - whole plan reuse fix               9766           9976         297          0.0      Infinity       1.5X
+q47 - AQE on - master                              9411           9786         530          0.0      Infinity       1.5X
+q47 - AQE on - whole plan reuse fix                9009           9427         592          0.0      Infinity       1.6X
 
-OpenJDK 64-Bit Server VM 1.8.0_232-8u232-b09-0ubuntu1~18.04.1-b09 on Linux 4.15.0-1044-aws
-Intel(R) Xeon(R) CPU E5-2670 v2 @ 2.50GHz
+OpenJDK 64-Bit Server VM 1.8.0_232-b09 on Linux 4.4.0-171-generic
+Intel(R) Xeon(R) CPU @ 2.30GHz
 TPCDS Snappy:                             Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
 ------------------------------------------------------------------------------------------------------------------------
-q48                                                2303           2426         174          0.0      Infinity       1.0X
+q48 - AQE off - master                             2497           2560          89          0.0      Infinity       1.0X
+q48 - AQE off - whole plan reuse fix               2537           2552          20          0.0      Infinity       1.0X
+q48 - AQE on - master                              2529           2545          23          0.0      Infinity       1.0X
+q48 - AQE on - whole plan reuse fix                2565           2577          18          0.0      Infinity       1.0X
 
-OpenJDK 64-Bit Server VM 1.8.0_232-8u232-b09-0ubuntu1~18.04.1-b09 on Linux 4.15.0-1044-aws
-Intel(R) Xeon(R) CPU E5-2670 v2 @ 2.50GHz
+OpenJDK 64-Bit Server VM 1.8.0_232-b09 on Linux 4.4.0-171-generic
+Intel(R) Xeon(R) CPU @ 2.30GHz
 TPCDS Snappy:                             Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
 ------------------------------------------------------------------------------------------------------------------------
-q49                                                2080           2086           9          0.0      Infinity       1.0X
+q49 - AQE off - master                            14199          14399         282          0.0      Infinity       1.0X
+q49 - AQE off - whole plan reuse fix              14120          14160          57          0.0      Infinity       1.0X
+q49 - AQE on - master                             15168          15379         299          0.0      Infinity       0.9X
+q49 - AQE on - whole plan reuse fix               14971          14972           2          0.0      Infinity       0.9X
 
-OpenJDK 64-Bit Server VM 1.8.0_232-8u232-b09-0ubuntu1~18.04.1-b09 on Linux 4.15.0-1044-aws
-Intel(R) Xeon(R) CPU E5-2670 v2 @ 2.50GHz
+OpenJDK 64-Bit Server VM 1.8.0_232-b09 on Linux 4.4.0-171-generic
+Intel(R) Xeon(R) CPU @ 2.30GHz
 TPCDS Snappy:                             Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
 ------------------------------------------------------------------------------------------------------------------------
-q50                                                1371           1388          24          0.0      Infinity       1.0X
+q50 - AQE off - master                            20165          20171           9          0.0      Infinity       1.0X
+q50 - AQE off - whole plan reuse fix              19823          19872          69          0.0      Infinity       1.0X
+q50 - AQE on - master                             14178          14205          38          0.0      Infinity       1.4X
+q50 - AQE on - whole plan reuse fix               13933          14068         191          0.0      Infinity       1.4X
 
-OpenJDK 64-Bit Server VM 1.8.0_232-8u232-b09-0ubuntu1~18.04.1-b09 on Linux 4.15.0-1044-aws
-Intel(R) Xeon(R) CPU E5-2670 v2 @ 2.50GHz
+OpenJDK 64-Bit Server VM 1.8.0_232-b09 on Linux 4.4.0-171-generic
+Intel(R) Xeon(R) CPU @ 2.30GHz
 TPCDS Snappy:                             Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
 ------------------------------------------------------------------------------------------------------------------------
-q51                                                4373           4513         197          0.0      Infinity       1.0X
+q51 - AQE off - master                            23123          23126           5          0.0      Infinity       1.0X
+q51 - AQE off - whole plan reuse fix              23141          23373         329          0.0      Infinity       1.0X
+q51 - AQE on - master                             23357          23470         160          0.0      Infinity       1.0X
+q51 - AQE on - whole plan reuse fix               23330          23674         486          0.0      Infinity       1.0X
 
-OpenJDK 64-Bit Server VM 1.8.0_232-8u232-b09-0ubuntu1~18.04.1-b09 on Linux 4.15.0-1044-aws
-Intel(R) Xeon(R) CPU E5-2670 v2 @ 2.50GHz
+OpenJDK 64-Bit Server VM 1.8.0_232-b09 on Linux 4.4.0-171-generic
+Intel(R) Xeon(R) CPU @ 2.30GHz
 TPCDS Snappy:                             Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
 ------------------------------------------------------------------------------------------------------------------------
-q52                                                 360            379          28          0.0      Infinity       1.0X
+q52 - AQE off - master                              430            480          68          0.0      Infinity       1.0X
+q52 - AQE off - whole plan reuse fix                412            458          55          0.0      Infinity       1.0X
+q52 - AQE on - master                               350            386          51          0.0      Infinity       1.2X
+q52 - AQE on - whole plan reuse fix                 350            395          37          0.0      Infinity       1.2X
 
-OpenJDK 64-Bit Server VM 1.8.0_232-8u232-b09-0ubuntu1~18.04.1-b09 on Linux 4.15.0-1044-aws
-Intel(R) Xeon(R) CPU E5-2670 v2 @ 2.50GHz
+OpenJDK 64-Bit Server VM 1.8.0_232-b09 on Linux 4.4.0-171-generic
+Intel(R) Xeon(R) CPU @ 2.30GHz
 TPCDS Snappy:                             Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
 ------------------------------------------------------------------------------------------------------------------------
-q53                                                 661            677          23          0.0      Infinity       1.0X
+q53 - AQE off - master                             1719           1723           6          0.0      Infinity       1.0X
+q53 - AQE off - whole plan reuse fix               1698           1798         142          0.0      Infinity       1.0X
+q53 - AQE on - master                              1586           1597          16          0.0      Infinity       1.1X
+q53 - AQE on - whole plan reuse fix                1555           1582          39          0.0      Infinity       1.1X
 
-OpenJDK 64-Bit Server VM 1.8.0_232-8u232-b09-0ubuntu1~18.04.1-b09 on Linux 4.15.0-1044-aws
-Intel(R) Xeon(R) CPU E5-2670 v2 @ 2.50GHz
+OpenJDK 64-Bit Server VM 1.8.0_232-b09 on Linux 4.4.0-171-generic
+Intel(R) Xeon(R) CPU @ 2.30GHz
 TPCDS Snappy:                             Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
 ------------------------------------------------------------------------------------------------------------------------
-q54                                                3454           3611         222          0.0      Infinity       1.0X
+q54 - AQE off - master                             2036           2151         163          0.0      Infinity       1.0X
+q54 - AQE off - whole plan reuse fix               1990           2032          59          0.0      Infinity       1.0X
+q54 - AQE on - master                              1698           1741          61          0.0      Infinity       1.2X
+q54 - AQE on - whole plan reuse fix                1691           1739          68          0.0      Infinity       1.2X
 
-OpenJDK 64-Bit Server VM 1.8.0_232-8u232-b09-0ubuntu1~18.04.1-b09 on Linux 4.15.0-1044-aws
-Intel(R) Xeon(R) CPU E5-2670 v2 @ 2.50GHz
+OpenJDK 64-Bit Server VM 1.8.0_232-b09 on Linux 4.4.0-171-generic
+Intel(R) Xeon(R) CPU @ 2.30GHz
 TPCDS Snappy:                             Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
 ------------------------------------------------------------------------------------------------------------------------
-q55                                                 360            383          37          0.0      Infinity       1.0X
+q55 - AQE off - master                              381            434          74          0.0      Infinity       1.0X
+q55 - AQE off - whole plan reuse fix                372            398          27          0.0      Infinity       1.0X
+q55 - AQE on - master                               324            347          36          0.0      Infinity       1.2X
+q55 - AQE on - whole plan reuse fix                 316            353          36          0.0      Infinity       1.2X
 
-OpenJDK 64-Bit Server VM 1.8.0_232-8u232-b09-0ubuntu1~18.04.1-b09 on Linux 4.15.0-1044-aws
-Intel(R) Xeon(R) CPU E5-2670 v2 @ 2.50GHz
+OpenJDK 64-Bit Server VM 1.8.0_232-b09 on Linux 4.4.0-171-generic
+Intel(R) Xeon(R) CPU @ 2.30GHz
 TPCDS Snappy:                             Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
 ------------------------------------------------------------------------------------------------------------------------
-q56                                                1350           1388          53          0.0      Infinity       1.0X
+q56 - AQE off - master                             1550           1571          30          0.0      Infinity       1.0X
+q56 - AQE off - whole plan reuse fix               1448           1475          38          0.0      Infinity       1.1X
+q56 - AQE on - master                              1037           1050          19          0.0      Infinity       1.5X
+q56 - AQE on - whole plan reuse fix                1069           1077          12          0.0      Infinity       1.5X
 
-OpenJDK 64-Bit Server VM 1.8.0_232-8u232-b09-0ubuntu1~18.04.1-b09 on Linux 4.15.0-1044-aws
-Intel(R) Xeon(R) CPU E5-2670 v2 @ 2.50GHz
+OpenJDK 64-Bit Server VM 1.8.0_232-b09 on Linux 4.4.0-171-generic
+Intel(R) Xeon(R) CPU @ 2.30GHz
 TPCDS Snappy:                             Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
 ------------------------------------------------------------------------------------------------------------------------
-q57                                                2910           3156         349          0.0      Infinity       1.0X
+q57 - AQE off - master                             9942           9983          58          0.0      Infinity       1.0X
+q57 - AQE off - whole plan reuse fix               7271           7328          82          0.0      Infinity       1.4X
+q57 - AQE on - master                              7264           7348         118          0.0      Infinity       1.4X
+q57 - AQE on - whole plan reuse fix                7077           7214         194          0.0      Infinity       1.4X
 
-OpenJDK 64-Bit Server VM 1.8.0_232-8u232-b09-0ubuntu1~18.04.1-b09 on Linux 4.15.0-1044-aws
-Intel(R) Xeon(R) CPU E5-2670 v2 @ 2.50GHz
+OpenJDK 64-Bit Server VM 1.8.0_232-b09 on Linux 4.4.0-171-generic
+Intel(R) Xeon(R) CPU @ 2.30GHz
 TPCDS Snappy:                             Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
 ------------------------------------------------------------------------------------------------------------------------
-q58                                                1733           1762          42          0.0      Infinity       1.0X
+q58 - AQE off - master                            16914          17104         268          0.0      Infinity       1.0X
+q58 - AQE off - whole plan reuse fix              17037          17048          15          0.0      Infinity       1.0X
+q58 - AQE on - master                             16714          17010         418          0.0      Infinity       1.0X
+q58 - AQE on - whole plan reuse fix               16569          16643         105          0.0      Infinity       1.0X
 
-OpenJDK 64-Bit Server VM 1.8.0_232-8u232-b09-0ubuntu1~18.04.1-b09 on Linux 4.15.0-1044-aws
-Intel(R) Xeon(R) CPU E5-2670 v2 @ 2.50GHz
+OpenJDK 64-Bit Server VM 1.8.0_232-b09 on Linux 4.4.0-171-generic
+Intel(R) Xeon(R) CPU @ 2.30GHz
 TPCDS Snappy:                             Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
 ------------------------------------------------------------------------------------------------------------------------
-q59                                                2021           2044          33          0.0      Infinity       1.0X
+q59 - AQE off - master                             8533           8560          38          0.0      Infinity       1.0X
+q59 - AQE off - whole plan reuse fix               8629           8702         103          0.0      Infinity       1.0X
+q59 - AQE on - master                              8437           8493          79          0.0      Infinity       1.0X
+q59 - AQE on - whole plan reuse fix                8381           8641         368          0.0      Infinity       1.0X
 
-OpenJDK 64-Bit Server VM 1.8.0_232-8u232-b09-0ubuntu1~18.04.1-b09 on Linux 4.15.0-1044-aws
-Intel(R) Xeon(R) CPU E5-2670 v2 @ 2.50GHz
+OpenJDK 64-Bit Server VM 1.8.0_232-b09 on Linux 4.4.0-171-generic
+Intel(R) Xeon(R) CPU @ 2.30GHz
 TPCDS Snappy:                             Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
 ------------------------------------------------------------------------------------------------------------------------
-q60                                                1356           1404          67          0.0      Infinity       1.0X
+q60 - AQE off - master                             1524           1527           3          0.0      Infinity       1.0X
+q60 - AQE off - whole plan reuse fix               1526           1578          74          0.0      Infinity       1.0X
+q60 - AQE on - master                              1083           1161         110          0.0      Infinity       1.4X
+q60 - AQE on - whole plan reuse fix                1107           1191         119          0.0      Infinity       1.4X
 
-OpenJDK 64-Bit Server VM 1.8.0_232-8u232-b09-0ubuntu1~18.04.1-b09 on Linux 4.15.0-1044-aws
-Intel(R) Xeon(R) CPU E5-2670 v2 @ 2.50GHz
+OpenJDK 64-Bit Server VM 1.8.0_232-b09 on Linux 4.4.0-171-generic
+Intel(R) Xeon(R) CPU @ 2.30GHz
 TPCDS Snappy:                             Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
 ------------------------------------------------------------------------------------------------------------------------
-q61                                                1290           1292           3          0.0      Infinity       1.0X
+q61 - AQE off - master                              908            924          20          0.0      Infinity       1.0X
+q61 - AQE off - whole plan reuse fix                883            925          43          0.0      Infinity       1.0X
+q61 - AQE on - master                               977            992          25          0.0      Infinity       0.9X
+q61 - AQE on - whole plan reuse fix                 910            962          45          0.0      Infinity       1.0X
 
-OpenJDK 64-Bit Server VM 1.8.0_232-8u232-b09-0ubuntu1~18.04.1-b09 on Linux 4.15.0-1044-aws
-Intel(R) Xeon(R) CPU E5-2670 v2 @ 2.50GHz
+OpenJDK 64-Bit Server VM 1.8.0_232-b09 on Linux 4.4.0-171-generic
+Intel(R) Xeon(R) CPU @ 2.30GHz
 TPCDS Snappy:                             Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
 ------------------------------------------------------------------------------------------------------------------------
-q62                                                 479            506          33          0.0      Infinity       1.0X
+q62 - AQE off - master                             6770           6839          98          0.0      Infinity       1.0X
+q62 - AQE off - whole plan reuse fix               6673           7027         500          0.0      Infinity       1.0X
+q62 - AQE on - master                              6439           6594         220          0.0      Infinity       1.1X
+q62 - AQE on - whole plan reuse fix                6192           6328         193          0.0      Infinity       1.1X
 
-OpenJDK 64-Bit Server VM 1.8.0_232-8u232-b09-0ubuntu1~18.04.1-b09 on Linux 4.15.0-1044-aws
-Intel(R) Xeon(R) CPU E5-2670 v2 @ 2.50GHz
+OpenJDK 64-Bit Server VM 1.8.0_232-b09 on Linux 4.4.0-171-generic
+Intel(R) Xeon(R) CPU @ 2.30GHz
 TPCDS Snappy:                             Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
 ------------------------------------------------------------------------------------------------------------------------
-q63                                                 619            647          20          0.0      Infinity       1.0X
+q63 - AQE off - master                             1675           1685          14          0.0      Infinity       1.0X
+q63 - AQE off - whole plan reuse fix               1628           1657          42          0.0      Infinity       1.0X
+q63 - AQE on - master                              1488           1494           8          0.0      Infinity       1.1X
+q63 - AQE on - whole plan reuse fix                1459           1471          17          0.0      Infinity       1.1X
 
-OpenJDK 64-Bit Server VM 1.8.0_232-8u232-b09-0ubuntu1~18.04.1-b09 on Linux 4.15.0-1044-aws
-Intel(R) Xeon(R) CPU E5-2670 v2 @ 2.50GHz
+OpenJDK 64-Bit Server VM 1.8.0_232-b09 on Linux 4.4.0-171-generic
+Intel(R) Xeon(R) CPU @ 2.30GHz
 TPCDS Snappy:                             Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
 ------------------------------------------------------------------------------------------------------------------------
-q64                                                7745           8352         859          0.0      Infinity       1.0X
+q64 - AQE off - master                            39638          40118         680          0.0      Infinity       1.0X
+q64 - AQE off - whole plan reuse fix              40033          40128         134          0.0      Infinity       1.0X
+q64 - AQE on - master                             40101          40136          51          0.0      Infinity       1.0X
+q64 - AQE on - whole plan reuse fix               40032          40036           6          0.0      Infinity       1.0X
 
-OpenJDK 64-Bit Server VM 1.8.0_232-8u232-b09-0ubuntu1~18.04.1-b09 on Linux 4.15.0-1044-aws
-Intel(R) Xeon(R) CPU E5-2670 v2 @ 2.50GHz
+OpenJDK 64-Bit Server VM 1.8.0_232-b09 on Linux 4.4.0-171-generic
+Intel(R) Xeon(R) CPU @ 2.30GHz
 TPCDS Snappy:                             Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
 ------------------------------------------------------------------------------------------------------------------------
-q65                                                1307           1337          43          0.0      Infinity       1.0X
+q65 - AQE off - master                            11645          11751         151          0.0      Infinity       1.0X
+q65 - AQE off - whole plan reuse fix              11916          12029         160          0.0      Infinity       1.0X
+q65 - AQE on - master                             11436          11458          32          0.0      Infinity       1.0X
+q65 - AQE on - whole plan reuse fix               11747          12028         398          0.0      Infinity       1.0X
 
-OpenJDK 64-Bit Server VM 1.8.0_232-8u232-b09-0ubuntu1~18.04.1-b09 on Linux 4.15.0-1044-aws
-Intel(R) Xeon(R) CPU E5-2670 v2 @ 2.50GHz
+OpenJDK 64-Bit Server VM 1.8.0_232-b09 on Linux 4.4.0-171-generic
+Intel(R) Xeon(R) CPU @ 2.30GHz
 TPCDS Snappy:                             Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
 ------------------------------------------------------------------------------------------------------------------------
-q66                                                1879           2128         352          0.0      Infinity       1.0X
+q66 - AQE off - master                             5481           5506          35          0.0      Infinity       1.0X
+q66 - AQE off - whole plan reuse fix               5600           5639          55          0.0      Infinity       1.0X
+q66 - AQE on - master                              4635           4840         289          0.0      Infinity       1.2X
+q66 - AQE on - whole plan reuse fix                4783           4993         297          0.0      Infinity       1.1X
 
-OpenJDK 64-Bit Server VM 1.8.0_232-8u232-b09-0ubuntu1~18.04.1-b09 on Linux 4.15.0-1044-aws
-Intel(R) Xeon(R) CPU E5-2670 v2 @ 2.50GHz
+OpenJDK 64-Bit Server VM 1.8.0_232-b09 on Linux 4.4.0-171-generic
+Intel(R) Xeon(R) CPU @ 2.30GHz
 TPCDS Snappy:                             Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
 ------------------------------------------------------------------------------------------------------------------------
-q67                                                9682           9703          29          0.0      Infinity       1.0X
+q67 - AQE off - master                            65476          66239        1079          0.0      Infinity       1.0X
+q67 - AQE off - whole plan reuse fix              65017          68497        2402          0.0      Infinity       1.0X
+q67 - AQE on - master                             63064          63103          55          0.0      Infinity       1.0X
+q67 - AQE on - whole plan reuse fix               64307          64509         285          0.0      Infinity       1.0X
 
-OpenJDK 64-Bit Server VM 1.8.0_232-8u232-b09-0ubuntu1~18.04.1-b09 on Linux 4.15.0-1044-aws
-Intel(R) Xeon(R) CPU E5-2670 v2 @ 2.50GHz
+OpenJDK 64-Bit Server VM 1.8.0_232-b09 on Linux 4.4.0-171-generic
+Intel(R) Xeon(R) CPU @ 2.30GHz
 TPCDS Snappy:                             Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
 ------------------------------------------------------------------------------------------------------------------------
-q68                                                 928            952          34          0.0      Infinity       1.0X
+q68 - AQE off - master                             1144           1167          33          0.0      Infinity       1.0X
+q68 - AQE off - whole plan reuse fix               1184           1189           7          0.0      Infinity       1.0X
+q68 - AQE on - master                               897            942          65          0.0      Infinity       1.3X
+q68 - AQE on - whole plan reuse fix                1554           1924         524          0.0      Infinity       0.7X
 
-OpenJDK 64-Bit Server VM 1.8.0_232-8u232-b09-0ubuntu1~18.04.1-b09 on Linux 4.15.0-1044-aws
-Intel(R) Xeon(R) CPU E5-2670 v2 @ 2.50GHz
+OpenJDK 64-Bit Server VM 1.8.0_232-b09 on Linux 4.4.0-171-generic
+Intel(R) Xeon(R) CPU @ 2.30GHz
 TPCDS Snappy:                             Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
 ------------------------------------------------------------------------------------------------------------------------
-q69                                                4261           4330          97          0.0      Infinity       1.0X
+q69 - AQE off - master                             4058           4188         184          0.0      Infinity       1.0X
+q69 - AQE off - whole plan reuse fix               4019           4500         680          0.0      Infinity       1.0X
+q69 - AQE on - master                              3048           3152         147          0.0      Infinity       1.3X
+q69 - AQE on - whole plan reuse fix                3062           3269         292          0.0      Infinity       1.3X
 
-OpenJDK 64-Bit Server VM 1.8.0_232-8u232-b09-0ubuntu1~18.04.1-b09 on Linux 4.15.0-1044-aws
-Intel(R) Xeon(R) CPU E5-2670 v2 @ 2.50GHz
+OpenJDK 64-Bit Server VM 1.8.0_232-b09 on Linux 4.4.0-171-generic
+Intel(R) Xeon(R) CPU @ 2.30GHz
 TPCDS Snappy:                             Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
 ------------------------------------------------------------------------------------------------------------------------
-q70                                                1345           1361          23          0.0      Infinity       1.0X
+q70 - AQE off - master                             4446           4476          43          0.0      Infinity       1.0X
+q70 - AQE off - whole plan reuse fix               4584           4731         207          0.0      Infinity       1.0X
+q70 - AQE on - master                              4240           4282          59          0.0      Infinity       1.0X
+q70 - AQE on - whole plan reuse fix                4488           4497          12          0.0      Infinity       1.0X
 
-OpenJDK 64-Bit Server VM 1.8.0_232-8u232-b09-0ubuntu1~18.04.1-b09 on Linux 4.15.0-1044-aws
-Intel(R) Xeon(R) CPU E5-2670 v2 @ 2.50GHz
+OpenJDK 64-Bit Server VM 1.8.0_232-b09 on Linux 4.4.0-171-generic
+Intel(R) Xeon(R) CPU @ 2.30GHz
 TPCDS Snappy:                             Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
 ------------------------------------------------------------------------------------------------------------------------
-q71                                                1103           1119          22          0.0      Infinity       1.0X
+q71 - AQE off - master                             1195           1272         109          0.0      Infinity       1.0X
+q71 - AQE off - whole plan reuse fix               1141           1166          35          0.0      Infinity       1.0X
+q71 - AQE on - master                              1014           1024          14          0.0      Infinity       1.2X
+q71 - AQE on - whole plan reuse fix                 917            953          41          0.0      Infinity       1.3X
 
-OpenJDK 64-Bit Server VM 1.8.0_232-8u232-b09-0ubuntu1~18.04.1-b09 on Linux 4.15.0-1044-aws
-Intel(R) Xeon(R) CPU E5-2670 v2 @ 2.50GHz
+OpenJDK 64-Bit Server VM 1.8.0_232-b09 on Linux 4.4.0-171-generic
+Intel(R) Xeon(R) CPU @ 2.30GHz
 TPCDS Snappy:                             Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
 ------------------------------------------------------------------------------------------------------------------------
-q72                                               20211          21316        1562          0.0      Infinity       1.0X
+q72 - AQE off - master                            62371          62580         296          0.0      Infinity       1.0X
+q72 - AQE off - whole plan reuse fix              57688          58606        1298          0.0      Infinity       1.1X
+q72 - AQE on - master                             56854          57162         435          0.0      Infinity       1.1X
+q72 - AQE on - whole plan reuse fix               57370          57404          48          0.0      Infinity       1.1X
 
-OpenJDK 64-Bit Server VM 1.8.0_232-8u232-b09-0ubuntu1~18.04.1-b09 on Linux 4.15.0-1044-aws
-Intel(R) Xeon(R) CPU E5-2670 v2 @ 2.50GHz
+OpenJDK 64-Bit Server VM 1.8.0_232-b09 on Linux 4.4.0-171-generic
+Intel(R) Xeon(R) CPU @ 2.30GHz
 TPCDS Snappy:                             Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
 ------------------------------------------------------------------------------------------------------------------------
-q73                                                 680            725          49          0.0      Infinity       1.0X
+q73 - AQE off - master                             1172           1177           7          0.0      Infinity       1.0X
+q73 - AQE off - whole plan reuse fix               1148           1179          44          0.0      Infinity       1.0X
+q73 - AQE on - master                               809            845          34          0.0      Infinity       1.4X
+q73 - AQE on - whole plan reuse fix                 781            822          56          0.0      Infinity       1.5X
 
-OpenJDK 64-Bit Server VM 1.8.0_232-8u232-b09-0ubuntu1~18.04.1-b09 on Linux 4.15.0-1044-aws
-Intel(R) Xeon(R) CPU E5-2670 v2 @ 2.50GHz
+OpenJDK 64-Bit Server VM 1.8.0_232-b09 on Linux 4.4.0-171-generic
+Intel(R) Xeon(R) CPU @ 2.30GHz
 TPCDS Snappy:                             Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
 ------------------------------------------------------------------------------------------------------------------------
-q74                                                3007           3109         144          0.0      Infinity       1.0X
+q74 - AQE off - master                            10546          10562          23          0.0      Infinity       1.0X
+q74 - AQE off - whole plan reuse fix              10370          10767         562          0.0      Infinity       1.0X
+q74 - AQE on - master                              9167           9223          79          0.0      Infinity       1.2X
+q74 - AQE on - whole plan reuse fix                9344           9491         209          0.0      Infinity       1.1X
 
-OpenJDK 64-Bit Server VM 1.8.0_232-8u232-b09-0ubuntu1~18.04.1-b09 on Linux 4.15.0-1044-aws
-Intel(R) Xeon(R) CPU E5-2670 v2 @ 2.50GHz
+OpenJDK 64-Bit Server VM 1.8.0_232-b09 on Linux 4.4.0-171-generic
+Intel(R) Xeon(R) CPU @ 2.30GHz
 TPCDS Snappy:                             Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
 ------------------------------------------------------------------------------------------------------------------------
-q75                                                4597           4942         487          0.0      Infinity       1.0X
+q75 - AQE off - master                            25956          26045         126          0.0      Infinity       1.0X
+q75 - AQE off - whole plan reuse fix              25585          26371        1112          0.0      Infinity       1.0X
+q75 - AQE on - master                             25781          25809          39          0.0      Infinity       1.0X
+q75 - AQE on - whole plan reuse fix               26011          26223         300          0.0      Infinity       1.0X
 
-OpenJDK 64-Bit Server VM 1.8.0_232-8u232-b09-0ubuntu1~18.04.1-b09 on Linux 4.15.0-1044-aws
-Intel(R) Xeon(R) CPU E5-2670 v2 @ 2.50GHz
+OpenJDK 64-Bit Server VM 1.8.0_232-b09 on Linux 4.4.0-171-generic
+Intel(R) Xeon(R) CPU @ 2.30GHz
 TPCDS Snappy:                             Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
 ------------------------------------------------------------------------------------------------------------------------
-q76                                                 899            937          38          0.0      Infinity       1.0X
+q76 - AQE off - master                            18824          18842          25          0.0      Infinity       1.0X
+q76 - AQE off - whole plan reuse fix              19034          19036           3          0.0      Infinity       1.0X
+q76 - AQE on - master                             18711          18746          49          0.0      Infinity       1.0X
+q76 - AQE on - whole plan reuse fix               18582          18596          19          0.0      Infinity       1.0X
 
-OpenJDK 64-Bit Server VM 1.8.0_232-8u232-b09-0ubuntu1~18.04.1-b09 on Linux 4.15.0-1044-aws
-Intel(R) Xeon(R) CPU E5-2670 v2 @ 2.50GHz
+OpenJDK 64-Bit Server VM 1.8.0_232-b09 on Linux 4.4.0-171-generic
+Intel(R) Xeon(R) CPU @ 2.30GHz
 TPCDS Snappy:                             Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
 ------------------------------------------------------------------------------------------------------------------------
-q77                                                1794           2086         412          0.0      Infinity       1.0X
+q77 - AQE off - master                             2198           2248          71          0.0      Infinity       1.0X
+q77 - AQE off - whole plan reuse fix               2175           2181           9          0.0      Infinity       1.0X
+q77 - AQE on - master                              1459           1485          37          0.0      Infinity       1.5X
+q77 - AQE on - whole plan reuse fix                1442           1461          28          0.0      Infinity       1.5X
 
-OpenJDK 64-Bit Server VM 1.8.0_232-8u232-b09-0ubuntu1~18.04.1-b09 on Linux 4.15.0-1044-aws
-Intel(R) Xeon(R) CPU E5-2670 v2 @ 2.50GHz
+OpenJDK 64-Bit Server VM 1.8.0_232-b09 on Linux 4.4.0-171-generic
+Intel(R) Xeon(R) CPU @ 2.30GHz
 TPCDS Snappy:                             Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
 ------------------------------------------------------------------------------------------------------------------------
-q78                                                4717           4827         155          0.0      Infinity       1.0X
+q78 - AQE off - master                            34669          35044         530          0.0      Infinity       1.0X
+q78 - AQE off - whole plan reuse fix              34748          34838         128          0.0      Infinity       1.0X
+q78 - AQE on - master                             33607          33897         410          0.0      Infinity       1.0X
+q78 - AQE on - whole plan reuse fix               34306          34420         161          0.0      Infinity       1.0X
 
-OpenJDK 64-Bit Server VM 1.8.0_232-8u232-b09-0ubuntu1~18.04.1-b09 on Linux 4.15.0-1044-aws
-Intel(R) Xeon(R) CPU E5-2670 v2 @ 2.50GHz
+OpenJDK 64-Bit Server VM 1.8.0_232-b09 on Linux 4.4.0-171-generic
+Intel(R) Xeon(R) CPU @ 2.30GHz
 TPCDS Snappy:                             Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
 ------------------------------------------------------------------------------------------------------------------------
-q79                                                 830            880          47          0.0      Infinity       1.0X
+q79 - AQE off - master                             1552           1631         112          0.0      Infinity       1.0X
+q79 - AQE off - whole plan reuse fix               1570           1590          29          0.0      Infinity       1.0X
+q79 - AQE on - master                              1242           1281          55          0.0      Infinity       1.2X
+q79 - AQE on - whole plan reuse fix                1275           1327          73          0.0      Infinity       1.2X
 
-OpenJDK 64-Bit Server VM 1.8.0_232-8u232-b09-0ubuntu1~18.04.1-b09 on Linux 4.15.0-1044-aws
-Intel(R) Xeon(R) CPU E5-2670 v2 @ 2.50GHz
+OpenJDK 64-Bit Server VM 1.8.0_232-b09 on Linux 4.4.0-171-generic
+Intel(R) Xeon(R) CPU @ 2.30GHz
 TPCDS Snappy:                             Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
 ------------------------------------------------------------------------------------------------------------------------
-q80                                                3233           3315         116          0.0      Infinity       1.0X
+q80 - AQE off - master                            17213          17271          82          0.0      Infinity       1.0X
+q80 - AQE off - whole plan reuse fix              17127          17180          75          0.0      Infinity       1.0X
+q80 - AQE on - master                             17064          17652         832          0.0      Infinity       1.0X
+q80 - AQE on - whole plan reuse fix               16946          17051         148          0.0      Infinity       1.0X
 
-OpenJDK 64-Bit Server VM 1.8.0_232-8u232-b09-0ubuntu1~18.04.1-b09 on Linux 4.15.0-1044-aws
-Intel(R) Xeon(R) CPU E5-2670 v2 @ 2.50GHz
+OpenJDK 64-Bit Server VM 1.8.0_232-b09 on Linux 4.4.0-171-generic
+Intel(R) Xeon(R) CPU @ 2.30GHz
 TPCDS Snappy:                             Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
 ------------------------------------------------------------------------------------------------------------------------
-q81                                                 982           1070         123          0.0      Infinity       1.0X
+q81 - AQE off - master                             4336           4493         221          0.0      Infinity       1.0X
+q81 - AQE off - whole plan reuse fix               4330           5065        1039          0.0      Infinity       1.0X
+q81 - AQE on - master                              3656           3769         160          0.0      Infinity       1.2X
+q81 - AQE on - whole plan reuse fix                3670           3694          34          0.0      Infinity       1.2X
 
-OpenJDK 64-Bit Server VM 1.8.0_232-8u232-b09-0ubuntu1~18.04.1-b09 on Linux 4.15.0-1044-aws
-Intel(R) Xeon(R) CPU E5-2670 v2 @ 2.50GHz
+OpenJDK 64-Bit Server VM 1.8.0_232-b09 on Linux 4.4.0-171-generic
+Intel(R) Xeon(R) CPU @ 2.30GHz
 TPCDS Snappy:                             Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
 ------------------------------------------------------------------------------------------------------------------------
-q82                                                1674           1738          89          0.0      Infinity       1.0X
+q82 - AQE off - master                            10287          10355          97          0.0      Infinity       1.0X
+q82 - AQE off - whole plan reuse fix              10340          10341           1          0.0      Infinity       1.0X
+q82 - AQE on - master                              9708           9788         112          0.0      Infinity       1.1X
+q82 - AQE on - whole plan reuse fix                9868           9967         140          0.0      Infinity       1.0X
 
-OpenJDK 64-Bit Server VM 1.8.0_232-8u232-b09-0ubuntu1~18.04.1-b09 on Linux 4.15.0-1044-aws
-Intel(R) Xeon(R) CPU E5-2670 v2 @ 2.50GHz
+OpenJDK 64-Bit Server VM 1.8.0_232-b09 on Linux 4.4.0-171-generic
+Intel(R) Xeon(R) CPU @ 2.30GHz
 TPCDS Snappy:                             Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
 ------------------------------------------------------------------------------------------------------------------------
-q83                                                1067           1104          52          0.0      Infinity       1.0X
+q83 - AQE off - master                            15525          15609         119          0.0      Infinity       1.0X
+q83 - AQE off - whole plan reuse fix              15913          15945          45          0.0      Infinity       1.0X
+q83 - AQE on - master                             15768          15779          15          0.0      Infinity       1.0X
+q83 - AQE on - whole plan reuse fix               15161          15477         447          0.0      Infinity       1.0X
 
-OpenJDK 64-Bit Server VM 1.8.0_232-8u232-b09-0ubuntu1~18.04.1-b09 on Linux 4.15.0-1044-aws
-Intel(R) Xeon(R) CPU E5-2670 v2 @ 2.50GHz
+OpenJDK 64-Bit Server VM 1.8.0_232-b09 on Linux 4.4.0-171-generic
+Intel(R) Xeon(R) CPU @ 2.30GHz
 TPCDS Snappy:                             Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
 ------------------------------------------------------------------------------------------------------------------------
-q84                                                1166           1210          62          0.0      Infinity       1.0X
+q84 - AQE off - master                             4528           4618         127          0.0      Infinity       1.0X
+q84 - AQE off - whole plan reuse fix               4313           4333          29          0.0      Infinity       1.0X
+q84 - AQE on - master                              4315           4351          51          0.0      Infinity       1.0X
+q84 - AQE on - whole plan reuse fix                4341           4493         214          0.0      Infinity       1.0X
 
-OpenJDK 64-Bit Server VM 1.8.0_232-8u232-b09-0ubuntu1~18.04.1-b09 on Linux 4.15.0-1044-aws
-Intel(R) Xeon(R) CPU E5-2670 v2 @ 2.50GHz
+OpenJDK 64-Bit Server VM 1.8.0_232-b09 on Linux 4.4.0-171-generic
+Intel(R) Xeon(R) CPU @ 2.30GHz
 TPCDS Snappy:                             Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
 ------------------------------------------------------------------------------------------------------------------------
-q85                                                3682           3831         211          0.0      Infinity       1.0X
+q85 - AQE off - master                             8650           8841         270          0.0      Infinity       1.0X
+q85 - AQE off - whole plan reuse fix               8886           9110         316          0.0      Infinity       1.0X
+q85 - AQE on - master                              8104           8332         322          0.0      Infinity       1.1X
+q85 - AQE on - whole plan reuse fix                8370           8469         141          0.0      Infinity       1.0X
 
-OpenJDK 64-Bit Server VM 1.8.0_232-8u232-b09-0ubuntu1~18.04.1-b09 on Linux 4.15.0-1044-aws
-Intel(R) Xeon(R) CPU E5-2670 v2 @ 2.50GHz
+OpenJDK 64-Bit Server VM 1.8.0_232-b09 on Linux 4.4.0-171-generic
+Intel(R) Xeon(R) CPU @ 2.30GHz
 TPCDS Snappy:                             Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
 ------------------------------------------------------------------------------------------------------------------------
-q86                                                 616            635          18          0.0      Infinity       1.0X
+q86 - AQE off - master                             2190           2199          13          0.0      Infinity       1.0X
+q86 - AQE off - whole plan reuse fix               2121           2216         134          0.0      Infinity       1.0X
+q86 - AQE on - master                              2023           2044          30          0.0      Infinity       1.1X
+q86 - AQE on - whole plan reuse fix                1875           1940          91          0.0      Infinity       1.2X
 
-OpenJDK 64-Bit Server VM 1.8.0_232-8u232-b09-0ubuntu1~18.04.1-b09 on Linux 4.15.0-1044-aws
-Intel(R) Xeon(R) CPU E5-2670 v2 @ 2.50GHz
+OpenJDK 64-Bit Server VM 1.8.0_232-b09 on Linux 4.4.0-171-generic
+Intel(R) Xeon(R) CPU @ 2.30GHz
 TPCDS Snappy:                             Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
 ------------------------------------------------------------------------------------------------------------------------
-q87                                                2101           2230         183          0.0      Infinity       1.0X
+q87 - AQE off - master                             7952           7956           5          0.0      Infinity       1.0X
+q87 - AQE off - whole plan reuse fix               8340           8468         181          0.0      Infinity       1.0X
+q87 - AQE on - master                              6543           6624         115          0.0      Infinity       1.2X
+q87 - AQE on - whole plan reuse fix                6547           6644         137          0.0      Infinity       1.2X
 
-OpenJDK 64-Bit Server VM 1.8.0_232-8u232-b09-0ubuntu1~18.04.1-b09 on Linux 4.15.0-1044-aws
-Intel(R) Xeon(R) CPU E5-2670 v2 @ 2.50GHz
+OpenJDK 64-Bit Server VM 1.8.0_232-b09 on Linux 4.4.0-171-generic
+Intel(R) Xeon(R) CPU @ 2.30GHz
 TPCDS Snappy:                             Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
 ------------------------------------------------------------------------------------------------------------------------
-q88                                                2415           2523         153          0.0      Infinity       1.0X
+q88 - AQE off - master                            35367          35935         803          0.0      Infinity       1.0X
+q88 - AQE off - whole plan reuse fix              34929          35070         198          0.0      Infinity       1.0X
+q88 - AQE on - master                             35103          35263         227          0.0      Infinity       1.0X
+q88 - AQE on - whole plan reuse fix               34687          35057         523          0.0      Infinity       1.0X
 
-OpenJDK 64-Bit Server VM 1.8.0_232-8u232-b09-0ubuntu1~18.04.1-b09 on Linux 4.15.0-1044-aws
-Intel(R) Xeon(R) CPU E5-2670 v2 @ 2.50GHz
+OpenJDK 64-Bit Server VM 1.8.0_232-b09 on Linux 4.4.0-171-generic
+Intel(R) Xeon(R) CPU @ 2.30GHz
 TPCDS Snappy:                             Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
 ------------------------------------------------------------------------------------------------------------------------
-q89                                                 677            732          47          0.0      Infinity       1.0X
+q89 - AQE off - master                             2233           2315         115          0.0      Infinity       1.0X
+q89 - AQE off - whole plan reuse fix               2099           2150          72          0.0      Infinity       1.1X
+q89 - AQE on - master                              1899           1912          18          0.0      Infinity       1.2X
+q89 - AQE on - whole plan reuse fix                1857           1885          40          0.0      Infinity       1.2X
 
-OpenJDK 64-Bit Server VM 1.8.0_232-8u232-b09-0ubuntu1~18.04.1-b09 on Linux 4.15.0-1044-aws
-Intel(R) Xeon(R) CPU E5-2670 v2 @ 2.50GHz
+OpenJDK 64-Bit Server VM 1.8.0_232-b09 on Linux 4.4.0-171-generic
+Intel(R) Xeon(R) CPU @ 2.30GHz
 TPCDS Snappy:                             Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
 ------------------------------------------------------------------------------------------------------------------------
-q90                                                 414            429          19          0.0      Infinity       1.0X
+q90 - AQE off - master                             7999           8030          44          0.0      Infinity       1.0X
+q90 - AQE off - whole plan reuse fix               7918           7926          11          0.0      Infinity       1.0X
+q90 - AQE on - master                              7888           7940          74          0.0      Infinity       1.0X
+q90 - AQE on - whole plan reuse fix                7861           8123         370          0.0      Infinity       1.0X
 
-OpenJDK 64-Bit Server VM 1.8.0_232-8u232-b09-0ubuntu1~18.04.1-b09 on Linux 4.15.0-1044-aws
-Intel(R) Xeon(R) CPU E5-2670 v2 @ 2.50GHz
+OpenJDK 64-Bit Server VM 1.8.0_232-b09 on Linux 4.4.0-171-generic
+Intel(R) Xeon(R) CPU @ 2.30GHz
 TPCDS Snappy:                             Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
 ------------------------------------------------------------------------------------------------------------------------
-q91                                                 793            814          19          0.0      Infinity       1.0X
+q91 - AQE off - master                             1059           1064           7          0.0      Infinity       1.0X
+q91 - AQE off - whole plan reuse fix               1019           1062          61          0.0      Infinity       1.0X
+q91 - AQE on - master                               870            910          40          0.0      Infinity       1.2X
+q91 - AQE on - whole plan reuse fix                 859            942          76          0.0      Infinity       1.2X
 
-OpenJDK 64-Bit Server VM 1.8.0_232-8u232-b09-0ubuntu1~18.04.1-b09 on Linux 4.15.0-1044-aws
-Intel(R) Xeon(R) CPU E5-2670 v2 @ 2.50GHz
+OpenJDK 64-Bit Server VM 1.8.0_232-b09 on Linux 4.4.0-171-generic
+Intel(R) Xeon(R) CPU @ 2.30GHz
 TPCDS Snappy:                             Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
 ------------------------------------------------------------------------------------------------------------------------
-q92                                                 508            530          24          0.0      Infinity       1.0X
+q92 - AQE off - master                              955            996          38          0.0      Infinity       1.0X
+q92 - AQE off - whole plan reuse fix                976            992          14          0.0      Infinity       1.0X
+q92 - AQE on - master                               764            807          39          0.0      Infinity       1.2X
+q92 - AQE on - whole plan reuse fix                 734            801          60          0.0      Infinity       1.3X
 
-OpenJDK 64-Bit Server VM 1.8.0_232-8u232-b09-0ubuntu1~18.04.1-b09 on Linux 4.15.0-1044-aws
-Intel(R) Xeon(R) CPU E5-2670 v2 @ 2.50GHz
+OpenJDK 64-Bit Server VM 1.8.0_232-b09 on Linux 4.4.0-171-generic
+Intel(R) Xeon(R) CPU @ 2.30GHz
 TPCDS Snappy:                             Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
 ------------------------------------------------------------------------------------------------------------------------
-q93                                                1138           1155          24          0.0      Infinity       1.0X
+q93 - AQE off - master                            44672          45035         514          0.0      Infinity       1.0X
+q93 - AQE off - whole plan reuse fix              45017          45148         185          0.0      Infinity       1.0X
+q93 - AQE on - master                             44604          44723         168          0.0      Infinity       1.0X
+q93 - AQE on - whole plan reuse fix               44182          44396         302          0.0      Infinity       1.0X
 
-OpenJDK 64-Bit Server VM 1.8.0_232-8u232-b09-0ubuntu1~18.04.1-b09 on Linux 4.15.0-1044-aws
-Intel(R) Xeon(R) CPU E5-2670 v2 @ 2.50GHz
+OpenJDK 64-Bit Server VM 1.8.0_232-b09 on Linux 4.4.0-171-generic
+Intel(R) Xeon(R) CPU @ 2.30GHz
 TPCDS Snappy:                             Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
 ------------------------------------------------------------------------------------------------------------------------
-q94                                                 979           1060         115          0.0      Infinity       1.0X
+q94 - AQE off - master                            15816          15976         226          0.0      Infinity       1.0X
+q94 - AQE off - whole plan reuse fix              15751          15894         202          0.0      Infinity       1.0X
+q94 - AQE on - master                             15936          16296         509          0.0      Infinity       1.0X
+q94 - AQE on - whole plan reuse fix               15855          16118         371          0.0      Infinity       1.0X
 
-OpenJDK 64-Bit Server VM 1.8.0_232-8u232-b09-0ubuntu1~18.04.1-b09 on Linux 4.15.0-1044-aws
-Intel(R) Xeon(R) CPU E5-2670 v2 @ 2.50GHz
+OpenJDK 64-Bit Server VM 1.8.0_232-b09 on Linux 4.4.0-171-generic
+Intel(R) Xeon(R) CPU @ 2.30GHz
 TPCDS Snappy:                             Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
 ------------------------------------------------------------------------------------------------------------------------
-q95                                                5805           6024         310          0.0      Infinity       1.0X
+q95 - AQE off - master                            35028          35108         112          0.0      Infinity       1.0X
+q95 - AQE off - whole plan reuse fix              35037          35496         649          0.0      Infinity       1.0X
+q95 - AQE on - master                             37470          55072         NaN          0.0      Infinity       0.9X
+q95 - AQE on - whole plan reuse fix               35674          36077         570          0.0      Infinity       1.0X
 
-OpenJDK 64-Bit Server VM 1.8.0_232-8u232-b09-0ubuntu1~18.04.1-b09 on Linux 4.15.0-1044-aws
-Intel(R) Xeon(R) CPU E5-2670 v2 @ 2.50GHz
+OpenJDK 64-Bit Server VM 1.8.0_232-b09 on Linux 4.4.0-171-generic
+Intel(R) Xeon(R) CPU @ 2.30GHz
 TPCDS Snappy:                             Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
 ------------------------------------------------------------------------------------------------------------------------
-q96                                                 337            345          10          0.0      Infinity       1.0X
+q96 - AQE off - master                             4318           4360          59          0.0      Infinity       1.0X
+q96 - AQE off - whole plan reuse fix               4271           4394         174          0.0      Infinity       1.0X
+q96 - AQE on - master                              4265           4265           0          0.0      Infinity       1.0X
+q96 - AQE on - whole plan reuse fix                4393           4403          13          0.0      Infinity       1.0X
 
-OpenJDK 64-Bit Server VM 1.8.0_232-8u232-b09-0ubuntu1~18.04.1-b09 on Linux 4.15.0-1044-aws
-Intel(R) Xeon(R) CPU E5-2670 v2 @ 2.50GHz
+OpenJDK 64-Bit Server VM 1.8.0_232-b09 on Linux 4.4.0-171-generic
+Intel(R) Xeon(R) CPU @ 2.30GHz
 TPCDS Snappy:                             Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
 ------------------------------------------------------------------------------------------------------------------------
-q97                                                1641           1748         152          0.0      Infinity       1.0X
+q97 - AQE off - master                            10780          10835          78          0.0      Infinity       1.0X
+q97 - AQE off - whole plan reuse fix              10861          10987         179          0.0      Infinity       1.0X
+q97 - AQE on - master                             11924          11970          64          0.0      Infinity       0.9X
+q97 - AQE on - whole plan reuse fix               12032          12074          60          0.0      Infinity       0.9X
 
-OpenJDK 64-Bit Server VM 1.8.0_232-8u232-b09-0ubuntu1~18.04.1-b09 on Linux 4.15.0-1044-aws
-Intel(R) Xeon(R) CPU E5-2670 v2 @ 2.50GHz
+OpenJDK 64-Bit Server VM 1.8.0_232-b09 on Linux 4.4.0-171-generic
+Intel(R) Xeon(R) CPU @ 2.30GHz
 TPCDS Snappy:                             Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
 ------------------------------------------------------------------------------------------------------------------------
-q98                                                 538            587          61          0.0      Infinity       1.0X
+q98 - AQE off - master                             1024           1044          29          0.0      Infinity       1.0X
+q98 - AQE off - whole plan reuse fix               1026           1039          19          0.0      Infinity       1.0X
+q98 - AQE on - master                               691            711          26          0.0      Infinity       1.5X
+q98 - AQE on - whole plan reuse fix                 692            696           3          0.0      Infinity       1.5X
 
-OpenJDK 64-Bit Server VM 1.8.0_232-8u232-b09-0ubuntu1~18.04.1-b09 on Linux 4.15.0-1044-aws
-Intel(R) Xeon(R) CPU E5-2670 v2 @ 2.50GHz
+OpenJDK 64-Bit Server VM 1.8.0_232-b09 on Linux 4.4.0-171-generic
+Intel(R) Xeon(R) CPU @ 2.30GHz
 TPCDS Snappy:                             Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
 ------------------------------------------------------------------------------------------------------------------------
-q99                                                 619            633          19          0.0      Infinity       1.0X
+q99 - AQE off - master                             6995           7002          10          0.0      Infinity       1.0X
+q99 - AQE off - whole plan reuse fix               7016           7053          51          0.0      Infinity       1.0X
+q99 - AQE on - master                              7177           7215          54          0.0      Infinity       1.0X
+q99 - AQE on - whole plan reuse fix                6774           6805          44          0.0      Infinity       1.0X
 
-OpenJDK 64-Bit Server VM 1.8.0_232-8u232-b09-0ubuntu1~18.04.1-b09 on Linux 4.15.0-1044-aws
-Intel(R) Xeon(R) CPU E5-2670 v2 @ 2.50GHz
-TPCDS Snappy:                             Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
-------------------------------------------------------------------------------------------------------------------------
-q5a-v2.7                                           4861           4954         132          0.0      Infinity       1.0X
+OpenJDK 64-Bit Server VM 1.8.0_232-b09 on Linux 4.4.0-171-generic
+Intel(R) Xeon(R) CPU @ 2.30GHz
+TPCDS Snappy:                              Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
+-------------------------------------------------------------------------------------------------------------------------
+q5a-v2.7 - AQE off - master                        15675          16054         536          0.0      Infinity       1.0X
+q5a-v2.7 - AQE off - whole plan reuse fix           8868           8927          83          0.0      Infinity       1.8X
+q5a-v2.7 - AQE on - master                          8322           8625         428          0.0      Infinity       1.9X
+q5a-v2.7 - AQE on - whole plan reuse fix            8213           8346         189          0.0      Infinity       1.9X
 
-OpenJDK 64-Bit Server VM 1.8.0_232-8u232-b09-0ubuntu1~18.04.1-b09 on Linux 4.15.0-1044-aws
-Intel(R) Xeon(R) CPU E5-2670 v2 @ 2.50GHz
+OpenJDK 64-Bit Server VM 1.8.0_232-b09 on Linux 4.4.0-171-generic
+Intel(R) Xeon(R) CPU @ 2.30GHz
 TPCDS Snappy:                             Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
 ------------------------------------------------------------------------------------------------------------------------
-q6-v2.7                                            1798           1861          89          0.0      Infinity       1.0X
+q6-v2.7 - AQE off - master                         1844           1864          28          0.0      Infinity       1.0X
+q6-v2.7 - AQE off - whole plan reuse fix           1658           1786         181          0.0      Infinity       1.1X
+q6-v2.7 - AQE on - master                          1106           1125          27          0.0      Infinity       1.7X
+q6-v2.7 - AQE on - whole plan reuse fix            1081           1132          72          0.0      Infinity       1.7X
 
-OpenJDK 64-Bit Server VM 1.8.0_232-8u232-b09-0ubuntu1~18.04.1-b09 on Linux 4.15.0-1044-aws
-Intel(R) Xeon(R) CPU E5-2670 v2 @ 2.50GHz
-TPCDS Snappy:                             Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
-------------------------------------------------------------------------------------------------------------------------
-q10a-v2.7                                          4093           4209         164          0.0      Infinity       1.0X
+OpenJDK 64-Bit Server VM 1.8.0_232-b09 on Linux 4.4.0-171-generic
+Intel(R) Xeon(R) CPU @ 2.30GHz
+TPCDS Snappy:                               Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
+--------------------------------------------------------------------------------------------------------------------------
+q10a-v2.7 - AQE off - master                         4301           4612         440          0.0      Infinity       1.0X
+q10a-v2.7 - AQE off - whole plan reuse fix           4536           4562          36          0.0      Infinity       0.9X
+q10a-v2.7 - AQE on - master                          3131           3187          80          0.0      Infinity       1.4X
+q10a-v2.7 - AQE on - whole plan reuse fix            3055           3242         265          0.0      Infinity       1.4X
 
-OpenJDK 64-Bit Server VM 1.8.0_232-8u232-b09-0ubuntu1~18.04.1-b09 on Linux 4.15.0-1044-aws
-Intel(R) Xeon(R) CPU E5-2670 v2 @ 2.50GHz
-TPCDS Snappy:                             Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
-------------------------------------------------------------------------------------------------------------------------
-q11-v2.7                                           3336           3404          96          0.0      Infinity       1.0X
+OpenJDK 64-Bit Server VM 1.8.0_232-b09 on Linux 4.4.0-171-generic
+Intel(R) Xeon(R) CPU @ 2.30GHz
+TPCDS Snappy:                              Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
+-------------------------------------------------------------------------------------------------------------------------
+q11-v2.7 - AQE off - master                        14092          14178         122          0.0      Infinity       1.0X
+q11-v2.7 - AQE off - whole plan reuse fix          13984          13984           0          0.0      Infinity       1.0X
+q11-v2.7 - AQE on - master                         13263          13295          45          0.0      Infinity       1.1X
+q11-v2.7 - AQE on - whole plan reuse fix           13264          13560         419          0.0      Infinity       1.1X
 
-OpenJDK 64-Bit Server VM 1.8.0_232-8u232-b09-0ubuntu1~18.04.1-b09 on Linux 4.15.0-1044-aws
-Intel(R) Xeon(R) CPU E5-2670 v2 @ 2.50GHz
-TPCDS Snappy:                             Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
-------------------------------------------------------------------------------------------------------------------------
-q12-v2.7                                            380            408          30          0.0      Infinity       1.0X
+OpenJDK 64-Bit Server VM 1.8.0_232-b09 on Linux 4.4.0-171-generic
+Intel(R) Xeon(R) CPU @ 2.30GHz
+TPCDS Snappy:                              Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
+-------------------------------------------------------------------------------------------------------------------------
+q12-v2.7 - AQE off - master                          643            652          12          0.0      Infinity       1.0X
+q12-v2.7 - AQE off - whole plan reuse fix            650            686          35          0.0      Infinity       1.0X
+q12-v2.7 - AQE on - master                           511            539          25          0.0      Infinity       1.3X
+q12-v2.7 - AQE on - whole plan reuse fix             488            539          41          0.0      Infinity       1.3X
 
-OpenJDK 64-Bit Server VM 1.8.0_232-8u232-b09-0ubuntu1~18.04.1-b09 on Linux 4.15.0-1044-aws
-Intel(R) Xeon(R) CPU E5-2670 v2 @ 2.50GHz
-TPCDS Snappy:                             Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
-------------------------------------------------------------------------------------------------------------------------
-q14-v2.7                                          17331          17776         629          0.0      Infinity       1.0X
+OpenJDK 64-Bit Server VM 1.8.0_232-b09 on Linux 4.4.0-171-generic
+Intel(R) Xeon(R) CPU @ 2.30GHz
+TPCDS Snappy:                              Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
+-------------------------------------------------------------------------------------------------------------------------
+q14-v2.7 - AQE off - master                        49881          50150         381          0.0      Infinity       1.0X
+q14-v2.7 - AQE off - whole plan reuse fix          32185          32406         312          0.0      Infinity       1.5X
+q14-v2.7 - AQE on - master                         35138          35630         696          0.0      Infinity       1.4X
+q14-v2.7 - AQE on - whole plan reuse fix           32654          32841         264          0.0      Infinity       1.5X
 
-OpenJDK 64-Bit Server VM 1.8.0_232-8u232-b09-0ubuntu1~18.04.1-b09 on Linux 4.15.0-1044-aws
-Intel(R) Xeon(R) CPU E5-2670 v2 @ 2.50GHz
-TPCDS Snappy:                             Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
-------------------------------------------------------------------------------------------------------------------------
-q14a-v2.7                                        111982         112268         404          0.0      Infinity       1.0X
+OpenJDK 64-Bit Server VM 1.8.0_232-b09 on Linux 4.4.0-171-generic
+Intel(R) Xeon(R) CPU @ 2.30GHz
+TPCDS Snappy:                               Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
+--------------------------------------------------------------------------------------------------------------------------
+q14a-v2.7 - AQE off - master                        87044          88235        1685          0.0      Infinity       1.0X
+q14a-v2.7 - AQE off - whole plan reuse fix          46682          47158         672          0.0      Infinity       1.9X
+q14a-v2.7 - AQE on - master                         49246          51559         NaN          0.0      Infinity       1.8X
+q14a-v2.7 - AQE on - whole plan reuse fix           45648          46371        1022          0.0      Infinity       1.9X
 
-OpenJDK 64-Bit Server VM 1.8.0_232-8u232-b09-0ubuntu1~18.04.1-b09 on Linux 4.15.0-1044-aws
-Intel(R) Xeon(R) CPU E5-2670 v2 @ 2.50GHz
-TPCDS Snappy:                             Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
-------------------------------------------------------------------------------------------------------------------------
-q18a-v2.7                                          4063           4659         843          0.0      Infinity       1.0X
+OpenJDK 64-Bit Server VM 1.8.0_232-b09 on Linux 4.4.0-171-generic
+Intel(R) Xeon(R) CPU @ 2.30GHz
+TPCDS Snappy:                               Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
+--------------------------------------------------------------------------------------------------------------------------
+q18a-v2.7 - AQE off - master                        10820          11036         305          0.0      Infinity       1.0X
+q18a-v2.7 - AQE off - whole plan reuse fix          10798          10836          53          0.0      Infinity       1.0X
+q18a-v2.7 - AQE on - master                         10919          11158         338          0.0      Infinity       1.0X
+q18a-v2.7 - AQE on - whole plan reuse fix           11748          11891         203          0.0      Infinity       0.9X
 
-OpenJDK 64-Bit Server VM 1.8.0_232-8u232-b09-0ubuntu1~18.04.1-b09 on Linux 4.15.0-1044-aws
-Intel(R) Xeon(R) CPU E5-2670 v2 @ 2.50GHz
-TPCDS Snappy:                             Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
-------------------------------------------------------------------------------------------------------------------------
-q20-v2.7                                            420            446          29          0.0      Infinity       1.0X
+OpenJDK 64-Bit Server VM 1.8.0_232-b09 on Linux 4.4.0-171-generic
+Intel(R) Xeon(R) CPU @ 2.30GHz
+TPCDS Snappy:                              Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
+-------------------------------------------------------------------------------------------------------------------------
+q20-v2.7 - AQE off - master                          772            840          91          0.0      Infinity       1.0X
+q20-v2.7 - AQE off - whole plan reuse fix            813            892          70          0.0      Infinity       0.9X
+q20-v2.7 - AQE on - master                           575            619          31          0.0      Infinity       1.3X
+q20-v2.7 - AQE on - whole plan reuse fix             566            575           8          0.0      Infinity       1.4X
 
-OpenJDK 64-Bit Server VM 1.8.0_232-8u232-b09-0ubuntu1~18.04.1-b09 on Linux 4.15.0-1044-aws
-Intel(R) Xeon(R) CPU E5-2670 v2 @ 2.50GHz
-TPCDS Snappy:                             Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
-------------------------------------------------------------------------------------------------------------------------
-q22-v2.7                                          18976          19164         265          0.0      Infinity       1.0X
+OpenJDK 64-Bit Server VM 1.8.0_232-b09 on Linux 4.4.0-171-generic
+Intel(R) Xeon(R) CPU @ 2.30GHz
+TPCDS Snappy:                              Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
+-------------------------------------------------------------------------------------------------------------------------
+q22-v2.7 - AQE off - master                        85644          86192         775          0.0      Infinity       1.0X
+q22-v2.7 - AQE off - whole plan reuse fix          82850          83067         306          0.0      Infinity       1.0X
+q22-v2.7 - AQE on - master                         82595          83339        1053          0.0      Infinity       1.0X
+q22-v2.7 - AQE on - whole plan reuse fix           81970          82462         695          0.0      Infinity       1.0X
 
-OpenJDK 64-Bit Server VM 1.8.0_232-8u232-b09-0ubuntu1~18.04.1-b09 on Linux 4.15.0-1044-aws
-Intel(R) Xeon(R) CPU E5-2670 v2 @ 2.50GHz
-TPCDS Snappy:                             Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
-------------------------------------------------------------------------------------------------------------------------
-q22a-v2.7                                          9087           9281         275          0.0      Infinity       1.0X
+OpenJDK 64-Bit Server VM 1.8.0_232-b09 on Linux 4.4.0-171-generic
+Intel(R) Xeon(R) CPU @ 2.30GHz
+TPCDS Snappy:                               Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
+--------------------------------------------------------------------------------------------------------------------------
+q22a-v2.7 - AQE off - master                        15646          15739         132          0.0      Infinity       1.0X
+q22a-v2.7 - AQE off - whole plan reuse fix           8983           9080         137          0.0      Infinity       1.7X
+q22a-v2.7 - AQE on - master                          8592           8654          87          0.0      Infinity       1.8X
+q22a-v2.7 - AQE on - whole plan reuse fix            9166           9298         187          0.0      Infinity       1.7X
 
-OpenJDK 64-Bit Server VM 1.8.0_232-8u232-b09-0ubuntu1~18.04.1-b09 on Linux 4.15.0-1044-aws
-Intel(R) Xeon(R) CPU E5-2670 v2 @ 2.50GHz
-TPCDS Snappy:                             Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
-------------------------------------------------------------------------------------------------------------------------
-q24-v2.7                                           2817           2834          24          0.0      Infinity       1.0X
+OpenJDK 64-Bit Server VM 1.8.0_232-b09 on Linux 4.4.0-171-generic
+Intel(R) Xeon(R) CPU @ 2.30GHz
+TPCDS Snappy:                              Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
+-------------------------------------------------------------------------------------------------------------------------
+q24-v2.7 - AQE off - master                        32703          32879         250          0.0      Infinity       1.0X
+q24-v2.7 - AQE off - whole plan reuse fix          27298          27442         204          0.0      Infinity       1.2X
+q24-v2.7 - AQE on - master                         26521          27161         905          0.0      Infinity       1.2X
+q24-v2.7 - AQE on - whole plan reuse fix           27129          27904        1096          0.0      Infinity       1.2X
 
-OpenJDK 64-Bit Server VM 1.8.0_232-8u232-b09-0ubuntu1~18.04.1-b09 on Linux 4.15.0-1044-aws
-Intel(R) Xeon(R) CPU E5-2670 v2 @ 2.50GHz
-TPCDS Snappy:                             Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
-------------------------------------------------------------------------------------------------------------------------
-q27a-v2.7                                          2301           2401         141          0.0      Infinity       1.0X
+OpenJDK 64-Bit Server VM 1.8.0_232-b09 on Linux 4.4.0-171-generic
+Intel(R) Xeon(R) CPU @ 2.30GHz
+TPCDS Snappy:                               Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
+--------------------------------------------------------------------------------------------------------------------------
+q27a-v2.7 - AQE off - master                         5582           5773         269          0.0      Infinity       1.0X
+q27a-v2.7 - AQE off - whole plan reuse fix           5396           5494         138          0.0      Infinity       1.0X
+q27a-v2.7 - AQE on - master                          5559           5578          27          0.0      Infinity       1.0X
+q27a-v2.7 - AQE on - whole plan reuse fix            5475           5568         131          0.0      Infinity       1.0X
 
-OpenJDK 64-Bit Server VM 1.8.0_232-8u232-b09-0ubuntu1~18.04.1-b09 on Linux 4.15.0-1044-aws
-Intel(R) Xeon(R) CPU E5-2670 v2 @ 2.50GHz
-TPCDS Snappy:                             Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
-------------------------------------------------------------------------------------------------------------------------
-q34-v2.7                                            700            731          48          0.0      Infinity       1.0X
+OpenJDK 64-Bit Server VM 1.8.0_232-b09 on Linux 4.4.0-171-generic
+Intel(R) Xeon(R) CPU @ 2.30GHz
+TPCDS Snappy:                              Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
+-------------------------------------------------------------------------------------------------------------------------
+q34-v2.7 - AQE off - master                         2091           2104          18          0.0      Infinity       1.0X
+q34-v2.7 - AQE off - whole plan reuse fix           1952           1982          42          0.0      Infinity       1.1X
+q34-v2.7 - AQE on - master                          1522           1566          62          0.0      Infinity       1.4X
+q34-v2.7 - AQE on - whole plan reuse fix            1576           1586          14          0.0      Infinity       1.3X
 
-OpenJDK 64-Bit Server VM 1.8.0_232-8u232-b09-0ubuntu1~18.04.1-b09 on Linux 4.15.0-1044-aws
-Intel(R) Xeon(R) CPU E5-2670 v2 @ 2.50GHz
-TPCDS Snappy:                             Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
-------------------------------------------------------------------------------------------------------------------------
-q35-v2.7                                           4158           4513         503          0.0      Infinity       1.0X
+OpenJDK 64-Bit Server VM 1.8.0_232-b09 on Linux 4.4.0-171-generic
+Intel(R) Xeon(R) CPU @ 2.30GHz
+TPCDS Snappy:                              Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
+-------------------------------------------------------------------------------------------------------------------------
+q35-v2.7 - AQE off - master                         6462           6646         260          0.0      Infinity       1.0X
+q35-v2.7 - AQE off - whole plan reuse fix           5945           6338         556          0.0      Infinity       1.1X
+q35-v2.7 - AQE on - master                          5022           5032          14          0.0      Infinity       1.3X
+q35-v2.7 - AQE on - whole plan reuse fix            5096           5180         119          0.0      Infinity       1.3X
 
-OpenJDK 64-Bit Server VM 1.8.0_232-8u232-b09-0ubuntu1~18.04.1-b09 on Linux 4.15.0-1044-aws
-Intel(R) Xeon(R) CPU E5-2670 v2 @ 2.50GHz
-TPCDS Snappy:                             Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
-------------------------------------------------------------------------------------------------------------------------
-q35a-v2.7                                          3904           3979         106          0.0      Infinity       1.0X
+OpenJDK 64-Bit Server VM 1.8.0_232-b09 on Linux 4.4.0-171-generic
+Intel(R) Xeon(R) CPU @ 2.30GHz
+TPCDS Snappy:                               Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
+--------------------------------------------------------------------------------------------------------------------------
+q35a-v2.7 - AQE off - master                         6239           6562         457          0.0      Infinity       1.0X
+q35a-v2.7 - AQE off - whole plan reuse fix           6148           6174          37          0.0      Infinity       1.0X
+q35a-v2.7 - AQE on - master                          4748           5237         691          0.0      Infinity       1.3X
+q35a-v2.7 - AQE on - whole plan reuse fix            4928           5012         118          0.0      Infinity       1.3X
 
-OpenJDK 64-Bit Server VM 1.8.0_232-8u232-b09-0ubuntu1~18.04.1-b09 on Linux 4.15.0-1044-aws
-Intel(R) Xeon(R) CPU E5-2670 v2 @ 2.50GHz
-TPCDS Snappy:                             Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
-------------------------------------------------------------------------------------------------------------------------
-q36a-v2.7                                          2430           2534         147          0.0      Infinity       1.0X
+OpenJDK 64-Bit Server VM 1.8.0_232-b09 on Linux 4.4.0-171-generic
+Intel(R) Xeon(R) CPU @ 2.30GHz
+TPCDS Snappy:                               Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
+--------------------------------------------------------------------------------------------------------------------------
+q36a-v2.7 - AQE off - master                         6717           6736          26          0.0      Infinity       1.0X
+q36a-v2.7 - AQE off - whole plan reuse fix           4287           4314          39          0.0      Infinity       1.6X
+q36a-v2.7 - AQE on - master                          3841           3847           9          0.0      Infinity       1.7X
+q36a-v2.7 - AQE on - whole plan reuse fix            3650           3668          26          0.0      Infinity       1.8X
 
-OpenJDK 64-Bit Server VM 1.8.0_232-8u232-b09-0ubuntu1~18.04.1-b09 on Linux 4.15.0-1044-aws
-Intel(R) Xeon(R) CPU E5-2670 v2 @ 2.50GHz
-TPCDS Snappy:                             Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
-------------------------------------------------------------------------------------------------------------------------
-q47-v2.7                                           4502           4808         433          0.0      Infinity       1.0X
+OpenJDK 64-Bit Server VM 1.8.0_232-b09 on Linux 4.4.0-171-generic
+Intel(R) Xeon(R) CPU @ 2.30GHz
+TPCDS Snappy:                              Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
+-------------------------------------------------------------------------------------------------------------------------
+q47-v2.7 - AQE off - master                        13961          14040         112          0.0      Infinity       1.0X
+q47-v2.7 - AQE off - whole plan reuse fix           9544           9552          11          0.0      Infinity       1.5X
+q47-v2.7 - AQE on - master                          8792           9056         374          0.0      Infinity       1.6X
+q47-v2.7 - AQE on - whole plan reuse fix            8628           8715         123          0.0      Infinity       1.6X
 
-OpenJDK 64-Bit Server VM 1.8.0_232-8u232-b09-0ubuntu1~18.04.1-b09 on Linux 4.15.0-1044-aws
-Intel(R) Xeon(R) CPU E5-2670 v2 @ 2.50GHz
-TPCDS Snappy:                             Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
-------------------------------------------------------------------------------------------------------------------------
-q49-v2.7                                           1904           2159         360          0.0      Infinity       1.0X
+OpenJDK 64-Bit Server VM 1.8.0_232-b09 on Linux 4.4.0-171-generic
+Intel(R) Xeon(R) CPU @ 2.30GHz
+TPCDS Snappy:                              Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
+-------------------------------------------------------------------------------------------------------------------------
+q49-v2.7 - AQE off - master                        14410          14504         133          0.0      Infinity       1.0X
+q49-v2.7 - AQE off - whole plan reuse fix          14347          14459         158          0.0      Infinity       1.0X
+q49-v2.7 - AQE on - master                         14851          14868          24          0.0      Infinity       1.0X
+q49-v2.7 - AQE on - whole plan reuse fix           14978          15014          51          0.0      Infinity       1.0X
 
-OpenJDK 64-Bit Server VM 1.8.0_232-8u232-b09-0ubuntu1~18.04.1-b09 on Linux 4.15.0-1044-aws
-Intel(R) Xeon(R) CPU E5-2670 v2 @ 2.50GHz
-TPCDS Snappy:                             Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
-------------------------------------------------------------------------------------------------------------------------
-q51a-v2.7                                         27939          28264         460          0.0      Infinity       1.0X
+OpenJDK 64-Bit Server VM 1.8.0_232-b09 on Linux 4.4.0-171-generic
+Intel(R) Xeon(R) CPU @ 2.30GHz
+TPCDS Snappy:                               Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
+--------------------------------------------------------------------------------------------------------------------------
+q51a-v2.7 - AQE off - master                       234928         236852        2720          0.0      Infinity       1.0X
+q51a-v2.7 - AQE off - whole plan reuse fix         170325         171084        1073          0.0      Infinity       1.4X
+q51a-v2.7 - AQE on - master                        171753         172099         489          0.0      Infinity       1.4X
+q51a-v2.7 - AQE on - whole plan reuse fix          170799         171091         414          0.0      Infinity       1.4X
 
-OpenJDK 64-Bit Server VM 1.8.0_232-8u232-b09-0ubuntu1~18.04.1-b09 on Linux 4.15.0-1044-aws
-Intel(R) Xeon(R) CPU E5-2670 v2 @ 2.50GHz
-TPCDS Snappy:                             Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
-------------------------------------------------------------------------------------------------------------------------
-q57-v2.7                                           2813           2981         237          0.0      Infinity       1.0X
+OpenJDK 64-Bit Server VM 1.8.0_232-b09 on Linux 4.4.0-171-generic
+Intel(R) Xeon(R) CPU @ 2.30GHz
+TPCDS Snappy:                              Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
+-------------------------------------------------------------------------------------------------------------------------
+q57-v2.7 - AQE off - master                        10140          10185          64          0.0      Infinity       1.0X
+q57-v2.7 - AQE off - whole plan reuse fix           6889           6932          60          0.0      Infinity       1.5X
+q57-v2.7 - AQE on - master                          6341           6394          75          0.0      Infinity       1.6X
+q57-v2.7 - AQE on - whole plan reuse fix            6323           6337          19          0.0      Infinity       1.6X
 
-OpenJDK 64-Bit Server VM 1.8.0_232-8u232-b09-0ubuntu1~18.04.1-b09 on Linux 4.15.0-1044-aws
-Intel(R) Xeon(R) CPU E5-2670 v2 @ 2.50GHz
-TPCDS Snappy:                             Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
-------------------------------------------------------------------------------------------------------------------------
-q64-v2.7                                           8413           8612         282          0.0      Infinity       1.0X
+OpenJDK 64-Bit Server VM 1.8.0_232-b09 on Linux 4.4.0-171-generic
+Intel(R) Xeon(R) CPU @ 2.30GHz
+TPCDS Snappy:                              Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
+-------------------------------------------------------------------------------------------------------------------------
+q64-v2.7 - AQE off - master                        42725          42836         156          0.0      Infinity       1.0X
+q64-v2.7 - AQE off - whole plan reuse fix          42747          43106         508          0.0      Infinity       1.0X
+q64-v2.7 - AQE on - master                         39544          39889         487          0.0      Infinity       1.1X
+q64-v2.7 - AQE on - whole plan reuse fix           40814          41169         502          0.0      Infinity       1.0X
 
-OpenJDK 64-Bit Server VM 1.8.0_232-8u232-b09-0ubuntu1~18.04.1-b09 on Linux 4.15.0-1044-aws
-Intel(R) Xeon(R) CPU E5-2670 v2 @ 2.50GHz
-TPCDS Snappy:                             Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
-------------------------------------------------------------------------------------------------------------------------
-q67a-v2.7                                         17696          17858         230          0.0      Infinity       1.0X
+OpenJDK 64-Bit Server VM 1.8.0_232-b09 on Linux 4.4.0-171-generic
+Intel(R) Xeon(R) CPU @ 2.30GHz
+TPCDS Snappy:                               Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
+--------------------------------------------------------------------------------------------------------------------------
+q67a-v2.7 - AQE off - master                        95688          95851         230          0.0      Infinity       1.0X
+q67a-v2.7 - AQE off - whole plan reuse fix          83618          83971         498          0.0      Infinity       1.1X
+q67a-v2.7 - AQE on - master                         83921          84206         403          0.0      Infinity       1.1X
+q67a-v2.7 - AQE on - whole plan reuse fix           85370          85676         432          0.0      Infinity       1.1X
 
-OpenJDK 64-Bit Server VM 1.8.0_232-8u232-b09-0ubuntu1~18.04.1-b09 on Linux 4.15.0-1044-aws
-Intel(R) Xeon(R) CPU E5-2670 v2 @ 2.50GHz
-TPCDS Snappy:                             Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
-------------------------------------------------------------------------------------------------------------------------
-q70a-v2.7                                          2511           2562          71          0.0      Infinity       1.0X
+OpenJDK 64-Bit Server VM 1.8.0_232-b09 on Linux 4.4.0-171-generic
+Intel(R) Xeon(R) CPU @ 2.30GHz
+TPCDS Snappy:                               Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
+--------------------------------------------------------------------------------------------------------------------------
+q70a-v2.7 - AQE off - master                         7489           7529          58          0.0      Infinity       1.0X
+q70a-v2.7 - AQE off - whole plan reuse fix           4083           4187         148          0.0      Infinity       1.8X
+q70a-v2.7 - AQE on - master                          4085           4098          19          0.0      Infinity       1.8X
+q70a-v2.7 - AQE on - whole plan reuse fix            4154           4228         104          0.0      Infinity       1.8X
 
-OpenJDK 64-Bit Server VM 1.8.0_232-8u232-b09-0ubuntu1~18.04.1-b09 on Linux 4.15.0-1044-aws
-Intel(R) Xeon(R) CPU E5-2670 v2 @ 2.50GHz
-TPCDS Snappy:                             Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
-------------------------------------------------------------------------------------------------------------------------
-q72-v2.7                                          20209          22083        2650          0.0      Infinity       1.0X
+OpenJDK 64-Bit Server VM 1.8.0_232-b09 on Linux 4.4.0-171-generic
+Intel(R) Xeon(R) CPU @ 2.30GHz
+TPCDS Snappy:                              Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
+-------------------------------------------------------------------------------------------------------------------------
+q72-v2.7 - AQE off - master                        57133          57407         388          0.0      Infinity       1.0X
+q72-v2.7 - AQE off - whole plan reuse fix          58021          58318         419          0.0      Infinity       1.0X
+q72-v2.7 - AQE on - master                         57291          57485         275          0.0      Infinity       1.0X
+q72-v2.7 - AQE on - whole plan reuse fix           57327          57434         152          0.0      Infinity       1.0X
 
-OpenJDK 64-Bit Server VM 1.8.0_232-8u232-b09-0ubuntu1~18.04.1-b09 on Linux 4.15.0-1044-aws
-Intel(R) Xeon(R) CPU E5-2670 v2 @ 2.50GHz
-TPCDS Snappy:                             Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
-------------------------------------------------------------------------------------------------------------------------
-q74-v2.7                                           2870           2912          60          0.0      Infinity       1.0X
+OpenJDK 64-Bit Server VM 1.8.0_232-b09 on Linux 4.4.0-171-generic
+Intel(R) Xeon(R) CPU @ 2.30GHz
+TPCDS Snappy:                              Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
+-------------------------------------------------------------------------------------------------------------------------
+q74-v2.7 - AQE off - master                        12135          12347         299          0.0      Infinity       1.0X
+q74-v2.7 - AQE off - whole plan reuse fix          11233          11472         338          0.0      Infinity       1.1X
+q74-v2.7 - AQE on - master                         10453          10456           4          0.0      Infinity       1.2X
+q74-v2.7 - AQE on - whole plan reuse fix           10101          11625        2156          0.0      Infinity       1.2X
 
-OpenJDK 64-Bit Server VM 1.8.0_232-8u232-b09-0ubuntu1~18.04.1-b09 on Linux 4.15.0-1044-aws
-Intel(R) Xeon(R) CPU E5-2670 v2 @ 2.50GHz
-TPCDS Snappy:                             Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
-------------------------------------------------------------------------------------------------------------------------
-q75-v2.7                                           4534           4870         475          0.0      Infinity       1.0X
+OpenJDK 64-Bit Server VM 1.8.0_232-b09 on Linux 4.4.0-171-generic
+Intel(R) Xeon(R) CPU @ 2.30GHz
+TPCDS Snappy:                              Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
+-------------------------------------------------------------------------------------------------------------------------
+q75-v2.7 - AQE off - master                        28239          28710         666          0.0      Infinity       1.0X
+q75-v2.7 - AQE off - whole plan reuse fix          27460          27646         263          0.0      Infinity       1.0X
+q75-v2.7 - AQE on - master                         26556          26999         627          0.0      Infinity       1.1X
+q75-v2.7 - AQE on - whole plan reuse fix           26483          26824         482          0.0      Infinity       1.1X
 
-OpenJDK 64-Bit Server VM 1.8.0_232-8u232-b09-0ubuntu1~18.04.1-b09 on Linux 4.15.0-1044-aws
-Intel(R) Xeon(R) CPU E5-2670 v2 @ 2.50GHz
-TPCDS Snappy:                             Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
-------------------------------------------------------------------------------------------------------------------------
-q77a-v2.7                                          4010           4285         388          0.0      Infinity       1.0X
+OpenJDK 64-Bit Server VM 1.8.0_232-b09 on Linux 4.4.0-171-generic
+Intel(R) Xeon(R) CPU @ 2.30GHz
+TPCDS Snappy:                               Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
+--------------------------------------------------------------------------------------------------------------------------
+q77a-v2.7 - AQE off - master                         5385           5485         142          0.0      Infinity       1.0X
+q77a-v2.7 - AQE off - whole plan reuse fix           3502           3622         170          0.0      Infinity       1.5X
+q77a-v2.7 - AQE on - master                          2990           3135         206          0.0      Infinity       1.8X
+q77a-v2.7 - AQE on - whole plan reuse fix            2931           2952          30          0.0      Infinity       1.8X
 
-OpenJDK 64-Bit Server VM 1.8.0_232-8u232-b09-0ubuntu1~18.04.1-b09 on Linux 4.15.0-1044-aws
-Intel(R) Xeon(R) CPU E5-2670 v2 @ 2.50GHz
-TPCDS Snappy:                             Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
-------------------------------------------------------------------------------------------------------------------------
-q78-v2.7                                           4879           4969         127          0.0      Infinity       1.0X
+OpenJDK 64-Bit Server VM 1.8.0_232-b09 on Linux 4.4.0-171-generic
+Intel(R) Xeon(R) CPU @ 2.30GHz
+TPCDS Snappy:                              Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
+-------------------------------------------------------------------------------------------------------------------------
+q78-v2.7 - AQE off - master                        33560          33862         426          0.0      Infinity       1.0X
+q78-v2.7 - AQE off - whole plan reuse fix          33264          33486         314          0.0      Infinity       1.0X
+q78-v2.7 - AQE on - master                         33891          35055        1645          0.0      Infinity       1.0X
+q78-v2.7 - AQE on - whole plan reuse fix           34717          34720           5          0.0      Infinity       1.0X
 
-OpenJDK 64-Bit Server VM 1.8.0_232-8u232-b09-0ubuntu1~18.04.1-b09 on Linux 4.15.0-1044-aws
-Intel(R) Xeon(R) CPU E5-2670 v2 @ 2.50GHz
-TPCDS Snappy:                             Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
-------------------------------------------------------------------------------------------------------------------------
-q80a-v2.7                                          5338           5728         552          0.0      Infinity       1.0X
+OpenJDK 64-Bit Server VM 1.8.0_232-b09 on Linux 4.4.0-171-generic
+Intel(R) Xeon(R) CPU @ 2.30GHz
+TPCDS Snappy:                               Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
+--------------------------------------------------------------------------------------------------------------------------
+q80a-v2.7 - AQE off - master                        23196          23259          89          0.0      Infinity       1.0X
+q80a-v2.7 - AQE off - whole plan reuse fix          18514          18608         133          0.0      Infinity       1.3X
+q80a-v2.7 - AQE on - master                         19159          19194          49          0.0      Infinity       1.2X
+q80a-v2.7 - AQE on - whole plan reuse fix           18938          19060         173          0.0      Infinity       1.2X
 
-OpenJDK 64-Bit Server VM 1.8.0_232-8u232-b09-0ubuntu1~18.04.1-b09 on Linux 4.15.0-1044-aws
-Intel(R) Xeon(R) CPU E5-2670 v2 @ 2.50GHz
-TPCDS Snappy:                             Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
-------------------------------------------------------------------------------------------------------------------------
-q86a-v2.7                                          1370           1391          29          0.0      Infinity       1.0X
+OpenJDK 64-Bit Server VM 1.8.0_232-b09 on Linux 4.4.0-171-generic
+Intel(R) Xeon(R) CPU @ 2.30GHz
+TPCDS Snappy:                               Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
+--------------------------------------------------------------------------------------------------------------------------
+q86a-v2.7 - AQE off - master                         4436           4453          25          0.0      Infinity       1.0X
+q86a-v2.7 - AQE off - whole plan reuse fix           2855           2919          90          0.0      Infinity       1.6X
+q86a-v2.7 - AQE on - master                          2505           2569          91          0.0      Infinity       1.8X
+q86a-v2.7 - AQE on - whole plan reuse fix            2486           2540          77          0.0      Infinity       1.8X
 
-OpenJDK 64-Bit Server VM 1.8.0_232-8u232-b09-0ubuntu1~18.04.1-b09 on Linux 4.15.0-1044-aws
-Intel(R) Xeon(R) CPU E5-2670 v2 @ 2.50GHz
-TPCDS Snappy:                             Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
-------------------------------------------------------------------------------------------------------------------------
-q98-v2.7                                            577            612          31          0.0      Infinity       1.0X
+OpenJDK 64-Bit Server VM 1.8.0_232-b09 on Linux 4.4.0-171-generic
+Intel(R) Xeon(R) CPU @ 2.30GHz
+TPCDS Snappy:                              Best Time(ms)   Avg Time(ms)   Stdev(ms)    Rate(M/s)   Per Row(ns)   Relative
+-------------------------------------------------------------------------------------------------------------------------
+q98-v2.7 - AQE off - master                          966           1029          90          0.0      Infinity       1.0X
+q98-v2.7 - AQE off - whole plan reuse fix            954            973          23          0.0      Infinity       1.0X
+q98-v2.7 - AQE on - master                           666            682          19          0.0      Infinity       1.5X
+q98-v2.7 - AQE on - whole plan reuse fix             647            690          56          0.0      Infinity       1.5X
 

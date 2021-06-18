@@ -106,8 +106,29 @@ object TPCDSQueryBenchmark extends SqlBasedBenchmark with Logging {
       }
       val numRows = queryRelations.map(tableSizes.getOrElse(_, 0L)).sum
       val benchmark = new Benchmark(s"TPCDS Snappy", numRows, 2, output = output)
-      benchmark.addCase(s"$name$nameSuffix") { _ =>
-        spark.sql(queryString).noop()
+      benchmark.addCase(s"$name$nameSuffix - AQE off - master") { _ =>
+        withSQLConf(
+          SQLConf.ADAPTIVE_EXECUTION_ENABLED.key -> "false",
+          SQLConf.WHOLEPLANREUSE_ENABLED.key -> "false") {
+          spark.sql(queryString).noop()
+        }
+      }
+      benchmark.addCase(s"$name$nameSuffix - AQE off - whole plan reuse fix") { _ =>
+        withSQLConf(
+          SQLConf.ADAPTIVE_EXECUTION_ENABLED.key -> "false",
+          SQLConf.WHOLEPLANREUSE_ENABLED.key -> "true") {
+          spark.sql(queryString).noop()
+        }
+      }
+      benchmark.addCase(s"$name$nameSuffix - AQE on - master") { _ =>
+        withSQLConf(SQLConf.WHOLEPLANREUSE_ENABLED.key -> "false") {
+          spark.sql(queryString).noop()
+        }
+      }
+      benchmark.addCase(s"$name$nameSuffix - AQE on - whole plan reuse fix") { _ =>
+        withSQLConf(SQLConf.WHOLEPLANREUSE_ENABLED.key -> "true") {
+          spark.sql(queryString).noop()
+        }
       }
       benchmark.run()
     }

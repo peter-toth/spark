@@ -1419,6 +1419,13 @@ object SQLConf {
     .booleanConf
     .createWithDefault(true)
 
+  val WHOLEPLANREUSE_ENABLED = buildConf("spark.sql.wholePlanReuse.enabled")
+    .internal()
+    .doc("When true, the planner will try to find out duplicated subqueries and exchanges in the " +
+      "whole plan.")
+    .booleanConf
+    .createWithDefault(true)
+
   val REMOVE_REDUNDANT_PROJECTS_ENABLED = buildConf("spark.sql.execution.removeRedundantProjects")
     .internal()
     .doc("Whether to remove redundant project exec node based on children's output and " +
@@ -3576,6 +3583,8 @@ class SQLConf extends Serializable with Logging {
   def exchangeReuseEnabled: Boolean = getConf(EXCHANGE_REUSE_ENABLED)
 
   def subqueryReuseEnabled: Boolean = getConf(SUBQUERY_REUSE_ENABLED)
+
+  def wholePlanReuseEnabled: Boolean = getConf(WHOLEPLANREUSE_ENABLED)
 
   def caseSensitiveAnalysis: Boolean = getConf(SQLConf.CASE_SENSITIVE)
 

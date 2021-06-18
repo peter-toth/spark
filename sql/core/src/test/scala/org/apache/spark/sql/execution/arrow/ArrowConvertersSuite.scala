@@ -1342,7 +1342,7 @@ class ArrowConvertersSuite extends SharedSQLContext with BeforeAndAfterAll {
     assert(count == inputRows.length)
   }
 
-  ignore("ArrowBatchStreamWriter roundtrip") {
+  test("ArrowBatchStreamWriter roundtrip") {
     val inputRows = (0 until 9).map(InternalRow(_)) :+ InternalRow(null)
 
     val schema = StructType(Seq(StructField("int", IntegerType, nullable = true)))

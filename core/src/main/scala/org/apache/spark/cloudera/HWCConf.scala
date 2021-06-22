@@ -58,20 +58,26 @@ private[spark] class HWCConf extends Logging {
   }
 
   /**
-   * Loads and returns the config from HWC conf file.
+   * Returns the required config to enable HWC i.e.
+   * spark.kryo.registrator=com.qubole.spark.hiveacid.util.HiveAcidKyroRegistrator
+   * spark.sql.extensions=com.hortonworks.spark.sql.rule.Extensions
    *
-   * If spark.cloudera.hwcDefaultsPath is set in SparkConf then the configs are loaded from that
-   * location.
-   * Else it looks for "hwc-defaults.conf" under $PARCEL_ROOT/lib/hive_warehouse_connector
-   * dir to load the configs. It throws a [[NoSuchFileException]] if the config file is absent in
-   * HWC lib dir.
+   * If spark.cloudera.hwcDefaultsPath is set in SparkConf then only the configs present in the
+   * corresponding file are included in the returned map.
+   *
+   * For a given config key, if the value exists in multiple places like spark-defaults.conf,
+   * HWC_DEFAULTS_PATH and --conf, then the precedence order is as follows:
+   * --conf > spark-defaults.conf > HWC_DEFAULTS_PATH
    *
    * @param sparkConf Spark Conf
    * @return a map of HWC configs
    */
   def configs(sparkConf: SparkConf): Map[String, String] = {
-    val hwcConfFile = sparkConf.get(HWC_DEFAULTS_PATH).getOrElse(hwcDefaultsConfPath().toString)
-    val hwcDefaults = Utils.getPropertiesFromFile(hwcConfFile)
+    val hwcDefaults = sparkConf.get(HWC_DEFAULTS_PATH) match {
+      case Some(hwcConfPath) => Utils.getPropertiesFromFile(hwcConfPath)
+      case None => Map("spark.sql.extensions" -> "com.hortonworks.spark.sql.rule.Extensions",
+        "spark.kryo.registrator" -> "com.qubole.spark.hiveacid.util.HiveAcidKyroRegistrator")
+    }
 
     val hwcConfs = scala.collection.mutable.HashMap[String, String]()
     /* In cases where the configs can have comma-separated values and are specified in both
@@ -88,7 +94,7 @@ private[spark] class HWCConf extends Logging {
     }
 
     /* This is to ensure hwc configs specified via --conf during spark-submit or spark-shell takes
-    precedence over configs in hwc-defaults.conf.
+    precedence over configs in HWC_DEFAULTS_PATH.
      */
     hwcConfs ++= hwcDefaults.filterNot { case (key, _) => sparkConf.contains(key) }
     hwcConfs.toMap
@@ -114,8 +120,6 @@ private[spark] class HWCConf extends Logging {
     require(Files.isDirectory(hwcLibDir), s"$hwcLibDir is not a directory")
     hwcLibDir
   }
-
-  private def hwcDefaultsConfPath(): Path = hwcLibDir().resolve("hwc-defaults.conf")
 }
 
 private[spark] object HWCConf {

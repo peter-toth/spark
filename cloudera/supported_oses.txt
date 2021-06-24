@@ -1,6 +1,7 @@
 RedHat5
 RedHat6
 RedHat7
+RedHat8
 Ubuntu1404
 Ubuntu1204
 Debian8

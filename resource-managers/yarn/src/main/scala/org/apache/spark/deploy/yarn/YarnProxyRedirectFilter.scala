@@ -39,15 +39,11 @@ class YarnProxyRedirectFilter extends Filter with Logging {
   override def doFilter(req: ServletRequest, res: ServletResponse, chain: FilterChain): Unit = {
     val hreq = req.asInstanceOf[HttpServletRequest]
 
-    // The YARN proxy will send a request with the "proxy-user" cookie set to the YARN's client
-    // user name. We don't expect any other clients to set this cookie, since the SHS does not
-    // use cookies for anything.
-    Option(hreq.getCookies()).flatMap(_.find(_.getName() == COOKIE_NAME)) match {
-      case Some(_) =>
-        doRedirect(hreq, res.asInstanceOf[HttpServletResponse])
-
-      case _ =>
-        chain.doFilter(req, res)
+    // The YARN proxy will send a request with the "redirect=true" parameter.
+    if (Option(hreq.getParameter(REDIRECT_PARAM)).contains("true")) {
+      doRedirect(hreq, res.asInstanceOf[HttpServletResponse])
+    } else {
+      chain.doFilter(req, res)
     }
   }
 
@@ -77,5 +73,5 @@ class YarnProxyRedirectFilter extends Filter with Logging {
 }
 
 private[spark] object YarnProxyRedirectFilter {
-  val COOKIE_NAME = "proxy-user"
+  val REDIRECT_PARAM = "redirect"
 }

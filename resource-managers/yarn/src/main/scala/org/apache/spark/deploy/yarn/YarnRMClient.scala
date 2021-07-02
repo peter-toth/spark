@@ -67,7 +67,7 @@ private[spark] class YarnRMClient extends Logging {
 
     val trackingUrl = uiAddress.getOrElse {
       if (sparkConf.get(ALLOW_HISTORY_SERVER_TRACKING_URL)) {
-        s"$uiHistoryAddress?${SPARK3}=true"
+        s"$uiHistoryAddress?${SPARK3}=true&${YarnProxyRedirectFilter.REDIRECT_PARAM}=true"
       } else {
         ""
       }

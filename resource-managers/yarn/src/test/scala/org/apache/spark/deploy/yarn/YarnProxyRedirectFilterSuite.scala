@@ -19,7 +19,7 @@ package org.apache.spark.deploy.yarn
 
 import java.io.{PrintWriter, StringWriter}
 import javax.servlet.FilterChain
-import javax.servlet.http.{Cookie, HttpServletRequest, HttpServletResponse}
+import javax.servlet.http.{HttpServletRequest, HttpServletResponse}
 
 import org.mockito.Mockito._
 
@@ -30,12 +30,11 @@ class YarnProxyRedirectFilterSuite extends SparkFunSuite {
   test("redirect proxied requests, pass-through others") {
     val requestURL = "http://example.com:1234/foo?"
     val filter = new YarnProxyRedirectFilter()
-    val cookies = Array(new Cookie(YarnProxyRedirectFilter.COOKIE_NAME, "dr.who"))
 
     val req = mock(classOf[HttpServletRequest])
 
     // First request mocks a YARN proxy request (with the cookie set), second one has no cookies.
-    when(req.getCookies()).thenReturn(cookies, null)
+    when(req.getParameter(YarnProxyRedirectFilter.REDIRECT_PARAM)).thenReturn("true", null)
     when(req.getRequestURL()).thenReturn(new StringBuffer(requestURL))
 
     val res = mock(classOf[HttpServletResponse])

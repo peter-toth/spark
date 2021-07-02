@@ -306,6 +306,9 @@ object QueryExecution {
       PlanDynamicPruningFilters(sparkSession),
       PlanSubqueries(sparkSession),
       EnsureRequirements(sparkSession.sessionState.conf),
+      // `RemoveRedundantSorts` needs to be added before `EnsureRequirements` to guarantee the same
+      // number of partitions when instantiating PartitioningCollection.
+      RemoveRedundantSorts(sparkSession.sessionState.conf),
       CollapseCodegenStages(sparkSession.sessionState.conf)) ++
       (if (SQLConf.get.wholePlanReuseEnabled) {
         if (subquery) {

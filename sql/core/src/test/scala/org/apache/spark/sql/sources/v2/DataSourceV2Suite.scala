@@ -394,19 +394,6 @@ class DataSourceV2Suite extends QueryTest with SharedSQLContext {
     }
   }
 
-  test("SPARK-27411: DataSourceV2Strategy should not eliminate subquery") {
-    withTempView("t1") {
-      val t2 = spark.read.format(classOf[SimpleDataSourceV2].getName).load()
-      Seq(2, 3).toDF("a").createTempView("t1")
-      val df = t2.where("i < (select max(a) from t1)").select('i)
-      val subqueries = df.queryExecution.executedPlan.collect {
-        case p => p.subqueries
-      }.flatten
-      assert(subqueries.length == 1)
-      checkAnswer(df, (0 until 3).map(i => Row(i)))
-    }
-  }
-
   test("SPARK-32708: same columns with different ExprIds should be equal after canonicalization ") {
     def getV2ScanExec(query: DataFrame): DataSourceV2ScanExec = {
       query.queryExecution.executedPlan.collect {
@@ -427,6 +414,19 @@ class DataSourceV2Suite extends QueryTest with SharedSQLContext {
     val scan3 = getV2ScanExec(q3)
     assert(!scan1.sameResult(scan3))
     assert(!scan1.doCanonicalize().equals(scan3.doCanonicalize()))
+  }
+
+  test("SPARK-27411: DataSourceV2Strategy should not eliminate subquery") {
+    withTempView("t1") {
+      val t2 = spark.read.format(classOf[SimpleDataSourceV2].getName).load()
+      Seq(2, 3).toDF("a").createTempView("t1")
+      val df = t2.where("i < (select max(a) from t1)").select('i)
+      val subqueries = df.queryExecution.executedPlan.collect {
+        case p => p.subqueries
+      }.flatten
+      assert(subqueries.length == 1)
+      checkAnswer(df, (0 until 3).map(i => Row(i)))
+    }
   }
 }
 

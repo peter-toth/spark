@@ -597,6 +597,38 @@ class ObjectExpressionsSuite extends SparkFunSuite with ExpressionEvalHelper {
     checkExceptionInExpression[RuntimeException](
       serializer4, EmptyRow, "Cannot use null as map key!")
   }
+
+  test("SPARK-35278: invoke should find method with correct number of parameters") {
+    val strClsType = ObjectType(classOf[String])
+
+    checkObjectExprEvaluation(
+      Invoke(Literal("a", strClsType), "substring", strClsType, Seq(Literal(0))), "a")
+
+    checkObjectExprEvaluation(
+      Invoke(Literal("a", strClsType), "substring", strClsType, Seq(Literal(0), Literal(1))), "a")
+  }
+
+  test("SPARK-35278: invoke should correctly invoke override method") {
+    val clsType = ObjectType(classOf[ConcreteClass])
+    val obj = new ConcreteClass
+
+    val input = (1, 2)
+    checkObjectExprEvaluation(
+      Invoke(Literal(obj, clsType), "testFunc", IntegerType,
+        Seq(Literal(input, ObjectType(input.getClass)))), 2)
+  }
+
+  test("SPARK-35288: static invoke should find method without exact param type match") {
+    val input = (1, 2)
+
+    checkObjectExprEvaluation(
+      StaticInvoke(TestStaticInvoke.getClass, IntegerType, "func",
+        Seq(Literal(input, ObjectType(input.getClass)))), 3)
+
+    checkObjectExprEvaluation(
+      StaticInvoke(TestStaticInvoke.getClass, IntegerType, "func",
+        Seq(Literal(1, IntegerType))), -1)
+  }
 }
 
 class TestBean extends Serializable {
@@ -606,4 +638,24 @@ class TestBean extends Serializable {
 
   def setNonPrimitive(i: AnyRef): Unit =
     assert(i != null, "this setter should not be called with null.")
+}
+
+object TestStaticInvoke {
+  def func(param: Any): Int = param match {
+    case pair: Tuple2[_, _] =>
+      pair.asInstanceOf[Tuple2[Int, Int]]._1 + pair.asInstanceOf[Tuple2[Int, Int]]._2
+    case _ => -1
+  }
+}
+
+abstract class BaseClass[T] {
+  def testFunc(param: T): Int
+}
+
+class ConcreteClass extends BaseClass[Product] with Serializable {
+  override def testFunc(param: Product): Int = param match {
+    case _: Tuple2[_, _] => 2
+    case _: Tuple3[_, _, _] => 3
+    case _ => 4
+  }
 }

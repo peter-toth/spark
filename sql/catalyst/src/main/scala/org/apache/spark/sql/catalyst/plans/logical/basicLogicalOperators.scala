@@ -386,7 +386,7 @@ case class AppendData(
           case (inAttr, outAttr) =>
             // names and types must match, nullability must be compatible
             inAttr.name == outAttr.name &&
-                DataType.equalsIgnoreCompatibleNullability(outAttr.dataType, inAttr.dataType) &&
+                DataType.equalsIgnoreCompatibleNullability(inAttr.dataType, outAttr.dataType) &&
                 (outAttr.nullable || !inAttr.nullable)
         }
   }
@@ -628,6 +628,8 @@ case class Window(
 
   override def output: Seq[Attribute] =
     child.output ++ windowExpressions.map(_.toAttribute)
+
+  override def producedAttributes: AttributeSet = windowOutputSet
 
   def windowOutputSet: AttributeSet = AttributeSet(windowExpressions.map(_.toAttribute))
 }

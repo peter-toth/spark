@@ -64,10 +64,10 @@ public class ThriftHttpCLIService extends ThriftCLIService {
       // Server thread pool
       // Start with minWorkerThreads, expand till maxWorkerThreads and reject subsequent requests
       String threadPoolName = "HiveServer2-HttpHandler-Pool";
-      ThreadPoolExecutor threadPoolExecutor = new ThreadPoolExecutor(minWorkerThreads, maxWorkerThreads,
+      ThreadPoolExecutor executorService = new ThreadPoolExecutor(minWorkerThreads, maxWorkerThreads,
           workerKeepAliveTime, TimeUnit.SECONDS, new SynchronousQueue<Runnable>(),
           new ThreadFactoryWithGarbageCleanup(threadPoolName));
-      ExecutorThreadPool threadPool = new ExecutorThreadPool(threadPoolExecutor);
+      ExecutorThreadPool threadPool = new ExecutorThreadPool(executorService);
 
       // HTTP Server
       httpServer = new org.eclipse.jetty.server.Server(threadPool);

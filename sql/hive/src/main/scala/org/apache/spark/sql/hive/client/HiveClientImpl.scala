@@ -19,6 +19,7 @@ package org.apache.spark.sql.hive.client
 
 import java.io.{File, PrintStream}
 import java.lang.{Iterable => JIterable}
+import java.lang.reflect.InvocationTargetException
 import java.util.{Locale, Map => JMap}
 
 import scala.collection.JavaConverters._
@@ -30,7 +31,7 @@ import org.apache.hadoop.hive.common.StatsSetupConst
 import org.apache.hadoop.hive.conf.{HiveConf, HiveConfUtil}
 import org.apache.hadoop.hive.conf.HiveConf.ConfVars
 import org.apache.hadoop.hive.metastore.{IMetaStoreClient, TableType => HiveTableType}
-import org.apache.hadoop.hive.metastore.api.{Database => HiveDatabase, Table => MetaStoreApiTable}
+import org.apache.hadoop.hive.metastore.api.{AlreadyExistsException, Database => HiveDatabase, Table => MetaStoreApiTable}
 import org.apache.hadoop.hive.metastore.api.{FieldSchema, Order, SerDeInfo, StorageDescriptor}
 import org.apache.hadoop.hive.ql.Driver
 import org.apache.hadoop.hive.ql.metadata.{Hive, HiveException, Partition => HivePartition, Table => HiveTable}
@@ -46,7 +47,7 @@ import org.apache.spark.internal.Logging
 import org.apache.spark.metrics.source.HiveCatalogMetrics
 import org.apache.spark.sql.AnalysisException
 import org.apache.spark.sql.catalyst.TableIdentifier
-import org.apache.spark.sql.catalyst.analysis.{NoSuchDatabaseException, NoSuchPartitionException}
+import org.apache.spark.sql.catalyst.analysis.{NoSuchDatabaseException, NoSuchPartitionException, NoSuchPartitionsException, PartitionsAlreadyExistException}
 import org.apache.spark.sql.catalyst.catalog._
 import org.apache.spark.sql.catalyst.catalog.CatalogTypes.TablePartitionSpec
 import org.apache.spark.sql.catalyst.catalog.CatalogUtils.TRANSLATION_LAYER_ACCESSTYPE_PROPERTY_TEST
@@ -649,7 +650,17 @@ private[hive] class HiveClientImpl(
       table: String,
       parts: Seq[CatalogTablePartition],
       ignoreIfExists: Boolean): Unit = withHiveState {
-    shim.createPartitions(client, db, table, parts, ignoreIfExists)
+    def replaceExistException(e: Throwable): Unit = e match {
+      case _: HiveException if e.getCause.isInstanceOf[AlreadyExistsException] =>
+        throw new PartitionsAlreadyExistException(db, table, parts.map(_.spec))
+      case _ => throw e
+    }
+    try {
+      shim.createPartitions(client, db, table, parts, ignoreIfExists)
+    } catch {
+      case e: InvocationTargetException => replaceExistException(e.getCause)
+      case e: Throwable => replaceExistException(e)
+    }
   }
 
   override def dropPartitions(
@@ -670,9 +681,7 @@ private[hive] class HiveClientImpl(
         // (b='1', c='1') and (b='1', c='2'), a partial spec of (b='1') will match both.
         val parts = client.getPartitions(hiveTable, s.asJava).asScala
         if (parts.isEmpty && !ignoreIfNotExists) {
-          throw new AnalysisException(
-            s"No partition is dropped. One partition spec '$s' does not exist in table '$table' " +
-            s"database '$db'")
+          throw new NoSuchPartitionsException(db, table, Seq(s))
         }
         parts.map(_.getValues)
       }.distinct

@@ -34,7 +34,7 @@ class KafkaContinuousSourceSuite extends KafkaSourceSuiteBase with KafkaContinuo
     withTable(table) {
       val topic = newTopic()
       testUtils.createTopic(topic)
-      testUtils.withTranscationalProducer { producer =>
+      testUtils.withTransactionalProducer { producer =>
         val df = spark
           .readStream
           .format("kafka")
@@ -100,7 +100,7 @@ class KafkaContinuousSourceSuite extends KafkaSourceSuiteBase with KafkaContinuo
     withTable(table) {
       val topic = newTopic()
       testUtils.createTopic(topic)
-      testUtils.withTranscationalProducer { producer =>
+      testUtils.withTransactionalProducer { producer =>
         val df = spark
           .readStream
           .format("kafka")

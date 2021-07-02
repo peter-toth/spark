@@ -2053,7 +2053,7 @@ class AvroV2Suite extends AvroSuite with ExplainSuiteHelper {
       }.isEmpty)
 
       val fileScan = df.queryExecution.executedPlan collectFirst {
-        case BatchScanExec(_, f: AvroScan) => f
+        case BatchScanExec(_, f: AvroScan, _) => f
       }
       assert(fileScan.nonEmpty)
       assert(fileScan.get.partitionFilters.nonEmpty)
@@ -2086,7 +2086,7 @@ class AvroV2Suite extends AvroSuite with ExplainSuiteHelper {
       assert(filterCondition.isDefined)
 
       val fileScan = df.queryExecution.executedPlan collectFirst {
-        case BatchScanExec(_, f: AvroScan) => f
+        case BatchScanExec(_, f: AvroScan, _) => f
       }
       assert(fileScan.nonEmpty)
       assert(fileScan.get.partitionFilters.isEmpty)
@@ -2167,7 +2167,7 @@ class AvroV2Suite extends AvroSuite with ExplainSuiteHelper {
             .where("value = 'a'")
 
           val fileScan = df.queryExecution.executedPlan collectFirst {
-            case BatchScanExec(_, f: AvroScan) => f
+            case BatchScanExec(_, f: AvroScan, _) => f
           }
           assert(fileScan.nonEmpty)
           if (filtersPushdown) {
@@ -2204,7 +2204,7 @@ class AvroRowReaderSuite
 
       val df = spark.read.format("avro").load(dir.getCanonicalPath)
       val fileScan = df.queryExecution.executedPlan collectFirst {
-        case BatchScanExec(_, f: AvroScan) => f
+        case BatchScanExec(_, f: AvroScan, _) => f
       }
       val filePath = fileScan.get.fileIndex.inputFiles(0)
       val fileSize = new File(new URI(filePath)).length

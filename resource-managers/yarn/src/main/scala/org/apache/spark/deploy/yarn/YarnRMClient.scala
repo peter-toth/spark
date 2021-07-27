@@ -37,6 +37,8 @@ import org.apache.spark.util.Utils
  */
 private[spark] class YarnRMClient extends Logging {
 
+  import YarnRMClient._
+
   private var amClient: AMRMClient[ContainerRequest] = _
   private var uiHistoryAddress: String = _
   private var registered: Boolean = false
@@ -64,7 +66,11 @@ private[spark] class YarnRMClient extends Logging {
     this.uiHistoryAddress = uiHistoryAddress
 
     val trackingUrl = uiAddress.getOrElse {
-      if (sparkConf.get(ALLOW_HISTORY_SERVER_TRACKING_URL)) uiHistoryAddress else ""
+      if (sparkConf.get(ALLOW_HISTORY_SERVER_TRACKING_URL)) {
+        s"$uiHistoryAddress?${SPARK3}=true"
+      } else {
+        ""
+      }
     }
 
     logInfo("Registering the ApplicationMaster")
@@ -95,7 +101,9 @@ private[spark] class YarnRMClient extends Logging {
    */
   def unregister(status: FinalApplicationStatus, diagnostics: String = ""): Unit = synchronized {
     if (registered) {
-      amClient.unregisterApplicationMaster(status, diagnostics, uiHistoryAddress)
+      val trackingUrl = s"$uiHistoryAddress?${SPARK3}=true"
+
+      amClient.unregisterApplicationMaster(status, diagnostics, trackingUrl)
     }
     if (amClient != null) {
       amClient.stop()
@@ -150,4 +158,8 @@ private[spark] class YarnRMClient extends Logging {
 
     conf.get(addressWithRmId)
   }
+}
+
+private[spark] object YarnRMClient {
+  val SPARK3 = "spark3"
 }

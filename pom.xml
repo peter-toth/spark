@@ -203,6 +203,8 @@
     <arrow.version>0.11.1.7.2.15.0-SNAPSHOT</arrow.version>
     <netty.version>4.1.63.Final</netty.version>
 
+    <kubernetes-client.version>5.3.1</kubernetes-client.version>
+
     <test.java.home>${java.home}</test.java.home>
     <!--
      When surefire plugins runs without code-coverage profile, the <excludedGroups> yields ",".

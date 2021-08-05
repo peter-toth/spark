@@ -127,9 +127,21 @@ private[deploy] class HadoopFSDelegationTokenProvider
         val newExpiration = token.renew(hadoopConf)
         val identifier = token.decodeIdentifier().asInstanceOf[AbstractDelegationTokenIdentifier]
         val tokenKind = token.getKind.toString
-        val interval = newExpiration - getIssueDate(tokenKind, identifier)
-        logInfo(s"Renewal interval is $interval for token $tokenKind")
-        interval
+        val issueDate = getIssueDate(tokenKind, identifier)
+        val interval = newExpiration - issueDate
+        val adjustedInterval = if (interval <= 0) {
+          // In DEX-4314 we faced an issue that newExpiration was 0 and interval was < 0 due to a
+          // Knox bug, which resulted in continuous renewal and caused severe performance
+          // degradation
+          val defaultExpiry = sparkConf.get(DELEGATION_TOKEN_DEFAULT_EXPIRY)
+          logInfo(s"Renewal interval is adjusted from $newExpiration - $issueDate = $interval to " +
+            s"$defaultExpiry for token $tokenKind")
+          defaultExpiry
+        } else {
+          logInfo(s"Renewal interval is $interval for token $tokenKind")
+          interval
+        }
+        adjustedInterval
       }.toOption
     }
     if (renewIntervals.isEmpty) None else Some(renewIntervals.min)

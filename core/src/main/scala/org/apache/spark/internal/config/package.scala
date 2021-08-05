@@ -852,4 +852,15 @@ package object config {
     .doc("Proxy address to use when responding with HTTP redirects.")
     .stringConf
     .createOptional
+
+  // In DEX-4314 we faced an issue that token expiry was 0 and renewal interval was < 0 due to a
+  // Knox bug, which resulted in continuous renewal and caused severe performance degradation
+  private[spark] val DELEGATION_TOKEN_DEFAULT_EXPIRY =
+    ConfigBuilder("spark.cloudera.delegation.token.default.expiry")
+      .internal()
+      .doc("Delegation tokens without expiry date or with inconsistent issue and expiry dates " +
+        "are considered to be valid for this interval.")
+      .timeConf(TimeUnit.MILLISECONDS)
+      .checkValue(v => v > 0, "Default expiry should be a positive value.")
+      .createWithDefaultString("24h")
 }

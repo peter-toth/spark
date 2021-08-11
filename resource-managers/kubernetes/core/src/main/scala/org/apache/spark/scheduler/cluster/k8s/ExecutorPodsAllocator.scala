@@ -54,6 +54,8 @@ private[spark] class ExecutorPodsAllocator(
 
   private val podAllocationDelay = conf.get(KUBERNETES_ALLOCATION_BATCH_DELAY)
 
+  private val maxPendingPods = conf.get(KUBERNETES_MAX_PENDING_PODS)
+
   private val podCreationTimeout = math.max(
     podAllocationDelay * 5,
     conf.get(KUBERNETES_ALLOCATION_EXECUTOR_TIMEOUT))
@@ -224,9 +226,9 @@ private[spark] class ExecutorPodsAllocator(
     //
     // TODO: with dynamic allocation off, handle edge cases if we end up with more running
     // executors than expected.
-    val knownPodCount = currentRunningCount +
-       currentPendingExecutors.size + schedulerKnownPendingExecs.size +
-       newlyCreatedExecutors.size + schedulerKnownNewlyCreatedExecs.size
+    var notRunningPodCount = knownPendingCount + schedulerKnownPendingExecs.size +
+      newlyCreatedExecutors.size + schedulerKnownNewlyCreatedExecs.size
+    var knownPodCount = currentRunningCount + notRunningPodCount
     if (knownPodCount > currentTotalExpectedExecutors) {
       val excess = knownPodCount - currentTotalExpectedExecutors
       val newlyCreatedToDelete = newlyCreatedExecutors
@@ -252,12 +254,16 @@ private[spark] class ExecutorPodsAllocator(
             .delete()
           newlyCreatedExecutors --= newlyCreatedToDelete
           knownPendingCount -= knownPendingToDelete.size
+          notRunningPodCount -= toDelete.size
+          knownPodCount -= toDelete.size
         }
       }
     }
 
+    val numMissingPods = currentTotalExpectedExecutors - knownPodCount
+    val remainingSlotFromPendingPods = maxPendingPods - notRunningPodCount
     if (newlyCreatedExecutors.isEmpty
-        && knownPodCount < currentTotalExpectedExecutors) {
+        && remainingSlotFromPendingPods > 0 && numMissingPods > 0)  {
 
       val _podAllocationSize = if (isFirstRound) {
         isFirstRound = false
@@ -268,8 +274,10 @@ private[spark] class ExecutorPodsAllocator(
         podAllocationSize
       }
       val numExecutorsToAllocate = math.min(
-        currentTotalExpectedExecutors - knownPodCount, _podAllocationSize)
-      logInfo(s"Going to request $numExecutorsToAllocate executors from Kubernetes.")
+        math.min(numMissingPods, _podAllocationSize), remainingSlotFromPendingPods)
+      logInfo(s"Going to request $numExecutorsToAllocate executors from Kubernetes: " +
+        s"currentTotalExpectedExecutors: $currentTotalExpectedExecutors, known: $knownPodCount, " +
+        s"remainingSlotFromPendingPods: $remainingSlotFromPendingPods.")
       for ( _ <- 0 until numExecutorsToAllocate) {
         val newExecutorId = EXECUTOR_ID_COUNTER.incrementAndGet()
         val executorConf = KubernetesConf.createExecutorConf(

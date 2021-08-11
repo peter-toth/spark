@@ -149,6 +149,61 @@ class ExecutorPodsAllocatorSuite extends SparkFunSuite with BeforeAndAfter {
     }
   }
 
+  test("SPARK-36052: pending pod limit") {
+    when(podOperations
+      .withField("status.phase", "Pending"))
+      .thenReturn(podOperations)
+    when(podOperations
+      .withLabel(SPARK_APP_ID_LABEL, TEST_SPARK_APP_ID))
+      .thenReturn(podOperations)
+    when(podOperations
+      .withLabel(SPARK_ROLE_LABEL, SPARK_POD_EXECUTOR_ROLE))
+      .thenReturn(podOperations)
+    when(podOperations
+      .withLabelIn(meq(SPARK_EXECUTOR_ID_LABEL), any()))
+      .thenReturn(podOperations)
+
+    val startTime = Instant.now.toEpochMilli
+    waitForExecutorPodsClock.setTime(startTime)
+
+    val confWithLowMaxPendingPods = conf.clone.set(KUBERNETES_MAX_PENDING_PODS.key, "3")
+    snapshotsStore = new DeterministicExecutorPodsSnapshotsStore()
+    podsAllocatorUnderTest = new ExecutorPodsAllocator(confWithLowMaxPendingPods, secMgr,
+      executorBuilder, kubernetesClient, snapshotsStore, waitForExecutorPodsClock)
+    podsAllocatorUnderTest.start(TEST_SPARK_APP_ID, schedulerBackend)
+
+    podsAllocatorUnderTest.setTotalExpectedExecutors(5)
+    assert(podsAllocatorUnderTest.numOutstandingPods.get() == 3)
+    verify(podOperations).create(podWithAttachedContainerForId(1))
+    verify(podOperations).create(podWithAttachedContainerForId(2))
+    verify(podOperations).create(podWithAttachedContainerForId(3))
+
+    // Mark executor 2 and 3 as pending, leave 1 as newly created but this does not free up
+    // any pending pod slot so no new pod is requested
+    snapshotsStore.updatePod(pendingExecutor(2))
+    snapshotsStore.updatePod(pendingExecutor(3))
+    snapshotsStore.notifySubscribers()
+    assert(podsAllocatorUnderTest.numOutstandingPods.get() == 3)
+    verify(podOperations, times(3)).create(any())
+    verify(podOperations, never()).delete()
+
+    // Downscaling to 2 executor to make 1 free slot for pendings pods
+    waitForExecutorPodsClock.advance(executorIdleTimeout * 2)
+    podsAllocatorUnderTest.setTotalExpectedExecutors(2)
+    snapshotsStore.notifySubscribers()
+    verify(podOperations, times(3)).create(any())
+    verify(podOperations).delete()
+    assert(podsAllocatorUnderTest.numOutstandingPods.get() == 2)
+
+    // Make one pod running this way we have one more free slot for pending pods
+    snapshotsStore.updatePod(runningExecutor(3))
+    podsAllocatorUnderTest.setTotalExpectedExecutors(5)
+    snapshotsStore.notifySubscribers()
+    assert(podsAllocatorUnderTest.numOutstandingPods.get() == 3)
+    verify(podOperations).create(podWithAttachedContainerForId(4))
+    verify(podOperations).create(podWithAttachedContainerForId(5))
+  }
+
   test("Initially request executors in batches. Do not request another batch if the" +
     " first has not finished.") {
     podsAllocatorUnderTest.setTotalExpectedExecutors(podAllocationSize + 1)

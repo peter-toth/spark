@@ -115,6 +115,22 @@
           <artifactId>hive-shims</artifactId>
         </dependency>
     -->
+    <dependency>
+      <groupId>org.apache.datasketches</groupId>
+      <artifactId>datasketches-hive</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>com.googlecode.javaewah</groupId>
+      <artifactId>JavaEWAH</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>${hive.group}</groupId>
+      <artifactId>hive-parser</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>${hive.group}</groupId>
+      <artifactId>hive-udf</artifactId>
+    </dependency>
     <!-- hive-serde already depends on avro, but this brings in customized config of avro deps from parent -->
     <dependency>
       <groupId>org.apache.avro</groupId>
@@ -152,12 +168,10 @@
       <groupId>joda-time</groupId>
       <artifactId>joda-time</artifactId>
     </dependency>
-    <!--
     <dependency>
       <groupId>org.jodd</groupId>
-      <artifactId>jodd-core</artifactId>
+      <artifactId>jodd-util</artifactId>
     </dependency>
-    -->
     <dependency>
       <groupId>com.google.code.findbugs</groupId>
       <artifactId>jsr305</artifactId>

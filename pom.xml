@@ -124,7 +124,8 @@
     <zookeeper.version>3.5.5.7.2.13.0-SNAPSHOT</zookeeper.version>
     <curator.version>4.3.0.7.2.13.0-SNAPSHOT</curator.version>
     <hive.group>org.apache.hive</hive.group>
-    <hive.classifier />
+    <hive.classifier>core</hive.classifier>
+    <datasketches-hive.version>1.1.0-incubating</datasketches-hive.version>
     <!-- Version used in Maven Hive dependency -->
     <hive.version>3.1.3000.7.2.13.0-SNAPSHOT</hive.version>
     <tez.version>0.9.1.7.2.13.0-SNAPSHOT</tez.version>
@@ -180,9 +181,8 @@
     <janino.version>3.0.16</janino.version>
     <jersey.version>2.32</jersey.version>
     <joda.version>2.10.6</joda.version>
-    <!--
-    <jodd.version>3.5.2</jodd.version>
-    -->
+    <jodd.version>6.0.0</jodd.version>
+    <javaewah.version>0.3.2</javaewah.version>
     <jsr305.version>1.3.9</jsr305.version>
     <libthrift.version>0.13.0</libthrift.version>
     <antlr4.version>4.7</antlr4.version>
@@ -1900,6 +1900,69 @@
           <!-- End of Hive 2.3 exclusion -->
         </exclusions>
       </dependency>
+      <dependency>
+        <groupId>org.apache.datasketches</groupId>
+        <artifactId>datasketches-hive</artifactId>
+        <version>${datasketches-hive.version}</version>
+        <exclusions>
+          <exclusion>
+            <groupId>${hive.group}</groupId>
+            <artifactId>hive-exec</artifactId>
+          </exclusion>
+          <exclusion>
+            <groupId>org.apache.hadoop</groupId>
+            <artifactId>hadoop-common</artifactId>
+          </exclusion>
+          <exclusion>
+            <groupId>org.slf4j</groupId>
+            <artifactId>slf4j-simple</artifactId>
+          </exclusion>
+          <exclusion>
+            <groupId>org.slf4j</groupId>
+            <artifactId>slf4j-api</artifactId>
+          </exclusion>
+          <exclusion>
+            <groupId>org.slf4j</groupId>
+            <artifactId>slf4j-log4j12</artifactId>
+          </exclusion>
+        </exclusions>
+      </dependency>
+      <dependency>
+        <groupId>${hive.group}</groupId>
+        <artifactId>hive-parser</artifactId>
+        <version>${hive.version}</version>
+        <scope>${hive.deps.scope}</scope>
+        <exclusions>
+          <exclusion>
+            <groupId>${hive.group}</groupId>
+            <artifactId>hive-common</artifactId>
+          </exclusion>
+          <exclusion>
+            <groupId>org.antlr</groupId>
+            <artifactId>antlr-runtime</artifactId>
+          </exclusion>
+          <exclusion>
+            <groupId>org.antlr</groupId>
+            <artifactId>ST4</artifactId>
+          </exclusion>
+        </exclusions>
+      </dependency>
+      <dependency>
+        <groupId>${hive.group}</groupId>
+        <artifactId>hive-udf</artifactId>
+        <version>${hive.version}</version>
+        <scope>${hive.deps.scope}</scope>
+        <exclusions>
+          <exclusion>
+            <groupId>${hive.group}</groupId>
+            <artifactId>hive-common</artifactId>
+          </exclusion>
+          <exclusion>
+            <groupId>${hive.group}</groupId>
+            <artifactId>hive-serde</artifactId>
+          </exclusion>
+        </exclusions>
+      </dependency>
 
       <dependency>
         <groupId>${hive.group}</groupId>
@@ -2291,18 +2354,16 @@
         <artifactId>joda-time</artifactId>
         <version>${joda.version}</version>
       </dependency>
-      <!--
-      Spark doesn't use jodd-core directly.
-      hive-exec does use it, but CDP Hive shades the entire library into it's jar so we don't need
-      to include it.
-      -->
-      <!--
       <dependency>
         <groupId>org.jodd</groupId>
-        <artifactId>jodd-core</artifactId>
+        <artifactId>jodd-util</artifactId>
         <version>${jodd.version}</version>
       </dependency>
-      -->
+      <dependency>
+        <groupId>com.googlecode.javaewah</groupId>
+        <artifactId>JavaEWAH</artifactId>
+        <version>${javaewah.version}</version>
+      </dependency>
       <dependency>
         <groupId>org.datanucleus</groupId>
         <artifactId>datanucleus-core</artifactId>

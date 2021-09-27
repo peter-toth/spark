@@ -138,6 +138,10 @@
       <exclusions>
         <exclusion>
           <groupId>org.apache.hive</groupId>
+          <artifactId>hive-exec</artifactId>
+        </exclusion>
+        <exclusion>
+          <groupId>org.apache.hive</groupId>
           <artifactId>hive-llap-common</artifactId>
         </exclusion>
         <exclusion>

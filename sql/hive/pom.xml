@@ -98,6 +98,10 @@
       <artifactId>hive-metastore</artifactId>
     </dependency>
     <dependency>
+      <groupId>com.googlecode.javaewah</groupId>
+      <artifactId>JavaEWAH</artifactId>
+    </dependency>
+    <dependency>
       <groupId>${hive.group}</groupId>
       <artifactId>hive-serde</artifactId>
       <scope>${hive.serde.scope}</scope>
@@ -154,12 +158,10 @@
       <groupId>joda-time</groupId>
       <artifactId>joda-time</artifactId>
     </dependency>
-    <!--
     <dependency>
       <groupId>org.jodd</groupId>
       <artifactId>jodd-core</artifactId>
     </dependency>
-    -->
     <dependency>
       <groupId>com.google.code.findbugs</groupId>
       <artifactId>jsr305</artifactId>

@@ -126,8 +126,7 @@
     <zookeeper.version>3.5.5.7.2.7.0-SNAPSHOT</zookeeper.version>
     <curator.version>4.3.0.7.2.7.0-SNAPSHOT</curator.version>
     <hive.group>org.apache.hive</hive.group>
-    <!-- If core used as upstream then java.lang.NoClassDefFoundError: org/apache/hadoop/hive/llap/io/api/LlapProxy -->
-    <hive.classifier />
+    <hive.classifier>core</hive.classifier>
     <!-- Version used in Maven Hive dependency -->
     <hive.version>3.1.3000.7.2.7.0-SNAPSHOT</hive.version>
     <hive23.version>2.3.7</hive23.version>
@@ -192,9 +191,8 @@
     <janino.version>3.0.16</janino.version>
     <jersey.version>2.32</jersey.version>
     <joda.version>2.10.5</joda.version>
-    <!--
     <jodd.version>3.5.2</jodd.version>
-    -->
+    <javaewah.version>0.3.2</javaewah.version>
     <jsr305.version>3.0.0</jsr305.version>
     <libthrift.version>0.13.0</libthrift.version>
     <antlr4.version>4.8-1</antlr4.version>
@@ -2145,6 +2143,11 @@
             <artifactId>jasper-runtime</artifactId>
           </exclusion>
           <!-- End of Hive 2.3 exclusion -->
+
+          <exclusion>
+            <groupId>com.vlkan</groupId>
+            <artifactId>flatbuffers</artifactId>
+          </exclusion>
         </exclusions>
       </dependency>
 
@@ -2422,18 +2425,16 @@
         <artifactId>joda-time</artifactId>
         <version>${joda.version}</version>
       </dependency>
-      <!--
-      Spark doesn't use jodd-core directly.
-      hive-exec does use it, but CDP Hive shades the entire library into it's jar so we don't need
-      to include it.
-      -->
-      <!--
       <dependency>
         <groupId>org.jodd</groupId>
         <artifactId>jodd-core</artifactId>
         <version>${jodd.version}</version>
       </dependency>
-      -->
+      <dependency>
+        <groupId>com.googlecode.javaewah</groupId>
+        <artifactId>JavaEWAH</artifactId>
+        <version>${javaewah.version}</version>
+      </dependency>
       <dependency>
         <groupId>org.datanucleus</groupId>
         <artifactId>datanucleus-core</artifactId>

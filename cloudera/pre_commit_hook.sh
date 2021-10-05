@@ -46,3 +46,35 @@ SUREFIRE_REPORT_DIRS=$(./build/mvn -B $MAVEN_ARGS -Dcdpd.build=true -Dexec.execu
 SUREFIRE_REPORT_TXT_FILE=$(./build/mvn -B $MAVEN_ARGS -Dcdpd.build=true -Dexec.executable='echo' \
  -Dexec.args='${surefireFileReporterFile}' exec:exec -q -pl core | grep ".txt")
 ./cloudera/validate_test_run.py "$SUREFIRE_REPORT_DIRS" "$SUREFIRE_REPORT_TXT_FILE"
+
+# Install Python 2
+sudo apt-get -y update
+sudo apt-get install -y python python-virtualenv
+/usr/bin/virtualenv -p python2.7 venvs/spark-python2.7
+. venvs/spark-python2.7/bin/activate
+
+run_pyspark_tests() {
+  python_executable="$1"
+  requirements="$2"
+  test_modules=
+  if [[ -n "$3" ]]; then
+    test_modules="--modules=$3"
+  fi
+
+  find . -name '*.pyc' -exec rm '{}' \;
+
+  if [[ -n "$requirements" ]]; then
+    pip install -U pip wheel setuptools || true
+    pip install cython cmake || true
+    for req in $requirements; do
+      pip install $req || true
+    done
+    pip list
+  fi
+
+  timeout 90m python/run-tests --python-executable="$python_executable" "$test_modules"
+}
+
+run_pyspark_tests "python2.7" "numpy==1.15.2 scipy==0.16.0 pandas==0.23.4 pyarrow==0.10.0" "pyspark-core,pyspark-sql,pyspark-ml,pyspark-mllib"
+deactivate
+

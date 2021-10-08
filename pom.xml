@@ -2023,6 +2023,10 @@
         <scope>${hive.deps.scope}</scope>
         <exclusions>
           <exclusion>
+            <groupId>com.google.flatbuffers</groupId>
+            <artifactId>flatbuffers-java</artifactId>
+          </exclusion>
+          <exclusion>
             <groupId>${hive.group}</groupId>
             <artifactId>hive-common</artifactId>
           </exclusion>

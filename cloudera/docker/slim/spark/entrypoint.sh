@@ -137,4 +137,8 @@ case "$SPARK_K8S_CMD" in
 esac
 
 # Execute the container CMD under tini for better hygiene
-exec /usr/bin/tini -s -- "${CMD[@]}"
+if [ -z ${LOG_FILE_PATH} ]; then
+  exec /usr/bin/tini -s -- "${CMD[@]}"
+else
+  exec /usr/bin/tini -s -- "${CMD[@]}" > >(tee ${LOG_FILE_PATH}) 2>&1
+fi

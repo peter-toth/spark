@@ -646,9 +646,6 @@ class TaskContextTests(PySparkTestCase):
         self.assertTrue(len(taskInfos[0]) == 4)
 
 
-global_func = lambda: "Hi"
-
-
 class RDDTests(ReusedPySparkTestCase):
 
     def test_range(self):
@@ -1379,13 +1376,6 @@ class RDDTests(ReusedPySparkTestCase):
                                 seq_rdd.aggregate, 0, stopit, lambda *x: 1)
         self.assertRaisesRegexp((Py4JJavaError, RuntimeError), msg,
                                 seq_rdd.aggregate, 0, lambda *x: 1, stopit)
-
-    def test_overwritten_global_func(self):
-        # Regression test for SPARK-27000
-        global global_func
-        self.assertEqual(self.sc.parallelize([1]).map(lambda _: global_func()).first(), "Hi")
-        global_func = lambda: "Yeah"
-        self.assertEqual(self.sc.parallelize([1]).map(lambda _: global_func()).first(), "Yeah")
 
 
 class ProfilerTests(PySparkTestCase):

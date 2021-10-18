@@ -69,7 +69,7 @@ else:
 pickle_protocol = pickle.HIGHEST_PROTOCOL
 
 from pyspark import cloudpickle
-from pyspark.util import _exception_message, print_exec
+from pyspark.util import _exception_message
 
 
 __all__ = ["PickleSerializer", "MarshalSerializer", "UTF8Deserializer"]
@@ -602,7 +602,7 @@ class CloudPickleSerializer(PickleSerializer):
                 msg = "Object too large to serialize: %s" % emsg
             else:
                 msg = "Could not serialize object: %s: %s" % (e.__class__.__name__, emsg)
-            print_exec(sys.stderr)
+            cloudpickle.print_exec(sys.stderr)
             raise pickle.PicklingError(msg)
 
 

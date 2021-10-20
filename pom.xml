@@ -2250,12 +2250,11 @@
           </exclusion>
         </exclusions>
       </dependency>
-      <!-- hive-llap-client is needed when run MapReduce test in Hive 2.3. -->
       <dependency>
         <groupId>org.apache.hive</groupId>
         <artifactId>hive-llap-client</artifactId>
         <version>${hive.version}</version>
-        <scope>test</scope>
+        <scope>${hive.deps.scope}</scope>
         <exclusions>
           <exclusion>
             <groupId>org.apache.hive</groupId>

@@ -49,16 +49,16 @@ class HWCConfSuite extends SparkFunSuite with Matchers {
   def withHWCLibDir(f: HWCConf => Unit): Unit = {
     withTempDir { libDir =>
       assert(new File(s"$libDir/hive_warehouse_connector").mkdir(), "Cannot create HWC dir")
-      /* The HWCConf.hwcDefaultsConfPath methods looks for "SELF" in sys.env to generate the path
-       * to hwc lib dir. Since we cannot modify sys.env from unittests, we need to mock the
+      /* The HWCConf.hwcDefaultsConfPath methods looks for "SPARK_HOME" in sys.env to generate the
+       * path to hwc lib dir. Since we cannot modify sys.env from unittests, we need to mock the
        * hwcLibDir method to return path to a temp hwc-defaults.conf.
        */
       val hwcConf = HWCConf.get
       val spyHWCConf = spy(hwcConf)
       doAnswer(new Answer[Path] {
         override def answer(invocationOnMock: InvocationOnMock): Path = {
-          val defaultSelf = sparkConfDir(libDir)
-          hwcConf.hwcLibDir(Some(defaultSelf))
+          val sparkHome = sparkHomeDir(libDir)
+          hwcConf.hwcLibDir(Some(sparkHome))
         }
       }).when(spyHWCConf).hwcLibDir(None)
 
@@ -66,21 +66,22 @@ class HWCConfSuite extends SparkFunSuite with Matchers {
     }
   }
 
-  def sparkConfDir(libDir: File): String = libDir.toPath.resolve("spark").resolve("conf").toString
+  def sparkHomeDir(libDir: File): String = libDir.toPath.resolve("spark").toString
 
   test("hwcLibDir works") {
     withTempDir { libDir =>
-      val selfPath = sparkConfDir(libDir)
+      val sparkHomePath = sparkHomeDir(libDir)
       val hwcLibDir = new File(libDir, HWC_DIR)
       require(hwcLibDir.mkdirs())
       val expectedHWCLibDir = hwcLibDir.getAbsolutePath
-      val actualHWCLibDir = HWCConf.get.hwcLibDir(Some(selfPath)).toString
+      val actualHWCLibDir = HWCConf.get.hwcLibDir(Some(sparkHomePath)).toString
       assert(actualHWCLibDir == expectedHWCLibDir)
     }
   }
 
-  test("hwcLibDir fails when SELF is not found") {
-    // While running unit tests SELF env variable is not set, in a CDH cluster spark-env.sh sets it.
+  test("hwcLibDir fails when SPARK_HOME is not found") {
+    // While running unit tests SPARK_HOME env variable is not set, in a CDH cluster spark-env.sh
+    // sets it.
     val caught = intercept[NoSuchFileException] {
       HWCConf.get.hwcLibDir()
     }
@@ -90,8 +91,8 @@ class HWCConfSuite extends SparkFunSuite with Matchers {
   test("hwcLibDir fails when dir is not found") {
     val caught = intercept[IllegalArgumentException] {
       withTempDir { libDir =>
-        val selfPath = sparkConfDir(libDir)
-        HWCConf.get.hwcLibDir(Some(selfPath))
+        val sparkHomePath = sparkHomeDir(libDir)
+        HWCConf.get.hwcLibDir(Some(sparkHomePath))
       }
     }
     assert(caught.getMessage.endsWith("not found"))
@@ -101,8 +102,8 @@ class HWCConfSuite extends SparkFunSuite with Matchers {
     val caught = intercept[IllegalArgumentException] {
       withTempDir { libDir =>
         Files.createFile(libDir.toPath.resolve(HWC_DIR))
-        val selfPath = sparkConfDir(libDir)
-        HWCConf.get.hwcLibDir(Some(selfPath))
+        val sparkHomePath = sparkHomeDir(libDir)
+        HWCConf.get.hwcLibDir(Some(sparkHomePath))
       }
     }
     assert(caught.getMessage.endsWith("is not a directory"))

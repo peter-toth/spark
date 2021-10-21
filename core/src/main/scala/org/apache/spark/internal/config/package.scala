@@ -872,17 +872,17 @@ package object config {
     .createOptional
 
   private[spark] val USE_HWC = ConfigBuilder("spark.cloudera.useHWC")
-    .doc("Adds HWC jar to classpath and loads appropriate HWC configurations where true")
+    .doc("Adds HWC jar to classpath and loads appropriate HWC configurations when true.")
     .booleanConf
     .createWithDefault(false)
 
   private[spark] val HWC_JAR = ConfigBuilder("spark.cloudera.hwcJarPath")
-    .doc("Path to HWC jar to use instead of the jar from the parcel")
+    .doc("Path to HWC jar to use instead of the jar from the parcel.")
     .stringConf
     .createOptional
 
   private[spark] val HWC_DEFAULTS_PATH = ConfigBuilder("spark.cloudera.hwcDefaultsPath")
-    .doc("Path to hwc conf file to load instead of hwc-defaults.conf from the parcel")
+    .doc("Path to hwc conf file to load instead of hwc-defaults.conf from the parcel.")
     .stringConf
     .createOptional
 

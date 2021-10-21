@@ -101,17 +101,15 @@ private[spark] class HWCConf extends Logging {
   }
 
   /**
-   * This is made public for unit testing.
+   * This method is made public for unit testing.
    *
-   * @param defaultSelf exposed for testing
+   * @param sparkHome exposed for testing
    * @return the HWC lib path
    */
-  def hwcLibDir(defaultSelf: Option[String] = None): Path = {
-    // SELF => "/opt/cloudera/parcels/CDH-<parcel-version>/lib/spark/conf"
-    val hwcLibDir = (if (defaultSelf.isDefined) defaultSelf else sys.env.get("SELF"))
+  def hwcLibDir(sparkHome: Option[String] = None): Path = {
+    // SPARK_HOME => "/opt/cloudera/parcels/CDH-<parcel-version>/lib/spark"
+    val hwcLibDir = (if (sparkHome.isDefined) sparkHome else sys.env.get("SPARK_HOME"))
       .map(Paths.get(_))
-      // goto spark dir
-      .map(_.getParent)
       // get HWC path under lib
       .map(_.resolveSibling("hive_warehouse_connector"))
       .getOrElse(throw new NoSuchFileException("Cannot find hive warehouse connector lib dir"))

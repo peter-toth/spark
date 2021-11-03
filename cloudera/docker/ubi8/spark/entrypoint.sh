@@ -140,5 +140,5 @@ esac
 if [ -z ${LOG_FILE_PATH} ]; then
   exec /usr/bin/tini -s -- "${CMD[@]}"
 else
-  exec /usr/bin/tini -s -- "${CMD[@]}" > >(tee ${LOG_FILE_PATH}) 2>&1
+  exec /usr/bin/tini -s -- "${CMD[@]}" > >(tee ${LOG_FILE_PATH})
 fi

@@ -29,7 +29,7 @@ import org.apache.spark.deploy.k8s.Config._
 import org.apache.spark.deploy.k8s.Constants._
 import org.apache.spark.deploy.k8s.KubernetesConf
 import org.apache.spark.internal.Logging
-import org.apache.spark.internal.config.DYN_ALLOCATION_EXECUTOR_IDLE_TIMEOUT
+import org.apache.spark.internal.config.{DYN_ALLOCATION_EXECUTOR_IDLE_TIMEOUT, EXECUTOR_INSTANCES}
 import org.apache.spark.util.{Clock, Utils}
 
 private[spark] class ExecutorPodsAllocator(
@@ -47,7 +47,11 @@ private[spark] class ExecutorPodsAllocator(
   private val podAllocationSize = conf.get(KUBERNETES_ALLOCATION_BATCH_SIZE)
 
   private val initialPodAllocationSize = if (conf.get(KUBERNETES_CLOUDERA_GANG_SCHEDULING)) {
-    math.max(Utils.getDynamicAllocationInitialExecutors(conf), podAllocationSize)
+    if (Utils.isDynamicAllocationEnabled(conf)) {
+      math.max(Utils.getDynamicAllocationInitialExecutors(conf), podAllocationSize)
+    } else {
+      conf.get(EXECUTOR_INSTANCES).getOrElse(1)
+    }
   } else {
     podAllocationSize
   }

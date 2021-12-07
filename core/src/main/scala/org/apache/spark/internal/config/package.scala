@@ -223,6 +223,15 @@ package object config {
   private[spark] val SHUFFLE_SERVICE_ENABLED =
     ConfigBuilder("spark.shuffle.service.enabled").booleanConf.createWithDefault(false)
 
+  private[spark] val SHUFFLE_REGISTRATION_ENABLED =
+    ConfigBuilder("spark.shuffle.registration.enabled")
+      .doc("Enable the executors to register with the local external shuffle service. When " +
+        s"${SHUFFLE_SERVICE_ENABLED.key}=true and a local external shuffle service is used, " +
+        "it must be set to true; if the local shuffle service is not used, set this value to " +
+        "false to skip the registration.")
+      .booleanConf
+      .createWithDefault(true)
+
   private[spark] val SHUFFLE_SERVICE_PORT =
     ConfigBuilder("spark.shuffle.service.port").intConf.createWithDefault(7447)
 

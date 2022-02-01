@@ -22,7 +22,13 @@ _DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 # Preserve the calling directory
 _CALLING_DIR="$(pwd)"
 # Options used during compilation
-_COMPILE_JVM_OPTS="-Xmx2g -XX:ReservedCodeCacheSize=1g"
+if [[ $SCALA_CODE_COVERAGE == 1 ]]; then
+  # Scoverage requires a bit more memory while performing report aggregation at the end of the build.
+  _COMPILE_XMX="3g"
+else
+  _COMPILE_XMX="2g"
+fi
+_COMPILE_JVM_OPTS="-Xmx$_COMPILE_XMX -XX:ReservedCodeCacheSize=1g"
 
 source "${_DIR}/cloudera_helpers.sh"
 
@@ -84,7 +90,7 @@ install_mvn() {
   fi
   if [ $(version $MVN_DETECTED_VERSION) -lt $(version $MVN_VERSION) ]; then
     local APACHE_MIRROR=${APACHE_MIRROR:-'https://www.apache.org/dyn/closer.lua?action=download&filename='}
-        
+
     if [ $(command -v curl) ]; then
       local TEST_MIRROR_URL="${APACHE_MIRROR}/maven/maven-3/${MVN_VERSION}/binaries/apache-maven-${MVN_VERSION}-bin.tar.gz"
       if ! curl -L --output /dev/null --silent --head --fail "$TEST_MIRROR_URL" ; then

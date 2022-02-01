@@ -138,6 +138,20 @@
 
   <build>
     <plugins>
+      <!--
+       Since we do not inherit from the parent pom, we have to repeat the plugin info here.
+       If undeclared, the coverage build would fail with the following error:
+       "04:00:36 [ERROR] No plugin found for prefix 'scoverage' in the current project"
+      -->
+      <plugin>
+        <groupId>org.scoverage</groupId>
+        <artifactId>scoverage-maven-plugin</artifactId>
+        <version>1.4.11</version>
+      <!--
+        We don't need the configuration here since there's no code in this module for generating
+        coverage report.
+      -->
+      </plugin>
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-shade-plugin</artifactId>

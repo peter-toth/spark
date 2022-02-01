@@ -203,6 +203,12 @@
     <netty.version>4.1.63.Final</netty.version>
 
     <test.java.home>${java.home}</test.java.home>
+    <!--
+     When surefire plugins runs without code-coverage profile, the <excludedGroups> yields ",".
+     This causes a failure with "Invalid group expression: ','. Reason: Encountered "" at line 1,
+     column 1." error. Adding a placeholder tag to prevent this failure.
+    -->
+    <test.codeCoverage.exclude.tags>PlaceHolderTagToPreventSurefireFailure</test.codeCoverage.exclude.tags>
     <test.exclude.tags />
     <test.include.tags />
 
@@ -253,6 +259,20 @@
 
     <surefireReportsDirectory>${project.build.directory}/surefire-reports</surefireReportsDirectory>
     <surefireFileReporterFile>SparkTestSuite.txt</surefireFileReporterFile>
+
+    <!--
+     When tests are run without code-coverage profile, surefire plugin fails with
+     "Error: Could not find or load main class @{argLine}". "@{argLine}" is populated only when
+     jacoco plugin is active. Without code-coverage profile, "@{argLine}" is not set, ergo maven
+     treats it as a simple string leading to the above error.
+     Setting "argLine" to an empty value solves the issue.
+     -->
+    <argLine/>
+    <codeCoverageReportRootDir>${project.basedir}/target/code-coverage</codeCoverageReportRootDir>
+    <jacocoDestFile>${codeCoverageReportRootDir}/jacoco.exec</jacocoDestFile>
+    <jacocoReportDir>${codeCoverageReportRootDir}/jacoco-reports</jacocoReportDir>
+    <scoverageDataDir>${codeCoverageReportRootDir}/scoverage-data</scoverageDataDir>
+    <scoverageReportDir>${codeCoverageReportRootDir}/scoverage-reports</scoverageReportDir>
   </properties>
   <repositories>
     <repository>
@@ -2608,7 +2628,12 @@
               <include>**/*Suite.java</include>
             </includes>
             <reportsDirectory>${surefireReportsDirectory}</reportsDirectory>
-            <argLine>-ea -Xmx4g -Xss4m -XX:ReservedCodeCacheSize=${CodeCacheSize}</argLine>
+            <!--
+              JaCoCo uses the surefire argLine config to add a javaagent that collects the
+              coverage-data. Adding @{argLine} here ensure late-property-evaluation.
+              https://maven.apache.org/surefire/maven-surefire-plugin/faq.html#late-property-evaluation
+            -->
+            <argLine>@{argLine} -Xmx4g -Xss4m -XX:ReservedCodeCacheSize=${CodeCacheSize}</argLine>
             <environmentVariables>
               <!--
                 Setting SPARK_DIST_CLASSPATH is a simple way to make sure any child processes
@@ -2637,7 +2662,7 @@
               <test.src.tables>src</test.src.tables>
             </systemProperties>
             <failIfNoTests>false</failIfNoTests>
-            <excludedGroups>${test.exclude.tags}</excludedGroups>
+            <excludedGroups>${test.codeCoverage.exclude.tags},${test.exclude.tags}</excludedGroups>
             <groups>${test.include.tags}</groups>
           </configuration>
           <executions>
@@ -2686,7 +2711,7 @@
               <!-- Needed by sql/hive tests. -->
               <test.src.tables>__not_used__</test.src.tables>
             </systemProperties>
-            <tagsToExclude>${test.exclude.tags}</tagsToExclude>
+            <tagsToExclude>${test.exclude.tags},${test.codeCoverage.exclude.tags}</tagsToExclude>
             <tagsToInclude>${test.include.tags}</tagsToInclude>
           </configuration>
           <executions>
@@ -3390,9 +3415,9 @@
     <profile>
       <id>scala-2.11</id>
       <properties>
-        <!-- 
+        <!--
          SPARK-34774 Add this property to ensure change-scala-version.sh can replace the public `scala.version`
-         property correctly. 
+         property correctly.
         -->
         <scala.version>2.11.12</scala.version>
       </properties>
@@ -3502,6 +3527,121 @@
     </profile>
     <profile>
       <id>sparkr</id>
+    </profile>
+
+    <profile>
+      <id>code-coverage</id>
+      <activation>
+        <activeByDefault>false</activeByDefault>
+        <property>
+          <name>env.SCALA_CODE_COVERAGE</name>
+          <value>1</value>
+        </property>
+      </activation>
+      <properties>
+        <test.codeCoverage.exclude.tags>org.apache.spark.tags.ExcludeForCodeCoverage</test.codeCoverage.exclude.tags>
+      </properties>
+      <build>
+        <plugins>
+          <plugin>
+            <groupId>org.scoverage</groupId>
+            <artifactId>scoverage-maven-plugin</artifactId>
+          </plugin>
+          <plugin>
+            <groupId>org.jacoco</groupId>
+            <artifactId>jacoco-maven-plugin</artifactId>
+          </plugin>
+        </plugins>
+        <pluginManagement>
+          <plugins>
+            <plugin>
+              <groupId>org.scoverage</groupId>
+              <artifactId>scoverage-maven-plugin</artifactId>
+              <!--
+                shaded-raz module does not list spark-parent as its parent. Thus, when the plugin
+                version is updated here, make sure to propagate the version change in
+                shaded-raz/pom.xml as well.
+              -->
+              <version>1.4.11</version>
+              <configuration>
+                <scalaVersion>${scala.version}</scalaVersion>
+                <scalacPluginVersion>1.4.11</scalacPluginVersion>
+                <highlighting>true</highlighting>
+                <excludedPackages>org.apache.spark.examples.*</excludedPackages>
+                <aggregate>true</aggregate>
+                <failOnError>false</failOnError>
+                <dataDirectory>${scoverageDataDir}</dataDirectory>
+                <outputDirectory>${scoverageReportDir}</outputDirectory>
+                <xmlOutputDirectory>${scoverageReportDir}</xmlOutputDirectory>
+                <encoding>${project.build.sourceEncoding}</encoding>
+              </configuration>
+            </plugin>
+            <plugin>
+              <groupId>org.jacoco</groupId>
+              <artifactId>jacoco-maven-plugin</artifactId>
+              <version>0.8.7</version>
+              <configuration>
+                <haltOnFailure>false</haltOnFailure>
+              </configuration>
+              <executions>
+                <execution>
+                  <id>jacoco-prepare-agent</id>
+                  <goals>
+                    <goal>prepare-agent</goal>
+                  </goals>
+                  <configuration>
+                    <destFile>${jacocoDestFile}</destFile>
+                  </configuration>
+                </execution>
+                <execution>
+                  <id>jacoco-report</id>
+                  <phase>test</phase>
+                  <goals>
+                    <goal>report</goal>
+                  </goals>
+                  <configuration>
+                    <dataFile>${jacocoDestFile}</dataFile>
+                    <outputDirectory>${jacocoReportDir}</outputDirectory>
+                    <sourceEncoding>${project.build.sourceEncoding}</sourceEncoding>
+                    <outputEncoding>${project.reporting.outputEncoding}</outputEncoding>
+                  </configuration>
+                </execution>
+              </executions>
+            </plugin>
+          </plugins>
+        </pluginManagement>
+      </build>
+    </profile>
+    <profile>
+      <id>sonar</id>
+      <activation>
+        <property>
+          <name>env.SONAR</name>
+          <value>1</value>
+        </property>
+      </activation>
+      <properties>
+        <sonar.coverage.jacoco.xmlReportPaths>${jacocoReportDir}/jacoco.xml</sonar.coverage.jacoco.xmlReportPaths>
+        <sonar.scala.coverage.reportPaths>${scoverageReportDir}/scoverage.xml</sonar.scala.coverage.reportPaths>
+      </properties>
+      <build>
+        <plugins>
+          <plugin>
+            <groupId>org.sonarsource.scanner.maven</groupId>
+            <artifactId>sonar-maven-plugin</artifactId>
+          </plugin>
+        </plugins>
+        <pluginManagement>
+          <plugins>
+            <plugin>
+              <groupId>org.sonarsource.scanner.maven</groupId>
+              <artifactId>sonar-maven-plugin</artifactId>
+              <!-- Using the version specified here: https://sonarqube.infra.cloudera.com/documentation/analysis/scan/sonarscanner-for-maven/ -->
+              <version>3.6.0.1398</version>
+            </plugin>
+          </plugins>
+        </pluginManagement>
+      </build>
     </profile>
   </profiles>
 </project>

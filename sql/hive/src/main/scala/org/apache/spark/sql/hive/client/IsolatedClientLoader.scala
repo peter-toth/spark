@@ -199,6 +199,7 @@ private[hive] class IsolatedClientLoader(
     name.startsWith("org.apache.knox.") ||
     (sharesHadoopClasses && isHadoopClass) ||
     name.startsWith("scala.") ||
+    name.startsWith("scoverage") ||
     (name.startsWith("com.google") && !name.startsWith("com.google.cloud")) ||
     name.startsWith("java.") ||
     name.startsWith("javax.sql.") ||

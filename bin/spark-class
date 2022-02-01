@@ -52,7 +52,12 @@ fi
 
 # Add the launcher build dir to the classpath if requested.
 if [ -n "$SPARK_PREPEND_CLASSES" ]; then
-  LAUNCH_CLASSPATH="${SPARK_HOME}/launcher/target/scala-$SPARK_SCALA_VERSION/classes:$LAUNCH_CLASSPATH"
+  if [[ $SCALA_CODE_COVERAGE == 1 ]]; then
+    CLASSES_DIR="scoverage-classes"
+  else
+    CLASSES_DIR="classes"
+  fi
+  LAUNCH_CLASSPATH="${SPARK_HOME}/launcher/target/scala-$SPARK_SCALA_VERSION/$CLASSES_DIR:$LAUNCH_CLASSPATH"
 fi
 
 # For tests

@@ -68,7 +68,8 @@ public class TestShuffleDataContext {
   }
 
   /** Creates reducer blocks in a sort-based data format within our local dirs. */
-  public void insertSortShuffleData(int shuffleId, int mapId, byte[][] blocks) throws IOException {
+  public String insertSortShuffleData(int shuffleId, int mapId, byte[][] blocks)
+      throws IOException {
     String blockId = "shuffle_" + shuffleId + "_" + mapId + "_0";
 
     OutputStream dataStream = null;
@@ -76,10 +77,10 @@ public class TestShuffleDataContext {
     boolean suppressExceptionsDuringClose = true;
 
     try {
-      dataStream = new FileOutputStream(
-        ExternalShuffleBlockResolver.getFile(localDirs, subDirsPerLocalDir, blockId + ".data"));
-      indexStream = new DataOutputStream(new FileOutputStream(
-        ExternalShuffleBlockResolver.getFile(localDirs, subDirsPerLocalDir, blockId + ".index")));
+      dataStream = new FileOutputStream(new File(
+        ExternalShuffleBlockResolver.getFilePath(localDirs, subDirsPerLocalDir, blockId + ".data")));
+      indexStream = new DataOutputStream(new FileOutputStream(new File(
+        ExternalShuffleBlockResolver.getFilePath(localDirs, subDirsPerLocalDir, blockId + ".index"))));
 
       long offset = 0;
       indexStream.writeLong(offset);
@@ -93,6 +94,7 @@ public class TestShuffleDataContext {
       Closeables.close(dataStream, suppressExceptionsDuringClose);
       Closeables.close(indexStream, suppressExceptionsDuringClose);
     }
+    return blockId;
   }
 
   /** Creates spill file(s) within the local dirs. */
@@ -101,8 +103,8 @@ public class TestShuffleDataContext {
     OutputStream dataStream = null;
 
     try {
-      dataStream = new FileOutputStream(
-        ExternalShuffleBlockResolver.getFile(localDirs, subDirsPerLocalDir, filename));
+      dataStream = new FileOutputStream(new File(
+        ExternalShuffleBlockResolver.getFilePath(localDirs, subDirsPerLocalDir, filename)));
       dataStream.write(42);
     } finally {
       Closeables.close(dataStream, false);

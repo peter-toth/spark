@@ -267,7 +267,7 @@
      treats it as a simple string leading to the above error.
      Setting "argLine" to an empty value solves the issue.
      -->
-    <argLine/>
+    <argLine />
     <codeCoverageReportRootDir>${project.basedir}/target/code-coverage</codeCoverageReportRootDir>
     <jacocoDestFile>${codeCoverageReportRootDir}/jacoco.exec</jacocoDestFile>
     <jacocoReportDir>${codeCoverageReportRootDir}/jacoco-reports</jacocoReportDir>

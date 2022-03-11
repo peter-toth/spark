@@ -9,6 +9,8 @@
 # -e will make the script exit if an error happens on any command executed
 set -ex
 
+export JAVA_HOME="${JAVA_HOME:-${JAVA_1_8U192_HOME}}"
+
 export PATH=${JAVA_HOME}/bin:${PATH}
 
 # To make some of the output quieter

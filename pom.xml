@@ -1979,18 +1979,6 @@
           </exclusion>
         </exclusions>
       </dependency>
-      <dependency>
-        <groupId>${hive.group}</groupId>
-        <artifactId>hive-impala</artifactId>
-        <version>${hive.version}</version>
-        <scope>${hive.deps.scope}</scope>
-        <exclusions>
-          <exclusion>
-            <groupId>${hive.group}</groupId>
-            <artifactId>hive-exec</artifactId>
-          </exclusion>
-        </exclusions>
-      </dependency>
 
       <dependency>
         <groupId>${hive.group}</groupId>

@@ -131,10 +131,6 @@
       <groupId>${hive.group}</groupId>
       <artifactId>hive-udf</artifactId>
     </dependency>
-    <dependency>
-      <groupId>${hive.group}</groupId>
-      <artifactId>hive-impala</artifactId>
-    </dependency>
     <!-- hive-serde already depends on avro, but this brings in customized config of avro deps from parent -->
     <dependency>
       <groupId>org.apache.avro</groupId>

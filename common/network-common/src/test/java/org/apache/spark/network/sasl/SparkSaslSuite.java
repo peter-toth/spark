@@ -357,6 +357,15 @@ public class SparkSaslSuite {
   public void testDelegates() throws Exception {
     Method[] rpcHandlerMethods = RpcHandler.class.getDeclaredMethods();
     for (Method m : rpcHandlerMethods) {
+      /*
+      For data collection purposes, Jacoco adds a static field $jacocoData and a static method
+      $jacocoInit() to each class under instrumentation. Both members are marked as synthetic.
+      The following FAQ advises ignoring both of these members:
+      https://www.jacoco.org/jacoco/trunk/doc/faq.html
+      */
+      if (m.isSynthetic()) {
+        continue;
+      }
       Method delegate = SaslRpcHandler.class.getMethod(m.getName(), m.getParameterTypes());
       assertNotEquals(delegate.getDeclaringClass(), RpcHandler.class);
     }

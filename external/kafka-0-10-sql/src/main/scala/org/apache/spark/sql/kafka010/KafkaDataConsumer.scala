@@ -27,6 +27,7 @@ import org.apache.kafka.common.TopicPartition
 
 import org.apache.spark.{SparkEnv, SparkException, TaskContext}
 import org.apache.spark.internal.Logging
+import org.apache.spark.kafka010.KafkaConfigUpdater
 import org.apache.spark.sql.kafka010.KafkaDataConsumer.AvailableOffsetRange
 import org.apache.spark.sql.kafka010.KafkaSourceProvider._
 import org.apache.spark.util.UninterruptibleThread
@@ -98,18 +99,22 @@ private[kafka010] case class InternalKafkaConsumer(
    *                                 should check if the pre-fetched data is still valid.
    * @param _offsetAfterPoll the Kafka offset after calling `poll`. We will use this offset to
    *                           poll when `records` is drained.
+   * @param _availableOffsetRange the available offset range in Kafka when polling the records.
    */
   private case class FetchedData(
       private var _records: ju.ListIterator[ConsumerRecord[Array[Byte], Array[Byte]]],
       private var _nextOffsetInFetchedData: Long,
-      private var _offsetAfterPoll: Long) {
+      private var _offsetAfterPoll: Long,
+      private var _availableOffsetRange: AvailableOffsetRange) {
 
     def withNewPoll(
         records: ju.ListIterator[ConsumerRecord[Array[Byte], Array[Byte]]],
-        offsetAfterPoll: Long): FetchedData = {
+        offsetAfterPoll: Long,
+        availableOffsetRange: AvailableOffsetRange): FetchedData = {
       this._records = records
       this._nextOffsetInFetchedData = UNKNOWN_OFFSET
       this._offsetAfterPoll = offsetAfterPoll
+      this._availableOffsetRange = availableOffsetRange
       this
     }
 
@@ -136,6 +141,7 @@ private[kafka010] case class InternalKafkaConsumer(
       _records = ju.Collections.emptyListIterator()
       _nextOffsetInFetchedData = UNKNOWN_OFFSET
       _offsetAfterPoll = UNKNOWN_OFFSET
+      _availableOffsetRange = AvailableOffsetRange(UNKNOWN_OFFSET, UNKNOWN_OFFSET)
     }
 
     /**
@@ -148,6 +154,13 @@ private[kafka010] case class InternalKafkaConsumer(
      * Returns the next offset to poll after draining the pre-fetched records.
      */
     def offsetAfterPoll: Long = _offsetAfterPoll
+
+    /**
+     * Returns the tuple of earliest and latest offsets that is the available offset range when
+     * polling the records.
+     */
+    def availableOffsetRange: (Long, Long) =
+      (_availableOffsetRange.earliest, _availableOffsetRange.latest)
   }
 
   /**
@@ -186,7 +199,8 @@ private[kafka010] case class InternalKafkaConsumer(
   private val fetchedData = FetchedData(
     ju.Collections.emptyListIterator[ConsumerRecord[Array[Byte], Array[Byte]]],
     UNKNOWN_OFFSET,
-    UNKNOWN_OFFSET)
+    UNKNOWN_OFFSET,
+    AvailableOffsetRange(UNKNOWN_OFFSET, UNKNOWN_OFFSET))
 
   /**
    * The fetched record returned from the `fetchRecord` method. This is a reusable private object to
@@ -197,7 +211,7 @@ private[kafka010] case class InternalKafkaConsumer(
 
   /** Create a KafkaConsumer to fetch records for `topicPartition` */
   private def createConsumer: KafkaConsumer[Array[Byte], Array[Byte]] = {
-    val updatedKafkaParams = ConfigUpdater("executor", kafkaParams.asScala.toMap)
+    val updatedKafkaParams = KafkaConfigUpdater("executor", kafkaParams.asScala.toMap)
       .setAuthenticationConfigIfNeeded()
       .build()
     val c = new KafkaConsumer[Array[Byte], Array[Byte]](updatedKafkaParams)
@@ -387,8 +401,8 @@ private[kafka010] case class InternalKafkaConsumer(
       // In general, Kafka uses the specified offset as the start point, and tries to fetch the next
       // available offset. Hence we need to handle offset mismatch.
       if (record.offset > offset) {
-        val range = getAvailableOffsetRange()
-        if (range.earliest <= offset) {
+        val (earliestOffset, _) = fetchedData.availableOffsetRange
+        if (earliestOffset <= offset) {
           // `offset` is still valid but the corresponding message is invisible. We should skip it
           // and jump to `record.offset`. Here we move `fetchedData` back so that the next call of
           // `fetchRecord` can just return `record` directly.
@@ -475,7 +489,8 @@ private[kafka010] case class InternalKafkaConsumer(
     logDebug(s"Polled $groupId ${p.partitions()}  ${r.size}")
     val offsetAfterPoll = consumer.position(topicPartition)
     logDebug(s"Offset changed from $offset to $offsetAfterPoll after polling")
-    fetchedData.withNewPoll(r.listIterator, offsetAfterPoll)
+    val range = getAvailableOffsetRange()
+    fetchedData.withNewPoll(r.listIterator, offsetAfterPoll, range)
     if (!fetchedData.hasNext) {
       // We cannot fetch anything after `poll`. Two possible cases:
       // - `offset` is out of range so that Kafka returns nothing. `OffsetOutOfRangeException` will
@@ -483,7 +498,6 @@ private[kafka010] case class InternalKafkaConsumer(
       // - Cannot fetch any data before timeout. `TimeoutException` will be thrown.
       // - Fetched something but all of them are not invisible. This is a valid case and let the
       //   caller handles this.
-      val range = getAvailableOffsetRange()
       if (offset < range.earliest || offset >= range.latest) {
         throw new OffsetOutOfRangeException(
           Map(topicPartition -> java.lang.Long.valueOf(offset)).asJava)

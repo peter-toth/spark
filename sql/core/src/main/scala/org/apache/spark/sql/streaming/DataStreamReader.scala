@@ -24,6 +24,7 @@ import scala.collection.JavaConverters._
 import org.apache.spark.annotation.InterfaceStability
 import org.apache.spark.internal.Logging
 import org.apache.spark.sql.{AnalysisException, DataFrame, Dataset, SparkSession}
+import org.apache.spark.sql.catalyst.util.CaseInsensitiveMap
 import org.apache.spark.sql.execution.command.DDLUtils
 import org.apache.spark.sql.execution.datasources.DataSource
 import org.apache.spark.sql.execution.datasources.v2.DataSourceV2Utils
@@ -176,7 +177,7 @@ final class DataStreamReader private[sql](sparkSession: SparkSession) extends Lo
       case s: MicroBatchReadSupport =>
         val sessionOptions = DataSourceV2Utils.extractSessionConfigs(
           ds = s, conf = sparkSession.sessionState.conf)
-        val options = sessionOptions ++ extraOptions
+        val options = sessionOptions ++ extraOptions.toMap
         val dataSourceOptions = new DataSourceOptions(options.asJava)
         var tempReader: MicroBatchReader = null
         val schema = try {
@@ -200,7 +201,7 @@ final class DataStreamReader private[sql](sparkSession: SparkSession) extends Lo
       case s: ContinuousReadSupport =>
         val sessionOptions = DataSourceV2Utils.extractSessionConfigs(
           ds = s, conf = sparkSession.sessionState.conf)
-        val options = sessionOptions ++ extraOptions
+        val options = sessionOptions ++ extraOptions.toMap
         val dataSourceOptions = new DataSourceOptions(options.asJava)
         val tempReader = s.createContinuousReader(
           Optional.ofNullable(userSpecifiedSchema.orNull),
@@ -468,5 +469,5 @@ final class DataStreamReader private[sql](sparkSession: SparkSession) extends Lo
 
   private var userSpecifiedSchema: Option[StructType] = None
 
-  private var extraOptions = new scala.collection.mutable.HashMap[String, String]
+  private var extraOptions = CaseInsensitiveMap[String](Map.empty)
 }

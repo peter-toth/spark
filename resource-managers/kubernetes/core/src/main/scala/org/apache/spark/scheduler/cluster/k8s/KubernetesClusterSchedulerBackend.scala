@@ -76,13 +76,17 @@ private[spark] class KubernetesClusterSchedulerBackend(
     super.start()
     podAllocator.setTotalExpectedExecutors(initialExecutors)
     lifecycleEventHandler.start(this)
-    podAllocator.start(applicationId())
+    podAllocator.start(applicationId(), this)
     watchEvents.start(applicationId())
     pollEvents.start(applicationId())
   }
 
   override def stop(): Unit = {
-    super.stop()
+    // When `CoarseGrainedSchedulerBackend.stop` throws `SparkException`,
+    // K8s cluster scheduler should log and proceed in order to delete the K8s cluster resources.
+    Utils.tryLogNonFatalError {
+      super.stop()
+    }
 
     Utils.tryLogNonFatalError {
       snapshotsStore.stop()
@@ -178,6 +182,10 @@ private[spark] class KubernetesClusterSchedulerBackend(
 
   override protected def createTokenManager(): Option[HadoopDelegationTokenManager] = {
     Some(new HadoopDelegationTokenManager(conf, sc.hadoopConfiguration, driverEndpoint))
+  }
+
+  override protected def isBlacklisted(executorId: String, hostname: String): Boolean = {
+    podAllocator.isDeleted(executorId)
   }
 
   private class KubernetesDriverEndpoint extends DriverEndpoint {

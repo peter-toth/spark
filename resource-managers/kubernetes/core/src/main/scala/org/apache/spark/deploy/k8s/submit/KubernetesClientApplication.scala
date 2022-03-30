@@ -20,9 +20,11 @@ import java.io.StringWriter
 import java.util.{Collections, Properties, UUID}
 
 import io.fabric8.kubernetes.api.model._
-import io.fabric8.kubernetes.client.KubernetesClient
+import io.fabric8.kubernetes.client.{KubernetesClient, Watch}
+import io.fabric8.kubernetes.client.Watcher.Action
 import scala.collection.mutable
 import scala.util.control.NonFatal
+import util.control.Breaks._
 
 import org.apache.spark.SparkConf
 import org.apache.spark.deploy.SparkApplication
@@ -91,15 +93,12 @@ private[spark] object ClientArguments {
  * @param builder Responsible for building the base driver pod based on a composition of
  *                implemented features.
  * @param kubernetesClient the client to talk to the Kubernetes API server
- * @param waitForAppCompletion a flag indicating whether the client should wait for the application
- *                             to complete
  * @param watcher a watcher that monitors and logs the application status
  */
 private[spark] class Client(
     conf: KubernetesDriverConf,
     builder: KubernetesDriverBuilder,
     kubernetesClient: KubernetesClient,
-    waitForAppCompletion: Boolean,
     watcher: LoggingPodStatusWatcher) extends Logging {
 
   def run(): Unit = {
@@ -129,29 +128,37 @@ private[spark] class Client(
           .endVolume()
         .endSpec()
       .build()
-    Utils.tryWithResource(
-      kubernetesClient
-        .pods()
-        .withName(resolvedDriverPod.getMetadata.getName)
-        .watch(watcher)) { _ =>
-      val createdDriverPod = kubernetesClient.pods().create(resolvedDriverPod)
-      try {
-        val otherKubernetesResources =
-          resolvedDriverSpec.driverKubernetesResources ++ Seq(configMap)
-        addDriverOwnerReference(createdDriverPod, otherKubernetesResources)
-        kubernetesClient.resourceList(otherKubernetesResources: _*).createOrReplace()
-      } catch {
-        case NonFatal(e) =>
-          kubernetesClient.pods().delete(createdDriverPod)
-          throw e
-      }
+    val driverPodName = resolvedDriverPod.getMetadata.getName
 
-      if (waitForAppCompletion) {
-        logInfo(s"Waiting for application ${conf.appName} to finish...")
-        watcher.awaitCompletion()
-        logInfo(s"Application ${conf.appName} finished.")
-      } else {
-        logInfo(s"Deployed Spark application ${conf.appName} into Kubernetes.")
+    var watch: Watch = null
+    val createdDriverPod = kubernetesClient.pods().create(resolvedDriverPod)
+    try {
+      val otherKubernetesResources = resolvedDriverSpec.driverKubernetesResources ++ Seq(configMap)
+      addDriverOwnerReference(createdDriverPod, otherKubernetesResources)
+      kubernetesClient.resourceList(otherKubernetesResources: _*).createOrReplace()
+    } catch {
+      case NonFatal(e) =>
+        kubernetesClient.pods().delete(createdDriverPod)
+        throw e
+    }
+    val sId = Seq(conf.namespace, driverPodName).mkString(":")
+    breakable {
+      while (true) {
+        val podWithName = kubernetesClient
+          .pods()
+          .withName(driverPodName)
+        // Reset resource to old before we start the watch, this is important for race conditions
+        watcher.reset()
+        watch = podWithName.watch(watcher)
+
+        // Send the latest pod state we know to the watcher to make sure we didn't miss anything
+        watcher.eventReceived(Action.MODIFIED, podWithName.get())
+
+        // Break the while loop if the pod is completed or we don't want to wait
+        if(watcher.watchOrStop(sId)) {
+          watch.close()
+          break
+        }
       }
     }
   }
@@ -201,13 +208,11 @@ private[spark] class KubernetesClientApplication extends SparkApplication {
   }
 
   private def run(clientArguments: ClientArguments, sparkConf: SparkConf): Unit = {
-    val appName = sparkConf.getOption("spark.app.name").getOrElse("spark")
     // For constructing the app ID, we can't use the Spark application name, as the app ID is going
     // to be added as a label to group resources belonging to the same application. Label values are
     // considerably restrictive, e.g. must be no longer than 63 characters in length. So we generate
     // a unique app ID (captured by spark.app.id) in the format below.
     val kubernetesAppId = s"spark-${UUID.randomUUID().toString.replaceAll("-", "")}"
-    val waitForAppCompletion = sparkConf.get(WAIT_FOR_APP_COMPLETION)
     val kubernetesConf = KubernetesConf.createDriverConf(
       sparkConf,
       kubernetesAppId,
@@ -218,14 +223,13 @@ private[spark] class KubernetesClientApplication extends SparkApplication {
     // The master URL has been checked for validity already in SparkSubmit.
     // We just need to get rid of the "k8s://" prefix here.
     val master = KubernetesUtils.parseMasterUrl(sparkConf.get("spark.master"))
-    val loggingInterval = if (waitForAppCompletion) Some(sparkConf.get(REPORT_INTERVAL)) else None
-
-    val watcher = new LoggingPodStatusWatcherImpl(kubernetesAppId, loggingInterval)
+    val watcher = new LoggingPodStatusWatcherImpl(kubernetesConf)
 
     Utils.tryWithResource(SparkKubernetesClientFactory.createKubernetesClient(
       master,
       Some(kubernetesConf.namespace),
       KUBERNETES_AUTH_SUBMISSION_CONF_PREFIX,
+      SparkKubernetesClientFactory.ClientType.Submission,
       sparkConf,
       None,
       None)) { kubernetesClient =>
@@ -233,7 +237,6 @@ private[spark] class KubernetesClientApplication extends SparkApplication {
           kubernetesConf,
           new KubernetesDriverBuilder(),
           kubernetesClient,
-          waitForAppCompletion,
           watcher)
         client.run()
     }

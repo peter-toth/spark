@@ -19,7 +19,7 @@ package org.apache.spark.deploy.history
 
 import java.util.concurrent.TimeUnit
 
-import org.apache.spark.internal.config.ConfigBuilder
+import org.apache.spark.internal.config.{ConfigBuilder, EVENT_LOG_ROLLING_MAX_FILE_SIZE}
 import org.apache.spark.network.util.ByteUnit
 
 private[spark] object config {
@@ -41,6 +41,11 @@ private[spark] object config {
   val MAX_LOG_AGE_S = ConfigBuilder("spark.history.fs.cleaner.maxAge")
     .timeConf(TimeUnit.SECONDS)
     .createWithDefaultString("7d")
+
+  val MAX_LOG_NUM = ConfigBuilder("spark.history.fs.cleaner.maxNum")
+    .doc("The maximum number of log files in the event log directory.")
+    .intConf
+    .createWithDefault(Int.MaxValue)
 
   val LOCAL_STORE_DIR = ConfigBuilder("spark.history.store.path")
     .doc("Local directory where to cache application history information. By default this is " +
@@ -71,6 +76,25 @@ private[spark] object config {
         "parts of event log files. It can be disabled by setting this config to 0.")
       .bytesConf(ByteUnit.BYTE)
       .createWithDefaultString("1m")
+
+  private[spark] val EVENT_LOG_ROLLING_MAX_FILES_TO_RETAIN =
+    ConfigBuilder("spark.history.fs.eventLog.rolling.maxFilesToRetain")
+      .doc("The maximum number of event log files which will be retained as non-compacted. " +
+        "By default, all event log files will be retained. Please set the configuration " +
+        s"and ${EVENT_LOG_ROLLING_MAX_FILE_SIZE.key} accordingly if you want to control " +
+        "the overall size of event log files.")
+      .intConf
+      .checkValue(_ > 0, "Max event log files to retain should be higher than 0.")
+      .createWithDefault(Integer.MAX_VALUE)
+
+  private[spark] val EVENT_LOG_COMPACTION_SCORE_THRESHOLD =
+    ConfigBuilder("spark.history.fs.eventLog.rolling.compaction.score.threshold")
+      .doc("The threshold score to determine whether it's good to do the compaction or not. " +
+        "The compaction score is calculated in analyzing, and being compared to this value. " +
+        "Compaction will proceed only when the score is higher than the threshold value.")
+      .internal()
+      .doubleConf
+      .createWithDefault(0.7d)
 
   val DRIVER_LOG_CLEANER_ENABLED = ConfigBuilder("spark.history.fs.driverlog.cleaner.enabled")
     .fallbackConf(CLEANER_ENABLED)

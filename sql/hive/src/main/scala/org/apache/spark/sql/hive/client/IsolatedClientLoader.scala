@@ -204,8 +204,10 @@ private[hive] class IsolatedClientLoader(
     name.startsWith("org.apache.log4j") || // log4j1.x
     name.startsWith("org.apache.logging.log4j") || // log4j2
     name.startsWith("org.apache.spark.") ||
+    name.startsWith("org.apache.knox.") ||
     (sharesHadoopClasses && isHadoopClass) ||
     name.startsWith("scala.") ||
+    name.startsWith("scoverage") ||
     (name.startsWith("com.google") && !name.startsWith("com.google.cloud")) ||
     name.startsWith("java.") ||
     name.startsWith("javax.sql.") ||

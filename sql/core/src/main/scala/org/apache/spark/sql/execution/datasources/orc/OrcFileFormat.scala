@@ -93,7 +93,7 @@ class OrcFileFormat
       sparkSession: SparkSession,
       options: Map[String, String],
       files: Seq[FileStatus]): Option[StructType] = {
-    OrcUtils.readSchema(sparkSession, files)
+    OrcUtils.readSchema(sparkSession, files, options)
   }
 
   override def prepareWrite(

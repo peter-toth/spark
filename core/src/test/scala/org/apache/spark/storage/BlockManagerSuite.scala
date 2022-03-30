@@ -120,6 +120,7 @@ class BlockManagerSuite extends SparkFunSuite with Matchers with BeforeAndAfterE
       .set("spark.test.useCompressedOops", "true")
       .set("spark.storage.unrollFraction", "0.4")
       .set("spark.storage.unrollMemoryThreshold", "512")
+      .set("spark.storage.blockManagerSlaveTimeoutMs", "5s")
 
     rpcEnv = RpcEnv.create("test", "localhost", 0, conf, securityMgr)
     conf.set("spark.driver.port", rpcEnv.address.port.toString)
@@ -442,7 +443,7 @@ class BlockManagerSuite extends SparkFunSuite with Matchers with BeforeAndAfterE
       mc.eq(StorageLevel.NONE), mc.anyInt(), mc.anyInt())
   }
 
-  test("reregistration on heart beat") {
+  test("no reregistration on heart beat until executor timeout") {
     val store = makeBlockManager(2000)
     val a1 = new Array[Byte](400)
 
@@ -453,10 +454,15 @@ class BlockManagerSuite extends SparkFunSuite with Matchers with BeforeAndAfterE
 
     master.removeExecutor(store.blockManagerId.executorId)
     assert(master.getLocations("a1").size == 0, "a1 was not removed from master")
-
     val reregister = !master.driverEndpoint.askSync[Boolean](
       BlockManagerHeartbeat(store.blockManagerId))
-    assert(reregister == true)
+    assert(reregister == false, "master told to re-register")
+
+    eventually(timeout(10 seconds), interval(1 seconds)) {
+      val reregister = !master.driverEndpoint.askSync[Boolean](
+        BlockManagerHeartbeat(store.blockManagerId))
+      assert(reregister, "master did not tell to re-register")
+    }
   }
 
   test("reregistration on block update") {
@@ -469,6 +475,12 @@ class BlockManagerSuite extends SparkFunSuite with Matchers with BeforeAndAfterE
 
     master.removeExecutor(store.blockManagerId.executorId)
     assert(master.getLocations("a1").size == 0, "a1 was not removed from master")
+
+    eventually(timeout(10 seconds), interval(1 seconds)) {
+      val reregister = !master.driverEndpoint.askSync[Boolean](
+        BlockManagerHeartbeat(store.blockManagerId))
+      assert(reregister, "master did not tell to re-register")
+    }
 
     store.putSingle("a2", a2, StorageLevel.MEMORY_ONLY)
     store.waitForAsyncReregister()

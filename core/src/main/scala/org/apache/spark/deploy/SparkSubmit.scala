@@ -47,6 +47,7 @@ import org.apache.ivy.plugins.resolver.{ChainResolver, FileSystemResolver, IBibl
 
 import org.apache.spark._
 import org.apache.spark.api.r.RUtils
+import org.apache.spark.cloudera.HWCConf
 import org.apache.spark.deploy.rest._
 import org.apache.spark.internal.Logging
 import org.apache.spark.internal.config._
@@ -298,6 +299,20 @@ private[spark] class SparkSubmit extends Logging {
     val isKubernetesCluster = clusterManager == KUBERNETES && deployMode == CLUSTER
     val isMesosClient = clusterManager == MESOS && deployMode == CLIENT
 
+    args.sparkProperties.foreach { case (k, v) => sparkConf.set(k, v) }
+
+    if (sparkConf.get(USE_HWC)) {
+      val hwcJars = HWCConf.get.jars(sparkConf)
+      if (args.verbose) {
+        logInfo(s"Adding HWC jar(s):$hwcJars to --jars")
+      }
+      args.jars = mergeFileLists(args.jars, hwcJars)
+
+      val hwcConfs = HWCConf.get.configs(sparkConf)
+      logDebug(s"HWC Configs:\n${hwcConfs.mkString("\n")}")
+      hwcConfs.foreach { case (key, value) => sparkConf.set(key, value) }
+    }
+
     if (!isMesosCluster && !isStandAloneCluster) {
       // Resolve maven dependencies if there are any and add classpath to jars. Add them to py-files
       // too for packages that include Python code
@@ -319,7 +334,6 @@ private[spark] class SparkSubmit extends Logging {
       }
     }
 
-    args.sparkProperties.foreach { case (k, v) => sparkConf.set(k, v) }
     val hadoopConf = conf.getOrElse(SparkHadoopUtil.newConfiguration(sparkConf))
     val targetDir = Utils.createTempDir()
 
@@ -523,10 +537,14 @@ private[spark] class SparkSubmit extends Logging {
       OptionAssigner(args.queue, YARN, ALL_DEPLOY_MODES, confKey = "spark.yarn.queue"),
       OptionAssigner(args.numExecutors, YARN, ALL_DEPLOY_MODES,
         confKey = "spark.executor.instances"),
-      OptionAssigner(args.pyFiles, YARN, ALL_DEPLOY_MODES, confKey = "spark.yarn.dist.pyFiles"),
-      OptionAssigner(args.jars, YARN, ALL_DEPLOY_MODES, confKey = "spark.yarn.dist.jars"),
-      OptionAssigner(args.files, YARN, ALL_DEPLOY_MODES, confKey = "spark.yarn.dist.files"),
-      OptionAssigner(args.archives, YARN, ALL_DEPLOY_MODES, confKey = "spark.yarn.dist.archives"),
+      OptionAssigner(args.pyFiles, YARN, ALL_DEPLOY_MODES, confKey = "spark.yarn.dist.pyFiles",
+        mergeFn = Some(mergeFileLists(_, _))),
+      OptionAssigner(args.jars, YARN, ALL_DEPLOY_MODES, confKey = "spark.yarn.dist.jars",
+        mergeFn = Some(mergeFileLists(_, _))),
+      OptionAssigner(args.files, YARN, ALL_DEPLOY_MODES, confKey = "spark.yarn.dist.files",
+        mergeFn = Some(mergeFileLists(_, _))),
+      OptionAssigner(args.archives, YARN, ALL_DEPLOY_MODES, confKey = "spark.yarn.dist.archives",
+        mergeFn = Some(mergeFileLists(_, _))),
       OptionAssigner(args.principal, YARN, ALL_DEPLOY_MODES, confKey = "spark.yarn.principal"),
       OptionAssigner(args.keytab, YARN, ALL_DEPLOY_MODES, confKey = "spark.yarn.keytab"),
 
@@ -587,7 +605,13 @@ private[spark] class SparkSubmit extends Logging {
           (deployMode & opt.deployMode) != 0 &&
           (clusterManager & opt.clusterManager) != 0) {
         if (opt.clOption != null) { childArgs += (opt.clOption, opt.value) }
-        if (opt.confKey != null) { sparkConf.set(opt.confKey, opt.value) }
+        if (opt.confKey != null) {
+          if (opt.mergeFn.isDefined && sparkConf.contains(opt.confKey)) {
+            sparkConf.set(opt.confKey, opt.mergeFn.get.apply(sparkConf.get(opt.confKey), opt.value))
+          } else {
+            sparkConf.set(opt.confKey, opt.value)
+          }
+        }
       }
     }
 
@@ -1075,7 +1099,7 @@ private[spark] object SparkSubmitUtils {
     val sp: IBiblioResolver = new IBiblioResolver
     sp.setM2compatible(true)
     sp.setUsepoms(true)
-    sp.setRoot("https://dl.bintray.com/spark-packages/maven")
+    sp.setRoot("https://repos.spark-packages.org/")
     sp.setName("spark-packages")
     cr.add(sp)
     cr
@@ -1347,4 +1371,5 @@ private case class OptionAssigner(
     clusterManager: Int,
     deployMode: Int,
     clOption: String = null,
-    confKey: String = null)
+    confKey: String = null,
+    mergeFn: Option[(String, String) => String] = None)

@@ -39,7 +39,7 @@ import org.apache.spark.ml.feature.RFormulaModel
 import org.apache.spark.ml.param.{ParamPair, Params}
 import org.apache.spark.ml.tuning.ValidatorParams
 import org.apache.spark.sql.{SparkSession, SQLContext}
-import org.apache.spark.util.{ListenerBus, Utils, VersionUtils}
+import org.apache.spark.util.{Utils, VersionUtils}
 
 /**
  * Trait for `MLWriter` and `MLReader`.
@@ -166,8 +166,7 @@ trait MLFormatRegister extends MLWriterFormat {
  * Abstract class for utility classes that can save ML instances in Spark's internal format.
  */
 @Since("1.6.0")
-abstract class MLWriter extends BaseReadWrite with Logging with
-  ListenerBus[MLListener, MLListenEvent]{
+abstract class MLWriter extends BaseReadWrite with Logging {
 
   protected var shouldOverwrite: Boolean = false
 
@@ -220,10 +219,6 @@ abstract class MLWriter extends BaseReadWrite with Logging with
   // override for Java compatibility
   @Since("1.6.0")
   override def context(sqlContext: SQLContext): this.type = super.session(sqlContext.sparkSession)
-
-  override protected def doPostEvent(listener: MLListener, event: MLListenEvent): Unit = {
-    listener.onEvent(event)
-  }
 }
 
 /**
@@ -651,10 +646,17 @@ private[ml] object DefaultParamsReader {
    * Load a `Params` instance from the given path, and return it.
    * This assumes the instance implements [[MLReadable]].
    */
-  def loadParamsInstance[T](path: String, sc: SparkContext): T = {
+  def loadParamsInstance[T](path: String, sc: SparkContext): T =
+    loadParamsInstanceReader(path, sc).load(path)
+
+  /**
+   * Load a `Params` instance reader from the given path, and return it.
+   * This assumes the instance implements [[MLReadable]].
+   */
+  def loadParamsInstanceReader[T](path: String, sc: SparkContext): MLReader[T] = {
     val metadata = DefaultParamsReader.loadMetadata(path, sc)
     val cls = Utils.classForName(metadata.className)
-    cls.getMethod("read").invoke(null).asInstanceOf[MLReader[T]].load(path)
+    cls.getMethod("read").invoke(null).asInstanceOf[MLReader[T]]
   }
 }
 

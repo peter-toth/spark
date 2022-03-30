@@ -25,6 +25,7 @@ import org.json4s.jackson.JsonMethods._
 
 import org.apache.spark._
 import org.apache.spark.LocalSparkContext._
+import org.apache.spark.executor.ExecutorMetrics
 import org.apache.spark.internal.config
 import org.apache.spark.rdd.RDD
 import org.apache.spark.scheduler._
@@ -220,6 +221,7 @@ class SQLAppStatusListenerSuite extends SparkFunSuite with SharedSQLContext with
       taskType = "",
       reason = null,
       createTaskInfo(0, 0, accums = accumulatorUpdates.mapValues(_ * 100)),
+      new ExecutorMetrics,
       null))
 
     checkAnswer(statusStore.executionMetrics(executionId), accumulatorUpdates.mapValues(_ * 2))
@@ -231,6 +233,7 @@ class SQLAppStatusListenerSuite extends SparkFunSuite with SharedSQLContext with
       taskType = "",
       reason = null,
       createTaskInfo(0, 0, accums = accumulatorUpdates.mapValues(_ * 2)),
+      new ExecutorMetrics,
       null))
     listener.onTaskEnd(SparkListenerTaskEnd(
       stageId = 0,
@@ -238,6 +241,7 @@ class SQLAppStatusListenerSuite extends SparkFunSuite with SharedSQLContext with
       taskType = "",
       reason = null,
       createTaskInfo(1, 0, accums = accumulatorUpdates.mapValues(_ * 3)),
+      new ExecutorMetrics,
       null))
 
     checkAnswer(statusStore.executionMetrics(executionId), accumulatorUpdates.mapValues(_ * 5))
@@ -260,6 +264,7 @@ class SQLAppStatusListenerSuite extends SparkFunSuite with SharedSQLContext with
       taskType = "",
       reason = null,
       createTaskInfo(0, 0, accums = accumulatorUpdates.mapValues(_ * 3)),
+      new ExecutorMetrics,
       null))
     listener.onTaskEnd(SparkListenerTaskEnd(
       stageId = 1,
@@ -267,6 +272,7 @@ class SQLAppStatusListenerSuite extends SparkFunSuite with SharedSQLContext with
       taskType = "",
       reason = null,
       createTaskInfo(1, 0, accums = accumulatorUpdates.mapValues(_ * 3)),
+      new ExecutorMetrics,
       null))
 
     checkAnswer(statusStore.executionMetrics(executionId), accumulatorUpdates.mapValues(_ * 11))

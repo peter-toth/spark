@@ -637,19 +637,6 @@ Apart from these, the following properties are also available, and may be useful
   </td>
 </tr>
 <tr>
-  <td><code>spark.maxRemoteBlockSizeFetchToMem</code></td>
-  <td>Int.MaxValue - 512</td>
-  <td>
-    The remote block will be fetched to disk when size of the block is above this threshold in bytes.
-    This is to avoid a giant request that takes too much memory.  By default, this is only enabled
-    for blocks > 2GB, as those cannot be fetched directly into memory, no matter what resources are
-    available.  But it can be turned down to a much lower value (eg. 200m) to avoid using too much
-    memory on smaller blocks as well. Note this configuration will affect both shuffle fetch
-    and block manager remote block fetch. For users who enabled external shuffle service,
-    this feature can only be used when external shuffle service is newer than Spark 2.2.
-  </td>
-</tr>
-<tr>
   <td><code>spark.shuffle.compress</code></td>
   <td>true</td>
   <td>
@@ -847,6 +834,21 @@ Apart from these, the following properties are also available, and may be useful
   <td>100k</td>
   <td>
     Buffer size to use when writing to output streams, in KiB unless otherwise specified.
+  </td>
+</tr>
+<tr>
+  <td><code>spark.eventLog.rolling.enabled</code></td>
+  <td>false</td>
+  <td>
+    Whether rolling over event log files is enabled. If set to true, it cuts down each event
+    log file to the configured size.
+  </td>
+</tr>
+<tr>
+  <td><code>spark.eventLog.rolling.maxFileSize</code></td>
+  <td>128m</td>
+  <td>
+    When <code>spark.eventLog.rolling.enabled=true</code>, specifies the max size of event log file before it's rolled over.
   </td>
 </tr>
 <tr>
@@ -1471,8 +1473,44 @@ Apart from these, the following properties are also available, and may be useful
   <td>1</td>
   <td>
     The file output committer algorithm version, valid algorithm version number: 1 or 2.
-    Version 2 may have better performance, but version 1 may handle failures better in certain situations,
-    as per <a href="https://issues.apache.org/jira/browse/MAPREDUCE-4815">MAPREDUCE-4815</a>.
+    Note that 2 may cause a correctness issue like MAPREDUCE-7282.
+  </td>
+</tr>
+</table>
+
+### Executor Metrics
+
+<table class="table">
+<tr><th>Property Name</th><th>Default</th><th>Meaning</th></tr>
+<tr>
+  <td><code>spark.eventLog.logStageExecutorMetrics.enabled</code></td>
+  <td>false</td>
+  <td>
+    Whether to write per-stage peaks of executor metrics (for each executor) to the event log.
+    <br />
+    <em>Note:</em> The metrics are polled (collected) and sent in the executor heartbeat,
+    and this is always done; this configuration is only to determine if aggregated metric peaks
+    are written to the event log.
+  </td>
+</tr>
+  <td><code>spark.executor.processTreeMetrics.enabled</code></td>
+  <td>false</td>
+  <td>
+    Whether to collect process tree metrics (from the /proc filesystem) when collecting
+    executor metrics.
+    <br />
+    <em>Note:</em> The process tree metrics are collected only if the /proc filesystem
+    exists.
+  </td>
+<tr>
+  <td><code>spark.executor.metrics.pollingInterval</code></td>
+  <td>0</td>
+  <td>
+    How often to collect executor metrics (in milliseconds).
+    <br />
+    If 0, the polling is done on executor heartbeats (thus at the heartbeat interval,
+    specified by <code>spark.executor.heartbeatInterval</code>).
+    If positive, the polling is done at this interval.
   </td>
 </tr>
 </table>
@@ -1539,7 +1577,6 @@ Apart from these, the following properties are also available, and may be useful
   <td>120s</td>
   <td>
     Default timeout for all network interactions. This config will be used in place of
-    <code>spark.core.connection.ack.wait.timeout</code>,
     <code>spark.storage.blockManagerSlaveTimeoutMs</code>,
     <code>spark.shuffle.io.connectionTimeout</code>, <code>spark.rpc.askTimeout</code> or
     <code>spark.rpc.lookupTimeout</code> if they are not configured.
@@ -1596,12 +1633,14 @@ Apart from these, the following properties are also available, and may be useful
   </td>
 </tr>
 <tr>
-  <td><code>spark.core.connection.ack.wait.timeout</code></td>
-  <td><code>spark.network.timeout</code></td>
+  <td><code>spark.maxRemoteBlockSizeFetchToMem</code></td>
+  <td>200m</td>
   <td>
-    How long for the connection to wait for ack to occur before timing
-    out and giving up. To avoid unwilling timeout caused by long pause like GC,
-    you can set larger value.
+    Remote block will be fetched to disk when size of the block is above this threshold
+    in bytes. This is to avoid a giant request takes too much memory. Note this
+    configuration will affect both shuffle fetch and block manager remote block fetch.
+    For users who enabled external shuffle service, this feature can only work when
+    external shuffle service is at least 2.3.0.
   </td>
 </tr>
 </table>

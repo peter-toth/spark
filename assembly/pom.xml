@@ -44,6 +44,29 @@
       <version>1.0.0</version>
       <scope>provided</scope>
     </dependency>
+    <!-- No RAZ in CDP 7.1.x -->
+    <!--
+    <dependency>
+      <groupId>org.apache.spark</groupId>
+      <artifactId>spark-shaded-raz</artifactId>
+      <version>${project.version}</version>
+      <classifier>shaded</classifier>
+      <exclusions>
+        <exclusion>
+          <groupId>org.apache.ranger</groupId>
+          <artifactId>ranger-raz-hook-abfs</artifactId>
+        </exclusion>
+        <exclusion>
+          <groupId>org.apache.ranger</groupId>
+          <artifactId>ranger-raz-hook-s3</artifactId>
+        </exclusion>
+        <exclusion>
+          <groupId>org.apache.ranger</groupId>
+          <artifactId>ranger-raz-s3-lib</artifactId>
+        </exclusion>
+      </exclusions>
+    </dependency>
+    -->
     <dependency>
       <groupId>org.apache.spark</groupId>
       <artifactId>spark-core_${scala.binary.version}</artifactId>
@@ -116,6 +139,10 @@
       <version>${hive.version}</version>
       <scope>${hive.deps.scope}</scope>
       <exclusions>
+        <exclusion>
+          <groupId>org.apache.hive</groupId>
+          <artifactId>hive-exec</artifactId>
+        </exclusion>
         <exclusion>
           <groupId>org.apache.hive</groupId>
           <artifactId>hive-llap-common</artifactId>

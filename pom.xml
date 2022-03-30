@@ -98,6 +98,7 @@
     <module>examples</module>
     <module>repl</module>
     <module>launcher</module>
+    <module>external/kafka-0-10-token-provider</module>
     <module>external/kafka-0-10</module>
     <module>external/kafka-0-10-assembly</module>
     <module>external/kafka-0-10-sql</module>
@@ -112,6 +113,7 @@
     <maven.compiler.source>${java.version}</maven.compiler.source>
     <maven.compiler.target>${java.version}</maven.compiler.target>
     <maven.version>3.5.4</maven.version>
+    <scala.maven.plugin.version>4.2.0</scala.maven.plugin.version>
     <sbt.project.name>spark</sbt.project.name>
     <slf4j.version>1.7.30</slf4j.version>
     <log4j.version>1.2.17-cloudera6</log4j.version>
@@ -122,7 +124,8 @@
     <zookeeper.version>3.5.5.7.1.8.0-SNAPSHOT</zookeeper.version>
     <curator.version>4.3.0.7.1.8.0-SNAPSHOT</curator.version>
     <hive.group>org.apache.hive</hive.group>
-    <hive.classifier />
+    <hive.classifier>core</hive.classifier>
+    <datasketches-hive.version>1.1.0-incubating</datasketches-hive.version>
     <!-- Version used in Maven Hive dependency -->
     <hive.version>3.1.3000.7.1.8.0-SNAPSHOT</hive.version>
     <tez.version>0.9.1.7.1.8.0-SNAPSHOT</tez.version>
@@ -164,7 +167,7 @@
     <jackson-mapper-asl.version>1.9.13-cloudera.4</jackson-mapper-asl.version>
     <fasterxml.jackson.version>2.10.5</fasterxml.jackson.version>
     <fasterxml.jackson.databind.version>2.10.5.1</fasterxml.jackson.databind.version>
-    <snappy.version>1.1.7.5</snappy.version>
+    <snappy.version>1.1.8.2</snappy.version>
     <netlib.java.version>1.1.2</netlib.java.version>
     <calcite.version>1.19.0.7.1.8.0-SNAPSHOT</calcite.version>
     <commons-codec.version>1.10</commons-codec.version>
@@ -178,9 +181,8 @@
     <janino.version>3.0.16</janino.version>
     <jersey.version>2.32</jersey.version>
     <joda.version>2.9.3</joda.version>
-    <!--
-    <jodd.version>3.5.2</jodd.version>
-    -->
+    <jodd.version>6.0.0</jodd.version>
+    <javaewah.version>0.3.2</javaewah.version>
     <jsr305.version>1.3.9</jsr305.version>
     <libthrift.version>0.13.0</libthrift.version>
     <antlr4.version>4.7</antlr4.version>
@@ -193,6 +195,7 @@
     <paranamer.version>2.8</paranamer.version>
     <maven-antrun.version>1.8</maven-antrun.version>
     <commons-crypto.version>1.0.0</commons-crypto.version>
+    <tink.version>1.6.0</tink.version>
     <!--
     If you are changing Arrow version specification, please check ./python/pyspark/sql/utils.py,
     ./python/run-tests.py and ./python/setup.py too.
@@ -201,6 +204,12 @@
     <netty.version>4.1.68.Final</netty.version>
 
     <test.java.home>${java.home}</test.java.home>
+    <!--
+     When surefire plugins runs without code-coverage profile, the <excludedGroups> yields ",".
+     This causes a failure with "Invalid group expression: ','. Reason: Encountered "" at line 1,
+     column 1." error. Adding a placeholder tag to prevent this failure.
+    -->
+    <test.codeCoverage.exclude.tags>PlaceHolderTagToPreventSurefireFailure</test.codeCoverage.exclude.tags>
     <test.exclude.tags />
     <test.include.tags />
 
@@ -247,8 +256,24 @@
       -->
     <test.method.keys />
 
+    <gbn.repo.url>http://cloudera-build-us-west-1.vpc.cloudera.com/s3/build/${env.SPARK_DEV_BUILD_GBN}/cdh/7.x/maven-repository/</gbn.repo.url>
+
     <surefireReportsDirectory>${project.build.directory}/surefire-reports</surefireReportsDirectory>
     <surefireFileReporterFile>SparkTestSuite.txt</surefireFileReporterFile>
+
+    <!--
+     When tests are run without code-coverage profile, surefire plugin fails with
+     "Error: Could not find or load main class @{argLine}". "@{argLine}" is populated only when
+     jacoco plugin is active. Without code-coverage profile, "@{argLine}" is not set, ergo maven
+     treats it as a simple string leading to the above error.
+     Setting "argLine" to an empty value solves the issue.
+     -->
+    <argLine />
+    <codeCoverageReportRootDir>${project.basedir}/target/code-coverage</codeCoverageReportRootDir>
+    <jacocoDestFile>${codeCoverageReportRootDir}/jacoco.exec</jacocoDestFile>
+    <jacocoReportDir>${codeCoverageReportRootDir}/jacoco-reports</jacocoReportDir>
+    <scoverageDataDir>${codeCoverageReportRootDir}/scoverage-data</scoverageDataDir>
+    <scoverageReportDir>${codeCoverageReportRootDir}/scoverage-reports</scoverageReportDir>
   </properties>
   <repositories>
     <repository>
@@ -674,7 +699,7 @@
       <dependency>
         <groupId>com.github.luben</groupId>
         <artifactId>zstd-jni</artifactId>
-        <version>1.3.2-2</version>
+        <version>1.4.4-3</version>
       </dependency>
       <dependency>
         <groupId>com.clearspring.analytics</groupId>
@@ -775,11 +800,6 @@
       <dependency>
         <groupId>com.fasterxml.jackson.module</groupId>
         <artifactId>jackson-module-jaxb-annotations</artifactId>
-        <version>${fasterxml.jackson.version}</version>
-      </dependency>
-      <dependency>
-        <groupId>com.fasterxml.jackson.dataformat</groupId>
-        <artifactId>jackson-dataformat-cbor</artifactId>
         <version>${fasterxml.jackson.version}</version>
       </dependency>
       <dependency>
@@ -904,7 +924,7 @@
       <dependency>
         <groupId>org.scalatest</groupId>
         <artifactId>scalatest_${scala.binary.version}</artifactId>
-        <version>3.0.3</version>
+        <version>3.0.8</version>
         <scope>test</scope>
       </dependency>
       <dependency>
@@ -1896,6 +1916,72 @@
           <!-- End of Hive 2.3 exclusion -->
         </exclusions>
       </dependency>
+      <dependency>
+        <groupId>org.apache.datasketches</groupId>
+        <artifactId>datasketches-hive</artifactId>
+        <version>${datasketches-hive.version}</version>
+        <exclusions>
+          <exclusion>
+            <groupId>${hive.group}</groupId>
+            <artifactId>hive-exec</artifactId>
+          </exclusion>
+          <exclusion>
+            <groupId>org.apache.hadoop</groupId>
+            <artifactId>hadoop-common</artifactId>
+          </exclusion>
+          <exclusion>
+            <groupId>org.slf4j</groupId>
+            <artifactId>slf4j-simple</artifactId>
+          </exclusion>
+          <exclusion>
+            <groupId>org.slf4j</groupId>
+            <artifactId>slf4j-api</artifactId>
+          </exclusion>
+          <exclusion>
+            <groupId>org.slf4j</groupId>
+            <artifactId>slf4j-log4j12</artifactId>
+          </exclusion>
+        </exclusions>
+      </dependency>
+      <!-- No hive-parser and hive-udf in CDP 7.1.x -->
+      <!--
+      <dependency>
+        <groupId>${hive.group}</groupId>
+        <artifactId>hive-parser</artifactId>
+        <version>${hive.version}</version>
+        <scope>${hive.deps.scope}</scope>
+        <exclusions>
+          <exclusion>
+            <groupId>${hive.group}</groupId>
+            <artifactId>hive-common</artifactId>
+          </exclusion>
+          <exclusion>
+            <groupId>org.antlr</groupId>
+            <artifactId>antlr-runtime</artifactId>
+          </exclusion>
+          <exclusion>
+            <groupId>org.antlr</groupId>
+            <artifactId>ST4</artifactId>
+          </exclusion>
+        </exclusions>
+      </dependency>
+      <dependency>
+        <groupId>${hive.group}</groupId>
+        <artifactId>hive-udf</artifactId>
+        <version>${hive.version}</version>
+        <scope>${hive.deps.scope}</scope>
+        <exclusions>
+          <exclusion>
+            <groupId>${hive.group}</groupId>
+            <artifactId>hive-common</artifactId>
+          </exclusion>
+          <exclusion>
+            <groupId>${hive.group}</groupId>
+            <artifactId>hive-serde</artifactId>
+          </exclusion>
+        </exclusions>
+      </dependency>
+      -->
 
       <dependency>
         <groupId>${hive.group}</groupId>
@@ -2064,12 +2150,11 @@
           </exclusion>
         </exclusions>
       </dependency>
-      <!-- hive-llap-client is needed when run MapReduce test in Hive 2.3. -->
       <dependency>
         <groupId>org.apache.hive</groupId>
         <artifactId>hive-llap-client</artifactId>
         <version>${hive.version}</version>
-        <scope>test</scope>
+        <scope>${hive.deps.scope}</scope>
         <exclusions>
           <exclusion>
             <groupId>org.apache.hive</groupId>
@@ -2287,18 +2372,16 @@
         <artifactId>joda-time</artifactId>
         <version>${joda.version}</version>
       </dependency>
-      <!--
-      Spark doesn't use jodd-core directly.
-      hive-exec does use it, but CDP Hive shades the entire library into it's jar so we don't need
-      to include it.
-      -->
-      <!--
       <dependency>
         <groupId>org.jodd</groupId>
-        <artifactId>jodd-core</artifactId>
+        <artifactId>jodd-util</artifactId>
         <version>${jodd.version}</version>
       </dependency>
-      -->
+      <dependency>
+        <groupId>com.googlecode.javaewah</groupId>
+        <artifactId>JavaEWAH</artifactId>
+        <version>${javaewah.version}</version>
+      </dependency>
       <dependency>
         <groupId>org.datanucleus</groupId>
         <artifactId>datanucleus-core</artifactId>
@@ -2341,6 +2424,11 @@
             <artifactId>jna</artifactId>
           </exclusion>
         </exclusions>
+      </dependency>
+      <dependency>
+        <groupId>com.google.crypto.tink</groupId>
+        <artifactId>tink</artifactId>
+        <version>${tink.version}</version>
       </dependency>
       <dependency>
         <groupId>com.thoughtworks.paranamer</groupId>
@@ -2471,7 +2559,7 @@
         <plugin>
           <groupId>net.alchim31.maven</groupId>
           <artifactId>scala-maven-plugin</artifactId>
-          <version>4.2.0</version>
+	  <version>${scala.maven.plugin.version}</version>
           <executions>
             <execution>
               <id>eclipse-add-source</id>
@@ -2549,7 +2637,12 @@
               <include>**/*Suite.java</include>
             </includes>
             <reportsDirectory>${surefireReportsDirectory}</reportsDirectory>
-            <argLine>-ea -Xmx4g -Xss4m -XX:ReservedCodeCacheSize=${CodeCacheSize}</argLine>
+            <!--
+              JaCoCo uses the surefire argLine config to add a javaagent that collects the
+              coverage-data. Adding @{argLine} here ensure late-property-evaluation.
+              https://maven.apache.org/surefire/maven-surefire-plugin/faq.html#late-property-evaluation
+            -->
+            <argLine>@{argLine} -Xmx4g -Xss4m -XX:ReservedCodeCacheSize=${CodeCacheSize}</argLine>
             <environmentVariables>
               <!--
                 Setting SPARK_DIST_CLASSPATH is a simple way to make sure any child processes
@@ -2578,7 +2671,7 @@
               <test.src.tables>src</test.src.tables>
             </systemProperties>
             <failIfNoTests>false</failIfNoTests>
-            <excludedGroups>${test.exclude.tags}</excludedGroups>
+            <excludedGroups>${test.codeCoverage.exclude.tags},${test.exclude.tags}</excludedGroups>
             <groups>${test.include.tags}</groups>
           </configuration>
           <executions>
@@ -2627,7 +2720,7 @@
               <!-- Needed by sql/hive tests. -->
               <test.src.tables>__not_used__</test.src.tables>
             </systemProperties>
-            <tagsToExclude>${test.exclude.tags}</tagsToExclude>
+            <tagsToExclude>${test.exclude.tags},${test.codeCoverage.exclude.tags}</tagsToExclude>
             <tagsToInclude>${test.include.tags}</tagsToInclude>
           </configuration>
           <executions>
@@ -3049,6 +3142,37 @@
   </build>
 
   <profiles>
+
+    <profile>
+      <!--
+        The recent scala maven plugin does not do incremental compilation, so make it easy to switch to an old version.
+        Sadly we can't always change the version, b/c the new version is needed for jdk11.  SPARK-29329
+      -->
+      <id>local-dev</id>
+      <properties>
+	<scala.maven.plugin.version>3.2.2</scala.maven.plugin.version>
+      </properties>
+    </profile>
+
+    <profile>
+      <id>gbn-snapshot-repo</id>
+      <repositories>
+       <repository>
+         <id>gbnRepo</id>
+         <!-- GBN repo first, so we take all snapshots from a specific GBN, rather than whatever
+              nexus-private happens to have as a snapshot, which might be a mix of versions -->
+         <name>gbn repo</name>
+         <url>${gbn.repo.url}</url>
+         <releases>
+           <enabled>true</enabled>
+         </releases>
+         <snapshots>
+           <enabled>true</enabled>
+         </snapshots>
+       </repository>
+      </repositories>
+    </profile>
+
     <!--
       This profile is enabled automatically by the sbt build. It changes the scope for shaded
       dependencies, since we don't shade it in the artifacts generated by the sbt build.
@@ -3274,16 +3398,15 @@
       </activation>
       <modules>
         <module>hadoop-cloud</module>
+        <!-- No RAZ in CDP 7.1.x -->
+        <!--
+        <module>shaded-raz</module>
+        -->
       </modules>
     </profile>
 
     <profile>
       <id>kafka-0-8</id>
-      <activation>
-        <property>
-          <name>cdpd.build</name>
-        </property>
-      </activation>
       <modules>
         <module>external/kafka-0-8</module>
         <module>external/kafka-0-8-assembly</module>
@@ -3303,6 +3426,13 @@
     <!-- Exists for backwards compatibility; profile doesn't do anything -->
     <profile>
       <id>scala-2.11</id>
+      <properties>
+        <!--
+         SPARK-34774 Add this property to ensure change-scala-version.sh can replace the public `scala.version`
+         property correctly.
+        -->
+        <scala.version>2.11.12</scala.version>
+      </properties>
     </profile>
 
     <profile>
@@ -3409,6 +3539,121 @@
     </profile>
     <profile>
       <id>sparkr</id>
+    </profile>
+
+    <profile>
+      <id>code-coverage</id>
+      <activation>
+        <activeByDefault>false</activeByDefault>
+        <property>
+          <name>env.SCALA_CODE_COVERAGE</name>
+          <value>1</value>
+        </property>
+      </activation>
+      <properties>
+        <test.codeCoverage.exclude.tags>org.apache.spark.tags.ExcludeForCodeCoverage</test.codeCoverage.exclude.tags>
+      </properties>
+      <build>
+        <plugins>
+          <plugin>
+            <groupId>org.scoverage</groupId>
+            <artifactId>scoverage-maven-plugin</artifactId>
+          </plugin>
+          <plugin>
+            <groupId>org.jacoco</groupId>
+            <artifactId>jacoco-maven-plugin</artifactId>
+          </plugin>
+        </plugins>
+        <pluginManagement>
+          <plugins>
+            <plugin>
+              <groupId>org.scoverage</groupId>
+              <artifactId>scoverage-maven-plugin</artifactId>
+              <!--
+                shaded-raz module does not list spark-parent as its parent. Thus, when the plugin
+                version is updated here, make sure to propagate the version change in
+                shaded-raz/pom.xml as well.
+              -->
+              <version>1.4.11</version>
+              <configuration>
+                <scalaVersion>${scala.version}</scalaVersion>
+                <scalacPluginVersion>1.4.11</scalacPluginVersion>
+                <highlighting>true</highlighting>
+                <excludedPackages>org.apache.spark.examples.*</excludedPackages>
+                <aggregate>true</aggregate>
+                <failOnError>false</failOnError>
+                <dataDirectory>${scoverageDataDir}</dataDirectory>
+                <outputDirectory>${scoverageReportDir}</outputDirectory>
+                <xmlOutputDirectory>${scoverageReportDir}</xmlOutputDirectory>
+                <encoding>${project.build.sourceEncoding}</encoding>
+              </configuration>
+            </plugin>
+            <plugin>
+              <groupId>org.jacoco</groupId>
+              <artifactId>jacoco-maven-plugin</artifactId>
+              <version>0.8.7</version>
+              <configuration>
+                <haltOnFailure>false</haltOnFailure>
+              </configuration>
+              <executions>
+                <execution>
+                  <id>jacoco-prepare-agent</id>
+                  <goals>
+                    <goal>prepare-agent</goal>
+                  </goals>
+                  <configuration>
+                    <destFile>${jacocoDestFile}</destFile>
+                  </configuration>
+                </execution>
+                <execution>
+                  <id>jacoco-report</id>
+                  <phase>test</phase>
+                  <goals>
+                    <goal>report</goal>
+                  </goals>
+                  <configuration>
+                    <dataFile>${jacocoDestFile}</dataFile>
+                    <outputDirectory>${jacocoReportDir}</outputDirectory>
+                    <sourceEncoding>${project.build.sourceEncoding}</sourceEncoding>
+                    <outputEncoding>${project.reporting.outputEncoding}</outputEncoding>
+                  </configuration>
+                </execution>
+              </executions>
+            </plugin>
+          </plugins>
+        </pluginManagement>
+      </build>
+    </profile>
+    <profile>
+      <id>sonar</id>
+      <activation>
+        <property>
+          <name>env.SONAR</name>
+          <value>1</value>
+        </property>
+      </activation>
+      <properties>
+        <sonar.coverage.jacoco.xmlReportPaths>${jacocoReportDir}/jacoco.xml</sonar.coverage.jacoco.xmlReportPaths>
+        <sonar.scala.coverage.reportPaths>${scoverageReportDir}/scoverage.xml</sonar.scala.coverage.reportPaths>
+      </properties>
+      <build>
+        <plugins>
+          <plugin>
+            <groupId>org.sonarsource.scanner.maven</groupId>
+            <artifactId>sonar-maven-plugin</artifactId>
+          </plugin>
+        </plugins>
+        <pluginManagement>
+          <plugins>
+            <plugin>
+              <groupId>org.sonarsource.scanner.maven</groupId>
+              <artifactId>sonar-maven-plugin</artifactId>
+              <!-- Using the version specified here: https://sonarqube.infra.cloudera.com/documentation/analysis/scan/sonarscanner-for-maven/ -->
+              <version>3.6.0.1398</version>
+            </plugin>
+          </plugins>
+        </pluginManagement>
+      </build>
     </profile>
   </profiles>
 </project>

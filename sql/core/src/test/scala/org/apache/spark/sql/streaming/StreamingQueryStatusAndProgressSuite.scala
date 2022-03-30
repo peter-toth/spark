@@ -25,12 +25,15 @@ import scala.language.postfixOps
 import org.json4s._
 import org.json4s.jackson.JsonMethods._
 import org.scalatest.concurrent.Eventually
+import org.scalatest.concurrent.PatienceConfiguration.Timeout
 import org.scalatest.time.SpanSugar._
 
 import org.apache.spark.sql.execution.streaming.MemoryStream
 import org.apache.spark.sql.functions._
 import org.apache.spark.sql.internal.SQLConf
 import org.apache.spark.sql.streaming.StreamingQueryStatusAndProgressSuite._
+import org.apache.spark.sql.streaming.StreamingQuerySuite.clock
+import org.apache.spark.sql.streaming.util.StreamManualClock
 
 class StreamingQueryStatusAndProgressSuite extends StreamTest with Eventually {
   test("StreamingQueryProgress - prettyJson") {
@@ -59,6 +62,7 @@ class StreamingQueryStatusAndProgressSuite extends StreamTest with Eventually {
         |    "numRowsTotal" : 0,
         |    "numRowsUpdated" : 1,
         |    "memoryUsedBytes" : 3,
+        |    "numRowsDroppedByWatermark" : 0,
         |    "customMetrics" : {
         |      "loadedMapCacheHitCount" : 1,
         |      "loadedMapCacheMissCount" : 0,
@@ -96,7 +100,8 @@ class StreamingQueryStatusAndProgressSuite extends StreamTest with Eventually {
          |  "stateOperators" : [ {
          |    "numRowsTotal" : 0,
          |    "numRowsUpdated" : 1,
-         |    "memoryUsedBytes" : 2
+         |    "memoryUsedBytes" : 2,
+         |    "numRowsDroppedByWatermark" : 0
          |  } ],
          |  "sources" : [ {
          |    "description" : "source",
@@ -214,6 +219,45 @@ class StreamingQueryStatusAndProgressSuite extends StreamTest with Eventually {
     }
   }
 
+  test("SPARK-29973: Make `processedRowsPerSecond` calculated more accurately and meaningfully") {
+    import testImplicits._
+
+    clock = new StreamManualClock
+    val inputData = MemoryStream[Int]
+    val query = inputData.toDS()
+
+    testStream(query)(
+      StartStream(Trigger.ProcessingTime(1000), triggerClock = clock),
+      AdvanceManualClock(1000),
+      waitUntilBatchProcessed,
+      AssertOnQuery(query => {
+        assert(query.lastProgress.numInputRows == 0)
+        assert(query.lastProgress.processedRowsPerSecond == 0.0d)
+        true
+      }),
+      AddData(inputData, 1, 2),
+      AdvanceManualClock(1000),
+      waitUntilBatchProcessed,
+      AssertOnQuery(query => {
+        assert(query.lastProgress.numInputRows == 2)
+        assert(query.lastProgress.processedRowsPerSecond == 2000d)
+        true
+      }),
+      StopStream
+    )
+  }
+
+  def waitUntilBatchProcessed: AssertOnQuery = Execute { q =>
+    eventually(Timeout(streamingTimeout)) {
+      if (q.exception.isEmpty) {
+        assert(clock.isStreamWaitingAt(clock.getTimeMillis()))
+      }
+    }
+    if (q.exception.isDefined) {
+      throw q.exception.get
+    }
+  }
+
   def assertJson(source: String, expected: String): Unit = {
     assert(
       source.replaceAll("\r\n|\r|\n", System.lineSeparator) ===
@@ -228,6 +272,7 @@ object StreamingQueryStatusAndProgressSuite {
     name = "myName",
     timestamp = "2016-12-05T20:54:20.827Z",
     batchId = 2L,
+    batchDuration = 0L,
     durationMs = new java.util.HashMap(Map("total" -> 0L).mapValues(long2Long).asJava),
     eventTime = new java.util.HashMap(Map(
       "max" -> "2016-12-05T20:54:20.827Z",
@@ -235,7 +280,7 @@ object StreamingQueryStatusAndProgressSuite {
       "avg" -> "2016-12-05T20:54:20.827Z",
       "watermark" -> "2016-12-05T20:54:20.827Z").asJava),
     stateOperators = Array(new StateOperatorProgress(
-      numRowsTotal = 0, numRowsUpdated = 1, memoryUsedBytes = 3,
+      numRowsTotal = 0, numRowsUpdated = 1, memoryUsedBytes = 3, numRowsDroppedByWatermark = 0,
       customMetrics = new java.util.HashMap(Map("stateOnCurrentVersionSizeBytes" -> 2L,
         "loadedMapCacheHitCount" -> 1L, "loadedMapCacheMissCount" -> 0L)
         .mapValues(long2Long).asJava)
@@ -259,11 +304,12 @@ object StreamingQueryStatusAndProgressSuite {
     name = null, // should not be present in the json
     timestamp = "2016-12-05T20:54:20.827Z",
     batchId = 2L,
+    batchDuration = 0L,
     durationMs = new java.util.HashMap(Map("total" -> 0L).mapValues(long2Long).asJava),
     // empty maps should be handled correctly
     eventTime = new java.util.HashMap(Map.empty[String, String].asJava),
     stateOperators = Array(new StateOperatorProgress(
-      numRowsTotal = 0, numRowsUpdated = 1, memoryUsedBytes = 2)),
+      numRowsTotal = 0, numRowsUpdated = 1, memoryUsedBytes = 2, numRowsDroppedByWatermark = 0)),
     sources = Array(
       new SourceProgress(
         description = "source",

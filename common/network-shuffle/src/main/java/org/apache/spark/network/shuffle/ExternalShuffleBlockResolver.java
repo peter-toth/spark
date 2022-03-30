@@ -80,7 +80,7 @@ public class ExternalShuffleBlockResolver {
    *  Caches index file information so that we can avoid open/close the index files
    *  for each block fetch.
    */
-  private final LoadingCache<File, ShuffleIndexInformation> shuffleIndexCache;
+  private final LoadingCache<String, ShuffleIndexInformation> shuffleIndexCache;
 
   // Single-threaded Java executor used to perform expensive recursive directory deletion.
   private final Executor directoryCleaner;
@@ -108,17 +108,17 @@ public class ExternalShuffleBlockResolver {
     this.conf = conf;
     this.registeredExecutorFile = registeredExecutorFile;
     String indexCacheSize = conf.get("spark.shuffle.service.index.cache.size", "100m");
-    CacheLoader<File, ShuffleIndexInformation> indexCacheLoader =
-        new CacheLoader<File, ShuffleIndexInformation>() {
-          public ShuffleIndexInformation load(File file) throws IOException {
-            return new ShuffleIndexInformation(file);
+    CacheLoader<String, ShuffleIndexInformation> indexCacheLoader =
+        new CacheLoader<String, ShuffleIndexInformation>() {
+          public ShuffleIndexInformation load(String filePath) throws IOException {
+            return new ShuffleIndexInformation(filePath);
           }
         };
     shuffleIndexCache = CacheBuilder.newBuilder()
       .maximumWeight(JavaUtils.byteStringAsBytes(indexCacheSize))
-      .weigher(new Weigher<File, ShuffleIndexInformation>() {
-        public int weigh(File file, ShuffleIndexInformation indexInfo) {
-          return indexInfo.getSize();
+      .weigher(new Weigher<String, ShuffleIndexInformation>() {
+        public int weigh(String filePath, ShuffleIndexInformation indexInfo) {
+          return indexInfo.getRetainedMemorySize();
         }
       })
       .build(indexCacheLoader);
@@ -274,20 +274,20 @@ public class ExternalShuffleBlockResolver {
    */
   private ManagedBuffer getSortBasedShuffleBlockData(
     ExecutorShuffleInfo executor, int shuffleId, int mapId, int reduceId) {
-    File indexFile = getFile(executor.localDirs, executor.subDirsPerLocalDir,
+    String indexFilePath = getFilePath(executor.localDirs, executor.subDirsPerLocalDir,
       "shuffle_" + shuffleId + "_" + mapId + "_0.index");
 
     try {
-      ShuffleIndexInformation shuffleIndexInformation = shuffleIndexCache.get(indexFile);
+      ShuffleIndexInformation shuffleIndexInformation = shuffleIndexCache.get(indexFilePath);
       ShuffleIndexRecord shuffleIndexRecord = shuffleIndexInformation.getIndex(reduceId);
       return new FileSegmentManagedBuffer(
         conf,
-        getFile(executor.localDirs, executor.subDirsPerLocalDir,
-          "shuffle_" + shuffleId + "_" + mapId + "_0.data"),
+        new File(getFilePath(executor.localDirs, executor.subDirsPerLocalDir,
+          "shuffle_" + shuffleId + "_" + mapId + "_0.data")),
         shuffleIndexRecord.getOffset(),
         shuffleIndexRecord.getLength());
     } catch (ExecutionException e) {
-      throw new RuntimeException("Failed to open file: " + indexFile, e);
+      throw new RuntimeException("Failed to open file: " + indexFilePath, e);
     }
   }
 
@@ -296,12 +296,12 @@ public class ExternalShuffleBlockResolver {
    * Spark's DiskBlockManager.getFile().
    */
   @VisibleForTesting
-  static File getFile(String[] localDirs, int subDirsPerLocalDir, String filename) {
+  static String getFilePath(String[] localDirs, int subDirsPerLocalDir, String filename) {
     int hash = JavaUtils.nonNegativeHash(filename);
     String localDir = localDirs[hash % localDirs.length];
     int subDirId = (hash / localDirs.length) % subDirsPerLocalDir;
-    return new File(createNormalizedInternedPathname(
-        localDir, String.format("%02x", subDirId), filename));
+    return createNormalizedInternedPathname(
+        localDir, String.format("%02x", subDirId), filename);
   }
 
   void close() {

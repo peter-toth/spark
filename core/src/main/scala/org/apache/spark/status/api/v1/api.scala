@@ -76,7 +76,10 @@ class ExecutorStageSummary private[spark](
     val shuffleWriteRecords : Long,
     val memoryBytesSpilled : Long,
     val diskBytesSpilled : Long,
-    val isBlacklistedForStage: Boolean)
+    val isBlacklistedForStage: Boolean,
+    @JsonSerialize(using = classOf[ExecutorMetricsJsonSerializer])
+    @JsonDeserialize(using = classOf[ExecutorMetricsJsonDeserializer])
+    val peakMemoryMetrics: Option[ExecutorMetrics])
 
 class ExecutorSummary private[spark](
     val id: String,
@@ -209,23 +212,36 @@ class StageData private[spark](
     val numKilledTasks: Int,
     val numCompletedIndices: Int,
 
-    val executorRunTime: Long,
-    val executorCpuTime: Long,
     val submissionTime: Option[Date],
     val firstTaskLaunchedTime: Option[Date],
     val completionTime: Option[Date],
     val failureReason: Option[String],
 
+    val executorDeserializeTime: Long,
+    val executorDeserializeCpuTime: Long,
+    val executorRunTime: Long,
+    val executorCpuTime: Long,
+    val resultSize: Long,
+    val jvmGcTime: Long,
+    val resultSerializationTime: Long,
+    val memoryBytesSpilled: Long,
+    val diskBytesSpilled: Long,
+    val peakExecutionMemory: Long,
     val inputBytes: Long,
     val inputRecords: Long,
     val outputBytes: Long,
     val outputRecords: Long,
+    val shuffleRemoteBlocksFetched: Long,
+    val shuffleLocalBlocksFetched: Long,
+    val shuffleFetchWaitTime: Long,
+    val shuffleRemoteBytesRead: Long,
+    val shuffleRemoteBytesReadToDisk: Long,
+    val shuffleLocalBytesRead: Long,
     val shuffleReadBytes: Long,
     val shuffleReadRecords: Long,
     val shuffleWriteBytes: Long,
+    val shuffleWriteTime: Long,
     val shuffleWriteRecords: Long,
-    val memoryBytesSpilled: Long,
-    val diskBytesSpilled: Long,
 
     val name: String,
     val description: Option[String],
@@ -236,7 +252,10 @@ class StageData private[spark](
     val accumulatorUpdates: Seq[AccumulableInfo],
     val tasks: Option[Map[Long, TaskData]],
     val executorSummary: Option[Map[String, ExecutorStageSummary]],
-    val killedTasksSummary: Map[String, Int])
+    val killedTasksSummary: Map[String, Int],
+    @JsonSerialize(using = classOf[ExecutorMetricsJsonSerializer])
+    @JsonDeserialize(using = classOf[ExecutorMetricsJsonDeserializer])
+    val peakExecutorMetrics: Option[ExecutorMetrics])
 
 class TaskData private[spark](
     val taskId: Long,

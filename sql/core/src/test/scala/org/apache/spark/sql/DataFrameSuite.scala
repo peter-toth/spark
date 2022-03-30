@@ -2645,18 +2645,6 @@ class DataFrameSuite extends QueryTest with SharedSQLContext {
     assert(idTuples.length == idTuples.toSet.size)
   }
 
-  test("SPARK-32635: Replace references with foldables coming only from the node's children") {
-    val a = Seq("1").toDF("col1").withColumn("col2", lit("1"))
-    val b = Seq("2").toDF("col1").withColumn("col2", lit("2"))
-    val aub = a.union(b)
-    val c = aub.filter($"col1" === "2").cache()
-    val d = Seq("2").toDF("col4")
-    val r = d.join(aub, $"col2" === $"col4").select("col4")
-    val l = c.select("col2")
-    val df = l.join(r, $"col2" === $"col4", "LeftOuter")
-    checkAnswer(df, Row("2", "2"))
-  }
-
   test("SPARK-30811: CTE should not cause stack overflow when " +
     "it refers to non-existent table with same name") {
     val e = intercept[AnalysisException] {
@@ -2731,6 +2719,27 @@ class DataFrameSuite extends QueryTest with SharedSQLContext {
     checkAnswer(Seq(nestedIntArray).toDF(), Row(nestedIntArray.map(wrapIntArray)))
     val nestedDecArray = Array(decSpark)
     checkAnswer(Seq(nestedDecArray).toDF(), Row(Array(wrapRefArray(decJava))))
+  }
+
+  test("SPARK-32635: Replace references with foldables coming only from the node's children") {
+    val a = Seq("1").toDF("col1").withColumn("col2", lit("1"))
+    val b = Seq("2").toDF("col1").withColumn("col2", lit("2"))
+    val aub = a.union(b)
+    val c = aub.filter($"col1" === "2").cache()
+    val d = Seq("2").toDF("col4")
+    val r = d.join(aub, $"col2" === $"col4").select("col4")
+    val l = c.select("col2")
+    val df = l.join(r, $"col2" === $"col4", "LeftOuter")
+    checkAnswer(df, Row("2", "2"))
+  }
+
+  test("SPARK-34318: colRegex should work with column names & qualifiers which contain newlines") {
+    val df = Seq(1, 2, 3).toDF("test\n_column").as("test\n_table")
+    val col1 = df.colRegex("`tes.*\n.*mn`")
+    checkAnswer(df.select(col1), Row(1) :: Row(2) :: Row(3) :: Nil)
+
+    val col2 = df.colRegex("test\n_table.`tes.*\n.*mn`")
+    checkAnswer(df.select(col2), Row(1) :: Row(2) :: Row(3) :: Nil)
   }
 }
 

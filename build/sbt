@@ -17,6 +17,13 @@
 # limitations under the License.
 #
 
+# Determine the current working directory
+_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+
+source "${_DIR}/cloudera_helpers.sh"
+
+load_conf_file || exit 1
+
 # When creating new tests for Spark SQL Hive, the HADOOP_CLASSPATH must contain the hive jars so
 # that we can run Hive to generate the golden answer.  This is not required for normal development
 # or testing.
@@ -152,7 +159,9 @@ saveSttySettings() {
 saveSttySettings
 trap onExit INT
 
-run "$@"
+GBN_LOCAL_REPO_ARG=$(extra_gbn_repo_args "sbt")
+
+run "$@" $GBN_LOCAL_REPO_ARG
 
 exit_status=$?
 onExit

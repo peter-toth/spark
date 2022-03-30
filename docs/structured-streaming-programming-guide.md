@@ -1089,7 +1089,7 @@ val staticDf = spark.read. ...
 val streamingDf = spark.readStream. ...
 
 streamingDf.join(staticDf, "type")          // inner equi-join with a static DF
-streamingDf.join(staticDf, "type", "right_join")  // right outer join with a static DF  
+streamingDf.join(staticDf, "type", "left_outer")  // left outer join with a static DF
 
 {% endhighlight %}
 
@@ -1100,7 +1100,7 @@ streamingDf.join(staticDf, "type", "right_join")  // right outer join with a sta
 Dataset<Row> staticDf = spark.read(). ...;
 Dataset<Row> streamingDf = spark.readStream(). ...;
 streamingDf.join(staticDf, "type");         // inner equi-join with a static DF
-streamingDf.join(staticDf, "type", "right_join");  // right outer join with a static DF
+streamingDf.join(staticDf, "type", "left_outer");  // left outer join with a static DF
 {% endhighlight %}
 
 
@@ -1111,7 +1111,7 @@ streamingDf.join(staticDf, "type", "right_join");  // right outer join with a st
 staticDf = spark.read. ...
 streamingDf = spark.readStream. ...
 streamingDf.join(staticDf, "type")  # inner equi-join with a static DF
-streamingDf.join(staticDf, "type", "right_join")  # right outer join with a static DF
+streamingDf.join(staticDf, "type", "left_outer")  # left outer join with a static DF
 {% endhighlight %}
 
 </div>
@@ -1123,10 +1123,10 @@ staticDf <- read.df(...)
 streamingDf <- read.stream(...)
 joined <- merge(streamingDf, staticDf, sort = FALSE)  # inner equi-join with a static DF
 joined <- join(
+            streamingDf,
             staticDf,
-            streamingDf, 
             streamingDf$value == staticDf$value,
-            "right_outer")  # right outer join with a static DF
+            "left_outer")  # left outer join with a static DF
 {% endhighlight %}
 
 </div>
@@ -1489,7 +1489,6 @@ Additional details on supported joins:
 
   - Cannot use mapGroupsWithState and flatMapGroupsWithState in Update mode before joins.
 
-
 ### Streaming Deduplication
 You can deduplicate records in data streams using a unique identifier in the events. This is exactly same as deduplication on static using a unique identifier column. The query will store the necessary amount of data from previous records such that it can filter duplicate records. Similar to aggregations, you can use deduplication with or without watermarking.
 
@@ -1600,6 +1599,8 @@ this configuration judiciously.
 ### Arbitrary Stateful Operations
 Many usecases require more advanced stateful operations than aggregations. For example, in many usecases, you have to track sessions from data streams of events. For doing such sessionization, you will have to save arbitrary types of data as state, and perform arbitrary operations on the state using the data stream events in every trigger. Since Spark 2.2, this can be done using the operation `mapGroupsWithState` and the more powerful operation `flatMapGroupsWithState`. Both operations allow you to apply user-defined code on grouped Datasets to update user-defined state. For more concrete details, take a look at the API documentation ([Scala](api/scala/index.html#org.apache.spark.sql.streaming.GroupState)/[Java](api/java/org/apache/spark/sql/streaming/GroupState.html)) and the examples ([Scala]({{site.SPARK_GITHUB_URL}}/blob/v{{site.SPARK_VERSION_SHORT}}/examples/src/main/scala/org/apache/spark/examples/sql/streaming/StructuredSessionization.scala)/[Java]({{site.SPARK_GITHUB_URL}}/blob/v{{site.SPARK_VERSION_SHORT}}/examples/src/main/java/org/apache/spark/examples/sql/streaming/JavaStructuredSessionization.java)).
 
+Though Spark cannot check and force it, the state function should be implemented with respect to the semantics of the output mode. For example, in Update mode Spark doesn't expect that the state function will emit rows which are older than current watermark plus allowed late record delay, whereas in Append mode the state function can emit these rows.
+
 ### Unsupported Operations
 There are a few DataFrame/Dataset operations that are not supported with streaming DataFrames/Datasets. 
 Some of them are as follows.
@@ -1630,6 +1631,35 @@ there are others which are fundamentally hard to implement on streaming data eff
 For example, sorting on the input stream is not supported, as it requires keeping 
 track of all the data received in the stream. This is therefore fundamentally hard to execute 
 efficiently.
+
+### Limitation of global watermark
+
+In Append mode, if a stateful operation emits rows older than current watermark plus allowed late record delay,
+they will be "late rows" in downstream stateful operations (as Spark uses global watermark). Note that these rows may be discarded.
+This is a limitation of a global watermark, and it could potentially cause a correctness issue.
+
+Spark will check the logical plan of query and log a warning when Spark detects such a pattern.
+
+Any of the stateful operation(s) after any of below stateful operations can have this issue:
+
+* streaming aggregation in Append mode
+* stream-stream outer join
+* `mapGroupsWithState` and `flatMapGroupsWithState` in Append mode (depending on the implementation of the state function)
+
+As Spark cannot check the state function of `mapGroupsWithState`/`flatMapGroupsWithState`, Spark assumes that the state function
+emits late rows if the operator uses Append mode.
+
+Spark provides two ways to check the number of late rows on stateful operators which would help you identify the issue:
+
+1. On Spark UI: check the metrics in stateful operator nodes in query execution details page in SQL tab
+2. On Streaming Query Listener: check "numRowsDroppedByWatermark" in "stateOperators" in QueryProcessEvent.
+
+Please note that "numRowsDroppedByWatermark" represents the number of "dropped" rows by watermark, which is not always same as the count of "late input rows" for the operator.
+It depends on the implementation of the operator - e.g. streaming aggregation does pre-aggregate input rows and checks the late inputs against pre-aggregated inputs,
+hence the number is not same as the number of original input rows. You'd like to just check the fact whether the value is zero or non-zero.
+
+There's a known workaround: split your streaming query into multiple queries per stateful operator, and ensure
+end-to-end exactly once per query. Ensuring end-to-end exactly once for the last query is optional.
 
 ## Starting Streaming Queries
 Once you have defined the final result DataFrame/Dataset, all that is left is for you to start the streaming computation. To do that, you have to use the `DataStreamWriter`
@@ -1814,7 +1844,10 @@ Here are the details of all the sinks in Spark.
     <td><b>File Sink</b></td>
     <td>Append</td>
     <td>
-        <code>path</code>: path to the output directory, must be specified.
+        <code>path</code>: path to the output directory, must be specified.<br/>
+        <code>outputRetentionMs</code>: time to live (TTL) for output files. Output files which batches were
+        committed older than TTL will be eventually excluded in metadata log. This means reader queries which read
+        the sink's output directory may not process them. By default it's disabled.
         <br/><br/>
         For file-format-specific options, see the related methods in DataFrameWriter
         (<a href="api/scala/index.html#org.apache.spark.sql.DataFrameWriter">Scala</a>/<a href="api/java/org/apache/spark/sql/DataFrameWriter.html">Java</a>/<a href="api/python/pyspark.sql.html#pyspark.sql.DataFrameWriter">Python</a>/<a

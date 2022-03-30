@@ -24,6 +24,18 @@ import org.apache.spark.internal.config.ConfigBuilder
 
 private[spark] object Config extends Logging {
 
+  val KUBERNETES_CONTEXT =
+    ConfigBuilder("spark.kubernetes.context")
+      .doc("The desired context from your K8S config file used to configure the K8S " +
+        "client for interacting with the cluster.  Useful if your config file has " +
+        "multiple clusters or user identities defined.  The client library used " +
+        "locates the config file via the KUBECONFIG environment variable or by defaulting " +
+        "to .kube/config under your home directory.  If not specified then your current " +
+        "context is used.  You can always override specific aspects of the config file " +
+        "provided configuration using other Spark on K8S configuration options.")
+      .stringConf
+      .createOptional
+
   val KUBERNETES_NAMESPACE =
     ConfigBuilder("spark.kubernetes.namespace")
       .doc("The namespace that will be used for running the driver and executor pods.")
@@ -63,16 +75,39 @@ private[spark] object Config extends Logging {
       .toSequence
       .createWithDefault(Nil)
 
-  val KUBERNETES_AUTH_DRIVER_CONF_PREFIX =
-      "spark.kubernetes.authenticate.driver"
-  val KUBERNETES_AUTH_DRIVER_MOUNTED_CONF_PREFIX =
-      "spark.kubernetes.authenticate.driver.mounted"
+  val KUBERNETES_AUTH_DRIVER_CONF_PREFIX = "spark.kubernetes.authenticate.driver"
+  val KUBERNETES_AUTH_EXECUTOR_CONF_PREFIX = "spark.kubernetes.authenticate.executor"
+  val KUBERNETES_AUTH_DRIVER_MOUNTED_CONF_PREFIX = "spark.kubernetes.authenticate.driver.mounted"
   val KUBERNETES_AUTH_CLIENT_MODE_PREFIX = "spark.kubernetes.authenticate"
   val OAUTH_TOKEN_CONF_SUFFIX = "oauthToken"
   val OAUTH_TOKEN_FILE_CONF_SUFFIX = "oauthTokenFile"
   val CLIENT_KEY_FILE_CONF_SUFFIX = "clientKeyFile"
   val CLIENT_CERT_FILE_CONF_SUFFIX = "clientCertFile"
   val CA_CERT_FILE_CONF_SUFFIX = "caCertFile"
+
+  val SUBMISSION_CLIENT_REQUEST_TIMEOUT =
+    ConfigBuilder("spark.kubernetes.submission.requestTimeout")
+      .doc("request timeout to be used in milliseconds for starting the driver")
+      .intConf
+      .createWithDefault(10000)
+
+  val SUBMISSION_CLIENT_CONNECTION_TIMEOUT =
+    ConfigBuilder("spark.kubernetes.submission.connectionTimeout")
+      .doc("connection timeout to be used in milliseconds for starting the driver")
+      .intConf
+      .createWithDefault(10000)
+
+  val DRIVER_CLIENT_REQUEST_TIMEOUT =
+    ConfigBuilder("spark.kubernetes.driver.requestTimeout")
+      .doc("request timeout to be used in milliseconds for driver to request executors")
+      .intConf
+      .createWithDefault(10000)
+
+  val DRIVER_CLIENT_CONNECTION_TIMEOUT =
+    ConfigBuilder("spark.kubernetes.driver.connectionTimeout")
+      .doc("connection timeout to be used in milliseconds for driver to request executors")
+      .intConf
+      .createWithDefault(10000)
 
   val KUBERNETES_SERVICE_ACCOUNT_NAME =
     ConfigBuilder(s"$KUBERNETES_AUTH_DRIVER_CONF_PREFIX.serviceAccountName")
@@ -86,6 +121,12 @@ private[spark] object Config extends Logging {
   val KUBERNETES_DRIVER_LIMIT_CORES =
     ConfigBuilder("spark.kubernetes.driver.limit.cores")
       .doc("Specify the hard cpu limit for the driver pod")
+      .stringConf
+      .createOptional
+
+  val KUBERNETES_DRIVER_REQUEST_CORES =
+    ConfigBuilder("spark.kubernetes.driver.request.cores")
+      .doc("Specify the cpu request for the driver pod")
       .stringConf
       .createOptional
 
@@ -134,12 +175,38 @@ private[spark] object Config extends Logging {
       .checkValue(value => value > 0, "Allocation batch size should be a positive integer")
       .createWithDefault(5)
 
+  val KUBERNETES_CLOUDERA_GANG_SCHEDULING =
+    ConfigBuilder("spark.cloudera.kubernetes.gang.scheduling.enabled")
+      .doc("Number of pods to launch for the first round of executor allocations should equal " +
+        "the minimum or initial number of executors, whichever is greater. As a result, the " +
+        "first batch size may be larger than the configured batch size")
+      .booleanConf
+      .createWithDefault(false)
+
   val KUBERNETES_ALLOCATION_BATCH_DELAY =
     ConfigBuilder("spark.kubernetes.allocation.batch.delay")
       .doc("Time to wait between each round of executor allocation.")
       .timeConf(TimeUnit.MILLISECONDS)
       .checkValue(value => value > 0, "Allocation batch delay must be a positive time value.")
       .createWithDefaultString("1s")
+
+  val KUBERNETES_ALLOCATION_DRIVER_READINESS_TIMEOUT =
+    ConfigBuilder("spark.kubernetes.allocation.driver.readinessTimeout")
+      .doc("Time to wait for driver pod to get ready before creating executor pods. This wait " +
+        "only happens on application start. If timeout happens, executor pods will still be " +
+        "created.")
+      .timeConf(TimeUnit.SECONDS)
+      .checkValue(value => value > 0, "Allocation driver readiness timeout must be a positive "
+        + "time value.")
+      .createWithDefaultString("1s")
+
+  val KUBERNETES_ALLOCATION_EXECUTOR_TIMEOUT =
+    ConfigBuilder("spark.kubernetes.allocation.executor.timeout")
+      .doc("Time to wait before a newly created executor POD request, which does not reached " +
+        "the POD pending state yet, considered timedout and will be deleted.")
+      .timeConf(TimeUnit.MILLISECONDS)
+      .checkValue(value => value > 0, "Allocation executor timeout must be a positive time value.")
+      .createWithDefaultString("600s")
 
   val KUBERNETES_EXECUTOR_LOST_REASON_CHECK_MAX_ATTEMPTS =
     ConfigBuilder("spark.kubernetes.executor.lostCheck.maxAttempts")
@@ -294,6 +361,41 @@ private[spark] object Config extends Logging {
       .doc("How long to wait for executors to shut down gracefully before a forceful kill.")
       .timeConf(TimeUnit.MILLISECONDS)
       .createWithDefaultString("5s")
+
+  val KUBERNETES_SUBMIT_GRACE_PERIOD =
+    ConfigBuilder("spark.kubernetes.appKillPodDeletionGracePeriod")
+      .doc("Time to wait for graceful deletion of Spark pods when spark-submit" +
+        " is used for killing an application.")
+      .timeConf(TimeUnit.SECONDS)
+      .createOptional
+
+  val KUBERNETES_EXECUTOR_CHECK_ALL_CONTAINERS =
+    ConfigBuilder("spark.kubernetes.executor.checkAllContainers")
+      .doc("If set to true, all containers in the executor pod will be checked when reporting" +
+        "executor status.")
+      .booleanConf
+      .createWithDefault(false)
+
+  val KUBERNETES_EXECUTOR_MISSING_POD_DETECT_DELTA =
+    ConfigBuilder("spark.kubernetes.executor.missingPodDetectDelta")
+      .doc("When a registered executor's POD is missing from the Kubernetes API server's polled " +
+        "list of PODs then this delta time is taken as the accepted time difference between the " +
+        "registration time and the time of the polling. After this time the POD is considered " +
+        "missing from the cluster and the executor will be removed.")
+      .timeConf(TimeUnit.MILLISECONDS)
+      .checkValue(delay => delay > 0, "delay must be a positive time value")
+      .createWithDefaultString("30s")
+
+  val KUBERNETES_MAX_PENDING_PODS =
+    ConfigBuilder("spark.kubernetes.allocation.maxPendingPods")
+      .doc("Maximum number of pending PODs allowed during executor allocation for this " +
+        "application. Those newly requested executors which are unknown by Kubernetes yet are " +
+        "also counted into this limit as they will change into pending PODs by time. " +
+        "This limit is independent from the resource profiles as it limits the sum of all " +
+        "allocation for all the used resource profiles.")
+      .intConf
+      .checkValue(value => value > 0, "Maximum number of pending pods should be a positive integer")
+      .createWithDefault(Int.MaxValue)
 
   val KUBERNETES_DRIVER_LABEL_PREFIX = "spark.kubernetes.driver.label."
   val KUBERNETES_DRIVER_ANNOTATION_PREFIX = "spark.kubernetes.driver.annotation."

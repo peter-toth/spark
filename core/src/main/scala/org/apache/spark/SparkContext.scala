@@ -43,6 +43,7 @@ import org.apache.hadoop.mapreduce.lib.input.{FileInputFormat => NewFileInputFor
 import org.apache.spark.annotation.DeveloperApi
 import org.apache.spark.broadcast.Broadcast
 import org.apache.spark.deploy.{LocalSparkCluster, SparkHadoopUtil}
+import org.apache.spark.executor.ExecutorMetrics
 import org.apache.spark.input.{FixedLengthBinaryInputFormat, PortableDataStream, StreamInputFormat, WholeTextFileInputFormat}
 import org.apache.spark.internal.Logging
 import org.apache.spark.internal.config._
@@ -502,8 +503,10 @@ class SparkContext(config: SparkConf) extends Logging {
     _heartbeatReceiver.ask[Boolean](TaskSchedulerIsSet)
 
     // create and start the heartbeater for collecting memory metrics
-    _heartbeater = new Heartbeater(env.memoryManager, reportHeartBeat, "driver-heartbeater",
-      conf.getTimeAsMs("spark.executor.heartbeatInterval", "10s"))
+    _heartbeater = new Heartbeater(
+      () => SparkContext.this.reportHeartBeat(),
+      "driver-heartbeater",
+      conf.get(EXECUTOR_HEARTBEAT_INTERVAL))
     _heartbeater.start()
 
     // start TaskScheduler after taskScheduler sets DAGScheduler reference in DAGScheduler's
@@ -2045,11 +2048,17 @@ class SparkContext(config: SparkConf) extends Logging {
    * has overridden the call site using `setCallSite()`, this will return the user's version.
    */
   private[spark] def getCallSite(): CallSite = {
-    lazy val callSite = Utils.getCallSite()
-    CallSite(
-      Option(getLocalProperty(CallSite.SHORT_FORM)).getOrElse(callSite.shortForm),
-      Option(getLocalProperty(CallSite.LONG_FORM)).getOrElse(callSite.longForm)
-    )
+    val shortForm = Option(getLocalProperty(CallSite.SHORT_FORM))
+    val longForm = Option(getLocalProperty(CallSite.LONG_FORM))
+
+    if (shortForm.isEmpty || longForm.isEmpty) {
+      // We don't use lazy val here as in Scala 2.11 local lazy val requires synchronization.
+      // For large number of job submissions, it will be a bottleneck.
+      val callSite = Utils.getCallSite()
+      CallSite(shortForm.getOrElse(callSite.shortForm), longForm.getOrElse(callSite.longForm))
+    } else {
+      CallSite(shortForm.get, longForm.get)
+    }
   }
 
   /**
@@ -2450,10 +2459,13 @@ class SparkContext(config: SparkConf) extends Logging {
 
   /** Reports heartbeat metrics for the driver. */
   private def reportHeartBeat(): Unit = {
-    val driverUpdates = _heartbeater.getCurrentMetrics()
+    val currentMetrics = ExecutorMetrics.getCurrentMetrics(env.memoryManager)
+    val driverUpdates = new HashMap[(Int, Int), ExecutorMetrics]
+    // In the driver, we do not track per-stage metrics, so use a dummy stage for the key
+    driverUpdates.put(EventLoggingListener.DRIVER_STAGE_KEY, new ExecutorMetrics(currentMetrics))
     val accumUpdates = new Array[(Long, Int, Int, Seq[AccumulableInfo])](0)
     listenerBus.post(SparkListenerExecutorMetricsUpdate("driver", accumUpdates,
-      Some(driverUpdates)))
+      driverUpdates))
   }
 
   // In order to prevent multiple SparkContexts from being active at the same time, mark this

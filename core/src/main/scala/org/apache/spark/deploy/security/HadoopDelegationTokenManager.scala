@@ -20,7 +20,10 @@ package org.apache.spark.deploy.security
 import java.io.File
 import java.net.URI
 import java.security.PrivilegedExceptionAction
+import java.util.ServiceLoader
 import java.util.concurrent.{ScheduledExecutorService, TimeUnit}
+
+import scala.collection.mutable
 
 import org.apache.hadoop.conf.Configuration
 import org.apache.hadoop.fs.FileSystem
@@ -33,7 +36,7 @@ import org.apache.spark.internal.config._
 import org.apache.spark.rpc.RpcEndpointRef
 import org.apache.spark.scheduler.cluster.CoarseGrainedClusterMessages.UpdateDelegationTokens
 import org.apache.spark.ui.UIUtils
-import org.apache.spark.util.ThreadUtils
+import org.apache.spark.util.{ThreadUtils, Utils}
 
 /**
  * Manager for delegation tokens in a Spark application.
@@ -282,10 +285,19 @@ private[spark] class HadoopDelegationTokenManager(
   }
 
   private def loadProviders(): Map[String, HadoopDelegationTokenProvider] = {
-    val providers = Seq(new HadoopFSDelegationTokenProvider) ++
-      safeCreateProvider(new HiveDelegationTokenProvider) ++
-      safeCreateProvider(new HBaseDelegationTokenProvider) ++
-      safeCreateProvider(new KafkaDelegationTokenProvider)
+    val loader = ServiceLoader.load(classOf[HadoopDelegationTokenProvider],
+      Utils.getContextOrSparkClassLoader)
+    val providers = mutable.ArrayBuffer[HadoopDelegationTokenProvider]()
+
+    val iterator = loader.iterator
+    while (iterator.hasNext) {
+      try {
+        providers += iterator.next
+      } catch {
+        case t: Throwable =>
+          logDebug(s"Failed to load built in provider.", t)
+      }
+    }
 
     // Filter out providers for which spark.security.credentials.{service}.enabled is false.
     providers
@@ -293,16 +305,4 @@ private[spark] class HadoopDelegationTokenManager(
       .map { p => (p.serviceName, p) }
       .toMap
   }
-
-  private def safeCreateProvider(
-      createFn: => HadoopDelegationTokenProvider): Option[HadoopDelegationTokenProvider] = {
-    try {
-      Some(createFn)
-    } catch {
-      case t: Throwable =>
-        logDebug(s"Failed to load built in provider.", t)
-        None
-    }
-  }
-
 }

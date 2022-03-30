@@ -289,6 +289,26 @@
               <groupId>com.google.guava</groupId>
               <artifactId>guava</artifactId>
             </exclusion>
+            <exclusion>
+              <groupId>org.apache.ranger</groupId>
+              <artifactId>ranger-raz-hook-abfs</artifactId>
+            </exclusion>
+            <exclusion>
+              <groupId>org.apache.ranger</groupId>
+              <artifactId>ranger-raz-hook-s3</artifactId>
+            </exclusion>
+            <exclusion>
+              <groupId>org.apache.ranger</groupId>
+              <artifactId>ranger-raz-s3-lib</artifactId>
+            </exclusion>
+            <exclusion>
+              <groupId>com.sun.jersey</groupId>
+              <artifactId>jersey-bundle</artifactId>
+            </exclusion>
+            <exclusion>
+              <groupId>javax.ws.rs</groupId>
+              <artifactId>jsr311-api</artifactId>
+            </exclusion>
           </exclusions>
         </dependency>
         <!--

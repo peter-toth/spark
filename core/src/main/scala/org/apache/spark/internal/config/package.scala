@@ -20,6 +20,7 @@ package org.apache.spark.internal
 import java.util.concurrent.TimeUnit
 
 import org.apache.spark.launcher.SparkLauncher
+import org.apache.spark.metrics.GarbageCollectionMetrics
 import org.apache.spark.network.util.ByteUnit
 import org.apache.spark.unsafe.array.ByteArrayMethods
 import org.apache.spark.util.Utils
@@ -95,13 +96,28 @@ package object config {
 
   private[spark] val EVENT_LOG_STAGE_EXECUTOR_METRICS =
     ConfigBuilder("spark.eventLog.logStageExecutorMetrics.enabled")
+      .doc("Whether to write per-stage peaks of executor metrics (for each executor) " +
+        "to the event log.")
       .booleanConf
       .createWithDefault(false)
 
-  private[spark] val EVENT_LOG_PROCESS_TREE_METRICS =
-    ConfigBuilder("spark.eventLog.logStageExecutorProcessTreeMetrics.enabled")
-      .booleanConf
-      .createWithDefault(false)
+  private[spark] val EVENT_LOG_GC_METRICS_YOUNG_GENERATION_GARBAGE_COLLECTORS =
+    ConfigBuilder("spark.eventLog.gcMetrics.youngGenerationGarbageCollectors")
+      .doc("Names of supported young generation garbage collector. A name usually is " +
+        " the return of GarbageCollectorMXBean.getName. The built-in young generation garbage " +
+        s"collectors are ${GarbageCollectionMetrics.YOUNG_GENERATION_BUILTIN_GARBAGE_COLLECTORS}")
+      .stringConf
+      .toSequence
+      .createWithDefault(GarbageCollectionMetrics.YOUNG_GENERATION_BUILTIN_GARBAGE_COLLECTORS)
+
+  private[spark] val EVENT_LOG_GC_METRICS_OLD_GENERATION_GARBAGE_COLLECTORS =
+    ConfigBuilder("spark.eventLog.gcMetrics.oldGenerationGarbageCollectors")
+      .doc("Names of supported old generation garbage collector. A name usually is " +
+        "the return of GarbageCollectorMXBean.getName. The built-in old generation garbage " +
+        s"collectors are ${GarbageCollectionMetrics.OLD_GENERATION_BUILTIN_GARBAGE_COLLECTORS}")
+      .stringConf
+      .toSequence
+      .createWithDefault(GarbageCollectionMetrics.OLD_GENERATION_BUILTIN_GARBAGE_COLLECTORS)
 
   private[spark] val EVENT_LOG_OVERWRITE =
     ConfigBuilder("spark.eventLog.overwrite").booleanConf.createWithDefault(false)
@@ -109,13 +125,53 @@ package object config {
   private[spark] val EVENT_LOG_CALLSITE_LONG_FORM =
     ConfigBuilder("spark.eventLog.longForm.enabled").booleanConf.createWithDefault(false)
 
+  private[spark] val EVENT_LOG_ENABLE_ROLLING =
+    ConfigBuilder("spark.eventLog.rolling.enabled")
+      .doc("Whether rolling over event log files is enabled. If set to true, it cuts down " +
+        "each event log file to the configured size.")
+      .booleanConf
+      .createWithDefault(false)
+
+  private[spark] val EVENT_LOG_ROLLING_MAX_FILE_SIZE =
+    ConfigBuilder("spark.eventLog.rolling.maxFileSize")
+      .doc(s"When ${EVENT_LOG_ENABLE_ROLLING.key}=true, specifies the max size of event log file" +
+        " to be rolled over.")
+      .bytesConf(ByteUnit.BYTE)
+      .checkValue(_ >= ByteUnit.MiB.toBytes(10), "Max file size of event log should be " +
+        "configured to be at least 10 MiB.")
+      .createWithDefaultString("128m")
+
   private[spark] val EXECUTOR_CLASS_PATH =
     ConfigBuilder(SparkLauncher.EXECUTOR_EXTRA_CLASSPATH).stringConf.createOptional
+
+  private[spark] val EXECUTOR_HEARTBEAT_DROP_ZERO_ACCUMULATOR_UPDATES =
+    ConfigBuilder("spark.executor.heartbeat.dropZeroAccumulatorUpdates")
+      .internal()
+      .booleanConf
+      .createWithDefault(true)
 
   private[spark] val EXECUTOR_HEARTBEAT_INTERVAL =
     ConfigBuilder("spark.executor.heartbeatInterval")
       .timeConf(TimeUnit.MILLISECONDS)
       .createWithDefaultString("10s")
+
+  private[spark] val EXECUTOR_HEARTBEAT_MAX_FAILURES =
+    ConfigBuilder("spark.executor.heartbeat.maxFailures").internal().intConf.createWithDefault(60)
+
+  private[spark] val EXECUTOR_PROCESS_TREE_METRICS_ENABLED =
+    ConfigBuilder("spark.executor.processTreeMetrics.enabled")
+      .doc("Whether to collect process tree metrics (from the /proc filesystem) when collecting " +
+        "executor metrics.")
+      .booleanConf
+      .createWithDefault(false)
+
+  private[spark] val EXECUTOR_METRICS_POLLING_INTERVAL =
+    ConfigBuilder("spark.executor.metrics.pollingInterval")
+      .doc("How often to collect executor metrics (in milliseconds). " +
+        "If 0, the polling is done on executor heartbeats. " +
+        "If positive, the polling is done at this interval.")
+      .timeConf(TimeUnit.MILLISECONDS)
+      .createWithDefaultString("0")
 
   private[spark] val EXECUTOR_JAVA_OPTIONS =
     ConfigBuilder(SparkLauncher.EXECUTOR_EXTRA_JAVA_OPTIONS).stringConf.createOptional
@@ -462,7 +518,7 @@ package object config {
         "a property key or value, the value is redacted from the environment UI and various logs " +
         "like YARN and event logs.")
       .regexConf
-      .createWithDefault("(?i)secret|password".r)
+      .createWithDefault("(?i)secret|password|token|access[.]key".r)
 
   private[spark] val STRING_REDACTION_PATTERN =
     ConfigBuilder("spark.redaction.string.regex")
@@ -575,17 +631,19 @@ package object config {
   private[spark] val MAX_REMOTE_BLOCK_SIZE_FETCH_TO_MEM =
     ConfigBuilder("spark.maxRemoteBlockSizeFetchToMem")
       .doc("Remote block will be fetched to disk when size of the block is above this threshold " +
-        "in bytes. This is to avoid a giant request takes too much memory. We can enable this " +
-        "config by setting a specific value(e.g. 200m). Note this configuration will affect " +
-        "both shuffle fetch and block manager remote block fetch. For users who enabled " +
-        "external shuffle service, this feature can only be worked when external shuffle" +
-        "service is newer than Spark 2.2.")
+        "in bytes. This is to avoid a giant request takes too much memory. Note this " +
+        "configuration will affect both shuffle fetch and block manager remote block fetch. " +
+        "For users who enabled external shuffle service, this feature can only work when " +
+        "external shuffle service is at least 2.3.0.")
       .bytesConf(ByteUnit.BYTE)
       // fetch-to-mem is guaranteed to fail if the message is bigger than 2 GB, so we might
       // as well use fetch-to-disk in that case.  The message includes some metadata in addition
       // to the block data itself (in particular UploadBlock has a lot of metadata), so we leave
       // extra room.
-      .createWithDefault(Int.MaxValue - 512)
+      .checkValue(
+        _ <= Int.MaxValue - 512,
+        "maxRemoteBlockSizeFetchToMem cannot be larger than (Int.MaxValue - 512) bytes.")
+      .createWithDefaultString("200m")
 
   private[spark] val TASK_METRICS_TRACK_UPDATED_BLOCK_STATUSES =
     ConfigBuilder("spark.taskMetrics.trackUpdatedBlockStatuses")
@@ -812,4 +870,30 @@ package object config {
     .doc("Proxy address to use when responding with HTTP redirects.")
     .stringConf
     .createOptional
+
+  private[spark] val USE_HWC = ConfigBuilder("spark.cloudera.useHWC")
+    .doc("Adds HWC jar to classpath and loads appropriate HWC configurations when true.")
+    .booleanConf
+    .createWithDefault(false)
+
+  private[spark] val HWC_JAR = ConfigBuilder("spark.cloudera.hwcJarPath")
+    .doc("Path to HWC jar to use instead of the jar from the parcel.")
+    .stringConf
+    .createOptional
+
+  private[spark] val HWC_DEFAULTS_PATH = ConfigBuilder("spark.cloudera.hwcDefaultsPath")
+    .doc("Path to hwc conf file to load instead of hwc-defaults.conf from the parcel.")
+    .stringConf
+    .createOptional
+
+  // In DEX-4314 we faced an issue that token expiry was 0 and renewal interval was < 0 due to a
+  // Knox bug, which resulted in continuous renewal and caused severe performance degradation
+  private[spark] val DELEGATION_TOKEN_DEFAULT_EXPIRY =
+    ConfigBuilder("spark.cloudera.delegation.token.default.expiry")
+      .internal()
+      .doc("Delegation tokens without expiry date or with inconsistent issue and expiry dates " +
+        "are considered to be valid for this interval.")
+      .timeConf(TimeUnit.MILLISECONDS)
+      .checkValue(v => v > 0, "Default expiry should be a positive value.")
+      .createWithDefaultString("24h")
 }

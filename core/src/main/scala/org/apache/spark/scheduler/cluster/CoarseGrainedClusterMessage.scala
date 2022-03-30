@@ -47,13 +47,6 @@ private[spark] object CoarseGrainedClusterMessages {
   case class KillExecutorsOnHost(host: String)
     extends CoarseGrainedClusterMessage
 
-  sealed trait RegisterExecutorResponse
-
-  case object RegisteredExecutor extends CoarseGrainedClusterMessage with RegisterExecutorResponse
-
-  case class RegisterExecutorFailed(message: String) extends CoarseGrainedClusterMessage
-    with RegisterExecutorResponse
-
   case class UpdateDelegationTokens(tokens: Array[Byte])
     extends CoarseGrainedClusterMessage
 
@@ -66,8 +59,14 @@ private[spark] object CoarseGrainedClusterMessages {
       logUrls: Map[String, String])
     extends CoarseGrainedClusterMessage
 
-  case class StatusUpdate(executorId: String, taskId: Long, state: TaskState,
-    data: SerializableBuffer) extends CoarseGrainedClusterMessage
+  case class LaunchedExecutor(executorId: String) extends CoarseGrainedClusterMessage
+
+  case class StatusUpdate(
+      executorId: String,
+      taskId: Long,
+      state: TaskState,
+      data: SerializableBuffer)
+    extends CoarseGrainedClusterMessage
 
   object StatusUpdate {
     /** Alternate factory method that takes a ByteBuffer directly for the data field */

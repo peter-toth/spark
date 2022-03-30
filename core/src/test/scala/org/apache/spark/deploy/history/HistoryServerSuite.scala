@@ -47,6 +47,7 @@ import org.scalatest.selenium.WebBrowser
 
 import org.apache.spark._
 import org.apache.spark.deploy.history.config._
+import org.apache.spark.internal.config._
 import org.apache.spark.status.api.v1.ApplicationInfo
 import org.apache.spark.status.api.v1.JobData
 import org.apache.spark.ui.SparkUI
@@ -83,8 +84,8 @@ class HistoryServerSuite extends SparkFunSuite with BeforeAndAfter with Matchers
       .set("spark.history.fs.update.interval", "0")
       .set("spark.testing", "true")
       .set(LOCAL_STORE_DIR, storeDir.getAbsolutePath())
-      .set("spark.eventLog.logStageExecutorMetrics.enabled", "true")
-      .set("spark.eventLog.logStageExecutorProcessTreeMetrics.enabled", "true")
+      .set(EVENT_LOG_STAGE_EXECUTOR_METRICS, true)
+      .set(EXECUTOR_PROCESS_TREE_METRICS_ENABLED, true)
     conf.setAll(extraConf)
     provider = new FsHistoryProvider(conf)
     provider.checkForLogs()
@@ -132,9 +133,7 @@ class HistoryServerSuite extends SparkFunSuite with BeforeAndAfter with Matchers
       "applications/local-1422981780767/jobs?status=succeeded&status=failed",
     "executor list json" -> "applications/local-1422981780767/executors",
     "executor list with executor metrics json" ->
-      "applications/application_1506645932520_24630151/executors",
-    "executor list with executor process tree metrics json" ->
-      "applications/application_1538416563558_0014/executors",
+      "applications/application_1553914137147_0018/executors",
     "stage list json" -> "applications/local-1422981780767/stages",
     "complete stage list json" -> "applications/local-1422981780767/stages?status=complete",
     "failed stage list json" -> "applications/local-1422981780767/stages?status=failed",
@@ -171,6 +170,8 @@ class HistoryServerSuite extends SparkFunSuite with BeforeAndAfter with Matchers
     "executor node blacklisting" -> "applications/app-20161116163331-0000/executors",
     "executor node blacklisting unblacklisting" -> "applications/app-20161115172038-0000/executors",
     "executor memory usage" -> "applications/app-20161116163331-0000/executors",
+    "stage list with peak metrics" -> "applications/app-20200706201101-0003/stages",
+    "stage with peak metrics" -> "applications/app-20200706201101-0003/stages/2/0",
 
     "app environment" -> "applications/app-20161116163331-0000/environment"
     // Todo: enable this test when logging the even of onBlockUpdated. See: SPARK-13845

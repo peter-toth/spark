@@ -73,6 +73,7 @@ private[spark] class TaskSetManager(
   val ser = env.closureSerializer.newInstance()
 
   val tasks = taskSet.tasks
+  private val isShuffleMapTasks = tasks(0).isInstanceOf[ShuffleMapTask]
   private[scheduler] val partitionToIndex = tasks.zipWithIndex
     .map { case (t, idx) => t.partitionId -> idx }.toMap
   val numTasks = tasks.length
@@ -514,12 +515,12 @@ private[spark] class TaskSetManager(
             abort(s"$msg Exception during serialization: $e")
             throw new TaskNotSerializableException(e)
         }
-        if (serializedTask.limit() > TaskSetManager.TASK_SIZE_TO_WARN_KB * 1024 &&
+        if (serializedTask.limit() > TaskSetManager.TASK_SIZE_TO_WARN_KIB * 1024 &&
           !emittedTaskSizeWarning) {
           emittedTaskSizeWarning = true
           logWarning(s"Stage ${task.stageId} contains a task of very large size " +
-            s"(${serializedTask.limit() / 1024} KB). The maximum recommended task size is " +
-            s"${TaskSetManager.TASK_SIZE_TO_WARN_KB} KB.")
+            s"(${serializedTask.limit() / 1024} KiB). The maximum recommended task size is " +
+            s"${TaskSetManager.TASK_SIZE_TO_WARN_KIB} KiB.")
         }
         addRunningTask(taskId)
 
@@ -731,12 +732,14 @@ private[spark] class TaskSetManager(
   }
 
   /**
-   * Check whether has enough quota to fetch the result with `size` bytes
+   * Check whether has enough quota to fetch the result with `size` bytes.
+   * This check does not apply to shuffle map tasks as they return map status and metrics updates,
+   * which will be discarded by the driver after being processed.
    */
   def canFetchMoreResults(size: Long): Boolean = sched.synchronized {
     totalResultSize += size
     calculatedTasks += 1
-    if (maxResultSize > 0 && totalResultSize > maxResultSize) {
+    if (!isShuffleMapTasks && maxResultSize > 0 && totalResultSize > maxResultSize) {
       val msg = s"Total size of serialized results of ${calculatedTasks} tasks " +
         s"(${Utils.bytesToString(totalResultSize)}) is bigger than spark.driver.maxResultSize " +
         s"(${Utils.bytesToString(maxResultSize)})"
@@ -813,7 +816,8 @@ private[spark] class TaskSetManager(
     // "result.value()" in "TaskResultGetter.enqueueSuccessfulTask" before reaching here.
     // Note: "result.value()" only deserializes the value when it's called at the first time, so
     // here "result.value()" just returns the value and won't block other threads.
-    sched.dagScheduler.taskEnded(tasks(index), Success, result.value(), result.accumUpdates, info)
+    sched.dagScheduler.taskEnded(tasks(index), Success, result.value(), result.accumUpdates,
+      result.metricPeaks, info)
     maybeFinishTaskSet()
   }
 
@@ -847,6 +851,7 @@ private[spark] class TaskSetManager(
     val index = info.index
     copiesRunning(index) -= 1
     var accumUpdates: Seq[AccumulatorV2[_, _]] = Seq.empty
+    var metricPeaks: Array[Long] = Array.empty
     val failureReason = s"Lost task ${info.id} in stage ${taskSet.id} (TID $tid, ${info.host}," +
       s" executor ${info.executorId}): ${reason.toErrorString}"
     val failureException: Option[Throwable] = reason match {
@@ -868,6 +873,7 @@ private[spark] class TaskSetManager(
       case ef: ExceptionFailure =>
         // ExceptionFailure's might have accumulator updates
         accumUpdates = ef.accums
+        metricPeaks = ef.metricPeaks.toArray
         if (ef.className == classOf[NotSerializableException].getName) {
           // If the task result wasn't serializable, there's no point in trying to re-execute it.
           logError("Task %s in stage %s (TID %d) had a not serializable result: %s; not retrying"
@@ -905,6 +911,7 @@ private[spark] class TaskSetManager(
       case tk: TaskKilled =>
         // TaskKilled might have accumulator updates
         accumUpdates = tk.accums
+        metricPeaks = tk.metricPeaks.toArray
         logWarning(failureReason)
         None
 
@@ -923,7 +930,7 @@ private[spark] class TaskSetManager(
       isZombie = true
     }
 
-    sched.dagScheduler.taskEnded(tasks(index), reason, null, accumUpdates, info)
+    sched.dagScheduler.taskEnded(tasks(index), reason, null, accumUpdates, metricPeaks, info)
 
     if (!isZombie && reason.countTowardsTaskFailures) {
       assert (null != failureReason)
@@ -995,8 +1002,7 @@ private[spark] class TaskSetManager(
     // and we are not using an external shuffle server which could serve the shuffle outputs.
     // The reason is the next stage wouldn't be able to fetch the data from this dead executor
     // so we would need to rerun these tasks on other executors.
-    if (tasks(0).isInstanceOf[ShuffleMapTask] && !env.blockManager.externalShuffleServiceEnabled
-        && !isZombie) {
+    if (isShuffleMapTasks && !env.blockManager.externalShuffleServiceEnabled && !isZombie) {
       for ((tid, info) <- taskInfos if info.executorId == execId) {
         val index = taskInfos(tid).index
         // We may have a running task whose partition has been marked as successful,
@@ -1010,7 +1016,7 @@ private[spark] class TaskSetManager(
           // Tell the DAGScheduler that this task was resubmitted so that it doesn't think our
           // stage finishes when a total of tasks.size tasks finish.
           sched.dagScheduler.taskEnded(
-            tasks(index), Resubmitted, null, Seq.empty, info)
+            tasks(index), Resubmitted, null, Seq.empty, Array.empty, info)
         }
       }
     }
@@ -1125,5 +1131,5 @@ private[spark] class TaskSetManager(
 private[spark] object TaskSetManager {
   // The user will be warned if any stages contain a task that has a serialized size greater than
   // this.
-  val TASK_SIZE_TO_WARN_KB = 100
+  val TASK_SIZE_TO_WARN_KIB = 1000
 }

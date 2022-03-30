@@ -20,6 +20,7 @@ import java.nio.file.Files
 
 import scala.io.Source
 import scala.util.Properties
+import scala.util.Try
 import scala.collection.JavaConverters._
 import scala.collection.mutable.Stack
 
@@ -40,8 +41,8 @@ object BuildCommons {
 
   private val buildLocation = file(".").getAbsoluteFile.getParentFile
 
-  val sqlProjects@Seq(catalyst, sql, hive, hiveThriftServer, sqlKafka010, avro) = Seq(
-    "catalyst", "sql", "hive", "hive-thriftserver", "sql-kafka-0-10", "avro"
+  val sqlProjects@Seq(catalyst, sql, hive, hiveThriftServer, tokenProviderKafka010, sqlKafka010, avro) = Seq(
+    "catalyst", "sql", "hive", "hive-thriftserver", "token-provider-kafka-0-10", "sql-kafka-0-10", "avro"
   ).map(ProjectRef(buildLocation, _))
 
   val streamingProjects@Seq(streaming, streamingKafka010) =
@@ -210,6 +211,40 @@ object SparkBuild extends PomBuild {
     }
   )
 
+  def envAsInt(envVar: String): Int = {
+    val raw = sys.env.getOrElse(envVar, "0")
+    Try(raw.toInt).recover { case nfe: NumberFormatException =>
+      print(s"Env var '$envVar' had non-integer value '$raw'.  Using 0")
+      0
+    }.get
+  }
+
+  val localDevGbnLogic = envAsInt("SPARK_DEV_CDPD_BUILD") > 0
+  val gbn = envAsInt("SPARK_DEV_BUILD_GBN")
+  val gbnIsolatedBuild = envAsInt("SPARK_DEV_GBN_ISOLATED_BUILD") > 0
+
+  val gbnRepo = {
+    if (gbn > 0 && localDevGbnLogic) {
+      Seq(s"Cloudera GBN repo $gbn" at s"http://cloudera-build-us-west-1.vpc.cloudera.com/s3/build/${gbn}/cdh/7.x/maven-repository/")
+    } else {
+      Seq()
+    }
+  }
+
+  val localRepo = {
+    if (!localDevGbnLogic || !gbnIsolatedBuild) {
+      Seq(
+        Resolver.mavenLocal,
+        Resolver.file("local", file(Path.userHome.absolutePath + "/.ivy2/local"))(Resolver.ivyStylePatterns)
+      )
+    } else {
+      // this is empty b/c we need to specify the gbn specific repo on the command line,
+      // its too late to do it here.
+      // TODO what about the gbn specific maven repo?
+      Seq()
+    }
+  }
+
   lazy val sharedSettings = sparkGenjavadocSettings ++
       (if (sys.env.contains("NOLINT_ON_COMPILE")) Nil else enableScalaStyle) ++ Seq(
     exportJars in Compile := true,
@@ -222,15 +257,13 @@ object SparkBuild extends PomBuild {
     unidocGenjavadocVersion := "0.14",
 
     // Override SBT's default resolvers:
-    resolvers := Seq(
+    resolvers := gbnRepo ++ Seq(
       // Google Mirror of Maven Central, placed first so that it's used instead of flaky Maven Central.
       // See https://storage-download.googleapis.com/maven-central/index.html for more info.
       "gcs-maven-central-mirror" at "https://maven-central.storage-download.googleapis.com/repos/central/data/",
-      DefaultMavenRepository,
-      Resolver.mavenLocal,
-      "Cloudera Nexus" at "https://nexus-private.hortonworks.com/nexus/content/groups/public",
-      Resolver.file("local", file(Path.userHome.absolutePath + "/.ivy2/local"))(Resolver.ivyStylePatterns)
-    ),
+      DefaultMavenRepository) ++
+      localRepo ++
+      Seq("Cloudera Nexus" at "https://nexus-private.hortonworks.com/nexus/content/groups/public"),
     externalResolvers := resolvers.value,
     otherResolvers := SbtPomKeys.mvnLocalRepository(dotM2 => Seq(Resolver.file("dotM2", dotM2))).value,
     publishLocalConfiguration in MavenCompile :=
@@ -337,7 +370,7 @@ object SparkBuild extends PomBuild {
   val mimaProjects = allProjects.filterNot { x =>
     Seq(
       spark, hive, hiveThriftServer, catalyst, repl, networkCommon, networkShuffle, networkYarn,
-      unsafe, tags, sqlKafka010, kvstore, avro
+      unsafe, tags, tokenProviderKafka010, sqlKafka010, kvstore, avro
     ).contains(x)
   }
 

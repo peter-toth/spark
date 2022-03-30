@@ -16,6 +16,8 @@
  */
 package org.apache.spark.scheduler.cluster.k8s
 
+import java.time.Instant
+
 import io.fabric8.kubernetes.api.model.{ContainerBuilder, Pod, PodBuilder}
 
 import org.apache.spark.deploy.k8s.Constants._
@@ -29,6 +31,7 @@ object ExecutorLifecycleTestUtils {
     new PodBuilder(podWithAttachedContainerForId(executorId))
       .editOrNewStatus()
         .withPhase("failed")
+        .withStartTime(Instant.now.toString)
         .addNewContainerStatus()
           .withName("spark-executor")
           .withImage("k8s-spark")
@@ -57,6 +60,9 @@ object ExecutorLifecycleTestUtils {
 
   def pendingExecutor(executorId: Long): Pod = {
     new PodBuilder(podWithAttachedContainerForId(executorId))
+      .editOrNewMetadata()
+        .withCreationTimestamp(Instant.now.toString)
+        .endMetadata()
       .editOrNewStatus()
         .withPhase("pending")
         .endStatus()
@@ -67,7 +73,63 @@ object ExecutorLifecycleTestUtils {
     new PodBuilder(podWithAttachedContainerForId(executorId))
       .editOrNewStatus()
         .withPhase("running")
+        .withStartTime(Instant.now.toString)
         .endStatus()
+      .build()
+  }
+
+  /**
+   * [SPARK-30821]
+   * This creates a pod with one container in running state and one container in failed
+   * state (terminated with non-zero exit code). This pod is used for unit-testing the
+   * spark.kubernetes.executor.checkAllContainers Spark Conf.
+   */
+  def runningExecutorWithFailedContainer(executorId: Long): Pod = {
+    new PodBuilder(podWithAttachedContainerForId(executorId))
+      .editOrNewStatus()
+        .withPhase("running")
+        .addNewContainerStatus()
+          .withNewState()
+            .withNewTerminated()
+              .withExitCode(1)
+            .endTerminated()
+          .endState()
+        .endContainerStatus()
+        .addNewContainerStatus()
+          .withNewState()
+            .withNewRunning()
+            .endRunning()
+          .endState()
+        .endContainerStatus()
+      .endStatus()
+      .build()
+  }
+
+  /**
+   * This creates a pod with a finished executor and running sidecar
+   */
+  def finishedExecutorWithRunningSidecar(
+      executorId: Long, exitCode: Int): Pod = {
+    new PodBuilder(podWithAttachedContainerForId(executorId))
+      .editOrNewStatus()
+        .withPhase("running")
+        .addNewContainerStatus()
+          .withName(DEFAULT_EXECUTOR_CONTAINER_NAME)
+          .withNewState()
+            .withNewTerminated()
+              .withMessage("message")
+              .withExitCode(exitCode)
+            .endTerminated()
+          .endState()
+        .endContainerStatus()
+        .addNewContainerStatus()
+          .withName("SIDECARFRIEND")
+          .withNewState()
+            .withNewRunning()
+            .endRunning()
+          .endState()
+        .endContainerStatus()
+      .endStatus()
       .build()
   }
 
@@ -112,7 +174,10 @@ object ExecutorLifecycleTestUtils {
         .addToLabels(SPARK_APP_ID_LABEL, TEST_SPARK_APP_ID)
         .addToLabels(SPARK_ROLE_LABEL, SPARK_POD_EXECUTOR_ROLE)
         .addToLabels(SPARK_EXECUTOR_ID_LABEL, executorId.toString)
-        .endMetadata()
+      .endMetadata()
+      .editOrNewSpec()
+        .withRestartPolicy("Never")
+      .endSpec()
       .build()
     val container = new ContainerBuilder()
       .withName("spark-executor")

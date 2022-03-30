@@ -731,6 +731,7 @@ object CollapseWindow extends Rule[LogicalPlan] {
   def apply(plan: LogicalPlan): LogicalPlan = plan transformUp {
     case w1 @ Window(we1, ps1, os1, w2 @ Window(we2, ps2, os2, grandChild))
         if ps1 == ps2 && os1 == os2 && w1.references.intersect(w2.windowOutputSet).isEmpty &&
+          we1.nonEmpty && we2.nonEmpty &&
           // This assumes Window contains the same type of window expressions. This is ensured
           // by ExtractWindowFunctions.
           WindowFunctionType.functionType(we1.head) == WindowFunctionType.functionType(we2.head) =>
@@ -899,13 +900,15 @@ object EliminateSorts extends Rule[LogicalPlan] {
 
 /**
  * Removes redundant Sort operation. This can happen:
- * 1) if the child is already sorted
+ * 1) if the Sort operator is a local sort and the child is already sorted
  * 2) if there is another Sort operator separated by 0...n Project/Filter operators
  */
 object RemoveRedundantSorts extends Rule[LogicalPlan] {
-  def apply(plan: LogicalPlan): LogicalPlan = plan transformDown {
-    case Sort(orders, true, child) if SortOrder.orderingSatisfies(child.outputOrdering, orders) =>
-      child
+  def apply(plan: LogicalPlan): LogicalPlan = plan transform applyLocally
+
+  private val applyLocally: PartialFunction[LogicalPlan, LogicalPlan] = {
+    case Sort(orders, false, child) if SortOrder.orderingSatisfies(child.outputOrdering, orders) =>
+      applyLocally.lift(child).getOrElse(child)
     case s @ Sort(_, _, child) => s.copy(child = recursiveRemoveSort(child))
   }
 

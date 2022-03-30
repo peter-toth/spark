@@ -17,7 +17,7 @@
 
 package org.apache.spark.sql.execution.streaming
 
-import java.io.{InputStream, IOException, OutputStream}
+import java.io.{FileNotFoundException, InputStream, IOException, OutputStream}
 import java.nio.charset.StandardCharsets.UTF_8
 
 import scala.io.{Source => IOSource}
@@ -28,7 +28,7 @@ import org.json4s.NoTypeHints
 import org.json4s.jackson.Serialization
 
 import org.apache.spark.sql.SparkSession
-import org.apache.spark.util.{SizeEstimator, Utils}
+import org.apache.spark.util.Utils
 
 /**
  * An abstract class for compactible metadata logs. It will write one log file for each batch.
@@ -108,9 +108,12 @@ abstract class CompactibleFileStreamLog[T <: AnyRef : ClassTag](
   }
 
   /**
-   * Filter out the obsolete logs.
+   * Determine whether the log should be retained or not.
+   *
+   * Default implementation retains all log entries. Implementations should override the method
+   * to change the behavior.
    */
-  def compactLogs(logs: Seq[T]): Seq[T]
+  def shouldRetain(log: T): Boolean = true
 
   override def batchIdToPath(batchId: Long): Path = {
     if (isCompactionBatch(batchId, compactInterval)) {
@@ -133,12 +136,18 @@ abstract class CompactibleFileStreamLog[T <: AnyRef : ClassTag](
     }
   }
 
+  private def serializeEntry(entry: T, out: OutputStream): Unit = {
+    out.write(Serialization.write(entry).getBytes(UTF_8))
+  }
+
+  private def deserializeEntry(line: String): T = Serialization.read[T](line)
+
   override def serialize(logData: Array[T], out: OutputStream): Unit = {
     // called inside a try-finally where the underlying stream is closed in the caller
     out.write(("v" + metadataLogVersion).getBytes(UTF_8))
     logData.foreach { data =>
       out.write('\n')
-      out.write(Serialization.write(data).getBytes(UTF_8))
+      serializeEntry(data, out)
     }
   }
 
@@ -147,8 +156,8 @@ abstract class CompactibleFileStreamLog[T <: AnyRef : ClassTag](
     if (!lines.hasNext) {
       throw new IllegalStateException("Incomplete log file")
     }
-    val version = parseVersion(lines.next(), metadataLogVersion)
-    lines.map(Serialization.read[T]).toArray
+    parseVersion(lines.next(), metadataLogVersion)
+    lines.map(deserializeEntry).toArray
   }
 
   override def add(batchId: Long, logs: Array[T]): Boolean = {
@@ -165,23 +174,34 @@ abstract class CompactibleFileStreamLog[T <: AnyRef : ClassTag](
   }
 
   /**
-   * Return the latest batch Id.
+   * Apply function on all entries in the specific batch. The method will throw
+   * FileNotFoundException if the metadata log file doesn't exist.
    *
-   * This method is a complement of getLatest() - while metadata log file per batch tends to be
-   * small, it doesn't apply to the compacted log file. This method only checks for existence of
-   * file to avoid huge cost on reading and deserializing compacted log file.
+   * NOTE: This doesn't fail early on corruption. The caller should handle the exception
+   * properly and make sure the logic is not affected by failing in the middle.
    */
-  def getLatestBatchId(): Option[Long] = {
-    val batchIds = fileManager.list(metadataPath, batchFilesFilter)
-      .map(f => pathToBatchId(f.getPath))
-      .sorted(Ordering.Long.reverse)
-    for (batchId <- batchIds) {
-      val batchMetadataFile = batchIdToPath(batchId)
-      if (fileManager.exists(batchMetadataFile)) {
-        return Some(batchId)
-      }
+  def foreachInBatch(batchId: Long)(fn: T => Unit): Unit = applyFnInBatch(batchId)(_.foreach(fn))
+
+  /**
+   * Apply filter on all entries in the specific batch.
+   */
+  def filterInBatch(batchId: Long)(predicate: T => Boolean): Option[Array[T]] = {
+    try {
+      Some(applyFnInBatch(batchId)(_.filter(predicate).toArray))
+    } catch {
+      case _: FileNotFoundException => None
     }
-    None
+  }
+
+  private def applyFnInBatch[RET](batchId: Long)(fn: Iterator[T] => RET): RET = {
+    applyFnToBatchByStream(batchId) { input =>
+      val lines = IOSource.fromInputStream(input, UTF_8.name()).getLines()
+      if (!lines.hasNext) {
+        throw new IllegalStateException("Incomplete log file")
+      }
+      parseVersion(lines.next(), metadataLogVersion)
+      fn(lines.map(deserializeEntry))
+    }
   }
 
   /**
@@ -189,32 +209,28 @@ abstract class CompactibleFileStreamLog[T <: AnyRef : ClassTag](
    * corresponding `batchId` file. It will delete expired files as well if enabled.
    */
   private def compact(batchId: Long, logs: Array[T]): Boolean = {
-    val (allLogs, loadElapsedMs) = Utils.timeTakenMs {
-      val validBatches = getValidBatchesBeforeCompactionBatch(batchId, compactInterval)
-      validBatches.flatMap { id =>
-        super.get(id).getOrElse {
-          throw new IllegalStateException(
-            s"${batchIdToPath(id)} doesn't exist when compacting batch $batchId " +
-              s"(compactInterval: $compactInterval)")
+    def writeEntry(entry: T, output: OutputStream): Unit = {
+      if (shouldRetain(entry)) {
+        output.write('\n')
+        serializeEntry(entry, output)
+      }
+    }
+
+    val (writeSucceed, elapsedMs) = Utils.timeTakenMs {
+      addNewBatchByStream(batchId) { output =>
+        output.write(("v" + metadataLogVersion).getBytes(UTF_8))
+        val validBatches = getValidBatchesBeforeCompactionBatch(batchId, compactInterval)
+        validBatches.foreach { id =>
+          foreachInBatch(id) { entry => writeEntry(entry, output) }
         }
-      } ++ logs
-    }
-    val compactedLogs = compactLogs(allLogs)
-
-    // Return false as there is another writer.
-    val (writeSucceed, writeElapsedMs) = Utils.timeTakenMs {
-      super.add(batchId, compactedLogs.toArray)
+        logs.foreach { entry => writeEntry(entry, output) }
+      }
     }
 
-    val elapsedMs = loadElapsedMs + writeElapsedMs
     if (elapsedMs >= COMPACT_LATENCY_WARN_THRESHOLD_MS) {
-      logWarning(s"Compacting took $elapsedMs ms (load: $loadElapsedMs ms," +
-        s" write: $writeElapsedMs ms) for compact batch $batchId")
-      logWarning(s"Loaded ${allLogs.size} entries (${SizeEstimator.estimate(allLogs)} bytes in " +
-        s"memory), and wrote ${compactedLogs.size} entries for compact batch $batchId")
+      logWarning(s"Compacting took $elapsedMs ms for compact batch $batchId")
     } else {
-      logDebug(s"Compacting took $elapsedMs ms (load: $loadElapsedMs ms," +
-        s" write: $writeElapsedMs ms) for compact batch $batchId")
+      logDebug(s"Compacting took $elapsedMs ms for compact batch $batchId")
     }
 
     writeSucceed
@@ -224,7 +240,7 @@ abstract class CompactibleFileStreamLog[T <: AnyRef : ClassTag](
    * Returns all files except the deleted ones.
    */
   def allFiles(): Array[T] = {
-    var latestId = getLatest().map(_._1).getOrElse(-1L)
+    var latestId = getLatestBatchId().getOrElse(-1L)
     // There is a race condition when `FileStreamSink` is deleting old files and `StreamFileIndex`
     // is calling this method. This loop will retry the reading to deal with the
     // race condition.
@@ -232,22 +248,23 @@ abstract class CompactibleFileStreamLog[T <: AnyRef : ClassTag](
       if (latestId >= 0) {
         try {
           val logs =
-            getAllValidBatches(latestId, compactInterval).map { id =>
-              super.get(id).getOrElse {
+            getAllValidBatches(latestId, compactInterval).flatMap { id =>
+              filterInBatch(id)(shouldRetain).getOrElse {
                 throw new IllegalStateException(
                   s"${batchIdToPath(id)} doesn't exist " +
                     s"(latestId: $latestId, compactInterval: $compactInterval)")
               }
-            }.flatten
-          return compactLogs(logs).toArray
+            }
+          return logs.toArray
         } catch {
           case e: IOException =>
             // Another process using `CompactibleFileStreamLog` may delete the batch files when
             // `StreamFileIndex` are reading. However, it only happens when a compaction is
             // deleting old files. If so, let's try the next compaction batch and we should find it.
             // Otherwise, this is a real IO issue and we should throw it.
-            latestId = nextCompactionBatchId(latestId, compactInterval)
-            super.get(latestId).getOrElse {
+            val expectedMinLatestId = nextCompactionBatchId(latestId, compactInterval)
+            latestId = super.getLatestBatchId().getOrElse(-1)
+            if (latestId < expectedMinLatestId) {
               throw e
             }
         }

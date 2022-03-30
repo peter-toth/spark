@@ -137,6 +137,7 @@ class ClientSuite extends SparkFunSuite with BeforeAndAfter {
     createdResourcesArgumentCaptor = ArgumentCaptor.forClass(classOf[HasMetadata])
     when(podOperations.create(FULL_EXPECTED_POD)).thenReturn(POD_WITH_OWNER_REFERENCE)
     when(namedPods.watch(loggingPodStatusWatcher)).thenReturn(mock[Watch])
+    when(loggingPodStatusWatcher.watchOrStop(kconf.namespace + ":" + POD_NAME)).thenReturn(true)
     doReturn(resourceList)
       .when(kubernetesClient)
       .resourceList(createdResourcesArgumentCaptor.capture())
@@ -147,7 +148,6 @@ class ClientSuite extends SparkFunSuite with BeforeAndAfter {
       kconf,
       driverBuilder,
       kubernetesClient,
-      false,
       loggingPodStatusWatcher)
     submissionClient.run()
     verify(podOperations).create(FULL_EXPECTED_POD)
@@ -158,7 +158,6 @@ class ClientSuite extends SparkFunSuite with BeforeAndAfter {
       kconf,
       driverBuilder,
       kubernetesClient,
-      false,
       loggingPodStatusWatcher)
     submissionClient.run()
     val otherCreatedResources = createdResourcesArgumentCaptor.getAllValues
@@ -182,9 +181,8 @@ class ClientSuite extends SparkFunSuite with BeforeAndAfter {
       kconf,
       driverBuilder,
       kubernetesClient,
-      true,
       loggingPodStatusWatcher)
     submissionClient.run()
-    verify(loggingPodStatusWatcher).awaitCompletion()
+    verify(loggingPodStatusWatcher).watchOrStop(kconf.namespace + ":driver")
   }
 }

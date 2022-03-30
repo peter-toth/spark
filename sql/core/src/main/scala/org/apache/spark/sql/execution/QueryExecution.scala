@@ -244,7 +244,7 @@ class QueryExecution(val sparkSession: SparkSession, val logical: LogicalPlan) {
   /** A special namespace for commands that can be used to debug query execution. */
   // scalastyle:off
   object debug {
-    // scalastyle:on
+  // scalastyle:on
 
     /**
      * Prints to stdout all the generated code found in this plan (i.e. the output of each
@@ -306,6 +306,9 @@ object QueryExecution {
       PlanDynamicPruningFilters(sparkSession),
       PlanSubqueries(sparkSession),
       EnsureRequirements(sparkSession.sessionState.conf),
+      // `RemoveRedundantSorts` needs to be added before `EnsureRequirements` to guarantee the same
+      // number of partitions when instantiating PartitioningCollection.
+      RemoveRedundantSorts(sparkSession.sessionState.conf),
       CollapseCodegenStages(sparkSession.sessionState.conf)) ++
       (if (SQLConf.get.wholePlanReuseEnabled) {
         if (subquery) {
@@ -363,4 +366,3 @@ object QueryExecution {
     prepareExecutedPlan(spark, sparkPlan)
   }
 }
-

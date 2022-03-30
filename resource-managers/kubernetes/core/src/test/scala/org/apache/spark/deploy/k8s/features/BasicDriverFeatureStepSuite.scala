@@ -110,10 +110,41 @@ class BasicDriverFeatureStepSuite extends SparkFunSuite {
     val expectedSparkConf = Map(
       KUBERNETES_DRIVER_POD_NAME.key -> "spark-driver-pod",
       "spark.app.id" -> KubernetesTestConf.APP_ID,
-      KUBERNETES_EXECUTOR_POD_NAME_PREFIX.key -> kubernetesConf.resourceNamePrefix,
       "spark.kubernetes.submitInDriver" -> "true",
       MEMORY_OVERHEAD_FACTOR.key -> MEMORY_OVERHEAD_FACTOR.defaultValue.get.toString)
     assert(featureStep.getAdditionalPodSystemProperties() === expectedSparkConf)
+  }
+
+  test("Check driver pod respects kubernetes driver request cores") {
+    val sparkConf = new SparkConf()
+      .set(KUBERNETES_DRIVER_POD_NAME, "spark-driver-pod")
+      .set(CONTAINER_IMAGE, "spark-driver:latest")
+
+    val basePod = SparkPod.initialPod()
+    // if spark.driver.cores is not set default is 1
+    val requests1 = new BasicDriverFeatureStep(KubernetesTestConf.createDriverConf(sparkConf))
+      .configurePod(basePod)
+      .container.getResources
+      .getRequests.asScala
+    assert(requests1("cpu").getAmount === "1")
+
+    // if spark.driver.cores is set it should be used
+    sparkConf.set("spark.driver.cores", "10")
+    val requests2 = new BasicDriverFeatureStep(KubernetesTestConf.createDriverConf(sparkConf))
+      .configurePod(basePod)
+      .container.getResources
+      .getRequests.asScala
+    assert(requests2("cpu").getAmount === "10")
+
+    // spark.kubernetes.driver.request.cores should be preferred over spark.driver.cores
+    Seq("0.1", "100m").foreach { value =>
+      sparkConf.set(KUBERNETES_DRIVER_REQUEST_CORES, value)
+      val requests3 = new BasicDriverFeatureStep(KubernetesTestConf.createDriverConf(sparkConf))
+        .configurePod(basePod)
+        .container.getResources
+        .getRequests.asScala
+      assert(requests3("cpu").getAmount === value)
+    }
   }
 
   test("Check appropriate entrypoint rerouting for various bindings") {
@@ -151,7 +182,6 @@ class BasicDriverFeatureStepSuite extends SparkFunSuite {
     val expectedSparkConf = Map(
       KUBERNETES_DRIVER_POD_NAME.key -> "spark-driver-pod",
       "spark.app.id" -> KubernetesTestConf.APP_ID,
-      KUBERNETES_EXECUTOR_POD_NAME_PREFIX.key -> kubernetesConf.resourceNamePrefix,
       "spark.kubernetes.submitInDriver" -> "true",
       "spark.jars" -> "/opt/spark/jar1.jar,hdfs:///opt/spark/jar2.jar",
       "spark.files" -> "https://localhost:9000/file1.txt,/opt/spark/file2.txt",

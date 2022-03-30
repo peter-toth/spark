@@ -160,9 +160,11 @@ abstract class AbstractCommandBuilder {
             "NOTE: SPARK_PREPEND_CLASSES is set, placing locally compiled Spark classes ahead of " +
             "assembly.");
         }
+        String classesDir = "1".equals(getenv("SCALA_CODE_COVERAGE")) ?
+                "scoverage-classes" : "classes";
         for (String project : projects) {
-          addToClassPath(cp, String.format("%s/%s/target/scala-%s/classes", sparkHome, project,
-            scala));
+          addToClassPath(cp, String.format("%s/%s/target/scala-%s/%s", sparkHome, project,
+            scala, classesDir));
         }
       }
       if (isTesting) {

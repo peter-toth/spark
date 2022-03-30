@@ -25,7 +25,7 @@ import org.apache.kafka.clients.consumer.{Consumer, KafkaConsumer}
 import org.apache.kafka.clients.consumer.internals.NoOpConsumerRebalanceListener
 import org.apache.kafka.common.TopicPartition
 
-import org.apache.spark.sql.kafka010.KafkaSourceProvider.ConfigUpdater
+import org.apache.spark.kafka010.KafkaConfigUpdater
 
 /**
  * Subscribe allows you to subscribe to a fixed collection of topics.
@@ -45,7 +45,7 @@ sealed trait ConsumerStrategy {
    * Added a function to hide internals and reduce code duplications because all strategy uses it.
    */
   protected def setAuthenticationConfigIfNeeded(kafkaParams: ju.Map[String, Object]) =
-    ConfigUpdater("source", kafkaParams.asScala.toMap)
+    KafkaConfigUpdater("source", kafkaParams.asScala.toMap)
       .setAuthenticationConfigIfNeeded()
       .build()
 }

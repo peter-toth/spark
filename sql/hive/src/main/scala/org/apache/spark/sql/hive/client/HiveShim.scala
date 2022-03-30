@@ -780,7 +780,7 @@ private[client] class Shim_v0_13 extends Shim_v0_12 {
       def unapply(expr: Expression): Option[Attribute] = {
         expr match {
           case attr: Attribute => Some(attr)
-          case Cast(child @ AtomicType(), dt: AtomicType, _)
+          case Cast(child @ IntegralType(), dt: IntegralType, _)
               if Cast.canSafeCast(child.dataType.asInstanceOf[AtomicType], dt) => unapply(child)
           case _ => None
         }
@@ -1587,6 +1587,8 @@ private[client] class Shim_v3_1 extends Shim_v3_0
 
 private[client] class Shim_cdpd extends Shim_v3_1 {
 
+  protected lazy val resetStatistics = JBoolean.TRUE
+
   override def loadDynamicPartitions(
       hive: Hive,
       loadPath: Path,
@@ -1604,7 +1606,7 @@ private[client] class Shim_cdpd extends Shim_v3_1 {
     }
     hive.loadDynamicPartitions(loadPath, tableName, partSpec, loadFileType,
       numDP, listBucketingLevel, isAcid, writeIdInLoadTableOrPartition,
-      stmtIdInLoadTableOrPartition, hasFollowingStatsTask, AcidUtils.Operation.NOT_ACID,
+      stmtIdInLoadTableOrPartition, resetStatistics, AcidUtils.Operation.NOT_ACID,
       replace, isDirectInsert)
   }
 
@@ -1623,7 +1625,7 @@ private[client] class Shim_cdpd extends Shim_v3_1 {
     }
 
     hive.loadTable(loadPath, tableName, loadFileType, isSrcLocal,
-      isSkewedStoreAsSubdir, isAcidIUDoperation, hasFollowingStatsTask,
+      isSkewedStoreAsSubdir, isAcidIUDoperation, resetStatistics,
       writeIdInLoadTableOrPartition, stmtIdInLoadTableOrPartition, replace, isDirectInsert)
   }
 
@@ -1651,7 +1653,7 @@ private[client] class Shim_cdpd extends Shim_v3_1 {
     // Here, it just uses 'inheritTableSpecs' to keep the existing behaviour.
     val inheritLocation = inheritTableSpecs
     hive.loadPartition(loadPath, table, partSpec, loadFileType, inheritTableSpecs,
-      inheritLocation, isSkewedStoreAsSubdir, isSrcLocal, isAcid, hasFollowingStatsTask,
+      inheritLocation, isSkewedStoreAsSubdir, isSrcLocal, isAcid, resetStatistics,
       writeIdInLoadTableOrPartition, stmtIdInLoadTableOrPartition, replace, isDirectInsert)
   }
 }

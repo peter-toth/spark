@@ -358,7 +358,7 @@ class Analyzer(
      */
     private def constructGroupByAlias(groupByExprs: Seq[Expression]): Seq[Alias] = {
       groupByExprs.map {
-        case e: NamedExpression => Alias(e, e.name)()
+        case e: NamedExpression => Alias(e, e.name)(qualifier = e.qualifier)
         case other => Alias(other, other.toString)()
       }
     }
@@ -2276,7 +2276,10 @@ class Analyzer(
 
     private def getNondeterToAttr(exprs: Seq[Expression]): Map[Expression, NamedExpression] = {
       exprs.filterNot(_.deterministic).flatMap { expr =>
-        val leafNondeterministic = expr.collect { case n: Nondeterministic => n }
+        val leafNondeterministic = expr.collect {
+          case n: Nondeterministic => n
+          case udf: UserDefinedExpression if !udf.deterministic => udf
+        }
         leafNondeterministic.distinct.map { e =>
           val ne = e match {
             case n: NamedExpression => n

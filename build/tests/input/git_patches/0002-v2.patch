@@ -1,0 +1,19 @@
+From f02aa741945fa1d3860ade655974c432f603a69b Mon Sep 17 00:00:00 2001
+From: Imran Rashid <irashid@cloudera.com>
+Date: Mon, 25 May 2020 11:23:29 -0500
+Subject: [PATCH 2/5] v2
+
+---
+ pom.xml | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/pom.xml b/pom.xml
+index d0e366a..f89cbac 100644
+--- a/pom.xml
++++ b/pom.xml
+@@ -1 +1,2 @@
+ INIT
++v2 added line
+-- 
+2.17.0
+

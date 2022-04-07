@@ -67,6 +67,7 @@ abstract class Optimizer(sessionCatalog: SessionCatalog)
         // Operator combine
         CollapseRepartition,
         CollapseProject,
+        SimplifyExtractValueOps,
         CollapseWindow,
         CombineFilters,
         CombineLimits,
@@ -691,12 +692,26 @@ object CollapseProject extends Rule[LogicalPlan] {
     // eliminate it.
     // e.g., 'SELECT c + 1 FROM (SELECT a + b AS C ...' produces 'SELECT a + b + 1 ...'
     // Use transformUp to prevent infinite recursion.
-    val rewrittenUpper = upper.map(_.transformUp {
-      case a: Attribute => aliases.getOrElse(a, a)
-    })
-    // collapse upper and lower Projects may introduce unnecessary Aliases, trim them here.
-    rewrittenUpper.map { p =>
-      CleanupAliases.trimNonTopLevelAliases(p).asInstanceOf[NamedExpression]
+    upper.map(replaceAliasButKeepName(_, aliases))
+  }
+
+  /**
+   * Replace all attributes, that reference an alias, with the aliased expression,
+   * but keep the name of the outermost attribute.
+   */
+  protected def replaceAliasButKeepName(
+      expr: NamedExpression,
+      aliasMap: AttributeMap[Alias]): NamedExpression = {
+    expr match {
+      // We need to keep the `Alias` if we replace a top-level Attribute, so that it's still a
+      // `NamedExpression`. We also need to keep the name of the original Attribute.
+      case a: Attribute => aliasMap.get(a).map(_.withName(a.name)).getOrElse(a)
+      case o =>
+        // Use transformUp to prevent infinite recursion when the replacement expression
+        // redefines the same ExprId.
+        o.mapChildren(_.transformUp {
+          case a: Attribute => aliasMap.get(a).map(_.child).getOrElse(a)
+        }).asInstanceOf[NamedExpression]
     }
   }
 }

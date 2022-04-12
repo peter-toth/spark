@@ -170,7 +170,7 @@
     <snappy.version>1.1.8.2</snappy.version>
     <netlib.java.version>1.1.2</netlib.java.version>
     <calcite.version>1.21.0.7.2.15.0-SNAPSHOT</calcite.version>
-    <commons-codec.version>1.10</commons-codec.version>
+    <commons-codec.version>1.15</commons-codec.version>
     <commons-compress.version>1.21</commons-compress.version>
     <commons-io.version>2.11.0</commons-io.version>
     <!-- org.apache.commons/commons-lang/-->
@@ -201,7 +201,7 @@
     ./python/run-tests.py and ./python/setup.py too.
     -->
     <arrow.version>0.11.1.7.2.15.0-SNAPSHOT</arrow.version>
-    <netty.version>4.1.63.Final</netty.version>
+    <netty.version>4.1.60.Final</netty.version>
 
     <test.java.home>${java.home}</test.java.home>
     <!--

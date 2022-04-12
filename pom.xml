@@ -161,6 +161,7 @@
     <commons.math3.version>3.4.1</commons.math3.version>
     <!-- managed up from 3.2.1 for SPARK-11652 -->
     <commons.collections.version>3.2.2</commons.collections.version>
+    <commons.beanutils.version>1.9.4</commons.beanutils.version>
     <scala.version>2.11.12</scala.version>
     <scala.binary.version>2.11</scala.binary.version>
     <codehaus.jackson.version>1.9.13</codehaus.jackson.version>
@@ -573,7 +574,7 @@
       <dependency>
         <groupId>commons-beanutils</groupId>
         <artifactId>commons-beanutils</artifactId>
-        <version>1.9.4</version>
+        <version>${commons.beanutils.version}</version>
       </dependency>
       <dependency>
         <groupId>org.apache.ivy</groupId>

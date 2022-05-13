@@ -527,7 +527,12 @@ private[spark] class HiveExternalCatalog(conf: SparkConf, hadoopConf: Configurat
     // method. Here we only update the path option if the path option already exists in storage
     // properties, to avoid adding a unnecessary path option for Hive serde tables.
     val hasPathOption = CaseInsensitiveMap(rawTable.storage.properties).contains("path")
-    val storageWithNewPath = if (rawTable.tableType == MANAGED && hasPathOption) {
+    // With HIVE-24920, tables that are translated to external behave like managed tables in that
+    // their location changes with a rename. Handle them the same way as managed tables.
+    val translatedToExternal = rawTable.properties.get("TRANSLATED_TO_EXTERNAL")
+      .getOrElse("FALSE").equalsIgnoreCase("TRUE")
+    val handleAsManaged = rawTable.tableType == MANAGED || translatedToExternal
+    val storageWithNewPath = if (handleAsManaged && hasPathOption) {
       // If it's a managed table with path option and we are renaming it, then the path option
       // becomes inaccurate and we need to update it according to the new table name.
       val newTablePath = defaultTablePath(TableIdentifier(newName, Some(db)))

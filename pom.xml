@@ -179,6 +179,7 @@
     <!-- org.apache.commons/commons-lang3/-->
     <commons-lang3.version>3.8.1</commons-lang3.version>
     <datanucleus-core.version>3.2.10</datanucleus-core.version>
+    <guava.version>28.1-jre</guava.version>
     <janino.version>3.0.16</janino.version>
     <jersey.version>2.32</jersey.version>
     <joda.version>2.10.6</joda.version>
@@ -483,7 +484,7 @@
       <dependency>
         <groupId>com.google.guava</groupId>
         <artifactId>guava</artifactId>
-        <version>28.0-jre</version>
+        <version>${guava.version}</version>
         <scope>provided</scope>
       </dependency>
       <dependency>

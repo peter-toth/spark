@@ -1,1 +1,11 @@
 Place files which are being used as resources of tests but shouldn't be added to classpath.
+
+The hive-test-udfs.jar file is used by HiveUDFDynamicLoadSuite.
+
+This file, originally added in SPARK-31312, has become incompatible with Cloudera's
+downstream Hive. We needed a way to rebuild the jar based on the original commit
+https://github.com/HeartSaVioR/hive/commit/12f3f036b6efd0299cd1d457c0c0a65e0fd7e5f2
+but with some Cloudera-specfic changes.
+
+The jar file can be rebuilt by running mvn package in the hive-test-udfs/ directory. The
+hive-test-udfs.jar file can be overwritten with the one from the target/ directory.

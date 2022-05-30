@@ -1,0 +1,4 @@
+HOTFIX-5147
+
+CDPD-29757. Remove hive-exec with the shaded arrow jars and use hive-exec:compile.
+CDPD-30637. Add hive-llap-client to avoid ClassNotFoundException

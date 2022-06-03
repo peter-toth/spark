@@ -1652,6 +1652,11 @@
             <artifactId>hive-storage-api</artifactId>
           </exclusion>
           <!-- End of Hive 2.3 exclusion -->
+
+          <exclusion>
+            <groupId>org.apache.tez</groupId>
+            <artifactId>tez-api</artifactId>
+          </exclusion>
         </exclusions>
       </dependency>
 
@@ -1917,6 +1922,30 @@
             <artifactId>*</artifactId>
           </exclusion>
           <!-- End of Hive 2.3 exclusion -->
+        </exclusions>
+      </dependency>
+      <!--
+        CDPD-30873: This is a temporary fix to the issue that hive-metastore needs
+        `org.apache.hadoop.hdfs.protocol.SnapshotException` and maybe other classes from
+        `hadoop-hdfs`, but it doesn't declare it as transitive dependency.
+
+        But, as other Hive jars (like hive-service) started to include hadoop-hdfs as transitive
+        dependency, it is better to define hadoop-hdfs here, at parent level so that to its
+        exclusions (like Jersey 1) are applied in all modules.
+      -->
+      <dependency>
+        <groupId>org.apache.hadoop</groupId>
+        <artifactId>hadoop-hdfs</artifactId>
+        <version>${hadoop.version}</version>
+        <exclusions>
+          <exclusion>
+            <groupId>com.sun.jersey</groupId>
+            <artifactId>*</artifactId>
+          </exclusion>
+          <exclusion>
+            <groupId>io.netty</groupId>
+            <artifactId>netty</artifactId>
+          </exclusion>
         </exclusions>
       </dependency>
       <dependency>

@@ -106,6 +106,15 @@
       <version>${hive.version}</version>
     </dependency>
     <!--
+      CDPD-30873: This is a temporary fix to the issue that hive-metastore needs
+      `org.apache.hadoop.hdfs.protocol.SnapshotException` and maybe other classes from
+      `hadoop-hdfs`, but it doesn't declare it as transitive dependency.
+    -->
+    <dependency>
+      <groupId>org.apache.hadoop</groupId>
+      <artifactId>hadoop-hdfs</artifactId>
+    </dependency>
+    <!--
         <dependency>
           <groupId>${hive.group}</groupId>
           <artifactId>hive-serde</artifactId>

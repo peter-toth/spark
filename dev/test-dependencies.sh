@@ -31,20 +31,10 @@ export LC_ALL=C
 # NOTE: These should match those in the release publishing script
 MVN="build/mvn"
 HADOOP_PROFILES=(
-    hadoop-2.6
-    hadoop-2.7
     hadoop-3.1
 )
 
-SCALA_VERSION=$("$MVN" help:evaluate -Dexpression=scala.binary.version $@ 2>/dev/null\
-    | grep -v "INFO"\
-    | grep -v "WARNING"\
-    | tail -n 1)
-if [ "$SCALA_VERSION" = "2.11" ]; then
-  HADOOP2_MODULE_PROFILES="-Phive-thriftserver -Pmesos -Pkafka-0-8 -Pkubernetes -Pyarn -Pflume -Phive"
-else
-  HADOOP2_MODULE_PROFILES="-Phive-thriftserver -Pmesos -Pkubernetes -Pyarn -Pflume -Phive"
-fi
+HADOOP_MODULE_PROFILES="-Dcdpd.build=true"
 
 # We'll switch the version to a temp. one, publish POMs using that new version, then switch back to
 # the old version. We need to do this because the `dependency:build-classpath` task needs to
@@ -52,11 +42,7 @@ fi
 
 # From http://stackoverflow.com/a/26514030
 set +e
-OLD_VERSION=$($MVN -q \
-    -Dexec.executable="echo" \
-    -Dexec.args='${project.version}' \
-    --non-recursive \
-    org.codehaus.mojo:exec-maven-plugin:1.6.0:exec | grep -E '[0-9]+\.[0-9]+\.[0-9]+')
+OLD_VERSION="$($MVN -q help:evaluate -Dexpression='project.version' -DforceStdout | grep -E '[0-9]+\.[0-9]+\.[0-9]+')"
 if [ $? != 0 ]; then
     echo -e "Error while getting version string from Maven:\n$OLD_VERSION"
     exit 1
@@ -69,23 +55,23 @@ function reset_version {
   find "$HOME/.m2/" | grep "$TEMP_VERSION" | xargs rm -rf
 
   # Restore the original version number:
-  $MVN -q versions:set -DnewVersion=$OLD_VERSION -DgenerateBackupPoms=false > /dev/null
+  $MVN -q versions:set -DnewVersion=$OLD_VERSION -DgenerateBackupPoms=false -DprocessAllModules > /dev/null
 }
 trap reset_version EXIT
 
-$MVN -q versions:set -DnewVersion=$TEMP_VERSION -DgenerateBackupPoms=false > /dev/null
+$MVN -q versions:set -DnewVersion=$TEMP_VERSION -DgenerateBackupPoms=false -DprocessAllModules > /dev/null
 
 # Generate manifests for each Hadoop profile:
 for HADOOP_PROFILE in "${HADOOP_PROFILES[@]}"; do
   echo "Performing Maven install for $HADOOP_PROFILE"
-  $MVN $HADOOP2_MODULE_PROFILES -P$HADOOP_PROFILE jar:jar jar:test-jar install:install clean -q
+  $MVN $HADOOP_MODULE_PROFILES -P$HADOOP_PROFILE clean install -DskipTests -q
 
   echo "Performing Maven validate for $HADOOP_PROFILE"
-  $MVN $HADOOP2_MODULE_PROFILES -P$HADOOP_PROFILE validate -q
+  $MVN $HADOOP_MODULE_PROFILES -P$HADOOP_PROFILE validate -q
 
   echo "Generating dependency manifest for $HADOOP_PROFILE"
   mkdir -p dev/pr-deps
-  $MVN $HADOOP2_MODULE_PROFILES -P$HADOOP_PROFILE dependency:build-classpath -pl assembly \
+  $MVN $HADOOP_MODULE_PROFILES -P$HADOOP_PROFILE dependency:build-classpath -pl assembly \
     | grep "Dependencies classpath:" -A 1 \
     | tail -n 1 | tr ":" "\n" | awk -F '/' '{
       # For each dependency classpath, we fetch the last three parts split by "/": artifact id, version, and jar name.

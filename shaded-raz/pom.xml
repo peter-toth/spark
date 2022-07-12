@@ -33,7 +33,7 @@
   <properties>
     <!-- Package to use when relocating shaded classes. -->
     <spark.shaded.raz.packageName>org.apache.ranger</spark.shaded.raz.packageName>
-    <ranger.version>2.1.0.7.2.16.0-SNAPSHOT</ranger.version>
+    <ranger.version>2.3.0.7.2.16.0-SNAPSHOT</ranger.version>
     <codehaus.jackson.version>1.9.13</codehaus.jackson.version>
   </properties>
 

@@ -1,4 +1,4 @@
-ARG BASE_IMAGE_ARG=docker-private.infra.cloudera.com/cloudera_base/ubi8/ubi:8.6-754
+ARG BASE_IMAGE_ARG=docker-private.infra.cloudera.com/cloudera_base/ubi8/ubi:8.6-855
 
 FROM $BASE_IMAGE_ARG
 

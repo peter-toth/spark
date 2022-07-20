@@ -203,7 +203,7 @@
       ./python/run-tests.py and ./python/setup.py too.
     -->
     <arrow.version>0.11.1.7.2.16.0-SNAPSHOT</arrow.version>
-    <netty.version>4.1.60.Final</netty.version>
+    <netty.version>4.1.68.Final</netty.version>
     <kubernetes-client.version>5.5.0</kubernetes-client.version>
 
     <test.java.home>${java.home}</test.java.home>

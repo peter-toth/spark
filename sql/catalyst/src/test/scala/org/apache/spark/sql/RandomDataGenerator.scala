@@ -49,6 +49,28 @@ object RandomDataGenerator {
   final val MAX_ARR_SIZE: Int = 128
   final val MAX_MAP_SIZE: Int = 128
 
+  /*
+  minimum and maximum timestamp offsets in milliseconds, compared to 1970-01-01 00:00:00 GMT
+   "-62135740800000" // 0001-01-01 00:00:00
+    "-2208988800000" // 1900-01-01 00:00:00
+                 "0" // 1970-01-01 00:00:00
+      "946684800000" // 2000-01-01 00:00:00
+     "2145916800000" // 2038-01-01 00:00:00
+     "2524608000000" // 2050-01-01 00:00:00
+     "4102444800000" // 2100-01-01 00:00:00
+   "253402329600000" // 9999-01-01 00:00:00
+  */
+  val TS_MIN_MILLIS =
+    System.getProperty(
+      "spark.sql.catalyst.test.RandomDataGenerator.minMillis",
+      "-2208988800000" // 1900-01-01 00:00:00
+    ).toLong
+  val TS_MAX_MILLIS =
+    System.getProperty(
+      "spark.sql.catalyst.test.RandomDataGenerator.maxMillis",
+      "2145916800000" // 2038-01-01 00:00:00
+    ).toLong
+
   /**
    * Helper function for constructing a biased random number generator which returns "interesting"
    * values with a higher probability.
@@ -178,14 +200,13 @@ object RandomDataGenerator {
       case TimestampType =>
         val generator =
           () => {
-            var milliseconds = rand.nextLong() % 253402329599999L
-            // -62135740800000L is the number of milliseconds before January 1, 1970, 00:00:00 GMT
-            // for "0001-01-01 00:00:00.000000". We need to find a
-            // number that is greater or equals to this number as a valid timestamp value.
-            while (milliseconds < -62135740800000L) {
-              // 253402329599999L is the number of milliseconds since
-              // January 1, 1970, 00:00:00 GMT for "9999-12-31 23:59:59.999999".
-              milliseconds = rand.nextLong() % 253402329599999L
+            var milliseconds = rand.nextLong() % TS_MAX_MILLIS
+            // 1.) after the modulo operation,
+            //     the timestamp is guaranteed to be less than the configured maximum
+            // 2.) keep generating new values,
+            //     until we find one greater or equal than the configured minimum
+            while (milliseconds <= TS_MIN_MILLIS) {
+              milliseconds = rand.nextLong() % TS_MAX_MILLIS
             }
             // DateTimeUtils.toJavaTimestamp takes microsecond.
             DateTimeUtils.toJavaTimestamp(milliseconds * 1000)

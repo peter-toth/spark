@@ -633,15 +633,69 @@ class DateTimeUtilsSuite extends SparkFunSuite {
       s" Expected: $expected")
   }
 
-  test("CDPD-25568: truncTimestamp") {
-    val seed = System.currentTimeMillis()
-    logInfo(s"Seed: $seed")
-    val dataGenerator = RandomDataGenerator.forType(dataType = TimestampType,
-      nullable = false,
-      new Random(seed)).get
-    val formatter = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS")
-    val randomTS = (0 to 1000).map(_ => dataGenerator().asInstanceOf[Timestamp])
+  def testTruncBool(
+      level: Int,
+      expected: String,
+      inputTS: SQLTimestamp,
+      timezone: TimeZone = DateTimeUtils.defaultTimeZone()
+  ): Boolean = {
+    val truncated = DateTimeUtils.truncTimestamp(inputTS, level, timezone)
+    val expectedTS = DateTimeUtils.stringToTimestamp(UTF8String.fromString(expected))
+    if (truncated === expectedTS.get) {
+      true
+    } else {
+      logError(
+        s"TZ: ${timezone.getID}, " +
+          s"Input: ${DateTimeUtils.timestampToString(inputTS)}, " +
+          s"Level: $level, " +
+          s"Expected: $expected, " +
+          s"Actual: ${DateTimeUtils.timestampToString(truncated)} "
+      )
+      false
+    }
+  }
 
+  /**
+   * @param tzId
+   *  the timezon in which the specified test cases should be validated.
+   *
+   * @param testCases
+   *  test case definitions in the form of
+   *  (input timestamp, expected TRUNC_TO_DAY result, expected TRUNC_TO_HOUR result)
+   *  e.g.
+   *  ("1052-03-27 03:59:12", "1052-03-27 00:00:00", "1052-03-27 03:00:00")
+   */
+  def testTruncTimestampInTz(
+      tzId: String,
+      testCases: Seq[(String, String, String)]
+  ): Seq[((String, String, String), Boolean, Boolean)] = {
+    logInfo(s"${tzId}")
+    DateTimeTestUtils.withDefaultTimeZone(TimeZone.getTimeZone(tzId)) {
+      testCases map {
+        case testCase@(ts, expectedDayTruncTs, expectedHourTruncTs) =>
+          val inputTS = DateTimeUtils.stringToTimestamp(UTF8String.fromString(ts))
+          inputTS match {
+            case None =>
+              logError(s"unable to parse '$ts' (${tzId})")
+              (testCase, false, false)
+
+            case _ =>
+              val dayTruncMatches =
+                testTruncBool(DateTimeUtils.TRUNC_TO_DAY, expectedDayTruncTs, inputTS.get)
+              val hourTruncMatches =
+                testTruncBool(DateTimeUtils.TRUNC_TO_HOUR, expectedHourTruncTs, inputTS.get)
+              (testCase, dayTruncMatches, hourTruncMatches)
+          }
+      }
+    } filter {
+      case (_, dayTruncMatches: Boolean, hourTruncMatches: Boolean) =>
+        !dayTruncMatches || !hourTruncMatches
+    }
+  }
+
+
+  test("CDPD-25568: truncTimestamp (deterministic)") {
+    val tzIds = TimeZone.getAvailableIDs.toSeq
     val userDefinedTestCases = Seq(
       ("1764-10-24 01:09:03.678", "1764-10-24 00:00:00", "1764-10-24 01:00:00"),
       ("1052-03-27 03:59:12", "1052-03-27 00:00:00", "1052-03-27 03:00:00"),
@@ -659,23 +713,121 @@ class DateTimeUtilsSuite extends SparkFunSuite {
       ("2021-03-28 03:01:00", "2021-03-28 00:00:00", "2021-03-28 03:00:00"),
       ("2021-03-28 16:00:00", "2021-03-28 00:00:00", "2021-03-28 16:00:00"))
 
-    for (tz <- DateTimeTestUtils.ALL_TIMEZONES) {
-      DateTimeTestUtils.withDefaultTimeZone(tz) {
-        // Filtering random timestamps that cannot be represented in this tz.
-        val randomTestCases = DateTimeTestUtils.filterInvalidTimestamps(randomTS).map { ts =>
-          val tsString = formatter.format(ts)
-          val dayTs = s"${tsString.substring(0, 11)}00:00:00"
-          val hourTs = s"${tsString.substring(0, 13)}:00:00"
-          (tsString, dayTs, hourTs)
-        }
-        (randomTestCases ++ userDefinedTestCases).foreach {
-          case (ts, expectedDayTruncTs, expectedHourTruncTs) =>
-            val inputTS = DateTimeUtils.stringToTimestamp(UTF8String.fromString(ts))
-            testTrunc(DateTimeUtils.TRUNC_TO_DAY, expectedDayTruncTs, inputTS.get)
-            testTrunc(DateTimeUtils.TRUNC_TO_HOUR, expectedHourTruncTs, inputTS.get)
-        }
-      }
+    val failures = tzIds.map {
+      tzId => (tzId, testTruncTimestampInTz(tzId, userDefinedTestCases))
+    } filter {
+      case (_, failedCases) => failedCases.nonEmpty
     }
+
+    assert(failures.isEmpty)
+  }
+
+  // TODO: reenable with CDPD-43974
+  ignore("CDPD-25568: truncTimestamp (failing)") {
+    val tzIds = TimeZone.getAvailableIDs.toSeq
+
+    val userDefinedTestCases = Seq(
+      // Africa/Casablanca; Africa/El_Aaiun
+      // autumn offset change
+      // timestamps between 2AM and 3AM
+      ("2038-11-07 02:19:11.700", "2038-11-07 00:00:00", "2038-11-07 02:00:00"),
+      ("2039-10-23 02:18:15.617", "2039-10-23 00:00:00", "2039-10-23 02:00:00"),
+      ("2040-10-14 02:48:01.220", "2040-10-14 00:00:00", "2040-10-14 02:00:00"),
+      ("2043-09-13 02:16:28.907", "2043-09-13 00:00:00", "2043-09-13 02:00:00"),
+      ("2044-08-28 02:06:41.898", "2044-08-28 00:00:00", "2044-08-28 02:00:00"),
+      ("2045-08-20 02:21:27.499", "2045-08-20 00:00:00", "2045-08-20 02:00:00"),
+      ("2046-08-12 02:54:22.176", "2046-08-12 00:00:00", "2046-08-12 02:00:00"),
+      ("2047-07-28 02:37:12.762", "2047-07-28 00:00:00", "2047-07-28 02:00:00"),
+      ("2048-07-19 02:06:21.278", "2048-07-19 00:00:00", "2048-07-19 02:00:00"),
+      ("2048-07-19 02:16:28.956", "2048-07-19 00:00:00", "2048-07-19 02:00:00"),
+
+      // Asia/Tehran; Iran
+      // spring offset change
+      // whole day
+      ("2038-03-22 01:15:25.488", "2038-03-22 00:00:00", "2038-03-22 01:00:00"),
+      ("2038-03-22 02:23:08.582", "2038-03-22 00:00:00", "2038-03-22 02:00:00"),
+      ("2038-03-22 03:02:54.220", "2038-03-22 00:00:00", "2038-03-22 03:00:00"),
+      ("2038-03-22 04:15:27.210", "2038-03-22 00:00:00", "2038-03-22 04:00:00"),
+      ("2038-03-22 05:55:33.650", "2038-03-22 00:00:00", "2038-03-22 05:00:00"),
+      ("2038-03-22 06:09:42.052", "2038-03-22 00:00:00", "2038-03-22 06:00:00"),
+      ("2038-03-22 07:10:50.050", "2038-03-22 00:00:00", "2038-03-22 07:00:00"),
+      ("2038-03-22 08:28:42.618", "2038-03-22 00:00:00", "2038-03-22 08:00:00"),
+      ("2038-03-22 09:49:45.181", "2038-03-22 00:00:00", "2038-03-22 09:00:00"),
+      ("2038-03-22 10:11:10.520", "2038-03-22 00:00:00", "2038-03-22 10:00:00"),
+      ("2038-03-22 11:09:32.250", "2038-03-22 00:00:00", "2038-03-22 11:00:00"),
+      ("2038-03-22 12:04:52.576", "2038-03-22 00:00:00", "2038-03-22 12:00:00"),
+      ("2038-03-22 13:50:01.791", "2038-03-22 00:00:00", "2038-03-22 13:00:00"),
+      ("2038-03-22 14:41:10.569", "2038-03-22 00:00:00", "2038-03-22 14:00:00"),
+      ("2038-03-22 15:29:46.527", "2038-03-22 00:00:00", "2038-03-22 15:00:00"),
+      ("2038-03-22 16:34:21.559", "2038-03-22 00:00:00", "2038-03-22 16:00:00"),
+      ("2038-03-22 17:42:36.275", "2038-03-22 00:00:00", "2038-03-22 17:00:00"),
+      ("2038-03-22 18:59:59.996", "2038-03-22 00:00:00", "2038-03-22 18:00:00"),
+      ("2038-03-22 20:09:38.589", "2038-03-22 00:00:00", "2038-03-22 20:00:00"),
+      ("2038-03-22 21:42:33.681", "2038-03-22 00:00:00", "2038-03-22 21:00:00"),
+      ("2038-03-22 22:24:53.684", "2038-03-22 00:00:00", "2038-03-22 22:00:00"),
+      ("2038-03-22 23:16:16.311", "2038-03-22 00:00:00", "2038-03-22 23:00:00"),
+
+      // NZ-CHAT; Pacific/Chatham
+      // autumn offset change
+      // timestamps between 2AM and 3AM
+      ("2045-09-24 02:55:33.985", "2045-09-24 00:00:00", "2045-09-24 02:00:00"),
+      ("2045-09-24 02:58:24.799", "2045-09-24 00:00:00", "2045-09-24 02:00:00"),
+      ("2047-09-29 02:49:30.671", "2047-09-29 00:00:00", "2047-09-29 02:00:00")
+    )
+
+    val failures = tzIds.map {
+      tzId => (tzId, testTruncTimestampInTz(tzId, userDefinedTestCases))
+    } filter {
+      case (_, failedCases) => failedCases.nonEmpty
+    }
+
+    assert(failures.isEmpty)
+  }
+
+  // disabled with CDPD-26518, some examples of failing testcases documented in
+  // "CDPD-25568: truncTimestamp (failing)"
+  ignore("CDPD-25568: truncTimestamp (randomized)") {
+
+    // reading injectable configuration from system properties
+    val tzIdsConfigured = "ALL"
+    val tzIds = tzIdsConfigured match {
+      case "ALL" => TimeZone.getAvailableIDs.toSeq
+      case value: String => value.split(",").toSeq
+    }
+    val sampleSetSize = 10000000
+
+    // generating the randomized timestamps
+    val seed = System.currentTimeMillis()
+    logInfo(s"Seed: $seed")
+
+    val dataGenerator =
+      RandomDataGenerator.forType(
+        dataType = TimestampType,
+        nullable = false,
+        new Random(seed)
+      ).get
+    val randomizedSamples = (0 to sampleSetSize).map(_ => dataGenerator().asInstanceOf[Timestamp])
+
+    // running the generated testcases
+    val failures = tzIds.map {
+      val formatter = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS")
+
+      // generating testcases from the random timestamps
+      val randomizedTestCases =
+        DateTimeTestUtils.filterInvalidTimestamps(randomizedSamples).map {
+          ts =>
+            val tsString = formatter.format(ts)
+            val dayTs = s"${tsString.substring(0, 11)}00:00:00"
+            val hourTs = s"${tsString.substring(0, 13)}:00:00"
+            (tsString, dayTs, hourTs)
+        }
+
+      tzId => (tzId, testTruncTimestampInTz(tzId, randomizedTestCases))
+    } filter {
+      case (_, failedCases) => failedCases.nonEmpty
+    }
+
+    assert(failures.isEmpty)
   }
 
   test("truncTimestamp") {

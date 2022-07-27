@@ -58,19 +58,24 @@ object DateTimeTestUtils extends Logging {
       // filter out any random dates that cannot be represented in the gregorian calendar in the
       // current timezone.
       try {
-        LocalDateTime.of(
-          ts.getYear + 1900,
-          ts.getMonth + 1,
-          ts.getDate,
-          ts.getHours,
-          ts.getMinutes,
-          ts.getSeconds,
-          ts.getNanos
-        )
+        ts.toLocalDateTime
         true
       } catch {
         case d: DateTimeException =>
-          logDebug(d.getMessage)
+          logWarning(
+            "%s (%s %04d-%02d-%02d %02d:%02d:%02d.%03d)"
+              .format(
+                d.getMessage,
+                TimeZone.getDefault.getID,
+                ts.getYear + 1900,
+                ts.getMonth + 1,
+                ts.getDate,
+                ts.getHours,
+                ts.getMinutes,
+                ts.getSeconds,
+                ts.getNanos
+              )
+          )
           false
       }
     }

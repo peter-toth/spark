@@ -972,6 +972,8 @@ object CopyDependencies {
 object TestSettings {
   import BuildCommons._
 
+  private val defaultExcludedTags = Seq("org.apache.spark.internal.io.cloud.IntegrationTestSuite")
+
   private val scalaBinaryVersion =
     if (System.getProperty("scala-2.12") == "true") {
       "2.12"
@@ -1010,9 +1012,9 @@ object TestSettings {
     javaOptions += "-Xmx3g",
     // Exclude tags defined in a system property
     testOptions in Test += Tests.Argument(TestFrameworks.ScalaTest,
-      sys.props.get("test.exclude.tags").map { tags =>
-        tags.split(",").flatMap { tag => Seq("-l", tag) }.toSeq
-      }.getOrElse(Nil): _*),
+      sys.props.get("test.exclude.tags").map(tags => tags.split(",").toSeq)
+        .map(tags => tags.filter(!_.trim.isEmpty)).getOrElse(defaultExcludedTags)
+        .flatMap(tag => Seq("-l", tag)): _*),
     testOptions in Test += Tests.Argument(TestFrameworks.JUnit,
       sys.props.get("test.exclude.tags").map { tags =>
         Seq("--exclude-categories=" + tags)

@@ -19,7 +19,7 @@ package org.apache.spark.internal.io.cloud
 
 import java.io.IOException
 
-import org.apache.hadoop.fs.Path
+import org.apache.hadoop.fs.{Path, StreamCapabilities}
 import org.apache.hadoop.mapreduce.{JobContext, JobStatus, TaskAttemptContext}
 import org.apache.hadoop.mapreduce.lib.output.{BindingPathOutputCommitter, PathOutputCommitter}
 import org.apache.parquet.hadoop.ParquetOutputCommitter
@@ -39,7 +39,7 @@ import org.apache.spark.internal.Logging
 class BindingParquetOutputCommitter(
     path: Path,
     context: TaskAttemptContext)
-  extends ParquetOutputCommitter(path, context) with Logging {
+  extends ParquetOutputCommitter(path, context) with Logging with StreamCapabilities {
 
   logDebug(s"${this.getClass.getName} binding to configured PathOutputCommitter and dest $path")
 
@@ -123,4 +123,8 @@ class BindingParquetOutputCommitter(
   }
 
   override def toString: String = s"BindingParquetOutputCommitter($committer)"
+
+  override def hasCapability(capability: String): Boolean =
+    committer.isInstanceOf[StreamCapabilities] &&
+      committer.asInstanceOf[StreamCapabilities].hasCapability(capability)
 }

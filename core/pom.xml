@@ -193,12 +193,18 @@
       <artifactId>jcl-over-slf4j</artifactId>
     </dependency>
     <dependency>
-      <groupId>log4j</groupId>
-      <artifactId>log4j</artifactId>
+      <groupId>ch.qos.reload4j</groupId>
+      <artifactId>reload4j</artifactId>
     </dependency>
     <dependency>
       <groupId>org.slf4j</groupId>
       <artifactId>slf4j-log4j12</artifactId>
+      <exclusions>
+         <exclusion>
+           <artifactId>log4j</artifactId>
+           <groupId>log4j</groupId>
+         </exclusion>
+       </exclusions>
     </dependency>
     <dependency>
       <groupId>com.ning</groupId>

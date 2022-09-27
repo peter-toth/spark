@@ -181,7 +181,7 @@
     <datanucleus-core.version>3.2.10</datanucleus-core.version>
     <guava.version>28.1-jre</guava.version>
     <janino.version>3.0.16</janino.version>
-    <jersey.version>2.32</jersey.version>
+    <jersey.version>2.35</jersey.version>
     <joda.version>2.10.6</joda.version>
     <jodd.version>6.0.0</jodd.version>
     <javaewah.version>0.3.2</javaewah.version>

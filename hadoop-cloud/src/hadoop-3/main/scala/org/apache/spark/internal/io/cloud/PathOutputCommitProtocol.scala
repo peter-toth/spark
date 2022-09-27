@@ -19,7 +19,7 @@ package org.apache.spark.internal.io.cloud
 
 import java.io.IOException
 
-import org.apache.hadoop.fs.{Path, StreamCapabilities}
+import org.apache.hadoop.fs.Path
 import org.apache.hadoop.mapreduce.{JobContext, TaskAttemptContext}
 import org.apache.hadoop.mapreduce.lib.output.{FileOutputCommitter, PathOutputCommitter, PathOutputCommitterFactory}
 
@@ -43,42 +43,40 @@ import org.apache.spark.internal.io.FileCommitProtocol.TaskCommitMessage
  * In `setupCommitter` the factory is bonded to and the committer for
  * the destination path chosen.
  *
- * Dynamic Partition support will be determined once the committer is
- * instantiated in the setupJob/setupTask methods. If this
- * class was instantiated with `dynamicPartitionOverwrite` set to true,
- * then the instantiated committer must either be an instance of
- * `FileOutputCommitter` or it must implement the `StreamCapabilities`
- * interface and declare that it has the capability
- * `mapreduce.job.committer.dynamic.partitioning`.
- * That feature is available on Hadoop releases with the Intermediate
- * Manifest Committer for GCS and ABFS; it is not supported by the
- * S3A committers.
- * @constructor Instantiate.
+ * @constructor Instantiate. dynamic partition overwrite is not supported,
+ *              so that committers for stores which do not support rename
+ *              will not get confused.
  * @param jobId                     job
- * @param dest                      destination
+ * @param destination               destination
  * @param dynamicPartitionOverwrite does the caller want support for dynamic
- *                                  partition overwrite?
+ *                                  partition overwrite. If so, it will be
+ *                                  refused.
+ * @throws IOException when an unsupported dynamicPartitionOverwrite option is supplied.
  */
 class PathOutputCommitProtocol(
     jobId: String,
-    dest: String,
+    destination: String,
     dynamicPartitionOverwrite: Boolean = false)
-  extends HadoopMapReduceCommitProtocol(jobId, dest, dynamicPartitionOverwrite)
-    with Serializable {
+  extends HadoopMapReduceCommitProtocol(jobId, destination, false) with Serializable {
 
-  /** The committer created. */
-  @transient private var committer: PathOutputCommitter = _
+  @transient var committer: PathOutputCommitter = _
 
-  require(dest != null, "Null destination specified")
+  require(destination != null, "Null destination specified")
 
-  private[cloud] val destination: String = dest
+  val destPath: Path = new Path(destination)
 
-  /** The destination path. This is serializable in Hadoop 3. */
-  private[cloud] val destPath: Path = new Path(destination)
-
-  logTrace(s"Instantiated committer with job ID=$jobId;" +
+  logDebug(s"Instantiated committer with job ID=$jobId;" +
     s" destination=$destPath;" +
     s" dynamicPartitionOverwrite=$dynamicPartitionOverwrite")
+
+  if (dynamicPartitionOverwrite) {
+    // until there's explicit extensions to the PathOutputCommitProtocols
+    // to support the spark mechanism, it's left to the individual committer
+    // choice to handle partitioning.
+    throw new IOException(PathOutputCommitProtocol.UNSUPPORTED)
+  }
+
+  def getDestination(): String = destination
 
   import PathOutputCommitProtocol._
 
@@ -122,31 +120,8 @@ class PathOutputCommitProtocol(
         // failures. Warn
         logDebug(s"Committer $committer may not be tolerant of task commit failures")
       }
-    } else {
-      // if required other committers need to be checked for dynamic partition
-      // compatibility through a StreamCapabilities probe.
-      if (dynamicPartitionOverwrite) {
-        if (supportsDynamicPartitions) {
-          logDebug(
-            s"Committer $committer has declared compatibility with dynamic partition overwrite")
-        } else {
-          throw new IOException(PathOutputCommitProtocol.UNSUPPORTED + ": " + committer)
-        }
-      }
     }
     committer
-  }
-
-
-  /**
-   * Does the instantiated committer support dynamic partitions?
-   * @return true if the committer declares itself compatible.
-   */
-  private def supportsDynamicPartitions = {
-    committer.isInstanceOf[FileOutputCommitter] ||
-      (committer.isInstanceOf[StreamCapabilities] &&
-        committer.asInstanceOf[StreamCapabilities]
-          .hasCapability(CAPABILITY_DYNAMIC_PARTITIONING))
   }
 
   /**
@@ -154,7 +129,7 @@ class PathOutputCommitProtocol(
    *
    * @param taskContext task context
    * @param dir         optional subdirectory
-   * @param spec        file naming specification
+   * @param ext         file extension
    * @return a path as a string
    */
   override def newTaskTempFile(
@@ -170,8 +145,7 @@ class PathOutputCommitProtocol(
   }
 
   /**
-   * Reject any requests for an absolute path file on a committer which
-   * is not compatible with it.
+   * Absolute files are still renamed into place with a warning.
    *
    * @param taskContext task
    * @param absoluteDir destination dir
@@ -183,14 +157,9 @@ class PathOutputCommitProtocol(
     absoluteDir: String,
     ext: String): String = {
 
-    if (supportsDynamicPartitions) {
-      val file = super.newTaskTempFileAbsPath(taskContext, absoluteDir, ext)
-      logInfo(s"Creating temporary file $file for absolute path for dir $absoluteDir")
-      file
-     } else {
-      throw new UnsupportedOperationException(s"Absolute output locations not supported" +
-        s" by committer $committer")
-    }
+    val file = super.newTaskTempFileAbsPath(taskContext, absoluteDir, ext)
+    logInfo(s"Creating temporary file $file for absolute path for dir $absoluteDir")
+    file
   }
 
   /**
@@ -292,17 +261,7 @@ object PathOutputCommitProtocol {
   val REJECT_FILE_OUTPUT_DEFVAL = false
 
   /** Error string for tests. */
-  private[cloud] val UNSUPPORTED: String = "PathOutputCommitter does not support" +
+  private[cloud] val UNSUPPORTED = "PathOutputCommitProtocol does not support" +
     " dynamicPartitionOverwrite"
 
-  /**
-   * Stream Capabilities probe for spark dynamic partitioning compatibility.
-   */
-  private[cloud] val CAPABILITY_DYNAMIC_PARTITIONING =
-    "mapreduce.job.committer.dynamic.partitioning"
-
-  /**
-   * Scheme prefix for per-filesystem scheme committers.
-   */
-  private[cloud] val OUTPUTCOMMITTER_FACTORY_SCHEME = "mapreduce.outputcommitter.factory.scheme"
 }

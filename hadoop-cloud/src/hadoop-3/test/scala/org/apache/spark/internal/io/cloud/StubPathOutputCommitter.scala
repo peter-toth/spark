@@ -18,11 +18,9 @@
 package org.apache.spark.internal.io.cloud
 
 import org.apache.hadoop.conf.Configuration
-import org.apache.hadoop.fs.{Path, StreamCapabilities}
+import org.apache.hadoop.fs.Path
 import org.apache.hadoop.mapreduce.{JobContext, JobStatus, TaskAttemptContext}
 import org.apache.hadoop.mapreduce.lib.output.{PathOutputCommitter, PathOutputCommitterFactory}
-
-import org.apache.spark.internal.io.cloud.PathOutputCommitProtocol.{CAPABILITY_DYNAMIC_PARTITIONING, OUTPUTCOMMITTER_FACTORY_SCHEME}
 
 /**
  * A local path output committer which tracks its state, for use in
@@ -98,52 +96,12 @@ class StubPathOutputCommitterFactory extends PathOutputCommitterFactory {
     new StubPathOutputCommitter(outputPath, workPath(outputPath), context)
   }
 
-  private def workPath(out: Path): Path = new Path(out,
-    StubPathOutputCommitterBinding.TEMP_DIR_NAME)
+
+  private def workPath(out: Path): Path = new Path(out, PathCommitterConstants.TEMP_DIR_NAME)
 }
 
-/**
- * An extension which declares that it supports dynamic partitioning.
- * @param outputPath final destination.
- * @param workPath work path
- * @param context task/job attempt.
- */
-class StubPathOutputCommitterWithDynamicPartioning(
-  outputPath: Path,
-  workPath: Path,
-  context: TaskAttemptContext) extends StubPathOutputCommitter(outputPath, workPath, context)
-  with StreamCapabilities {
-
-  override def hasCapability(capability: String): Boolean =
-    CAPABILITY_DYNAMIC_PARTITIONING == capability
-
-}
-
-
-class StubPathOutputCommitterWithDynamicPartioningFactory extends PathOutputCommitterFactory {
-
-  override def createOutputCommitter(
-      outputPath: Path,
-      context: TaskAttemptContext): PathOutputCommitter = {
-    new StubPathOutputCommitterWithDynamicPartioning(outputPath, workPath(outputPath), context)
-  }
-
-  private def workPath(out: Path): Path = new Path(out,
-    StubPathOutputCommitterBinding.TEMP_DIR_NAME)
-}
-
-
-/**
- * Class to help binding job configurations to the different
- * stub committers available.
- */
-object StubPathOutputCommitterBinding {
-
-  /**
-   * This is the "Pending" directory of the FileOutputCommitter;
-   * data written here is, in that algorithm, renamed into place.
-   */
-  val TEMP_DIR_NAME = "_temporary"
+object StubPathOutputCommitterFactory {
+  val Name: String = "org.apache.spark.internal.io.cloud.StubPathOutputCommitterFactory"
 
   /**
    * Given a hadoop configuration, set up the factory binding for the scheme.
@@ -153,19 +111,7 @@ object StubPathOutputCommitterBinding {
   def bind(conf: Configuration, scheme: String): Unit = {
     val key = String.format(
       PathCommitterConstants.OUTPUTCOMMITTER_FACTORY_SCHEME_PATTERN, scheme)
-    conf.set(key, classOf[StubPathOutputCommitterFactory].getName())
+    conf.set(key, Name)
   }
 
-  /**
-   * Bind the configuration/scheme to the stub committer which
-   * declares support for dynamic partitioning.
-   *
-   * @param conf   config to patch
-   * @param scheme filesystem scheme.
-   */
-  def bindWithDynamicPartitioning(conf: Configuration, scheme: String): Unit = {
-    val key = OUTPUTCOMMITTER_FACTORY_SCHEME + "." + scheme
-    conf.set(key,
-      classOf[StubPathOutputCommitterWithDynamicPartioningFactory].getName())
-  }
 }

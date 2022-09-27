@@ -145,13 +145,19 @@ private[sql] class SharedState(val sparkContext: SparkContext) extends Logging {
       sparkContext.conf,
       sparkContext.hadoopConfiguration)
 
-    val defaultDbDefinition = CatalogDatabase(
-      SessionCatalog.DEFAULT_DATABASE,
-      "default database",
-      CatalogUtils.stringToURI(warehousePath),
-      Map())
     // Create default database if it doesn't exist
-    if (!externalCatalog.databaseExists(SessionCatalog.DEFAULT_DATABASE)) {
+    // If database name not equals 'default', throw exception
+    if (!externalCatalog.databaseExists(SQLConf.get.defaultDatabase)) {
+      if (!SessionCatalog.DEFAULT_DATABASE.equalsIgnoreCase(SQLConf.get.defaultDatabase)) {
+        throw new SparkException(s"Default database '${SQLConf.get.defaultDatabase}' " +
+          "does not exist, please create it first or change default database to 'default'."
+        )
+      }
+      val defaultDbDefinition = CatalogDatabase(
+        SQLConf.get.defaultDatabase,
+        "default database",
+        CatalogUtils.stringToURI(warehousePath),
+        Map())
       // There may be another Spark application creating default database at the same time, here we
       // set `ignoreIfExists = true` to avoid `DatabaseAlreadyExists` exception.
       externalCatalog.createDatabase(defaultDbDefinition, ignoreIfExists = true)

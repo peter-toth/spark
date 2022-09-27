@@ -60,7 +60,8 @@ class SessionCatalog(
     conf: SQLConf,
     hadoopConf: Configuration,
     parser: ParserInterface,
-    functionResourceLoader: FunctionResourceLoader) extends Logging {
+    functionResourceLoader: FunctionResourceLoader,
+    defaultDatabase: String = SQLConf.get.defaultDatabase) extends Logging {
   import SessionCatalog._
   import CatalogTypes.TablePartitionSpec
 
@@ -76,7 +77,8 @@ class SessionCatalog(
       conf,
       new Configuration(),
       new CatalystSqlParser(conf),
-      DummyFunctionResourceLoader)
+      DummyFunctionResourceLoader,
+      conf.defaultDatabase)
   }
 
   // For testing only.
@@ -99,7 +101,7 @@ class SessionCatalog(
   // check whether the temporary view or function exists, then, if not, operate on
   // the corresponding item in the current database.
   @GuardedBy("this")
-  protected var currentDb: String = formatDatabaseName(DEFAULT_DATABASE)
+  protected var currentDb: String = formatDatabaseName(defaultDatabase)
 
   private val validNameFormat = "([\\w_]+)".r
 

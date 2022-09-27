@@ -34,6 +34,12 @@ object StaticSQLConf extends Logging {
     .stringConf
     .createWithDefault(Utils.resolveURI("spark-warehouse").toString)
 
+  val CATALOG_DEFAULT_DATABASE =
+    buildStaticConf(s"spark.sql.catalog.spark_catalog.defaultDatabase")
+    .doc("The default database for session catalog.")
+    .stringConf
+    .createWithDefault("default")
+
   val CATALOG_IMPLEMENTATION = buildStaticConf("spark.sql.catalogImplementation")
     .internal()
     .stringConf

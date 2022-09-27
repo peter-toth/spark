@@ -32,6 +32,7 @@ import org.scalatest.{BeforeAndAfterAll, Ignore}
 import org.apache.spark.SparkFunSuite
 import org.apache.spark.internal.Logging
 import org.apache.spark.sql.hive.test.HiveTestJars
+import org.apache.spark.sql.internal.StaticSQLConf
 import org.apache.spark.sql.test.ProcessTestUtils.ProcessOutputCapturer
 import org.apache.spark.util.{ThreadUtils, Utils}
 
@@ -44,6 +45,7 @@ class CliSuite extends SparkFunSuite with BeforeAndAfterAll with Logging {
   val warehousePath = Utils.createTempDir()
   val metastorePath = Utils.createTempDir()
   val scratchDirPath = Utils.createTempDir()
+  val sparkWareHouseDir = Utils.createTempDir()
 
   override def beforeAll(): Unit = {
     super.beforeAll()
@@ -332,5 +334,20 @@ class CliSuite extends SparkFunSuite with BeforeAndAfterAll with Logging {
         "'org.apache.hadoop.hive.contrib.udaf.example.UDAFExampleMax';" -> "",
       "SELECT concat_ws(',', 'First', example_max(1234321), 'Third');" -> "First,1234321,Third"
     )
+  }
+
+  test("SPARK-35242: Support change catalog default database for spark") {
+    // Create db and table first
+    runCliWithin(2.minute,
+      Seq("--conf", s"${StaticSQLConf.WAREHOUSE_PATH.key}=${sparkWareHouseDir}"))(
+      "create database spark_35242;" -> "",
+      "use spark_35242;" -> "",
+      "CREATE TABLE spark_test(key INT, val STRING);" -> "")
+
+    // Set default db
+    runCliWithin(2.minute,
+      Seq("--conf", s"${StaticSQLConf.WAREHOUSE_PATH.key}=${sparkWareHouseDir}",
+          "--conf", s"${StaticSQLConf.CATALOG_DEFAULT_DATABASE.key}=spark_35242"))(
+      "show tables;" -> "spark_test")
   }
 }

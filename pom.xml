@@ -23,7 +23,7 @@
   </parent>
   <groupId>org.apache.spark</groupId>
   <artifactId>spark-parent_2.11</artifactId>
-  <version>2.4.8.7.1.8.0-SNAPSHOT</version>
+  <version>2.4.8.7.1.8.3-SNAPSHOT</version>
   <packaging>pom</packaging>
   <name>Spark Project Parent POM</name>
   <url>http://spark.apache.org/</url>
@@ -117,26 +117,26 @@
     <sbt.project.name>spark</sbt.project.name>
     <slf4j.version>1.7.30</slf4j.version>
     <log4j.version>1.2.17-cloudera6</log4j.version>
-    <hadoop.version>3.1.1.7.1.8.0-SNAPSHOT</hadoop.version>
+    <hadoop.version>3.1.1.7.1.8.3-SNAPSHOT</hadoop.version>
     <protobuf.version>2.5.0</protobuf.version>
     <yarn.version>${hadoop.version}</yarn.version>
     <flume.version>1.6.0</flume.version>
-    <zookeeper.version>3.5.5.7.1.8.0-SNAPSHOT</zookeeper.version>
-    <curator.version>4.3.0.7.1.8.0-SNAPSHOT</curator.version>
+    <zookeeper.version>3.5.5.7.1.8.3-SNAPSHOT</zookeeper.version>
+    <curator.version>4.3.0.7.1.8.3-SNAPSHOT</curator.version>
     <hive.group>org.apache.hive</hive.group>
     <hive.classifier>core</hive.classifier>
     <datasketches-hive.version>1.1.0-incubating</datasketches-hive.version>
     <!-- Version used in Maven Hive dependency -->
-    <hive.version>3.1.3000.7.1.8.0-SNAPSHOT</hive.version>
-    <tez.version>0.9.1.7.1.8.0-SNAPSHOT</tez.version>
+    <hive.version>3.1.3000.7.1.8.3-SNAPSHOT</hive.version>
+    <tez.version>0.9.1.7.1.8.3-SNAPSHOT</tez.version>
     <!-- Version used for internal directory structure -->
     <!-- The following is just used for distinguishing some source folders between hive 1.2 and newer versions -->
     <hive.version.short>2.3.5</hive.version.short>
     <!-- note that this should be compatible with Kafka brokers version 0.10 and up -->
     <kafka.version>2.4.1.7.1.5.0-257</kafka.version>
     <derby.version>10.14.2.0</derby.version>
-    <parquet.version>1.10.99.7.1.8.0-SNAPSHOT</parquet.version>
-    <orc.version>1.5.1.7.1.8.0-SNAPSHOT</orc.version>
+    <parquet.version>1.10.99.7.1.8.3-SNAPSHOT</parquet.version>
+    <orc.version>1.5.1.7.1.8.3-SNAPSHOT</orc.version>
     <orc.classifier>nohive</orc.classifier>
     <hive.parquet.group>org.apache.parquet</hive.parquet.group>
     <hive.parquet.version>${parquet.version}</hive.parquet.version>
@@ -146,7 +146,7 @@
     <ivy.version>2.4.0</ivy.version>
     <oro.version>2.0.8</oro.version>
     <codahale.metrics.version>3.1.5</codahale.metrics.version>
-    <avro.version>1.8.2.7.1.8.0-SNAPSHOT</avro.version>
+    <avro.version>1.8.2.7.1.8.3-SNAPSHOT</avro.version>
     <avro.mapred.classifier>hadoop2</avro.mapred.classifier>
     <aws.kinesis.client.version>1.12.0</aws.kinesis.client.version>
     <!-- Should be consistent with Kinesis client dependency -->
@@ -170,7 +170,7 @@
     <fasterxml.jackson.databind.version>2.10.5.1</fasterxml.jackson.databind.version>
     <snappy.version>1.1.8.2</snappy.version>
     <netlib.java.version>1.1.2</netlib.java.version>
-    <calcite.version>1.19.0.7.1.8.0-SNAPSHOT</calcite.version>
+    <calcite.version>1.19.0.7.1.8.3-SNAPSHOT</calcite.version>
     <commons-codec.version>1.11</commons-codec.version>
     <commons-compress.version>1.21</commons-compress.version>
     <commons-io.version>2.11.0</commons-io.version>
@@ -3272,8 +3272,8 @@
     <profile>
       <id>hadoop-2.7</id>
       <properties>
-        <hadoop.version>3.1.1.7.1.8.0-SNAPSHOT</hadoop.version>
-        <curator.version>4.3.0.7.1.8.0-SNAPSHOT</curator.version>
+        <hadoop.version>3.1.1.7.1.8.3-SNAPSHOT</hadoop.version>
+        <curator.version>4.3.0.7.1.8.3-SNAPSHOT</curator.version>
       </properties>
       <dependencyManagement>
         <dependencies>
@@ -3351,9 +3351,9 @@
         </property>
       </activation>
       <properties>
-        <hadoop.version>3.1.1.7.1.8.0-SNAPSHOT</hadoop.version>
-        <curator.version>4.3.0.7.1.8.0-SNAPSHOT</curator.version>
-        <zookeeper.version>3.5.5.7.1.8.0-SNAPSHOT</zookeeper.version>
+        <hadoop.version>3.1.1.7.1.8.3-SNAPSHOT</hadoop.version>
+        <curator.version>4.3.0.7.1.8.3-SNAPSHOT</curator.version>
+        <zookeeper.version>3.5.5.7.1.8.3-SNAPSHOT</zookeeper.version>
         <!-- Do not need parquet-hadoop-bundle because we already have
           parquet-common, parquet-column and parquet-hadoop -->
         <hive.parquet.scope>provided</hive.parquet.scope>

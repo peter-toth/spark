@@ -199,6 +199,7 @@
     -->
     <arrow.version>0.10.0</arrow.version>
     <netty.version>4.1.68.Final</netty.version>
+    <guava.version>28.1-jre</guava.version>
 
     <test.java.home>${java.home}</test.java.home>
     <test.exclude.tags />
@@ -457,7 +458,7 @@
       <dependency>
         <groupId>com.google.guava</groupId>
         <artifactId>guava</artifactId>
-        <version>28.0-jre</version>
+        <version>${guava.version}</version>
         <scope>provided</scope>
       </dependency>
       <dependency>

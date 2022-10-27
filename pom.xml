@@ -199,7 +199,7 @@
     -->
     <arrow.version>0.10.0</arrow.version>
     <netty.version>4.1.68.Final</netty.version>
-    <guava.version>28.1-jre</guava.version>
+    <guava.version>28.2-jre</guava.version>
 
     <test.java.home>${java.home}</test.java.home>
     <test.exclude.tags />

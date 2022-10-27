@@ -288,6 +288,12 @@ if [ -d "$SPARK_HOME/R/lib/SparkR" ]; then
   cp "$SPARK_HOME/R/lib/sparkr.zip" "$DISTDIR/R/lib"
 fi
 
+# CDPD-46020: Remove the spark-sql script from the CDH parcel
+# The spark-sql CLI is not supported and does not work.
+# It is better to remove it from the CDH parcel to
+# avoid new support cases.
+rm -f "$DISTDIR/bin/spark-sql"
+
 if [ "$MAKE_TGZ" == "true" ]; then
   TARDIR_NAME=spark-$VERSION-bin-$NAME
   TARDIR="$SPARK_HOME/$TARDIR_NAME"

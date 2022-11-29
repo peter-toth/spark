@@ -21,6 +21,7 @@ import java.sql.{Date, Timestamp}
 
 import org.apache.spark.sql.{QueryTest, Row}
 import org.apache.spark.sql.catalyst.TableIdentifier
+import org.apache.spark.sql.hive.test.TestHive
 import org.apache.spark.sql.hive.test.TestHiveSingleton
 import org.apache.spark.sql.test.SQLTestUtils
 
@@ -100,6 +101,112 @@ class OpenCSVSerdeSuite extends QueryTest with SQLTestUtils with TestHiveSinglet
         checkAnswer(textDF, Row("\"1\",\"2\",\"3\",\"4\",\"5.5\",\"6.6\",\"7.7\",\"TRUE\"," +
           "\"2020-01-01\",\"2020-01-02 01:02:03\",\"abc\",\"def\""))
       }
+    }
+  }
+
+  test("CDPD-47129: test empty CSV fields") {
+    val tableName = "testemptyfieldstable"
+
+    withTable(tableName) {
+      sql(
+        s"""CREATE TABLE $tableName (
+           |  c1 byte,
+           |  c2 short,
+           |  c3 int,
+           |  c4 long,
+           |  c5 float,
+           |  c6 double,
+           |  c7 decimal(10, 5),
+           |  c8 boolean,
+           |  c9 date,
+           |  c10 timestamp,
+           |  c11 string,
+           |  c12 binary)
+           |ROW FORMAT SERDE 'org.apache.hadoop.hive.serde2.OpenCSVSerde'
+           |WITH SERDEPROPERTIES (
+           |  'escapeChar'='\\\\',
+           |  'quoteChar'='"',
+           |  'separatorChar'=',')
+           |STORED AS INPUTFORMAT 'org.apache.hadoop.mapred.TextInputFormat'
+           |OUTPUTFORMAT 'org.apache.hadoop.hive.ql.io.HiveIgnoreKeyTextOutputFormat'
+           |""".stripMargin)
+
+      val testData1 = TestHive.getHiveFile("data/files/empty_fields.csv").toURI
+      sql(s"LOAD DATA INPATH '$testData1' INTO TABLE $tableName")
+      val df = sql(s"SELECT * FROM $tableName")
+      val date = Date.valueOf("2020-01-01")
+      val ts = Timestamp.valueOf("2020-01-02 01:02:03")
+      checkAnswer(df,
+        Row(null, 2, 3, 4, 5.5, 6.6, 7.7, true, date, ts, "abc", "def".getBytes) ::
+        Row(1, null, 3, 4, 5.5, 6.6, 7.7, true, date, ts, "abc", "def".getBytes) ::
+        Row(1, 2, null, 4, 5.5, 6.6, 7.7, true, date, ts, "abc", "def".getBytes) ::
+        Row(1, 2, 3, null, 5.5, 6.6, 7.7, true, date, ts, "abc", "def".getBytes) ::
+        Row(1, 2, 3, 4, null, 6.6, 7.7, true, date, ts, "abc", "def".getBytes) ::
+        Row(1, 2, 3, 4, 5.5, null, 7.7, true, date, ts, "abc", "def".getBytes) ::
+        Row(1, 2, 3, 4, 5.5, 6.6, null, true, date, ts, "abc", "def".getBytes) ::
+        Row(1, 2, 3, 4, 5.5, 6.6, 7.7, null, date, ts, "abc", "def".getBytes) ::
+        Row(1, 2, 3, 4, 5.5, 6.6, 7.7, true, null, ts, "abc", "def".getBytes) ::
+        Row(1, 2, 3, 4, 5.5, 6.6, 7.7, true, date, null, "abc", "def".getBytes) ::
+        Row(1, 2, 3, 4, 5.5, 6.6, 7.7, true, date, ts, null, "def".getBytes) ::
+        Row(1, 2, 3, 4, 5.5, 6.6, 7.7, true, date, ts, "abc", null) :: Nil)
+    }
+  }
+
+  test("CDPD-47129: test writing and reading of NULLs") {
+    val tableName = "testnullstable"
+
+    withTable(tableName) {
+      sql(
+        s"""CREATE TABLE $tableName (
+           |  c1 byte,
+           |  c2 short,
+           |  c3 int,
+           |  c4 long,
+           |  c5 float,
+           |  c6 double,
+           |  c7 decimal(10, 5),
+           |  c8 boolean,
+           |  c9 date,
+           |  c10 timestamp,
+           |  c11 string,
+           |  c12 binary)
+           |ROW FORMAT SERDE 'org.apache.hadoop.hive.serde2.OpenCSVSerde'
+           |WITH SERDEPROPERTIES (
+           |  'escapeChar'='\\\\',
+           |  'quoteChar'='"',
+           |  'separatorChar'=',')
+           |STORED AS INPUTFORMAT 'org.apache.hadoop.mapred.TextInputFormat'
+           |OUTPUTFORMAT 'org.apache.hadoop.hive.ql.io.HiveIgnoreKeyTextOutputFormat'
+           |""".stripMargin)
+      sql(
+        s"""INSERT INTO $tableName VALUES (
+           |NULL,
+           |NULL,
+           |NULL,
+           |NULL,
+           |NULL,
+           |NULL,
+           |NULL,
+           |NULL,
+           |NULL,
+           |NULL,
+           |NULL,
+           |NULL)
+           |""".stripMargin)
+      val df = sql(s"SELECT * FROM $tableName")
+      checkAnswer(df, Row(
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null))
     }
   }
 }

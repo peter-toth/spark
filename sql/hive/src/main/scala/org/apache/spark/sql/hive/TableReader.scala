@@ -467,7 +467,10 @@ private[hive] object HadoopTableReader extends HiveInspectors with Logging {
         fr.getFieldObjectInspector match {
           case soi: StringObjectInspector =>
             (value: Any, row: InternalRow, ordinal: Int) =>
-              row(ordinal) = fromOpenCSVString(soi.getPrimitiveJavaObject(value))
+              row(ordinal) = {
+                val stringObj = soi.getPrimitiveJavaObject(value)
+                if (stringObj.isEmpty) null else fromOpenCSVString(stringObj)
+              }
           case o => throw new AnalysisException(
             s"Unexpected object inspector with OpenCSVSerde: ${o.getClass.getName}")
         }

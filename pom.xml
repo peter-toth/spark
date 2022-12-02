@@ -115,8 +115,8 @@
     <maven.version>3.5.4</maven.version>
     <scala.maven.plugin.version>4.2.0</scala.maven.plugin.version>
     <sbt.project.name>spark</sbt.project.name>
+    <slf4j.version>1.7.30</slf4j.version>
     <hadoop.version>3.1.1.7.1.8.3-SNAPSHOT</hadoop.version>
-    <slf4j-reload4j.version>1.7.36</slf4j-reload4j.version>
     <reload4j.version>1.2.22</reload4j.version>
     <protobuf.version>2.5.0</protobuf.version>
     <yarn.version>${hadoop.version}</yarn.version>
@@ -658,24 +658,24 @@
       <dependency>
         <groupId>org.slf4j</groupId>
         <artifactId>slf4j-api</artifactId>
-        <version>${slf4j-reload4j.version}</version>
+        <version>${slf4j.version}</version>
         <scope>${hadoop.deps.scope}</scope>
       </dependency>
       <dependency>
         <groupId>org.slf4j</groupId>
-        <artifactId>slf4j-reload4j</artifactId>
-        <version>${slf4j-reload4j.version}</version>
+        <artifactId>slf4j-log4j12</artifactId>
+        <version>${slf4j.version}</version>
         <scope>${hadoop.deps.scope}</scope>
       </dependency>
       <dependency>
         <groupId>org.slf4j</groupId>
         <artifactId>jul-to-slf4j</artifactId>
-        <version>${slf4j-reload4j.version}</version>
+        <version>${slf4j.version}</version>
       </dependency>
       <dependency>
         <groupId>org.slf4j</groupId>
         <artifactId>jcl-over-slf4j</artifactId>
-        <version>${slf4j-reload4j.version}</version>
+        <version>${slf4j.version}</version>
         <!-- runtime scope is appropriate, but causes SBT build problems -->
       </dependency>
       <dependency>

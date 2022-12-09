@@ -214,7 +214,7 @@ private[spark] object Logging {
     // This distinguishes the log4j 1.2 binding, currently
     // org.slf4j.impl.Log4jLoggerFactory, from the log4j 2.0 binding, currently
     // org.apache.logging.slf4j.Log4jLoggerFactory
-    val binderClass = StaticLoggerBinder.getSingleton.getLoggerFactoryClassStr
+    val binderClass = LoggerFactory.getILoggerFactory.getClass.getName
     ("org.slf4j.impl.Log4jLoggerFactory".equals(binderClass) ||
     "org.slf4j.impl.Reload4jLoggerFactory".equals(binderClass))
   }

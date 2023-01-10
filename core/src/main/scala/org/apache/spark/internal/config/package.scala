@@ -871,6 +871,12 @@ package object config {
     .stringConf
     .createOptional
 
+  private[spark] val ALLOW_CUSTOM_CLASSPATH_BY_PROXY_USER_IN_CLUSTER_MODE =
+    ConfigBuilder("spark.submit.proxyUser.allowCustomClasspathInClusterMode")
+      .internal()
+      .booleanConf
+      .createWithDefault(false)
+
   private[spark] val USE_HWC = ConfigBuilder("spark.cloudera.useHWC")
     .doc("Adds HWC jar to classpath and loads appropriate HWC configurations when true.")
     .booleanConf

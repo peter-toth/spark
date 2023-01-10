@@ -298,6 +298,10 @@ private[spark] class SparkSubmit extends Logging {
     val isStandAloneCluster = clusterManager == STANDALONE && deployMode == CLUSTER
     val isKubernetesCluster = clusterManager == KUBERNETES && deployMode == CLUSTER
     val isMesosClient = clusterManager == MESOS && deployMode == CLIENT
+    val isCustomClasspathInClusterModeDisallowed =
+      !sparkConf.get(ALLOW_CUSTOM_CLASSPATH_BY_PROXY_USER_IN_CLUSTER_MODE) &&
+      args.proxyUser != null &&
+      (isYarnCluster || isMesosCluster || isStandAloneCluster || isKubernetesCluster)
 
     args.sparkProperties.foreach { case (k, v) => sparkConf.set(k, v) }
 
@@ -771,6 +775,13 @@ private[spark] class SparkSubmit extends Logging {
       sparkConf.set("spark.submit.pyFiles", formattedPyFiles)
     }
 
+    if (childClasspath.nonEmpty && isCustomClasspathInClusterModeDisallowed) {
+      childClasspath.clear()
+      logWarning(s"Ignore classpath ${childClasspath.mkString(", ")} with proxy user specified " +
+        s"in Cluster mode when ${ALLOW_CUSTOM_CLASSPATH_BY_PROXY_USER_IN_CLUSTER_MODE.key} is " +
+        s"disabled")
+    }
+
     (childArgs, childClasspath, sparkConf, childMainClass)
   }
 
@@ -811,6 +822,10 @@ private[spark] class SparkSubmit extends Logging {
       logInfo(s"Classpath elements:\n${childClasspath.mkString("\n")}")
       logInfo("\n")
     }
+    assert(!(args.deployMode == "cluster" && args.proxyUser != null && childClasspath.nonEmpty) ||
+      sparkConf.get(ALLOW_CUSTOM_CLASSPATH_BY_PROXY_USER_IN_CLUSTER_MODE),
+      s"Classpath of spark-submit should not change in cluster mode if proxy user is specified " +
+        s"when ${ALLOW_CUSTOM_CLASSPATH_BY_PROXY_USER_IN_CLUSTER_MODE.key} is disabled")
 
     val loader =
       if (sparkConf.get(DRIVER_USER_CLASS_PATH_FIRST)) {

@@ -812,4 +812,10 @@ package object config {
     .doc("Proxy address to use when responding with HTTP redirects.")
     .stringConf
     .createOptional
+
+  private[spark] val ALLOW_CUSTOM_CLASSPATH_BY_PROXY_USER_IN_CLUSTER_MODE =
+    ConfigBuilder("spark.submit.proxyUser.allowCustomClasspathInClusterMode")
+      .internal()
+      .booleanConf
+      .createWithDefault(false)
 }

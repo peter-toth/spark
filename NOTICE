@@ -1,5 +1,7 @@
 Apache Spark
-Copyright 2022 Cloudera Inc.  All Rights Reserved.
+Copyright 2023 Apache Software Foundation.  All Rights Reserved.
+
+
 
 
 
@@ -13,12 +15,15 @@ antlr 4.7 : BSD 3-clause "New" or "Revised" License
 AOP Alliance (Java/J2EE AOP standard) 1.0 : Public Domain
 Aopalliance Version 1.0 Repackaged As A Module 2.6.1 : Eclipse Public License 2.0
 Apache Ant 1.9.4 : Apache License 2.0
-Apache Avro Mapred API 1.8.2.7.2.12.0-291 : Apache License 2.0
-Apache Calcite Avatica 1.16.0 : Apache License 2.0
-Apache Calcite Avatica 1.16.0.7.1.5.51-1 : Apache License 2.0
+Apache Avro Mapred API 1.8.2.7.1.7.1000-141 : Apache License 2.0
+Apache Calcite Avatica 1.16.0.7.1.7.1000-141 : Apache License 2.0
+Apache Calcite Avatica 1.16.0.7.2.15.0-147 : Apache License 2.0
+Apache Calcite Avatica Metrics 1.16.0.7.1.7.1000-141 : Apache License 2.0
 Apache Commons BeanUtils 1.9.4 : Apache License 2.0
 Apache Commons CLI 1.2 : Apache License 2.0
 Apache Commons CLI 1.4 : Apache License 2.0
+Apache Commons Codec 1.10 : Apache License 2.0
+Apache Commons Codec 1.13 : Apache License 2.0
 Apache Commons Collections 3.2.2 : Apache License 2.0
 Apache Commons Collections 4.1 : Apache License 2.0
 Apache Commons Compress 1.21 : Apache License 2.0
@@ -29,6 +34,7 @@ Apache Commons Daemon 1.0.13 : Apache License 2.0
 Apache Commons DBCP 1.4 : Apache License 2.0
 Apache Commons DBCP 2.5.0 : Apache License 2.0
 Apache Commons Exec 1.3 : Apache License 2.0
+Apache Commons IO 2.11.0 : Apache License 2.0
 Apache Commons Lang 2.6 : Apache License 2.0
 Apache Commons Lang 3.8.1 : Apache License 2.0
 Apache Commons Logging 1.0.4 : Apache License 2.0
@@ -40,60 +46,65 @@ Apache Commons Pool 2.6.0 : Apache License 2.0
 Apache Derby 10.14.2.0 : Apache License 2.0
 Apache Geronimo Annotation Spec 1.3 1.2 : Apache License 2.0
 Apache Geronimo JCache Spec 1.0 1.0-alpha-1 : Apache License 2.0
-Apache Hadoop Azure Data Lake support 3.1.1.7.1.7.0-551 : Apache License 2.0
-Apache Hadoop Azure support 3.1.1.7.1.2.6-1 : Apache License 2.0
-Apache Hadoop Azure support 3.1.1.7.2.12.0-291 : Apache License 2.0
-Apache Hadoop OpenStack support 3.1.1.7.1.7.0-551 : Apache License 2.0
-Apache Hive 3.1.3000.7.1.6.85-1 : Apache License 2.0
-Apache Hive 3.1.3000.7.1.7.0-551 : Apache License 2.0
+Apache Hadoop Azure Data Lake support 3.1.1.7.1.7.1000-141 : Apache License 2.0
+Apache Hadoop Azure support 3.1.1.7.1.7.1055-1 : Apache License 2.0
+Apache Hadoop Cloud Storage 3.1.1.7.1.7.1000-141 : Apache License 2.0
+Apache Hadoop OpenStack support 3.1.1.7.1.7.1000-141 : Apache License 2.0
+Apache Hive 3.1.3000.7.1.7.1055-1 : Apache License 2.0
+Apache Hive 3.1.3000.7.1.8.0-801 : Apache License 2.0
 Apache HttpClient 4.5.13 : Apache License 2.0
 Apache HttpComponents Core 4.4.13 : Apache License 2.0
 Apache HttpMime 4.5.13 : Apache License 2.0
-Apache Ivy 2.4.0 : Apache License 2.0
+Apache Ivy 2.5.1 : Apache License 2.0
+Apache Jakarta log4j Plug-in 1.2.19-TALEND : Apache License 2.0
 Apache Kafka 2.4.1.7.1.5.0-199 : Apache License 2.0
 Apache Kafka 2.4.1.7.1.5.0-257 : Apache License 2.0
 Apache Log4j 1.2.17 : Apache License 2.0
-Apache Log4j 2.8.2 : Apache License 2.0
-Apache ORO 2.0.8 : Apache License 1.1
-Apache Parquet Column 1.10.99.7.2.12.0-291 : Apache License 2.0
-Apache Parquet Format Structures 1.10.99.7.2.12.0-291 : Apache License 2.0
-Apache Parquet Hadoop 1.10.99.7.2.12.0-291 : Apache License 2.0
-Apache Parquet Hadoop Bundle 1.10.99.7.2.12.0-291 : Apache License 2.0
+Apache Log4j 2.18.0 : Apache License 2.0
+Apache Log4J API 2.18.0 : Apache License 2.0
+Apache Log4j SLF4J Binding 2.18.0 : Apache License 2.0
+Apache ORC 1.5.1.7.1.7.1000-141 : Apache License 2.0
+Apache Parquet Column 1.10.99.7.1.7.1000-141 : Apache License 2.0
+Apache Parquet Format (Incubating) 2.4.0-cdh6.3.2 : Apache License 2.0
+Apache Parquet Format Structures 1.10.99.7.1.8.0-801 : Apache License 2.0
+Apache Parquet Hadoop 1.10.99.7.2.14.0-149 : Apache License 2.0
+Apache Parquet Hadoop Bundle 1.10.99.7.1.7.1000-141 : Apache License 2.0
+Apache Parquet Hadoop Bundle 1.10.99.7.1.8.0-801 : Apache License 2.0
 Apache Spark 2.4.7 : Apache License 2.0
 Apache Spark 2.4.7-rc3 : Apache License 2.0
-Apache Thrift 0.13.0 : Apache License 2.0
-Apache Thrift 0.9.3 : Apache License 2.0
+Apache Thrift 0.16.0 : Apache License 2.0
+Apache TinkerPop :: Gremlin Driver 3.6.1 : Apache License 2.0
 Apache Velocity - Engine 2.3 : Apache License 2.0
 Apache Xalan (Java) 2.7.2 : Apache License 2.0
 Apache XBean :: ASM shaded (repackaged) 4.13 : Apache License 2.0
 Apache XML Commons 1.4.01 : Apache License 2.0
 Apache Yetus - Audience Annotations 0.5.0 : Apache License 2.0
+apache/incubator-kyuubi v0.1.0-rc1 : Apache License 2.0
 Arrow Format 0.10.0 : Apache License 2.0
 Arrow Memory 0.10.0 : Apache License 2.0
 Arrow Vectors 0.10.0 : Apache License 2.0
 ASM 5.0.4 : BSD 3-clause "New" or "Revised" License
 ASM 5.1 : BSD 3-clause "New" or "Revised" License
-ASM based accessors helper used by json-smart 1.2 : Apache License 2.0
-ASM based accessors helper used by json-smart 2.3.1 : Apache License 2.0
+ASM 9.1 : BSD 3-clause "New" or "Revised" License
+ASM based accessors helper used by json-smart 2.4.8 : Apache License 2.0
 ASM Commons 5.1 : BSD 3-clause "New" or "Revised" License
 ASM Tree 5.1 : BSD 3-clause "New" or "Revised" License
 ASM Util 5.1 : BSD 3-clause "New" or "Revised" License
 Audit CDH6 Plugin 7.4.4 : Apache License 2.0
 Automaton 1.11-8 : BSD 3-clause "New" or "Revised" License
-AWS SDK for Java - Bundle 1.11.1030 : Apache License 2.0
+AWS SDK for Java 1.12.132 : Apache License 2.0
 azure-data-lake-store-java 2.3.6 : MIT License
 Bean Validation API 2.0.2 : Apache License 2.0
 BeanShell 2.0b6 : Apache License 2.0
 BoneCP 0.8.0.RELEASE : Apache License 2.0
-Bouncy Castle 1.60 : MIT License
-Bouncy Castle PKIX, CMS, EAC, TSP, PKCS, OCSP, CMP, and CRMF APIs 1.60 : MIT License
+Bouncy Castle 1.70 : MIT License
+Bouncy Castle PKIX, CMS, EAC, TSP, PKCS, OCSP, CMP, and CRMF APIs 1.70 : MIT License
 breeze-macros 0.13.2 : Apache License 2.0
 Byte Buddy byte-buddy-1.9.10 : Apache License 2.0
 byte-buddy-agent 1.9.10 : Apache License 2.0
 Caffeine cache 2.8.0 : Apache License 2.0
-Calcite Core 1.19.0.7.1.6.96-1 : Apache License 2.0
-Calcite Core 1.19.0.7.1.7.0-551 : Apache License 2.0
-Calcite Linq4j 1.19.0.7.1.7.0-551 : Apache License 2.0
+Calcite Core 1.19.0.7.1.8.0-801 : Apache License 2.0
+Calcite Linq4j 1.19.0.7.1.7.1000-141 : Apache License 2.0
 cglib 2.1_3 : Apache License 2.0
 cglib 3.2.0 : Apache License 2.0
 Checker Qual 2.10.0 : MIT License
@@ -101,93 +112,114 @@ Checker Qual 2.8.1 : MIT License
 chill 0.9.3 : Apache License 2.0
 chill-java 0.9.3 : Apache License 2.0
 classutil 1.1.2 : BSD 3-clause "New" or "Revised" License
+client 2.0.0-beta : Apache License 2.0
 com.yahoo.datasketches:memory 0.9.0 : Apache License 2.0
 com.yahoo.datasketches:sketches-core 0.9.0 : Apache License 2.0
-Commons IO 2.11.0 : Apache License 2.0
-commons-codec 1.10 : Apache License 2.0
-commons-codec 1.13 : Apache License 2.0
 core 1.1.2 : BSD 3-clause "New" or "Revised" License
-cron-utils 9.1.3 : Apache License 2.0
-crysknife-processor 0.2 : Apache License 2.0
+cron-utils 9.1.6 : Apache License 2.0
+crysknife-processor 0.4 : Apache License 2.0
 CSS Parser 0.9.19 : Apache License 2.0
-Curator Client 4.3.0.7.2.12.0-291 : Apache License 2.0
-Curator Recipes 4.3.0.7.2.12.0-291 : Apache License 2.0
+Curator Framework 4.3.0.7.1.7.1000-141 : Apache License 2.0
+Curator Recipes 4.3.0.7.1.7.1000-141 : Apache License 2.0
 Data Mapper for Jackson 1.9.13-cloudera.4 : Apache License 2.0
 DataNucleus 3.2.10 : Apache License 2.0
 DataNucleus 4.1.17 : Apache License 2.0
 DataNucleus 4.1.19 : Apache License 2.0
 DataNucleus 4.2.4 : Apache License 2.0
+delta-standalone 0.4.0 : Apache License 2.0
 dnsjava 2.1.7 : BSD 3-clause "New" or "Revised" License
 Ehcache 3.3.1 : Apache License 2.0
 Ehcache 3 API module 3.4.0 : Apache License 2.0
 Ehcache 3 JSR-107 module 3.3.1 : Apache License 2.0
 Ehcache 3 XML Parsing module 3.2.2 : Apache License 2.0
-Elasticsearch Kubernetes cloud plugin 4.6.4 : Apache License 2.0
+Elasticsearch Kubernetes cloud plugin 5.5.0 : Apache License 2.0
 empty 1.0.0 : Apache License 2.0
 error-prone annotations 2.3.2 : Apache License 2.0
 error-prone annotations 2.3.3 : Apache License 2.0
+error-prone annotations 2.3.4 : Apache License 2.0
 Expression Language 3.0 3.0.0 : Common Development and Distribution License 1.1
 Expression Language API 3.0-b08 : Common Development and Distribution License 1.1
-Fabric8 :: Kubernetes Model 4.6.4 : Apache License 2.0
-Fabric8 :: Kubernetes Model :: Common 4.6.4 : Apache License 2.0
+Fabric8 :: Kubernetes Model :: Admission Registration, Authentication and Authorization 5.5.0 : Apache License 2.0
+Fabric8 :: Kubernetes Model :: API Extensions 5.5.0 : Apache License 2.0
+Fabric8 :: Kubernetes Model :: Apps 5.5.0 : Apache License 2.0
+Fabric8 :: Kubernetes Model :: Autoscaling 5.5.0 : Apache License 2.0
+Fabric8 :: Kubernetes Model :: Batch 5.5.0 : Apache License 2.0
+Fabric8 :: Kubernetes Model :: Certificates 5.5.0 : Apache License 2.0
+Fabric8 :: Kubernetes Model :: Common 5.5.0 : Apache License 2.0
+Fabric8 :: Kubernetes Model :: Coordination 5.5.0 : Apache License 2.0
+Fabric8 :: Kubernetes Model :: Core 5.5.0 : Apache License 2.0
+Fabric8 :: Kubernetes Model :: Discovery 5.5.0 : Apache License 2.0
+Fabric8 :: Kubernetes Model :: Events 5.5.0 : Apache License 2.0
+Fabric8 :: Kubernetes Model :: Extensions 5.5.0 : Apache License 2.0
+Fabric8 :: Kubernetes Model :: FlowControl 5.5.0 : Apache License 2.0
+Fabric8 :: Kubernetes Model :: Metrics 5.5.0 : Apache License 2.0
+Fabric8 :: Kubernetes Model :: Networking 5.5.0 : Apache License 2.0
+Fabric8 :: Kubernetes Model :: Node 5.5.0 : Apache License 2.0
+Fabric8 :: Kubernetes Model :: Policy 5.5.0 : Apache License 2.0
+Fabric8 :: Kubernetes Model :: RBAC 5.5.0 : Apache License 2.0
+Fabric8 :: Kubernetes Model :: Scheduling 5.5.0 : Apache License 2.0
+Fabric8 :: Kubernetes Model :: Storage Class 5.5.0 : Apache License 2.0
 FindBugs jsr305 1.3.9 : Apache License 2.0
 FindBugs-Annotations 3.0.0 : BSD 2-clause "Simplified" License
 FlatBuffers Java API 1.2.0-3f79e055 : Apache License 2.0
 Fortran to Java ARPACK 0.1 : BSD 3-clause "New" or "Revised" License
-gcs-connector.jar 2.1.2.7.1.7.64-1 : Apache License 2.0
-gcs-connector.jar 2.1.2.7.2.12.2-5 : Apache License 2.0
+gcs-connector.jar 2.1.2.7.1.8.0-801 : Apache License 2.0
 Generex 1.0.2 : Apache License 2.0
 geometry-api-java 2.2.0 : Apache License 2.0
 Google Guice 4.0 : Apache License 2.0
-google-gson 2.2.4 : Apache License 2.0
+google-gson 2.9.0 : Apache License 2.0
+google-guava v28.0 : Apache License 2.0
+google-guava v28.2 : Apache License 2.0
 Graphite Integration for Metrics 3.1.5 : Apache License 2.0
 grizzled-scala 4.2.0 : BSD 3-clause "New" or "Revised" License
 Guava InternalFutureFailureAccess and InternalFutures 1.0.1 : Apache License 2.0
 Guava ListenableFuture only 9999.0-empty-to-avoid-conflict-with-guava : Apache License 2.0
-Guava: Google Core Libraries for Java v28.0 : Apache License 2.0
 H2 Database Engine 1.4.195 : Mozilla Public License 2.0
 Hadoop Metrics2 Reporter for Dropwizard Metrics 0.1.2 : Apache License 2.0
 Hamcrest 1.3 : BSD 3-clause "New" or "Revised" License
 HawtJNI Runtime 1.10 : Apache License 2.0
 HikariCP 2.4.12 : Apache License 2.0
 HikariCP 2.6.1 : Apache License 2.0
-Hive Llap Common 3.1.3000.7.1.7.0-551 : Apache License 2.0
-Hive Shims Common 3.1.3000.7.1.5.61-1 : Apache License 2.0
-Hive Storage API 3.1.3000.7.1.7.0-551 : Apache License 2.0
-Hive Vector-Code-Gen Utilities 3.1.3000.7.1.7.0-551 : Apache License 2.0
-hive-cli 3.1.3000.7.1.7.0-551 : Apache License 2.0
-hive-metastore 3.1.3000.7.1.7.64-1 : Apache License 2.0
-hive-metastore 3.1.3000.7.2.11.4-3 : Apache License 2.0
-hive-serde 3.1.3000.7.1.6.86-2 : Apache License 2.0
-hive-serde 3.1.3000.7.1.6.97-1 : Apache License 2.0
-hive-service 3.1.3000.7.1.7.0-551 : Apache License 2.0
+Hive Llap Common 3.1.3000.7.1.7.1055-1 : Apache License 2.0
+Hive Service RPC 3.1.3000.7.1.8.0-801 : Apache License 2.0
+Hive Shims 0.23 3.1.3000.7.1.7.1000-141 : Apache License 2.0
+Hive Shims Common 3.1.3000.7.2.15.0-147 : Apache License 2.0
+Hive Storage API 3.1.3000.7.1.7.1000-141 : Apache License 2.0
+Hive Vector-Code-Gen Utilities 3.1.3000.7.1.7.1000-141 : Apache License 2.0
+hive-cli 3.1.3000.7.1.7.1055-1 : Apache License 2.0
+hive-metastore 3.1.3000.7.1.7.1000-141 : Apache License 2.0
+hive-serde 3.1.3000.7.1.7.1055-1 : Apache License 2.0
+hive-serde 3.1.3000.7.1.8.0-801 : Apache License 2.0
+hive-service 3.1.3000.7.1.8.0-801 : Apache License 2.0
 HK2 API module 2.6.1 : Eclipse Public License 2.0
 HK2 Implementation Utilities 2.6.1 : Eclipse Public License 2.0
 HPPC 0.7.2 : Apache License 2.0
 HtmlUnit 2.22 : Apache License 2.0
 HtmlUnit Core JS 2.22 : Mozilla Public License 2.0
-HtmlUnit NekoHtml 2.21 : Apache License 2.0
-iam-jdbc-driver 0.1.0 : MIT License
+HtmlUnit/htmlunit-neko 2.21 : Apache License 2.0
 impala-extractor 7.4.4 : Apache License 2.0
 istack common utility code runtime 3.0.8 : Eclipse Distribution License - v 1.0
 J2ObjC Annotations 1.3 : Apache License 2.0
-Jackson dataformats: Binary 2.10.5 : Apache License 2.0
+Jackson dataformats: Binary 2.12.7 : Apache License 2.0
 Jackson Integration for Metrics 3.1.5 : Apache License 2.0
-Jackson module: Paranamer 2.10.5 : Apache License 2.0
-jackson-annotations 2.10.5 : Apache License 2.0
+jackson-annotations 2.12.7 : Apache License 2.0
 jackson-core 1.9.13 : Apache License 2.0
-jackson-core 2.10.5 : Apache License 2.0
-jackson-databind 2.10.5.1 : Apache License 2.0
+jackson-core 2.12.7 : Apache License 2.0
+jackson-databind 2.12.7.1 : Apache License 2.0
 jackson-dataformat-csv 2.10.0 : Apache License 2.0
-jackson-dataformat-yaml 2.10.5 : Apache License 2.0
+jackson-dataformat-yaml 2.12.7 : Apache License 2.0
 Jackson-datatype-jdk8 2.10.0 : Apache License 2.0
+Jackson-Datatype-JSR310 2.11.2 : Apache License 2.0
 Jackson-JAXRS-base 2.10.0 : Apache License 2.0
-Jackson-JAXRS-base 2.10.5 : Apache License 2.0
+Jackson-JAXRS-base 2.12.7 : Apache License 2.0
 jackson-jaxrs-json-provider 2.10.0 : Apache License 2.0
-jackson-jaxrs-json-provider 2.10.5 : Apache License 2.0
-jackson-module-jaxb-annotations 2.10.5 : Apache License 2.0
-jackson-module-scala jackson-module-scala-2.10.5 : Apache License 2.0
+jackson-jaxrs-json-provider 2.12.7 : Apache License 2.0
+jackson-module-jaxb-annotations 2.12.7 : Apache License 2.0
+jackson-module-scala 2.12.7 : Apache License 2.0
+Jakarta Activation 1.1.1 : Common Development and Distribution License 1.0
+Jakarta Activation 1.2.0 : Common Development and Distribution License 1.0
 Jakarta Annotations API 1.3.5 : Eclipse Public License 2.0
+Jakarta ORO 2.0.8 : Apache License 1.1
 jakarta.ws.rs-api 2.1.6 : Eclipse Public License 2.0
 Janino 3.0.16 : BSD 3-clause "New" or "Revised" License
 Janino Commons Compiler 3.0.16 : BSD 3-clause "New" or "Revised" License
@@ -195,44 +227,41 @@ jansi 1.12 : Apache License 2.0
 jansi-native 1.6 : Apache License 2.0
 Java Architecture for XML Binding 2.2.11 : Common Development and Distribution License 1.1
 Java Architecture for XML Binding 2.3.2 : Eclipse Distribution License - v 1.0
+Java Architecture for XML Binding 2.3.3 : Eclipse Distribution License - v 1.0
 Java EE Transaction API 1.1 : Common Development and Distribution License 1.0
 Java Native Access (JNA) 4.1.0 : Apache License 2.0
 Java Servlet API 2.1 : Common Development and Distribution License 1.0
 Java Servlet API 3.1.0 : Common Development and Distribution License 1.1
-Java Servlet API 4.0.3 : Eclipse Public License 2.0
-JavaBeans Activation Framework 1.1.1 : Common Development and Distribution License 1.0
-JavaBeans Activation Framework 1.2.0 : Common Development and Distribution License 1.0
-JavaBeans Activation Framework 1.2.1 : BSD 3-clause "New" or "Revised" License
+Java Servlet API 4.0.4 : Eclipse Public License 2.0
 JavaBeans Activation Framework API jar 1.2.0 : Common Development and Distribution License 1.1
 JavaBeans Activation Framework API jar 1.2.1 : BSD 3-clause "New" or "Revised" License
+JavaBeans Activation Framework API jar 1.2.2 : Eclipse Distribution License - v 1.0
 Javassist rel_3_25_0_ga : Apache License 2.0
-Javax Inject from the JSR-330 Expert Group 1 : Apache License 2.0
-Javax Inject from the JSR-330 Expert Group 1.0.0-PRD : Apache License 2.0
 javax.annotation API 1.3.2 : Common Development and Distribution License 1.1
 javax.inject:1 as OSGi bundle 2.6.1 : Eclipse Public License 2.0
+javax.inject:javax.inject 1 : Apache License 2.0
 javax.ws.rs-api 2.1.1 : Eclipse Public License 2.0
 javolution 5.5.1 : BSD 2-clause "Simplified" License
 JAXB CORE 2.3.0.1 : Common Development and Distribution License 1.1
 JAXB Runtime 2.3.2 : Eclipse Distribution License - v 1.0
 JAXB XML Binding Code Generator Package 2.3.2 : Eclipse Distribution License - v 1.0
 JCIP Annotations under Apache License 1.0-1 : Apache License 2.0
-JCL 1.2 Implemented Over SLF4J 1.7.30 : Apache License 2.0
+JCL 1.2 Implemented Over SLF4J 1.7.36 : Apache License 2.0
 JDO API 3.2.0-m3 : Apache License 2.0
 JDO2 2.0-rc1 : Apache License 2.0
-Jersey 2.32 : Apache License 2.0
-Jersey Inject HK2 2.32 : BSD 2-clause "Simplified" License
-Jersey Test Framework - Core 2.32 : Common Development and Distribution License 1.1
-jersey-container-servlet 2.32 : BSD 2-clause "Simplified" License
-jersey-container-servlet-core 2.32 : BSD 2-clause "Simplified" License
-jersey-container-simple-http 2.32 : Apache License 2.0
-jersey-core-server 2.32 : Apache License 2.0
-jersey-media-jaxb 2.32 : BSD 2-clause "Simplified" License
-jersey-test-framework-provider-simple 2.32 : Apache License 2.0
+Jersey Inject HK2 2.36 : Eclipse Public License 2.0
+Jersey Test Framework - Core 2.36 : Eclipse Public License 2.0
+jersey's jersey 2.36 : Eclipse Public License 2.0
+jersey-container-servlet 2.36 : Eclipse Public License 2.0
+jersey-container-servlet-core 2.36 : Eclipse Public License 2.0
+jersey-container-simple-http 2.36 : Eclipse Public License 2.0
+jersey-core-server 2.36 : Eclipse Public License 2.0
+jersey-media-jaxb 2.36 : Eclipse Public License 2.0
+jersey-test-framework-provider-simple 2.36 : Eclipse Public License 2.0
 Jetty :: Websocket :: API 9.2.17.v20160517 : Apache License 2.0
 Jetty :: Websocket :: Client 9.2.17.v20160517 : Apache License 2.0
 Jetty :: Websocket :: Common 9.2.17.v20160517 : Apache License 2.0
-Jetty: Java based HTTP/1.x, HTTP/2, Servlet, WebSocket Server 9.4.39.v20210325 : Apache License 2.0
-Jetty: Java based HTTP/1.x, HTTP/2, Servlet, WebSocket Server 9.4.40.v20210413 : Apache License 2.0
+Jetty: Java based HTTP/1.x, HTTP/2, Servlet, WebSocket Server 9.4.48.v20220622 : (Apache License 2.0 AND Eclipse Public License 1.0)
 JLine - Java Console input Library 2.14.6 : BSD 3-clause "New" or "Revised" License
 jMock 2 Core 2.8.4 : BSD 3-clause "New" or "Revised" License
 jMock 2 Test Jar 2.8.4 : BSD 3-clause "New" or "Revised" License
@@ -244,19 +273,17 @@ JOpt Simple 3.2 : MIT License
 jpam 1.1 : Apache License 2.0
 JPMML model 1.4.8 : BSD 3-clause "New" or "Revised" License
 json-path 2.4.0 : Apache License 2.0
-json-smart 2.3 : Apache License 2.0
-json-smart 2.3.1 : Apache License 2.0
+json-smart 2.4.8 : Apache License 2.0
 json4s 3.5.3 : Apache License 2.0
 json4s-ast 3.5.3 : Apache License 2.0
 json4s-core 3.5.3 : Apache License 2.0
 json4s-jackson 3.5.3 : Apache License 2.0
-jsr330-api 0.9 : Apache License 2.0
 JTransforms 2.4.0 : Mozilla Public License 1.1
-JUL to SLF4J bridge 1.7.30 : MIT License
+JUL to SLF4J bridge 1.7.36 : MIT License
 JUnit 4.12 : Eclipse Public License 1.0
 junit-interface 0.11 : BSD 2-clause "Simplified" License
 JVM Integration for Metrics 3.1.5 : Apache License 2.0
-Kafka 0.10 Source for Structured Streaming 2.4.0-cdh6.3.2 : Apache License 2.0
+Kafka 0.10 Source for Structured Streaming 2.4.7.7.1.7.1000-141 : Apache License 2.0
 Kerb Simple Kdc 1.1.1 : Apache License 2.0
 Kerby ASN1 Project 1.1.1 : Apache License 2.0
 Kerby Config 1.1.1 : Apache License 2.0
@@ -276,9 +303,9 @@ Kryo Shaded 4.0.2 : BSD 3-clause "New" or "Revised" License
 leveldb-api 0.6 : Apache License 2.0
 leveldbjni 1.7 : BSD 3-clause "New" or "Revised" License
 leveldbjni-all 1.8 : BSD 3-clause "New" or "Revised" License
+libfb303 0.9.3 : Apache License 2.0
 Log Redactor 2.0.8 : Apache License 2.0
-Log4J API 2.8.2 : Apache License 2.0
-Log4J Compatibility API 2.8.2 : Apache License 2.0
+Log4J Compatibility API 2.18.0 : Apache License 2.0
 LZ4 and xxHash 1.4.0 : Apache License 2.0
 machinist 0.6.1 : MIT License
 macro-compat 1.1.1 : Apache License 2.0
@@ -290,46 +317,48 @@ Microsoft JDBC Driver for SQL Server 6.2.1.jre7 : MIT License
 Microsoft Windows Azure Storage Client SDK 7.0.1 : Apache License 2.0
 minlog 1.3.0 : BSD 3-clause "New" or "Revised" License
 Mockito v2.28.2 : MIT License
-Netty Project 4.1.62.Final : Apache License 2.0
 Netty Project 4.1.68.Final : Apache License 2.0
-Netty/Codec/Redis 4.1.72.Final : Apache License 2.0
-Netty/Codec/SMTP 4.1.48.Final : Apache License 2.0
-Netty/Transport/Native/KQueue 4.1.68.Final-redhat-00002 : Apache License 2.0
-Netty/Transport/Native/Unix/Common 4.1.68.Final-redhat-00002 : Apache License 2.0
-Nimbus-JOSE-JWT 7.9 : Apache License 2.0
+Netty Project 4.1.77.Final : Apache License 2.0
+Netty/Codec/Redis 4.1.77.Final : Apache License 2.0
+Netty/Codec/SMTP 4.1.77.Final : Apache License 2.0
+Netty/Resolver/DNS/Classes/MacOS 4.1.77.Final : Apache License 2.0
+Netty/Resolver/DNS/MacOS 4.1.68.Final-redhat-00002 : Apache License 2.0
+Netty/Resolver/DNS/MacOS 4.1.77.Final : Apache License 2.0
+Netty/Transport/Classes/Epoll 4.1.77.Final : Apache License 2.0
+Netty/Transport/Classes/KQueue 4.1.77.Final : Apache License 2.0
+Netty/Transport/Native/KQueue 4.1.77.Final : Apache License 2.0
+Netty/Transport/Native/Unix/Common 4.1.77.Final : Apache License 2.0
+Nimbus-JOSE-JWT 9.23 : Apache License 2.0
 Ning-compress-LZF 1.0.3 : Apache License 2.0
 objenesis 2.5.1 : Apache License 2.0
 objenesis 2.6 : Apache License 2.0
 OkHttp 2.7.5 : Apache License 2.0
-OkHttp 3.12.6 : Apache License 2.0
-OkHttp Logging Interceptor 3.12.6 : Apache License 2.0
+OkHttp 3.12.12 : Apache License 2.0
+OkHttp Logging Interceptor 3.12.12 : Apache License 2.0
 OkIO 1.15.0 : Apache License 2.0
 OkIO 1.6.0 : Apache License 2.0
 Open JSON 1.8 : Apache License 2.0
 opencsv 2.3 : Apache License 2.0
-ORC Core 1.5.1.7.1.7.54-4 : Apache License 2.0
-ORC MapReduce 1.5.1.7.1.7.0-551 : Apache License 2.0
-ORC MapReduce 1.5.6 : Apache License 2.0
-ORC Shims 1.5.0 : Apache License 2.0
-OSGi resource locator bundle - used by various API providers that rely on META-INF/services mechanism to locate providers. 1.0.3 : Eclipse Public License 2.0
+ORC MapReduce 1.5.1.7.1.7.1000-141 : Apache License 2.0
+ORC Shims 1.5.1.7.1.7.1000-141 : Apache License 2.0
+OSGi resource locator bundle 1.0.3 : Eclipse Public License 2.0
 ParaNamer Core 2.8 : BSD 3-clause "New" or "Revised" License
 pentaho-aggdesigner-algorithm 5.1.4-jhyde : Apache License 2.0
+Pinot Avro 0.7.0 : Apache License 2.0
 Pinot JSON 0.8.0 : Apache License 2.0
 Pinot ORC 0.4.0 : Apache License 2.0
-Policeman's Forbidden API Checker 2.7 : Apache License 2.0
+Policeman's Forbidden API Checker 3.4 : Apache License 2.0
 PostgreSQL JDBC Driver (pgjdbc) 9.4.1207.jre7 : PostgreSQL License
-Pravega Flink Connectors 0.8.0 : Apache License 2.0
-Protocol Buffer Java API 2.5.0 : BSD 3-clause "New" or "Revised" License
+protobuf-java 2.5.0 : BSD 3-clause "New" or "Revised" License
 Py4J 0.10.7 : BSD 3-clause "New" or "Revised" License
 pyrolite 4.13 : MIT License
 Ranger Remote Authorization Hook - ABFS driver 2.1.0.7.2.6.0-6 : Apache License 2.0
-Ranger Remote Authorization Hook - ABFS driver 2.1.0.7.2.7.0-7 : Apache License 2.0
 Ranger Remote Authorization Integration 2.1.0.7.1.7.67-1 : Apache License 2.0
-Ranger Remote Authorization Integration 2.1.0.7.2.9.6-3 : Apache License 2.0
 re2j 1.0 : BSD 3-clause "New" or "Revised" License
 re2j 1.2 : BSD 3-clause "New" or "Revised" License
 ReflectASM 1.11.2 : BSD 3-clause "New" or "Revised" License
-reflections 0.9.10 : (BSD 2-clause "Simplified" License OR Do What The F*ck You Want To Public License)
+reflections 0.10.2 : Do What The F*ck You Want To Public License
+reload4j 1.2.22 : Apache License 2.0
 RoaringBitmap 0.7.45 : Apache License 2.0
 sac 1.3 : W3C IPR License
 Scala 2.11.12 : BSD 3-clause Clear License
@@ -354,85 +383,70 @@ shims 0.7.45 : Apache License 2.0
 Simple Common 6.0.1 : Apache License 2.0
 Simple Transport 6.0.1 : Apache License 2.0
 simple-http 6.0.1 : Apache License 2.0
-SLF4J API Module 1.7.30 : MIT License
-SLF4J Binding 2.8.2 : Apache License 2.0
-SLF4J LOG4J-12 Binding 1.7.30 : MIT License
-SnakeYAML 1.26 : Apache License 2.0
+SLF4J API Module 1.7.36 : MIT License
+SLF4J LOG4J-12 Binding 1.7.28 : MIT License
+SLF4J Reload4j Binding 1.7.36 : MIT License
+SnakeYAML 1.27 : Apache License 2.0
+SnakeYAML 1.32 : Apache License 2.0
 snappy-java 1.1.7.5 : Apache License 2.0
 SnappyData 1.6.2-6 : Apache License 2.0
 SnappyData 2.1.1.7 : Apache License 2.0
-Spark Avro 2.4.7.7.1.7.54-4 : Apache License 2.0
-Spark Avro 2.4.7.7.2.11.4-3 : Apache License 2.0
-Spark Ganglia Integration 2.1.1 : Apache License 2.0
-Spark Integration for Kafka 0.10 2.4.7.7.1.7.0-551 : Apache License 2.0
-Spark Integration for Kafka 0.10 2.4.7.7.1.7.64-1 : Apache License 2.0
+Spark Avro 2.4.7.7.1.7.1000-141 : Apache License 2.0
+Spark Ganglia Integration 2.1.3 : Apache License 2.0
+Spark Integration for Kafka 0.10 2.4.7.7.1.7.1000-141 : Apache License 2.0
 Spark Integration for Kafka 0.8 2.4.0.3.1.2.9-4 : Apache License 2.0
-Spark Launcher Project 2.2.0-cdh6.0.0-beta1 : Apache License 2.0
 Spark Launcher Project 2.4.0-cdh6.3.4 : Apache License 2.0
-Spark Launcher Project 2.4.8.7.2.12.0-291 : Apache License 2.0
-Spark Project Catalyst 2.4.7.1.9.247210.0-35 : Apache License 2.0
-Spark Project Catalyst 2.4.7.7.1.7.0-551 : Apache License 2.0
-Spark Project Catalyst 2.4.7.7.2.10.0-148 : Apache License 2.0
-Spark Project Cloud Integration through Hadoop Libraries 2.4.7.7.1.7.67-1 : Apache License 2.0
-Spark Project Cloud Integration through Hadoop Libraries 2.4.7.7.2.11.4-3 : Apache License 2.0
-Spark Project Core 2.4.7.7.1.7.0-551 : Apache License 2.0
-Spark Project Core 2.4.7.7.1.7.54-4 : Apache License 2.0
-Spark Project Core 2.4.7.7.1.7.67-1 : Apache License 2.0
+Spark Launcher Project 2.4.7.1.14.247211.0-23 : Apache License 2.0
+Spark Project Assembly 2.4.7.7.1.7.1000-141 : Apache License 2.0
+Spark Project Catalyst 2.4.7.7.1.7.1000-141 : Apache License 2.0
+Spark Project Catalyst 2.4.7.7.1.7.1055-1 : Apache License 2.0
+Spark Project Core 2.4.7.7.1.7.1055-1 : Apache License 2.0
+Spark Project Core 3.3.1 : Apache License 2.0
 Spark Project External Flume 2.4.0-cdh6.3.4 : Apache License 2.0
-Spark Project GraphX 2.4.8.7.2.12.0-291 : Apache License 2.0
-Spark Project Hive 2.4.7.7.1.7.64-1 : Apache License 2.0
-Spark Project Hive 2.4.7.7.1.7.67-1 : Apache License 2.0
+Spark Project GraphX 2.4.7.7.1.7.1000-141 : Apache License 2.0
+Spark Project Hive 2.4.7.7.1.7.1000-141 : Apache License 2.0
+Spark Project Hive 2.4.7.7.1.7.1055-1 : Apache License 2.0
 Spark Project Hive Thrift Server 2.4.0.7.1.3.9-1 : Apache License 2.0
 Spark Project Hive Thrift Server 2.4.0.7.1.5.0-115 : Apache License 2.0
-Spark Project Kubernetes 2.4.7.7.1.7.64-1 : Apache License 2.0
-Spark Project Kubernetes 2.4.7.7.1.7.67-1 : Apache License 2.0
-Spark Project Local DB 2.4.0.7.1.1.2004-2 : Apache License 2.0
-Spark Project Local DB 2.4.8.7.2.12.0-291 : Apache License 2.0
-Spark Project ML Library 2.4.7.7.1.7.64-1 : Apache License 2.0
-Spark Project ML Library 2.4.7.7.1.7.67-1 : Apache License 2.0
-Spark Project ML Local Library 2.4.0.7.1.1.2010-5 : Apache License 2.0
-Spark Project ML Local Library 2.4.7.7.1.7.54-4 : Apache License 2.0
-Spark Project Networking 2.4.7.7.2.11.4-3 : Apache License 2.0
-Spark Project REPL 2.4.8.7.2.12.0-291 : Apache License 2.0
-Spark Project Shuffle Streaming Service 2.4.7.7.1.7.67-1 : Apache License 2.0
-Spark Project Shuffle Streaming Service 2.4.7.7.2.11.0-233 : Apache License 2.0
-Spark Project Shuffle Streaming Service 2.4.7.7.2.11.4-3 : Apache License 2.0
-Spark Project SQL 2.4.7.7.1.7.54-4 : Apache License 2.0
-Spark Project SQL 2.4.7.7.1.7.64-1 : Apache License 2.0
-Spark Project Streaming 2.4.7.7.1.7.0-551 : Apache License 2.0
-Spark Project Streaming 2.4.8.7.2.12.0-291 : Apache License 2.0
-Spark Project Tags 2.2.0-cdh6.0.0-beta1 : Apache License 2.0
-Spark Project Tags 2.4.7.7.2.11.0-233 : Apache License 2.0
-Spark Project Unsafe 2.4.7.1.12.247210.0-20 : Apache License 2.0
-Spark Project Unsafe 2.4.7.7.1.7.0-551 : Apache License 2.0
+Spark Project Kubernetes 2.4.7.7.1.7.1000-141 : Apache License 2.0
+Spark Project Kubernetes 2.4.7.7.2.11.0-233 : Apache License 2.0
+Spark Project Local DB 2.4.7.1.14.247211.0-23 : Apache License 2.0
+Spark Project Local DB 2.4.7.7.1.7.1000-141 : Apache License 2.0
+Spark Project ML Library 2.4.7.1.15.7170.0-27 : Apache License 2.0
+Spark Project ML Library 2.4.7.7.1.7.1055-1 : Apache License 2.0
+Spark Project ML Local Library 2.4.7.7.1.7.1000-141 : Apache License 2.0
+Spark Project Networking 2.4.7.7.1.7.1000-141 : Apache License 2.0
+Spark Project REPL 2.4.7.7.1.7.1000-141 : Apache License 2.0
+Spark Project Shuffle Streaming Service 2.4.7.7.1.7.1055-1 : Apache License 2.0
+Spark Project Sketch 2.4.7.7.1.7.1000-141 : Apache License 2.0
+Spark Project SQL 2.4.7.7.1.7.1055-1 : Apache License 2.0
+Spark Project Streaming 2.4.7.7.1.7.1000-141 : Apache License 2.0
+Spark Project Tags 2.4.7.7.1.7.1000-141 : Apache License 2.0
+Spark Project Unsafe 2.4.7.7.1.7.1000-141 : Apache License 2.0
 Spark Project YARN Shuffle Service 2.4.7.7.1.7.64-1 : Apache License 2.0
-Spark Project YARN Stable API 2.4.7.7.1.7.54-4 : Apache License 2.0
-Spark Project YARN Stable API 2.4.7.7.1.7.64-1 : Apache License 2.0
-Spark Project YARN Stable API 2.4.7.7.1.7.67-1 : Apache License 2.0
-spark-docker 2.2 : Apache License 2.0
+Spark Project YARN Stable API 2.4.8.1.16.7215.0-19 : Apache License 2.0
+spark-docker 4.0 : Apache License 2.0
 spire 0.13.0 : MIT License
 spire-macros 0.13.0 : MIT License
-Spring Framework v4.3.29.RELEASE : Apache License 2.0
 sqlline 1.3.0 : BSD 3-clause "New" or "Revised" License
 StAX 1.0.1 : Apache License 2.0
-Stax2 API 3.1.4 : BSD 3-clause "New" or "Revised" License
+Stax2 API 4.2.1 : BSD 3-clause "New" or "Revised" License
 stream-lib 2.7.0 : Apache License 2.0
 stringtemplate4 4.0.4 : BSD 3-clause "New" or "Revised" License
 test-interface 1.0 : BSD 3-clause "New" or "Revised" License
-tez-api 0.10.0 : Apache License 2.0
-tez-api 0.9.1.7.1.7.54-4 : Apache License 2.0
-tez-common 0.9.1.7.1.7.0-551 : Apache License 2.0
-tez-runtime-internals 0.10.0 : Apache License 2.0
+tez-api 0.9.1.7.1.7.1055-1 : Apache License 2.0
+tez-common 0.9.1.7.1.7.1000-141 : Apache License 2.0
+tez-runtime-internals 0.9.1.7.1.7.1000-141 : Apache License 2.0
 ThreeTen-extra 1.5.0 : BSD 3-clause "New" or "Revised" License
 Token provider 1.1.1 : Apache License 2.0
-unirest-objectmapper-jackson 3.6.01 : MIT License
+unirest-objectmapper-jackson 3.13.2 : MIT License
 univocity-parsers 2.8.3 : Apache License 2.0
-velocity.apache.org/tools/devel 1.5 : Apache License 2.0
 webbit 0.4.14 : BSD 3-clause "New" or "Revised" License
-wildfly-openssl 1.0.7.Final : Apache License 2.0
-wildfly-openssl-java 1.0.8.Final : Apache License 2.0
-wildfly-openssl-windows-i386 1.0.7.Final : Apache License 2.0
-Woodstox 5.0.3 : Apache License 2.0
+wildfly-openssl 1.1.3.Final : Apache License 2.0
+wildfly-openssl-java 1.0.12.Final-redhat-00001 : Apache License 2.0
+wildfly-openssl-windows-i386 1.0.12.Final : Apache License 2.0
+wildfly-openssl-windows-x86_64 1.0.10.Final : Apache License 2.0
+Woodstox 5.4.0 : Apache License 2.0
 Xalan Java Serializer 2.7.2 : Apache License 2.0
 XZ for Java 1.8 : Public Domain
 zjsonpatch 0.3.0 : Apache License 2.0
@@ -441,7 +455,7 @@ zstd-jni 1.3.2-2 : BSD 2-clause "Simplified" License
 Licenses: 
 
 Apache License 1.1
-(Apache ORO 2.0.8)
+(Jakarta ORO 2.0.8)
 
 Apache Software License
 =======================
@@ -505,7 +519,7 @@ Illinois, Urbana-Champaign.
 ---
 
 Apache License 2.0
-(Aggregate Designer Algorithm 6.0, aircompressor 0.10, Apache Ant 1.9.4, Apache Avro Mapred API 1.8.2.7.2.12.0-291, Apache Calcite Avatica 1.16.0, Apache Calcite Avatica 1.16.0.7.1.5.51-1, Apache Commons BeanUtils 1.9.4, Apache Commons CLI 1.2, Apache Commons CLI 1.4, Apache Commons Collections 3.2.2, Apache Commons Collections 4.1, Apache Commons Compress 1.21, Apache Commons Configuration 1.10, Apache Commons Configuration 2.1.1, Apache Commons Crypto 1.0.0, Apache Commons Daemon 1.0.13, Apache Commons DBCP 1.4, Apache Commons DBCP 2.5.0, Apache Commons Exec 1.3, Apache Commons Lang 2.6, Apache Commons Lang 3.8.1, Apache Commons Logging 1.0.4, Apache Commons Logging 1.2, Apache Commons Math 3.4.1, Apache Commons Net 3.1, Apache Commons Pool 1.5.4, Apache Commons Pool 2.6.0, Apache Derby 10.14.2.0, Apache Geronimo Annotation Spec 1.3 1.2, Apache Geronimo JCache Spec 1.0 1.0-alpha-1, Apache Hadoop Azure Data Lake support 3.1.1.7.1.7.0-551, Apache Hadoop Azure support 3.1.1.7.1.2.6-1, Apache Hadoop Azure support 3.1.1.7.2.12.0-291, Apache Hadoop OpenStack support 3.1.1.7.1.7.0-551, Apache Hive 3.1.3000.7.1.6.85-1, Apache Hive 3.1.3000.7.1.7.0-551, Apache HttpClient 4.5.13, Apache HttpComponents Core 4.4.13, Apache HttpMime 4.5.13, Apache Ivy 2.4.0, Apache Kafka 2.4.1.7.1.5.0-199, Apache Kafka 2.4.1.7.1.5.0-257, Apache Log4j 1.2.17, Apache Log4j 2.8.2, Apache Parquet Column 1.10.99.7.2.12.0-291, Apache Parquet Format Structures 1.10.99.7.2.12.0-291, Apache Parquet Hadoop 1.10.99.7.2.12.0-291, Apache Parquet Hadoop Bundle 1.10.99.7.2.12.0-291, Apache Spark 2.4.7, Apache Spark 2.4.7-rc3, Apache Thrift 0.13.0, Apache Thrift 0.9.3, Apache Velocity - Engine 2.3, Apache Xalan (Java) 2.7.2, Apache XBean :: ASM shaded (repackaged) 4.13, Apache XML Commons 1.4.01, Apache Yetus - Audience Annotations 0.5.0, Arrow Format 0.10.0, Arrow Memory 0.10.0, Arrow Vectors 0.10.0, ASM based accessors helper used by json-smart 1.2, ASM based accessors helper used by json-smart 2.3.1, Audit CDH6 Plugin 7.4.4, AWS SDK for Java - Bundle 1.11.1030, Bean Validation API 2.0.2, BeanShell 2.0b6, BoneCP 0.8.0.RELEASE, breeze-macros 0.13.2, Byte Buddy byte-buddy-1.9.10, byte-buddy-agent 1.9.10, Caffeine cache 2.8.0, Calcite Core 1.19.0.7.1.6.96-1, Calcite Core 1.19.0.7.1.7.0-551, Calcite Linq4j 1.19.0.7.1.7.0-551, cglib 2.1_3, cglib 3.2.0, chill 0.9.3, chill-java 0.9.3, com.yahoo.datasketches:memory 0.9.0, com.yahoo.datasketches:sketches-core 0.9.0, Commons IO 2.11.0, commons-codec 1.10, commons-codec 1.13, cron-utils 9.1.3, crysknife-processor 0.2, CSS Parser 0.9.19, Curator Client 4.3.0.7.2.12.0-291, Curator Recipes 4.3.0.7.2.12.0-291, Data Mapper for Jackson 1.9.13-cloudera.4, DataNucleus 3.2.10, DataNucleus 4.1.17, DataNucleus 4.1.19, DataNucleus 4.2.4, Ehcache 3.3.1, Ehcache 3 API module 3.4.0, Ehcache 3 JSR-107 module 3.3.1, Ehcache 3 XML Parsing module 3.2.2, Elasticsearch Kubernetes cloud plugin 4.6.4, empty 1.0.0, error-prone annotations 2.3.2, error-prone annotations 2.3.3, Fabric8 :: Kubernetes Model 4.6.4, Fabric8 :: Kubernetes Model :: Common 4.6.4, FindBugs jsr305 1.3.9, FlatBuffers Java API 1.2.0-3f79e055, gcs-connector.jar 2.1.2.7.1.7.64-1, gcs-connector.jar 2.1.2.7.2.12.2-5, Generex 1.0.2, geometry-api-java 2.2.0, Google Guice 4.0, google-gson 2.2.4, Graphite Integration for Metrics 3.1.5, Guava InternalFutureFailureAccess and InternalFutures 1.0.1, Guava ListenableFuture only 9999.0-empty-to-avoid-conflict-with-guava, Guava: Google Core Libraries for Java v28.0, Hadoop Metrics2 Reporter for Dropwizard Metrics 0.1.2, HawtJNI Runtime 1.10, HikariCP 2.4.12, HikariCP 2.6.1, Hive Llap Common 3.1.3000.7.1.7.0-551, Hive Shims Common 3.1.3000.7.1.5.61-1, Hive Storage API 3.1.3000.7.1.7.0-551, Hive Vector-Code-Gen Utilities 3.1.3000.7.1.7.0-551, hive-cli 3.1.3000.7.1.7.0-551, hive-metastore 3.1.3000.7.1.7.64-1, hive-metastore 3.1.3000.7.2.11.4-3, hive-serde 3.1.3000.7.1.6.86-2, hive-serde 3.1.3000.7.1.6.97-1, hive-service 3.1.3000.7.1.7.0-551, HPPC 0.7.2, HtmlUnit 2.22, HtmlUnit NekoHtml 2.21, impala-extractor 7.4.4, J2ObjC Annotations 1.3, Jackson dataformats: Binary 2.10.5, Jackson Integration for Metrics 3.1.5, Jackson module: Paranamer 2.10.5, jackson-annotations 2.10.5, jackson-core 1.9.13, jackson-core 2.10.5, jackson-databind 2.10.5.1, jackson-dataformat-csv 2.10.0, jackson-dataformat-yaml 2.10.5, Jackson-datatype-jdk8 2.10.0, Jackson-JAXRS-base 2.10.0, Jackson-JAXRS-base 2.10.5, jackson-jaxrs-json-provider 2.10.0, jackson-jaxrs-json-provider 2.10.5, jackson-module-jaxb-annotations 2.10.5, jackson-module-scala jackson-module-scala-2.10.5, jansi 1.12, jansi-native 1.6, Java Native Access (JNA) 4.1.0, Javassist rel_3_25_0_ga, Javax Inject from the JSR-330 Expert Group 1, Javax Inject from the JSR-330 Expert Group 1.0.0-PRD, JCIP Annotations under Apache License 1.0-1, JCL 1.2 Implemented Over SLF4J 1.7.30, JDO API 3.2.0-m3, JDO2 2.0-rc1, Jersey 2.32, jersey-container-simple-http 2.32, jersey-core-server 2.32, jersey-test-framework-provider-simple 2.32, Jetty :: Websocket :: API 9.2.17.v20160517, Jetty :: Websocket :: Client 9.2.17.v20160517, Jetty :: Websocket :: Common 9.2.17.v20160517, Jetty: Java based HTTP/1.x, HTTP/2, Servlet, WebSocket Server 9.4.39.v20210325, Jetty: Java based HTTP/1.x, HTTP/2, Servlet, WebSocket Server 9.4.40.v20210413, Joda Time 2.8.1, Joda Time 2.9.3, Joda Time 2.9.9, jpam 1.1, json-path 2.4.0, json-smart 2.3, json-smart 2.3.1, json4s 3.5.3, json4s-ast 3.5.3, json4s-core 3.5.3, json4s-jackson 3.5.3, jsr330-api 0.9, JVM Integration for Metrics 3.1.5, Kafka 0.10 Source for Structured Streaming 2.4.0-cdh6.3.2, Kerb Simple Kdc 1.1.1, Kerby ASN1 Project 1.1.1, Kerby Config 1.1.1, Kerby PKIX Project 1.1.1, Kerby Util 1.1.1, Kerby XDR Project 1.1.1, Kerby-kerb Admin 1.1.1, Kerby-kerb Client 1.1.1, Kerby-kerb Common 1.1.1, Kerby-kerb core 1.1.1, Kerby-kerb Crypto 1.1.1, Kerby-kerb Identity 1.1.1, Kerby-kerb Server 1.1.1, Kerby-kerb Util 1.1.1, leveldb-api 0.6, Log Redactor 2.0.8, Log4J API 2.8.2, Log4J Compatibility API 2.8.2, LZ4 and xxHash 1.4.0, macro-compat 1.1.1, Metrics Core 3.1.5, Metrics Core Library 2.2.0, Metrics Servlet 2.2.0, Microsoft Windows Azure Storage Client SDK 7.0.1, Netty Project 4.1.62.Final, Netty Project 4.1.68.Final, Netty/Codec/Redis 4.1.72.Final, Netty/Codec/SMTP 4.1.48.Final, Netty/Transport/Native/KQueue 4.1.68.Final-redhat-00002, Netty/Transport/Native/Unix/Common 4.1.68.Final-redhat-00002, Nimbus-JOSE-JWT 7.9, Ning-compress-LZF 1.0.3, objenesis 2.5.1, objenesis 2.6, OkHttp 2.7.5, OkHttp 3.12.6, OkHttp Logging Interceptor 3.12.6, OkIO 1.15.0, OkIO 1.6.0, Open JSON 1.8, opencsv 2.3, ORC Core 1.5.1.7.1.7.54-4, ORC MapReduce 1.5.1.7.1.7.0-551, ORC MapReduce 1.5.6, ORC Shims 1.5.0, pentaho-aggdesigner-algorithm 5.1.4-jhyde, Pinot JSON 0.8.0, Pinot ORC 0.4.0, Policeman's Forbidden API Checker 2.7, Pravega Flink Connectors 0.8.0, Ranger Remote Authorization Hook - ABFS driver 2.1.0.7.2.6.0-6, Ranger Remote Authorization Hook - ABFS driver 2.1.0.7.2.7.0-7, Ranger Remote Authorization Integration 2.1.0.7.1.7.67-1, Ranger Remote Authorization Integration 2.1.0.7.2.9.6-3, RoaringBitmap 0.7.45, scala-collection-compat 2.1.2, scalalogging 3.9.2, ScalaTest 3.0.3, ScalaUtils 3.0.3, scalaz 0.13.2, Selenium 2.52.0, selenium-edge-driver 2.52.0, selenium-leg-rc 2.52.0, shapeless-core 2.3.2, shims 0.7.45, Simple Common 6.0.1, Simple Transport 6.0.1, simple-http 6.0.1, SLF4J Binding 2.8.2, SnakeYAML 1.26, snappy-java 1.1.7.5, SnappyData 1.6.2-6, SnappyData 2.1.1.7, Spark Avro 2.4.7.7.1.7.54-4, Spark Avro 2.4.7.7.2.11.4-3, Spark Ganglia Integration 2.1.1, Spark Integration for Kafka 0.10 2.4.7.7.1.7.0-551, Spark Integration for Kafka 0.10 2.4.7.7.1.7.64-1, Spark Integration for Kafka 0.8 2.4.0.3.1.2.9-4, Spark Launcher Project 2.2.0-cdh6.0.0-beta1, Spark Launcher Project 2.4.0-cdh6.3.4, Spark Launcher Project 2.4.8.7.2.12.0-291, Spark Project Catalyst 2.4.7.1.9.247210.0-35, Spark Project Catalyst 2.4.7.7.1.7.0-551, Spark Project Catalyst 2.4.7.7.2.10.0-148, Spark Project Cloud Integration through Hadoop Libraries 2.4.7.7.1.7.67-1, Spark Project Cloud Integration through Hadoop Libraries 2.4.7.7.2.11.4-3, Spark Project Core 2.4.7.7.1.7.0-551, Spark Project Core 2.4.7.7.1.7.54-4, Spark Project Core 2.4.7.7.1.7.67-1, Spark Project External Flume 2.4.0-cdh6.3.4, Spark Project GraphX 2.4.8.7.2.12.0-291, Spark Project Hive 2.4.7.7.1.7.64-1, Spark Project Hive 2.4.7.7.1.7.67-1, Spark Project Hive Thrift Server 2.4.0.7.1.3.9-1, Spark Project Hive Thrift Server 2.4.0.7.1.5.0-115, Spark Project Kubernetes 2.4.7.7.1.7.64-1, Spark Project Kubernetes 2.4.7.7.1.7.67-1, Spark Project Local DB 2.4.0.7.1.1.2004-2, Spark Project Local DB 2.4.8.7.2.12.0-291, Spark Project ML Library 2.4.7.7.1.7.64-1, Spark Project ML Library 2.4.7.7.1.7.67-1, Spark Project ML Local Library 2.4.0.7.1.1.2010-5, Spark Project ML Local Library 2.4.7.7.1.7.54-4, Spark Project Networking 2.4.7.7.2.11.4-3, Spark Project REPL 2.4.8.7.2.12.0-291, Spark Project Shuffle Streaming Service 2.4.7.7.1.7.67-1, Spark Project Shuffle Streaming Service 2.4.7.7.2.11.0-233, Spark Project Shuffle Streaming Service 2.4.7.7.2.11.4-3, Spark Project SQL 2.4.7.7.1.7.54-4, Spark Project SQL 2.4.7.7.1.7.64-1, Spark Project Streaming 2.4.7.7.1.7.0-551, Spark Project Streaming 2.4.8.7.2.12.0-291, Spark Project Tags 2.2.0-cdh6.0.0-beta1, Spark Project Tags 2.4.7.7.2.11.0-233, Spark Project Unsafe 2.4.7.1.12.247210.0-20, Spark Project Unsafe 2.4.7.7.1.7.0-551, Spark Project YARN Shuffle Service 2.4.7.7.1.7.64-1, Spark Project YARN Stable API 2.4.7.7.1.7.54-4, Spark Project YARN Stable API 2.4.7.7.1.7.64-1, Spark Project YARN Stable API 2.4.7.7.1.7.67-1, spark-docker 2.2, Spring Framework v4.3.29.RELEASE, StAX 1.0.1, stream-lib 2.7.0, tez-api 0.10.0, tez-api 0.9.1.7.1.7.54-4, tez-common 0.9.1.7.1.7.0-551, tez-runtime-internals 0.10.0, Token provider 1.1.1, univocity-parsers 2.8.3, velocity.apache.org/tools/devel 1.5, wildfly-openssl 1.0.7.Final, wildfly-openssl-java 1.0.8.Final, wildfly-openssl-windows-i386 1.0.7.Final, Woodstox 5.0.3, Xalan Java Serializer 2.7.2, zjsonpatch 0.3.0)
+(Aggregate Designer Algorithm 6.0, aircompressor 0.10, Apache Ant 1.9.4, Apache Avro Mapred API 1.8.2.7.1.7.1000-141, Apache Calcite Avatica 1.16.0.7.1.7.1000-141, Apache Calcite Avatica 1.16.0.7.2.15.0-147, Apache Calcite Avatica Metrics 1.16.0.7.1.7.1000-141, Apache Commons BeanUtils 1.9.4, Apache Commons CLI 1.2, Apache Commons CLI 1.4, Apache Commons Codec 1.10, Apache Commons Codec 1.13, Apache Commons Collections 3.2.2, Apache Commons Collections 4.1, Apache Commons Compress 1.21, Apache Commons Configuration 1.10, Apache Commons Configuration 2.1.1, Apache Commons Crypto 1.0.0, Apache Commons Daemon 1.0.13, Apache Commons DBCP 1.4, Apache Commons DBCP 2.5.0, Apache Commons Exec 1.3, Apache Commons IO 2.11.0, Apache Commons Lang 2.6, Apache Commons Lang 3.8.1, Apache Commons Logging 1.0.4, Apache Commons Logging 1.2, Apache Commons Math 3.4.1, Apache Commons Net 3.1, Apache Commons Pool 1.5.4, Apache Commons Pool 2.6.0, Apache Derby 10.14.2.0, Apache Geronimo Annotation Spec 1.3 1.2, Apache Geronimo JCache Spec 1.0 1.0-alpha-1, Apache Hadoop Azure Data Lake support 3.1.1.7.1.7.1000-141, Apache Hadoop Azure support 3.1.1.7.1.7.1055-1, Apache Hadoop Cloud Storage 3.1.1.7.1.7.1000-141, Apache Hadoop OpenStack support 3.1.1.7.1.7.1000-141, Apache Hive 3.1.3000.7.1.7.1055-1, Apache Hive 3.1.3000.7.1.8.0-801, Apache HttpClient 4.5.13, Apache HttpComponents Core 4.4.13, Apache HttpMime 4.5.13, Apache Ivy 2.5.1, Apache Jakarta log4j Plug-in 1.2.19-TALEND, Apache Kafka 2.4.1.7.1.5.0-199, Apache Kafka 2.4.1.7.1.5.0-257, Apache Log4j 1.2.17, Apache Log4j 2.18.0, Apache Log4J API 2.18.0, Apache Log4j SLF4J Binding 2.18.0, Apache ORC 1.5.1.7.1.7.1000-141, Apache Parquet Column 1.10.99.7.1.7.1000-141, Apache Parquet Format (Incubating) 2.4.0-cdh6.3.2, Apache Parquet Format Structures 1.10.99.7.1.8.0-801, Apache Parquet Hadoop 1.10.99.7.2.14.0-149, Apache Parquet Hadoop Bundle 1.10.99.7.1.7.1000-141, Apache Parquet Hadoop Bundle 1.10.99.7.1.8.0-801, Apache Spark 2.4.7, Apache Spark 2.4.7-rc3, Apache Thrift 0.16.0, Apache TinkerPop :: Gremlin Driver 3.6.1, Apache Velocity - Engine 2.3, Apache Xalan (Java) 2.7.2, Apache XBean :: ASM shaded (repackaged) 4.13, Apache XML Commons 1.4.01, Apache Yetus - Audience Annotations 0.5.0, apache/incubator-kyuubi v0.1.0-rc1, Arrow Format 0.10.0, Arrow Memory 0.10.0, Arrow Vectors 0.10.0, ASM based accessors helper used by json-smart 2.4.8, Audit CDH6 Plugin 7.4.4, AWS SDK for Java 1.12.132, Bean Validation API 2.0.2, BeanShell 2.0b6, BoneCP 0.8.0.RELEASE, breeze-macros 0.13.2, Byte Buddy byte-buddy-1.9.10, byte-buddy-agent 1.9.10, Caffeine cache 2.8.0, Calcite Core 1.19.0.7.1.8.0-801, Calcite Linq4j 1.19.0.7.1.7.1000-141, cglib 2.1_3, cglib 3.2.0, chill 0.9.3, chill-java 0.9.3, client 2.0.0-beta, com.yahoo.datasketches:memory 0.9.0, com.yahoo.datasketches:sketches-core 0.9.0, cron-utils 9.1.6, crysknife-processor 0.4, CSS Parser 0.9.19, Curator Framework 4.3.0.7.1.7.1000-141, Curator Recipes 4.3.0.7.1.7.1000-141, Data Mapper for Jackson 1.9.13-cloudera.4, DataNucleus 3.2.10, DataNucleus 4.1.17, DataNucleus 4.1.19, DataNucleus 4.2.4, delta-standalone 0.4.0, Ehcache 3.3.1, Ehcache 3 API module 3.4.0, Ehcache 3 JSR-107 module 3.3.1, Ehcache 3 XML Parsing module 3.2.2, Elasticsearch Kubernetes cloud plugin 5.5.0, empty 1.0.0, error-prone annotations 2.3.2, error-prone annotations 2.3.3, error-prone annotations 2.3.4, Fabric8 :: Kubernetes Model :: Admission Registration, Authentication and Authorization 5.5.0, Fabric8 :: Kubernetes Model :: API Extensions 5.5.0, Fabric8 :: Kubernetes Model :: Apps 5.5.0, Fabric8 :: Kubernetes Model :: Autoscaling 5.5.0, Fabric8 :: Kubernetes Model :: Batch 5.5.0, Fabric8 :: Kubernetes Model :: Certificates 5.5.0, Fabric8 :: Kubernetes Model :: Common 5.5.0, Fabric8 :: Kubernetes Model :: Coordination 5.5.0, Fabric8 :: Kubernetes Model :: Core 5.5.0, Fabric8 :: Kubernetes Model :: Discovery 5.5.0, Fabric8 :: Kubernetes Model :: Events 5.5.0, Fabric8 :: Kubernetes Model :: Extensions 5.5.0, Fabric8 :: Kubernetes Model :: FlowControl 5.5.0, Fabric8 :: Kubernetes Model :: Metrics 5.5.0, Fabric8 :: Kubernetes Model :: Networking 5.5.0, Fabric8 :: Kubernetes Model :: Node 5.5.0, Fabric8 :: Kubernetes Model :: Policy 5.5.0, Fabric8 :: Kubernetes Model :: RBAC 5.5.0, Fabric8 :: Kubernetes Model :: Scheduling 5.5.0, Fabric8 :: Kubernetes Model :: Storage Class 5.5.0, FindBugs jsr305 1.3.9, FlatBuffers Java API 1.2.0-3f79e055, gcs-connector.jar 2.1.2.7.1.8.0-801, Generex 1.0.2, geometry-api-java 2.2.0, Google Guice 4.0, google-gson 2.9.0, google-guava v28.0, google-guava v28.2, Graphite Integration for Metrics 3.1.5, Guava InternalFutureFailureAccess and InternalFutures 1.0.1, Guava ListenableFuture only 9999.0-empty-to-avoid-conflict-with-guava, Hadoop Metrics2 Reporter for Dropwizard Metrics 0.1.2, HawtJNI Runtime 1.10, HikariCP 2.4.12, HikariCP 2.6.1, Hive Llap Common 3.1.3000.7.1.7.1055-1, Hive Service RPC 3.1.3000.7.1.8.0-801, Hive Shims 0.23 3.1.3000.7.1.7.1000-141, Hive Shims Common 3.1.3000.7.2.15.0-147, Hive Storage API 3.1.3000.7.1.7.1000-141, Hive Vector-Code-Gen Utilities 3.1.3000.7.1.7.1000-141, hive-cli 3.1.3000.7.1.7.1055-1, hive-metastore 3.1.3000.7.1.7.1000-141, hive-serde 3.1.3000.7.1.7.1055-1, hive-serde 3.1.3000.7.1.8.0-801, hive-service 3.1.3000.7.1.8.0-801, HPPC 0.7.2, HtmlUnit 2.22, HtmlUnit/htmlunit-neko 2.21, impala-extractor 7.4.4, J2ObjC Annotations 1.3, Jackson dataformats: Binary 2.12.7, Jackson Integration for Metrics 3.1.5, jackson-annotations 2.12.7, jackson-core 1.9.13, jackson-core 2.12.7, jackson-databind 2.12.7.1, jackson-dataformat-csv 2.10.0, jackson-dataformat-yaml 2.12.7, Jackson-datatype-jdk8 2.10.0, Jackson-Datatype-JSR310 2.11.2, Jackson-JAXRS-base 2.10.0, Jackson-JAXRS-base 2.12.7, jackson-jaxrs-json-provider 2.10.0, jackson-jaxrs-json-provider 2.12.7, jackson-module-jaxb-annotations 2.12.7, jackson-module-scala 2.12.7, jansi 1.12, jansi-native 1.6, Java Native Access (JNA) 4.1.0, Javassist rel_3_25_0_ga, javax.inject:javax.inject 1, JCIP Annotations under Apache License 1.0-1, JCL 1.2 Implemented Over SLF4J 1.7.36, JDO API 3.2.0-m3, JDO2 2.0-rc1, Jetty :: Websocket :: API 9.2.17.v20160517, Jetty :: Websocket :: Client 9.2.17.v20160517, Jetty :: Websocket :: Common 9.2.17.v20160517, Jetty: Java based HTTP/1.x, HTTP/2, Servlet, WebSocket Server 9.4.48.v20220622, Joda Time 2.8.1, Joda Time 2.9.3, Joda Time 2.9.9, jpam 1.1, json-path 2.4.0, json-smart 2.4.8, json4s 3.5.3, json4s-ast 3.5.3, json4s-core 3.5.3, json4s-jackson 3.5.3, JVM Integration for Metrics 3.1.5, Kafka 0.10 Source for Structured Streaming 2.4.7.7.1.7.1000-141, Kerb Simple Kdc 1.1.1, Kerby ASN1 Project 1.1.1, Kerby Config 1.1.1, Kerby PKIX Project 1.1.1, Kerby Util 1.1.1, Kerby XDR Project 1.1.1, Kerby-kerb Admin 1.1.1, Kerby-kerb Client 1.1.1, Kerby-kerb Common 1.1.1, Kerby-kerb core 1.1.1, Kerby-kerb Crypto 1.1.1, Kerby-kerb Identity 1.1.1, Kerby-kerb Server 1.1.1, Kerby-kerb Util 1.1.1, leveldb-api 0.6, libfb303 0.9.3, Log Redactor 2.0.8, Log4J Compatibility API 2.18.0, LZ4 and xxHash 1.4.0, macro-compat 1.1.1, Metrics Core 3.1.5, Metrics Core Library 2.2.0, Metrics Servlet 2.2.0, Microsoft Windows Azure Storage Client SDK 7.0.1, Netty Project 4.1.68.Final, Netty Project 4.1.77.Final, Netty/Codec/Redis 4.1.77.Final, Netty/Codec/SMTP 4.1.77.Final, Netty/Resolver/DNS/Classes/MacOS 4.1.77.Final, Netty/Resolver/DNS/MacOS 4.1.68.Final-redhat-00002, Netty/Resolver/DNS/MacOS 4.1.77.Final, Netty/Transport/Classes/Epoll 4.1.77.Final, Netty/Transport/Classes/KQueue 4.1.77.Final, Netty/Transport/Native/KQueue 4.1.77.Final, Netty/Transport/Native/Unix/Common 4.1.77.Final, Nimbus-JOSE-JWT 9.23, Ning-compress-LZF 1.0.3, objenesis 2.5.1, objenesis 2.6, OkHttp 2.7.5, OkHttp 3.12.12, OkHttp Logging Interceptor 3.12.12, OkIO 1.15.0, OkIO 1.6.0, Open JSON 1.8, opencsv 2.3, ORC MapReduce 1.5.1.7.1.7.1000-141, ORC Shims 1.5.1.7.1.7.1000-141, pentaho-aggdesigner-algorithm 5.1.4-jhyde, Pinot Avro 0.7.0, Pinot JSON 0.8.0, Pinot ORC 0.4.0, Policeman's Forbidden API Checker 3.4, Ranger Remote Authorization Hook - ABFS driver 2.1.0.7.2.6.0-6, Ranger Remote Authorization Integration 2.1.0.7.1.7.67-1, reload4j 1.2.22, RoaringBitmap 0.7.45, scala-collection-compat 2.1.2, scalalogging 3.9.2, ScalaTest 3.0.3, ScalaUtils 3.0.3, scalaz 0.13.2, Selenium 2.52.0, selenium-edge-driver 2.52.0, selenium-leg-rc 2.52.0, shapeless-core 2.3.2, shims 0.7.45, Simple Common 6.0.1, Simple Transport 6.0.1, simple-http 6.0.1, SnakeYAML 1.27, SnakeYAML 1.32, snappy-java 1.1.7.5, SnappyData 1.6.2-6, SnappyData 2.1.1.7, Spark Avro 2.4.7.7.1.7.1000-141, Spark Ganglia Integration 2.1.3, Spark Integration for Kafka 0.10 2.4.7.7.1.7.1000-141, Spark Integration for Kafka 0.8 2.4.0.3.1.2.9-4, Spark Launcher Project 2.4.0-cdh6.3.4, Spark Launcher Project 2.4.7.1.14.247211.0-23, Spark Project Assembly 2.4.7.7.1.7.1000-141, Spark Project Catalyst 2.4.7.7.1.7.1000-141, Spark Project Catalyst 2.4.7.7.1.7.1055-1, Spark Project Core 2.4.7.7.1.7.1055-1, Spark Project Core 3.3.1, Spark Project External Flume 2.4.0-cdh6.3.4, Spark Project GraphX 2.4.7.7.1.7.1000-141, Spark Project Hive 2.4.7.7.1.7.1000-141, Spark Project Hive 2.4.7.7.1.7.1055-1, Spark Project Hive Thrift Server 2.4.0.7.1.3.9-1, Spark Project Hive Thrift Server 2.4.0.7.1.5.0-115, Spark Project Kubernetes 2.4.7.7.1.7.1000-141, Spark Project Kubernetes 2.4.7.7.2.11.0-233, Spark Project Local DB 2.4.7.1.14.247211.0-23, Spark Project Local DB 2.4.7.7.1.7.1000-141, Spark Project ML Library 2.4.7.1.15.7170.0-27, Spark Project ML Library 2.4.7.7.1.7.1055-1, Spark Project ML Local Library 2.4.7.7.1.7.1000-141, Spark Project Networking 2.4.7.7.1.7.1000-141, Spark Project REPL 2.4.7.7.1.7.1000-141, Spark Project Shuffle Streaming Service 2.4.7.7.1.7.1055-1, Spark Project Sketch 2.4.7.7.1.7.1000-141, Spark Project SQL 2.4.7.7.1.7.1055-1, Spark Project Streaming 2.4.7.7.1.7.1000-141, Spark Project Tags 2.4.7.7.1.7.1000-141, Spark Project Unsafe 2.4.7.7.1.7.1000-141, Spark Project YARN Shuffle Service 2.4.7.7.1.7.64-1, Spark Project YARN Stable API 2.4.8.1.16.7215.0-19, spark-docker 4.0, StAX 1.0.1, stream-lib 2.7.0, tez-api 0.9.1.7.1.7.1055-1, tez-common 0.9.1.7.1.7.1000-141, tez-runtime-internals 0.9.1.7.1.7.1000-141, Token provider 1.1.1, univocity-parsers 2.8.3, wildfly-openssl 1.1.3.Final, wildfly-openssl-java 1.0.12.Final-redhat-00001, wildfly-openssl-windows-i386 1.0.12.Final, wildfly-openssl-windows-x86_64 1.0.10.Final, Woodstox 5.4.0, Xalan Java Serializer 2.7.2, zjsonpatch 0.3.0)
 
 Apache License
 Version 2.0, January 2004
@@ -692,7 +706,7 @@ third-party archives.
 ---
 
 BSD 2-clause "Simplified" License
-(FindBugs-Annotations 3.0.0, javolution 5.5.1, Jersey Inject HK2 2.32, jersey-container-servlet 2.32, jersey-container-servlet-core 2.32, jersey-media-jaxb 2.32, reflections 0.9.10, zstd-jni 1.3.2-2)
+(FindBugs-Annotations 3.0.0, javolution 5.5.1, zstd-jni 1.3.2-2)
 
 BSD Two Clause License
 ======================
@@ -837,10 +851,7 @@ BSD 3-clause "New" or "Revised" License
 
 BSD License
 
-
-
 Copyright (c) 2000-2006, www.hamcrest.org
-
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
@@ -1026,7 +1037,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE
 ---
 
 BSD 3-clause "New" or "Revised" License
-(JavaBeans Activation Framework 1.2.1, JavaBeans Activation Framework API jar 1.2.1)
+(JavaBeans Activation Framework API jar 1.2.1)
 
 Copyright (c) 2018 Oracle and/or its affiliates. All rights reserved.
    
@@ -1062,7 +1073,7 @@ Redistribution and use in source and binary forms, with or without
 ---
 
 BSD 3-clause "New" or "Revised" License
-(antlr 3.5.2, ASM Commons 5.1, ASM Tree 5.1, ASM Util 5.1, Automaton 1.11-8, core 1.1.2, Fortran to Java ARPACK 0.1, Janino 3.0.16, Janino Commons Compiler 3.0.16, jMock 2 Core 2.8.4, jMock 2 Test Jar 2.8.4, jMock JUnit 4 Extension 2.8.4, JPMML model 1.4.8, Kryo Shaded 4.0.2, leveldbjni-all 1.8, Protocol Buffer Java API 2.5.0, re2j 1.0, re2j 1.2, ReflectASM 1.11.2, scala-asm 5.2.0-scala-2, scala-compiler 2.11.12, scala-java8-compat 0.9.0, scala-xml 1.0.5, ScalaCheck 1.13.5, Stax2 API 3.1.4, test-interface 1.0, webbit 0.4.14)
+(antlr 3.5.2, ASM Commons 5.1, ASM Tree 5.1, ASM Util 5.1, Automaton 1.11-8, core 1.1.2, Fortran to Java ARPACK 0.1, Janino 3.0.16, Janino Commons Compiler 3.0.16, jMock 2 Core 2.8.4, jMock 2 Test Jar 2.8.4, jMock JUnit 4 Extension 2.8.4, JPMML model 1.4.8, Kryo Shaded 4.0.2, leveldbjni-all 1.8, re2j 1.0, re2j 1.2, ReflectASM 1.11.2, scala-asm 5.2.0-scala-2, scala-compiler 2.11.12, scala-java8-compat 0.9.0, scala-xml 1.0.5, ScalaCheck 1.13.5, Stax2 API 4.2.1, test-interface 1.0, webbit 0.4.14)
 
 Copyright (c) <YEAR>, <OWNER>
 All rights reserved.
@@ -1096,11 +1107,82 @@ IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ---
 
 BSD 3-clause "New" or "Revised" License
+(protobuf-java 2.5.0)
+
+Copyright 2008, Google Inc.
+All rights reserved.
+
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that the following conditions are
+met:
+
+    * Redistributions of source code must retain the above copyright
+notice, this list of conditions and the following disclaimer.
+    * Redistributions in binary form must reproduce the above
+copyright notice, this list of conditions and the following disclaimer
+in the documentation and/or other materials provided with the
+distribution.
+    * Neither the name of Google Inc. nor the names of its
+contributors may be used to endorse or promote products derived from
+this software without specific prior written permission.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+"AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
+OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
+LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+(INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE
+
+---
+
+BSD 3-clause "New" or "Revised" License
 (ParaNamer Core 2.8)
 
 Files: debian/*
-Copyright: 2014-2016, Markus Koschany <apo@debian.org>
+Copyright: 2014-2021, Markus Koschany <apo@debian.org>
            2015,      Emmanuel Bourg <ebourg@apache.org>
+License: BSD-3-clause
+
+License: BSD-3-clause
+
+Redistribution and use in source and binary forms, with or without
+ modification, are permitted provided that the following conditions
+ are met:
+ 1. Redistributions of source code must retain the above copyright
+    notice, this list of conditions and the following disclaimer.
+ 2. Redistributions in binary form must reproduce the above copyright
+    notice, this list of conditions and the following disclaimer in the
+    documentation and/or other materials provided with the distribution.
+ 3. Neither the name of the copyright holders nor the names of its
+    contributors may be used to endorse or promote products derived from
+    this software without specific prior written permission.
+ .
+ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+ AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+ ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE
+ LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+ CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+ SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+ INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+ CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+ ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
+ THE POSSIBILITY OF SUCH DAMAGE
+
+---
+
+BSD 3-clause "New" or "Revised" License
+(ASM 9.1)
+
+License: BSD-3-clause
+
+Files: debian/*
+Copyright: 2004-2018, Debian Java Maintainers <pkg-java-maintainers@lists.alioth.debian.org>
 License: BSD-3-clause
 
 License: BSD-3-clause
@@ -1370,7 +1452,7 @@ IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ---
 
 Common Development and Distribution License 1.0
-(Java EE Transaction API 1.1, Java Servlet API 2.1, JavaBeans Activation Framework 1.1.1, JavaBeans Activation Framework 1.2.0)
+(Jakarta Activation 1.1.1, Jakarta Activation 1.2.0, Java EE Transaction API 1.1, Java Servlet API 2.1)
 
 COMMON DEVELOPMENT AND DISTRIBUTION LICENSE (CDDL) Version 1.0
 ==============================================================
@@ -1700,7 +1782,7 @@ COMMON DEVELOPMENT AND DISTRIBUTION LICENSE (CDDL) Version 1.0
 ---
 
 Common Development and Distribution License 1.1
-(Expression Language 3.0 3.0.0, Expression Language API 3.0-b08, Java Architecture for XML Binding 2.2.11, Java Servlet API 3.1.0, JavaBeans Activation Framework API jar 1.2.0, javax.annotation API 1.3.2, JAXB CORE 2.3.0.1, Jersey Test Framework - Core 2.32)
+(Expression Language 3.0 3.0.0, Expression Language API 3.0-b08, Java Architecture for XML Binding 2.2.11, Java Servlet API 3.1.0, JavaBeans Activation Framework API jar 1.2.0, javax.annotation API 1.3.2, JAXB CORE 2.3.0.1)
 
 COMMON DEVELOPMENT AND DISTRIBUTION LICENSE (CDDL) Version 1.1
 ==============================================================
@@ -2058,7 +2140,7 @@ COMMON DEVELOPMENT AND DISTRIBUTION LICENSE (CDDL) Version 1.1
 ---
 
 Do What The F*ck You Want To Public License
-(reflections 0.9.10)
+(reflections 0.10.2)
 
 Do What You Want License
 ========================
@@ -2078,7 +2160,7 @@ TERMS AND CONDITIONS FOR COPYING, DISTRIBUTION AND MODIFICATION
 ---
 
 Eclipse Distribution License - v 1.0
-(istack common utility code runtime 3.0.8, Java Architecture for XML Binding 2.3.2, JAXB Runtime 2.3.2, JAXB XML Binding Code Generator Package 2.3.2)
+(istack common utility code runtime 3.0.8, Java Architecture for XML Binding 2.3.2, Java Architecture for XML Binding 2.3.3, JavaBeans Activation Framework API jar 1.2.2, JAXB Runtime 2.3.2, JAXB XML Binding Code Generator Package 2.3.2)
 
 Eclipse Distribution License - v 1.0
 ====================================
@@ -2115,7 +2197,7 @@ IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ---
 
 Eclipse Public License 1.0
-(JUnit 4.12)
+(Jetty: Java based HTTP/1.x, HTTP/2, Servlet, WebSocket Server 9.4.48.v20220622, JUnit 4.12)
 
 Eclipse Public License - v 1.0
 ==============================
@@ -2330,7 +2412,7 @@ resulting litigation.
 ---
 
 Eclipse Public License 2.0
-(Aopalliance Version 1.0 Repackaged As A Module 2.6.1, HK2 API module 2.6.1, HK2 Implementation Utilities 2.6.1, Jakarta Annotations API 1.3.5, jakarta.ws.rs-api 2.1.6, Java Servlet API 4.0.3, javax.inject:1 as OSGi bundle 2.6.1, javax.ws.rs-api 2.1.1, OSGi resource locator bundle - used by various API providers that rely on META-INF/services mechanism to locate providers. 1.0.3, ServiceLocator Default Implementation 2.6.1)
+(Aopalliance Version 1.0 Repackaged As A Module 2.6.1, HK2 API module 2.6.1, HK2 Implementation Utilities 2.6.1, Jakarta Annotations API 1.3.5, jakarta.ws.rs-api 2.1.6, Java Servlet API 4.0.4, javax.inject:1 as OSGi bundle 2.6.1, javax.ws.rs-api 2.1.1, Jersey Inject HK2 2.36, Jersey Test Framework - Core 2.36, jersey's jersey 2.36, jersey-container-servlet 2.36, jersey-container-servlet-core 2.36, jersey-container-simple-http 2.36, jersey-core-server 2.36, jersey-media-jaxb 2.36, jersey-test-framework-provider-simple 2.36, OSGi resource locator bundle 1.0.3, ServiceLocator Default Implementation 2.6.1)
 
 Eclipse Public License - v 2.0
 ==============================
@@ -2632,39 +2714,6 @@ Permission is hereby granted, free of charge, to any person obtaining
 ---
 
 MIT License
-(Bouncy Castle 1.60)
-
-2010, Thierry Carrez <thierry.carrez@ubuntu.com>
-           2011, James Page <james.page@ubuntu.com>
-           2011-2012, Brian Thomason <brian.thomason@eucalyptus.com>
-           2012, Damien Raude-Morvan <drazzib@debian.org>
-           2013-2017, Emmanuel Bourg <ebourg@apache.org>
-           2015-2018, Markus Koschany <apo@debian.org>
-License: Expat
-
-License: Expat
-
-Permission is hereby granted, free of charge, to any person obtaining a copy of
- this software and associated documentation files (the "Software"), to deal in
- the Software without restriction, including without limitation the rights to
- use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies
- of the Software, and to permit persons to whom the Software is furnished to do
- so, subject to the following conditions:
- .
- The above copyright notice and this permission notice shall be included in all
- copies or substantial portions of the Software.
- .
- THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
- FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
- AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
- LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
- OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
- SOFTWARE
-
----
-
-MIT License
 (azure-data-lake-store-java 2.3.6)
 
 Copyright (c) Microsoft Corporation
@@ -2720,7 +2769,7 @@ THE SOFTWARE
 ---
 
 MIT License
-(Animal Sniffer Annotations 1.17, Bouncy Castle PKIX, CMS, EAC, TSP, PKCS, OCSP, CMP, and CRMF APIs 1.60, Checker Qual 2.10.0, Checker Qual 2.8.1, iam-jdbc-driver 0.1.0, JUL to SLF4J bridge 1.7.30, machinist 0.6.1, Microsoft Azure SDK for Key Vault 1.0.0, Microsoft JDBC Driver for SQL Server 6.2.1.jre7, pyrolite 4.13, scopt_2.7.7 3.7.0, SLF4J API Module 1.7.30, SLF4J LOG4J-12 Binding 1.7.30, spire 0.13.0, spire-macros 0.13.0, unirest-objectmapper-jackson 3.6.01)
+(Animal Sniffer Annotations 1.17, Bouncy Castle 1.70, Bouncy Castle PKIX, CMS, EAC, TSP, PKCS, OCSP, CMP, and CRMF APIs 1.70, Checker Qual 2.10.0, Checker Qual 2.8.1, JUL to SLF4J bridge 1.7.36, machinist 0.6.1, Microsoft Azure SDK for Key Vault 1.0.0, Microsoft JDBC Driver for SQL Server 6.2.1.jre7, pyrolite 4.13, scopt_2.7.7 3.7.0, SLF4J API Module 1.7.36, SLF4J LOG4J-12 Binding 1.7.28, SLF4J Reload4j Binding 1.7.36, spire 0.13.0, spire-macros 0.13.0, unirest-objectmapper-jackson 3.13.2)
 
 The MIT License
 ===============

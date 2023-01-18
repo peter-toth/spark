@@ -140,7 +140,7 @@
     <orc.classifier>nohive</orc.classifier>
     <hive.parquet.group>org.apache.parquet</hive.parquet.group>
     <hive.parquet.version>${parquet.version}</hive.parquet.version>
-    <jetty.version>9.4.43.v20210629</jetty.version>
+    <jetty.version>9.4.48.v20220622</jetty.version>
     <javaxservlet.version>3.1.0</javaxservlet.version>
     <chill.version>0.9.3</chill.version>
     <ivy.version>2.5.1</ivy.version>
@@ -166,8 +166,8 @@
     <scala.binary.version>2.11</scala.binary.version>
     <codehaus.jackson.version>1.9.13</codehaus.jackson.version>
     <jackson-mapper-asl.version>1.9.13-cloudera.4</jackson-mapper-asl.version>
-    <fasterxml.jackson.version>2.10.5</fasterxml.jackson.version>
-    <fasterxml.jackson.databind.version>2.10.5.1</fasterxml.jackson.databind.version>
+    <fasterxml.jackson.version>2.12.7</fasterxml.jackson.version>
+    <fasterxml.jackson.databind.version>2.12.7.1</fasterxml.jackson.databind.version>
     <snappy.version>1.1.8.2</snappy.version>
     <netlib.java.version>1.1.2</netlib.java.version>
     <calcite.version>1.21.0.7.2.17.0-SNAPSHOT</calcite.version>
@@ -203,7 +203,7 @@
       ./python/run-tests.py and ./python/setup.py too.
     -->
     <arrow.version>0.11.1.7.2.17.0-SNAPSHOT</arrow.version>
-    <netty.version>4.1.68.Final</netty.version>
+    <netty.version>4.1.86.Final</netty.version>
     <kubernetes-client.version>5.5.0</kubernetes-client.version>
 
     <test.java.home>${java.home}</test.java.home>

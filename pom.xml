@@ -2625,6 +2625,7 @@
               <arg>-feature</arg>
               <arg>-explaintypes</arg>
               <arg>-Yno-adapted-args</arg>
+              <arg>-target:jvm-${java.version}</arg>
             </args>
             <jvmArgs>
               <jvmArg>-Xms1024m</jvmArg>

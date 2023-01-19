@@ -33,6 +33,10 @@ import scala.concurrent.duration._
 import scala.util.control.NonFatal
 
 import com.google.common.util.concurrent.ThreadFactoryBuilder
+import org.apache.hadoop.fs.CommonConfigurationKeys.IOSTATISTICS_THREAD_LEVEL_ENABLED
+import org.apache.hadoop.fs.CommonConfigurationKeys.IOSTATISTICS_THREAD_LEVEL_ENABLED_DEFAULT
+import org.apache.hadoop.fs.statistics.IOStatisticsContext
+import org.apache.hadoop.fs.statistics.impl.IOStatisticsContextIntegration
 
 import org.apache.spark._
 import org.apache.spark.deploy.SparkHadoopUtil
@@ -76,6 +80,8 @@ private[spark] class Executor(
   private val EMPTY_BYTE_BUFFER = ByteBuffer.wrap(new Array[Byte](0))
 
   private val conf = env.conf
+
+  private lazy val hadoopConf = SparkHadoopUtil.get.newConfiguration(conf)
 
   // No ip or host:port - just hostname
   Utils.checkHost(executorHostname)
@@ -395,6 +401,17 @@ private[spark] class Executor(
     }
 
     override def run(): Unit = {
+      val isThreadIOStatsEnabled =
+        hadoopConf.getBoolean(IOSTATISTICS_THREAD_LEVEL_ENABLED,
+          IOSTATISTICS_THREAD_LEVEL_ENABLED_DEFAULT)
+      val ioStatisticsContext = if (isThreadIOStatsEnabled) {
+        IOStatisticsContextIntegration.enableIOStatisticsContext()
+        val currentIOStatisticsContext = IOStatisticsContext.getCurrentIOStatisticsContext
+        currentIOStatisticsContext.reset()
+        Some(currentIOStatisticsContext)
+      } else {
+        None
+      }
       threadId = Thread.currentThread.getId
       Thread.currentThread.setName(threadName)
       val threadMXBean = ManagementFactory.getThreadMXBean
@@ -681,6 +698,9 @@ private[spark] class Executor(
           // are known, and metricsPoller.onTaskStart was called.
           metricsPoller.onTaskCompletion(taskId, task.stageId, task.stageAttemptId)
         }
+        ioStatisticsContext.foreach { currentIoStatisticsContext =>
+          logInfo(s"Task $taskName (TID $taskId): ${currentIoStatisticsContext.snapshot()}")
+        }
       }
     }
 
@@ -857,7 +877,6 @@ private[spark] class Executor(
    * SparkContext. Also adds any new JARs we fetched to the class loader.
    */
   private def updateDependencies(newFiles: Map[String, Long], newJars: Map[String, Long]) {
-    lazy val hadoopConf = SparkHadoopUtil.get.newConfiguration(conf)
     synchronized {
       // Fetch missing dependencies
       for ((name, timestamp) <- newFiles if currentFiles.getOrElse(name, -1L) < timestamp) {

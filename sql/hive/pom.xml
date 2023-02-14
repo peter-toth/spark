@@ -128,10 +128,6 @@
       <groupId>org.apache.datasketches</groupId>
       <artifactId>datasketches-hive</artifactId>
     </dependency>
-    <dependency>
-      <groupId>com.googlecode.javaewah</groupId>
-      <artifactId>JavaEWAH</artifactId>
-    </dependency>
     <!-- No hive-parser and hive-udf in CDP 7.1.x -->
     <!--
     <dependency>

@@ -129,10 +129,6 @@
       <artifactId>datasketches-hive</artifactId>
     </dependency>
     <dependency>
-      <groupId>com.googlecode.javaewah</groupId>
-      <artifactId>JavaEWAH</artifactId>
-    </dependency>
-    <dependency>
       <groupId>${hive.group}</groupId>
       <artifactId>hive-parser</artifactId>
     </dependency>

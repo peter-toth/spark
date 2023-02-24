@@ -978,6 +978,9 @@ object TestSettings {
     } else {
       "2.11"
     }
+
+  private val defaultExcludedTags = Seq("org.apache.spark.tags.ChromeUITest")
+
   lazy val settings = Seq (
     // Fork new JVMs for tests and set Java options for those
     fork := true,
@@ -1013,6 +1016,10 @@ object TestSettings {
       sys.props.get("test.exclude.tags").map { tags =>
         tags.split(",").flatMap { tag => Seq("-l", tag) }.toSeq
       }.getOrElse(Nil): _*),
+    testOptions in Test += Tests.Argument(TestFrameworks.ScalaTest,
+      sys.props.get("test.default.exclude.tags").map(tags => tags.split(",").toSeq)
+        .map(tags => tags.filter(!_.trim.isEmpty)).getOrElse(defaultExcludedTags)
+        .flatMap(tag => Seq("-l", tag)): _*),
     testOptions in Test += Tests.Argument(TestFrameworks.JUnit,
       sys.props.get("test.exclude.tags").map { tags =>
         Seq("--exclude-categories=" + tags)

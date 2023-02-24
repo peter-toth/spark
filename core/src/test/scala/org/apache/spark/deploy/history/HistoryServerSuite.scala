@@ -39,8 +39,9 @@ import org.json4s.jackson.JsonMethods
 import org.json4s.jackson.JsonMethods._
 import org.mockito.Mockito._
 import org.openqa.selenium.WebDriver
+import org.openqa.selenium.chrome.{ChromeDriver, ChromeOptions}
 import org.openqa.selenium.htmlunit.HtmlUnitDriver
-import org.scalatest.{BeforeAndAfter, Matchers}
+import org.scalatest.{BeforeAndAfter, Matchers, Tag}
 import org.scalatest.concurrent.Eventually
 import org.scalatest.mockito.MockitoSugar
 import org.scalatest.selenium.WebBrowser
@@ -333,7 +334,16 @@ class HistoryServerSuite extends SparkFunSuite with BeforeAndAfter with Matchers
     assert(response.contains(SPARK_VERSION))
   }
 
-  test("ajax rendered relative links are prefixed with uiRoot (spark.ui.proxyBase)") {
+  test("ajax rendered relative links are prefixed with uiRoot (spark.ui.proxyBase)",
+      Tag("org.apache.spark.tags.ChromeUITest")) {
+    val driverPropPrefix = "spark.test."
+    val driverProp = "webdriver.chrome.driver"
+    assume(
+      sys.props(driverPropPrefix + driverProp) !== null,
+      "System property " + driverPropPrefix + driverProp +
+        " should be set to the corresponding driver path.")
+    sys.props(driverProp) = sys.props(driverPropPrefix + driverProp)
+
     val uiRoot = "/testwebproxybase"
     System.setProperty("spark.ui.proxyBase", uiRoot)
 
@@ -363,8 +373,9 @@ class HistoryServerSuite extends SparkFunSuite with BeforeAndAfter with Matchers
     contextHandler.addServlet(holder, "/")
     server.attachHandler(contextHandler)
 
-    implicit val webDriver: WebDriver =
-      new HtmlUnitDriver(BrowserVersion.INTERNET_EXPLORER_11, true)
+    val chromeOptions = new ChromeOptions
+    chromeOptions.addArguments("--headless", "--disable-gpu")
+    implicit val webDriver = new ChromeDriver()
 
     try {
       val url = s"http://localhost:$port"
@@ -392,6 +403,7 @@ class HistoryServerSuite extends SparkFunSuite with BeforeAndAfter with Matchers
       quit()
     }
 
+    sys.props.remove(driverProp)
   }
 
   /**

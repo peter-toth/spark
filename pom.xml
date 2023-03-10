@@ -162,6 +162,7 @@
     <!-- managed up from 3.2.1 for SPARK-11652 -->
     <commons.collections.version>3.2.2</commons.collections.version>
     <commons.beanutils.version>1.9.4</commons.beanutils.version>
+    <scala.compiler.version>2.11.12-cloudera1</scala.compiler.version>
     <scala.version>2.11.12</scala.version>
     <scala.binary.version>2.11</scala.binary.version>
     <codehaus.jackson.version>1.9.13</codehaus.jackson.version>
@@ -898,7 +899,7 @@
       <dependency>
         <groupId>org.scala-lang</groupId>
         <artifactId>scala-compiler</artifactId>
-        <version>${scala.version}</version>
+        <version>${scala.compiler.version}</version>
       </dependency>
       <dependency>
         <groupId>org.scala-lang</groupId>

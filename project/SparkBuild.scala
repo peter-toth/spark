@@ -971,6 +971,8 @@ object CopyDependencies {
 
 object TestSettings {
   import BuildCommons._
+  private val defaultExcludedTags = Seq("org.apache.spark.tags.ChromeUITest",
+    "org.apache.spark.internal.io.cloud.IntegrationTestSuite")
 
   private val scalaBinaryVersion =
     if (System.getProperty("scala-2.12") == "true") {
@@ -978,8 +980,6 @@ object TestSettings {
     } else {
       "2.11"
     }
-
-  private val defaultExcludedTags = Seq("org.apache.spark.tags.ChromeUITest")
 
   lazy val settings = Seq (
     // Fork new JVMs for tests and set Java options for those

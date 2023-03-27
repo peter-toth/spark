@@ -129,6 +129,12 @@ class SparkSubmitSuite
     testPrematureExit(Array.empty[String], "Usage: spark-submit")
   }
 
+  test("prints the Spark2 deprecation message") {
+    val sparkSubmitFile = new File("../bin/spark-submit")
+    val consoleOutput = Utils.executeAndGetOutput(Seq(sparkSubmitFile.getCanonicalPath, "--version"))
+    assert(consoleOutput.contains("7.1.9 and 7.2.17 are the last CDP runtime releases where Spark 2 is supported"))
+  }
+
   test("prints usage with only --help") {
     testPrematureExit(Array("--help"), "Usage: spark-submit")
   }

@@ -17,6 +17,14 @@
 # limitations under the License.
 #
 
+if [ "$SPARK2_DEPRECATION_MESSAGE_PRINTED" != "true" ]
+then
+  RED_COLOR='\033[0;31m'
+  NO_COLOR='\033[0m'
+  echo -e "\n${RED_COLOR}7.1.9 and 7.2.17 are the last CDP runtime releases where Spark 2 is supported.\nPlease migrate your Spark 2 applications to Spark 3.\n\nUpdating Spark 2 applications for Spark 3:\nhttps://docs.cloudera.com/runtime/7.2.16/running-spark-applications/topics/spark-update-spark2-spark3.html\n${NO_COLOR}"
+  export SPARK2_DEPRECATION_MESSAGE_PRINTED=true
+fi
+
 if [ -z "${SPARK_HOME}" ]; then
   source "$(dirname "$0")"/find-spark-home
 fi

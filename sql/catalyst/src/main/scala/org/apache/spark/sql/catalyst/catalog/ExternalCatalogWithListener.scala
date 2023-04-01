@@ -65,6 +65,12 @@ class ExternalCatalogWithListener(delegate: ExternalCatalog)
     delegate.getDatabase(db)
   }
 
+  override def fireInsertEvent(tableDefinition: CatalogTable, isReplace: Boolean): Unit = {
+    delegate.fireInsertEvent(tableDefinition, isReplace)
+    postToAll(InsertEvent(tableDefinition.identifier.database.getOrElse(""),
+      tableDefinition.identifier.table, isReplace))
+  }
+
   override def databaseExists(db: String): Boolean = {
     delegate.databaseExists(db)
   }

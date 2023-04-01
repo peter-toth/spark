@@ -17,15 +17,16 @@
 
 package org.apache.spark.sql.hive
 
-import java.io.File
+import java.io.{BufferedReader, File, FileInputStream, InputStreamReader}
 
 import com.google.common.io.Files
+import org.apache.hadoop.hive.conf.HiveConf.ConfVars
+import org.apache.hadoop.hive.metastore.InsertEventListener
 import org.scalatest.BeforeAndAfter
 
 import org.apache.spark.SparkException
 import org.apache.spark.sql.{QueryTest, _}
 import org.apache.spark.sql.catalyst.parser.ParseException
-import org.apache.spark.sql.catalyst.plans.logical.InsertIntoTable
 import org.apache.spark.sql.hive.test.TestHiveSingleton
 import org.apache.spark.sql.internal.SQLConf
 import org.apache.spark.sql.test.SQLTestUtils
@@ -38,15 +39,30 @@ case class ThreeCloumntable(key: Int, value: String, key1: String)
 
 class InsertSuite extends QueryTest with TestHiveSingleton with BeforeAndAfter
     with SQLTestUtils {
+  private var scratchDir: String = _
   import spark.implicits._
 
   override lazy val testData = spark.sparkContext.parallelize(
     (1 to 100).map(i => TestData(i, i.toString))).toDF()
 
+  override protected def beforeAll(): Unit = {
+    super.beforeAll()
+    // scalastyle:off hadoopconfiguration
+    scratchDir = spark.sparkContext.hadoopConfiguration.get(
+      ConfVars.SCRATCHDIR.varname).substring("file:".length)
+    // scalastyle:on hadoopconfiguration
+  }
+
+  override protected def afterAll(): Unit = {
+    this.disableInsertListener()
+    super.afterAll()
+  }
+
   before {
     // Since every we are doing tests for DDL statements,
     // it is better to reset before every test.
     hiveContext.reset()
+    this.enableInsertListener()
     // Creates a temporary view with testData, which will be used in all tests.
     testData.createOrReplaceTempView("testData")
   }
@@ -57,7 +73,7 @@ class InsertSuite extends QueryTest with TestHiveSingleton with BeforeAndAfter
 
       // Add some data.
       testData.write.mode(SaveMode.Append).insertInto("createAndInsertTest")
-
+      assertFromResultsFile(1)
       // Make sure the table has also been updated.
       checkAnswer(
         sql("SELECT * FROM createAndInsertTest"),
@@ -66,7 +82,7 @@ class InsertSuite extends QueryTest with TestHiveSingleton with BeforeAndAfter
 
       // Add more data.
       testData.write.mode(SaveMode.Append).insertInto("createAndInsertTest")
-
+      assertFromResultsFile(2)
       // Make sure the table has been updated.
       checkAnswer(
         sql("SELECT * FROM createAndInsertTest"),
@@ -75,7 +91,7 @@ class InsertSuite extends QueryTest with TestHiveSingleton with BeforeAndAfter
 
       // Now overwrite.
       testData.write.mode(SaveMode.Overwrite).insertInto("createAndInsertTest")
-
+      assertFromResultsFile(3)
       // Make sure the registered table has also been updated.
       checkAnswer(
         sql("SELECT * FROM createAndInsertTest"),
@@ -85,6 +101,7 @@ class InsertSuite extends QueryTest with TestHiveSingleton with BeforeAndAfter
   }
 
   test("Double create fails when allowExisting = false") {
+    this.disableInsertListener()
     withTable("doubleCreateAndInsertTest") {
       sql("CREATE TABLE doubleCreateAndInsertTest (key int, value string)")
 
@@ -95,6 +112,7 @@ class InsertSuite extends QueryTest with TestHiveSingleton with BeforeAndAfter
   }
 
   test("Double create does not fail when allowExisting = true") {
+    this.disableInsertListener()
     withTable("doubleCreateAndInsertTest") {
       sql("CREATE TABLE doubleCreateAndInsertTest (key int, value string)")
       sql("CREATE TABLE IF NOT EXISTS doubleCreateAndInsertTest (key int, value string)")
@@ -109,7 +127,7 @@ class InsertSuite extends QueryTest with TestHiveSingleton with BeforeAndAfter
     df.createOrReplaceTempView("tableWithMapValue")
     sql("CREATE TABLE hiveTableWithMapValue(m MAP <STRING, STRING>)")
     sql("INSERT OVERWRITE TABLE hiveTableWithMapValue SELECT m FROM tableWithMapValue")
-
+    assertFromResultsFile(1)
     checkAnswer(
       sql("SELECT * FROM hiveTableWithMapValue"),
       rowRDD.collect().toSeq
@@ -136,24 +154,28 @@ class InsertSuite extends QueryTest with TestHiveSingleton with BeforeAndAfter
         |partition (p1='a',p2='b',p3='c',p4='c',p5='1')
         |SELECT 'blarr' FROM tmp_table
       """.stripMargin)
+    assertFromResultsFile(1)
     sql(
       """
         |INSERT OVERWRITE TABLE table_with_partition
         |partition (p1='a',p2='b',p3='c',p4='c',p5='2')
         |SELECT 'blarr' FROM tmp_table
       """.stripMargin)
+    assertFromResultsFile(2)
     sql(
       """
         |INSERT OVERWRITE TABLE table_with_partition
         |partition (p1='a',p2='b',p3='c',p4='c',p5='3')
         |SELECT 'blarr' FROM tmp_table
       """.stripMargin)
+    assertFromResultsFile(3)
     sql(
       """
         |INSERT OVERWRITE TABLE table_with_partition
         |partition (p1='a',p2='b',p3='c',p4='c',p5='4')
         |SELECT 'blarr' FROM tmp_table
       """.stripMargin)
+    assertFromResultsFile(4)
     def listFolders(path: File, acc: List[String]): List[List[String]] = {
       val dir = path.listFiles()
       val folders = dir.filter { e => e.isDirectory && !e.getName().startsWith(stagingDir) }.toList
@@ -183,7 +205,7 @@ class InsertSuite extends QueryTest with TestHiveSingleton with BeforeAndAfter
          |SELECT 1, 4
         """.stripMargin)
     checkAnswer(sql(selQuery), Row(1, 2, 3, 4))
-
+    assertFromResultsFile(1)
     sql(
       s"""
          |INSERT OVERWRITE TABLE $tableName
@@ -191,7 +213,7 @@ class InsertSuite extends QueryTest with TestHiveSingleton with BeforeAndAfter
          |SELECT 5, 6
         """.stripMargin)
     checkAnswer(sql(selQuery), Row(5, 2, 3, 6))
-
+    assertFromResultsFile(2)
     val e = intercept[AnalysisException] {
       sql(
         s"""
@@ -202,7 +224,7 @@ class InsertSuite extends QueryTest with TestHiveSingleton with BeforeAndAfter
     }
     assert(e.getMessage.contains(
       "Dynamic partitions do not support IF NOT EXISTS. Specified partitions with value: [c]"))
-
+    assertFromResultsFile(2)
     // If the partition already exists, the insert will overwrite the data
     // unless users specify IF NOT EXISTS
     sql(
@@ -212,7 +234,7 @@ class InsertSuite extends QueryTest with TestHiveSingleton with BeforeAndAfter
          |SELECT 9, 10
         """.stripMargin)
     checkAnswer(sql(selQuery), Row(5, 2, 3, 6))
-
+    assertFromResultsFile(2)
     // ADD PARTITION has the same effect, even if no actual data is inserted.
     sql(s"ALTER TABLE $tableName ADD PARTITION (b=21, c=31)")
     sql(
@@ -222,6 +244,7 @@ class InsertSuite extends QueryTest with TestHiveSingleton with BeforeAndAfter
          |SELECT 20, 24
         """.stripMargin)
     checkAnswer(sql(selQuery), Row(5, 2, 3, 6))
+    assertFromResultsFile(3)
   }
 
   test("Insert ArrayType.containsNull == false") {
@@ -232,7 +255,7 @@ class InsertSuite extends QueryTest with TestHiveSingleton with BeforeAndAfter
     df.createOrReplaceTempView("tableWithArrayValue")
     sql("CREATE TABLE hiveTableWithArrayValue(a Array <STRING>)")
     sql("INSERT OVERWRITE TABLE hiveTableWithArrayValue SELECT a FROM tableWithArrayValue")
-
+    assertFromResultsFile(1)
     checkAnswer(
       sql("SELECT * FROM hiveTableWithArrayValue"),
       rowRDD.collect().toSeq)
@@ -249,7 +272,7 @@ class InsertSuite extends QueryTest with TestHiveSingleton with BeforeAndAfter
     df.createOrReplaceTempView("tableWithMapValue")
     sql("CREATE TABLE hiveTableWithMapValue(m Map <STRING, STRING>)")
     sql("INSERT OVERWRITE TABLE hiveTableWithMapValue SELECT m FROM tableWithMapValue")
-
+    assertFromResultsFile(1)
     checkAnswer(
       sql("SELECT * FROM hiveTableWithMapValue"),
       rowRDD.collect().toSeq)
@@ -266,7 +289,7 @@ class InsertSuite extends QueryTest with TestHiveSingleton with BeforeAndAfter
     df.createOrReplaceTempView("tableWithStructValue")
     sql("CREATE TABLE hiveTableWithStructValue(s Struct <f: STRING>)")
     sql("INSERT OVERWRITE TABLE hiveTableWithStructValue SELECT s FROM tableWithStructValue")
-
+    assertFromResultsFile(1)
     checkAnswer(
       sql("SELECT * FROM hiveTableWithStructValue"),
       rowRDD.collect().toSeq)
@@ -284,6 +307,8 @@ class InsertSuite extends QueryTest with TestHiveSingleton with BeforeAndAfter
         intercept[SparkException] {
           data.write.insertInto("partitioned")
         }
+        assertFromResultsFile(0)
+        this.disableInsertListener()
       }
     }
   }
@@ -295,12 +320,13 @@ class InsertSuite extends QueryTest with TestHiveSingleton with BeforeAndAfter
         val data = (1 to 10).map(i => (i, s"data-$i", if ((i % 2) == 0) "even" else "odd")).toDF()
 
         data.write.insertInto("source")
+        assertFromResultsFile(1)
         checkAnswer(sql("SELECT * FROM source"), data.collect().toSeq)
-
+        // because create table will reset the test counter to 0, assertion for expected count is 1
         sql("CREATE TABLE partitioned (id bigint, data string) PARTITIONED BY (part string)")
         // this will pick up the output partitioning from the table definition
         spark.table("source").write.insertInto("partitioned")
-
+        assertFromResultsFile(1)
         checkAnswer(sql("SELECT * FROM partitioned"), data.collect().toSeq)
       }
     }
@@ -347,7 +373,8 @@ class InsertSuite extends QueryTest with TestHiveSingleton with BeforeAndAfter
     val cause = intercept[AnalysisException] {
       Seq((1, 2, 3, 4)).toDF("a", "b", "c", "d").write.partitionBy("b", "c").insertInto(tableName)
     }
-
+    assertFromResultsFile(0)
+    this.disableInsertListener()
     assert(cause.getMessage.contains("insertInto() can't be used together with partitionBy()."))
   }
 
@@ -357,6 +384,8 @@ class InsertSuite extends QueryTest with TestHiveSingleton with BeforeAndAfter
       val e = intercept[AnalysisException] {
         sql(s"INSERT INTO TABLE $tableName PARTITION(b=1, c=2) SELECT 1, 2, 3")
       }
+      assertFromResultsFile(0)
+      this.disableInsertListener()
       assert(e.message.contains(
         "target table has 4 column(s) but the inserted data has 5 column(s)"))
   }
@@ -365,8 +394,10 @@ class InsertSuite extends QueryTest with TestHiveSingleton with BeforeAndAfter
     tableName =>
       withSQLConf("hive.exec.dynamic.partition.mode" -> "nonstrict") {
         sql(s"INSERT INTO TABLE $tableName SELECT 1, 4, 2 AS c, 3 AS b")
+        assertFromResultsFile(1)
         checkAnswer(sql(s"SELECT a, b, c, d FROM $tableName"), Row(1, 2, 3, 4))
         sql(s"INSERT OVERWRITE TABLE $tableName SELECT 1, 4, 2, 3")
+        assertFromResultsFile(2)
         checkAnswer(sql(s"SELECT a, b, c, 4 FROM $tableName"), Row(1, 2, 3, 4))
       }
   }
@@ -375,59 +406,59 @@ class InsertSuite extends QueryTest with TestHiveSingleton with BeforeAndAfter
     tableName =>
       withSQLConf(("hive.exec.dynamic.partition.mode", "nonstrict")) {
         sql(s"INSERT INTO TABLE $tableName PARTITION (b=2, c=3) SELECT 1, 4")
-
+        assertFromResultsFile(1)
         sql(s"INSERT INTO TABLE $tableName PARTITION (b=6, c=7) SELECT 5, 8")
-
+        assertFromResultsFile(2)
         sql(s"INSERT INTO TABLE $tableName PARTITION (c=11, b=10) SELECT 9, 12")
-
+        assertFromResultsFile(3)
         // c is defined twice. Analyzer will complain.
         intercept[AnalysisException] {
           sql(s"INSERT INTO TABLE $tableName PARTITION (b=14, c=15, c=16) SELECT 13")
         }
-
+        assertFromResultsFile(3)
         // d is not a partitioning column.
         intercept[AnalysisException] {
           sql(s"INSERT INTO TABLE $tableName PARTITION (b=14, c=15, d=16) SELECT 13, 14")
         }
-
+        assertFromResultsFile(3)
         // d is not a partitioning column. The total number of columns is correct.
         intercept[AnalysisException] {
           sql(s"INSERT INTO TABLE $tableName PARTITION (b=14, c=15, d=16) SELECT 13")
         }
-
+        assertFromResultsFile(3)
         // The data is missing a column.
         intercept[AnalysisException] {
           sql(s"INSERT INTO TABLE $tableName PARTITION (c=15, b=16) SELECT 13")
         }
-
+        assertFromResultsFile(3)
         // d is not a partitioning column.
         intercept[AnalysisException] {
           sql(s"INSERT INTO TABLE $tableName PARTITION (b=15, d=15) SELECT 13, 14")
         }
-
+        assertFromResultsFile(3)
         // The statement is missing a column.
         intercept[AnalysisException] {
           sql(s"INSERT INTO TABLE $tableName PARTITION (b=15) SELECT 13, 14")
         }
-
+        assertFromResultsFile(3)
         // The statement is missing a column.
         intercept[AnalysisException] {
           sql(s"INSERT INTO TABLE $tableName PARTITION (b=15) SELECT 13, 14, 16")
         }
-
+        assertFromResultsFile(3)
         sql(s"INSERT INTO TABLE $tableName PARTITION (b=14, c) SELECT 13, 16, 15")
-
+        assertFromResultsFile(4)
         // Dynamic partitioning columns need to be after static partitioning columns.
         intercept[AnalysisException] {
           sql(s"INSERT INTO TABLE $tableName PARTITION (b, c=19) SELECT 17, 20, 18")
         }
-
+        assertFromResultsFile(4)
         sql(s"INSERT INTO TABLE $tableName PARTITION (b, c) SELECT 17, 20, 18, 19")
-
+        assertFromResultsFile(5)
         sql(s"INSERT INTO TABLE $tableName PARTITION (c, b) SELECT 21, 24, 22, 23")
-
+        assertFromResultsFile(6)
         sql(s"INSERT INTO TABLE $tableName SELECT 25, 28, 26, 27")
-
+        assertFromResultsFile(7)
         checkAnswer(
           sql(s"SELECT a, b, c, d FROM $tableName"),
           Row(1, 2, 3, 4) ::
@@ -448,7 +479,7 @@ class InsertSuite extends QueryTest with TestHiveSingleton with BeforeAndAfter
         // `b` and `c` of the target table.
         val df = Seq((1, 2, 3, 4)).toDF("a", "b", "c", "d")
         df.write.insertInto(tableName)
-
+        assertFromResultsFile(1)
         checkAnswer(
           sql(s"SELECT a, b, c, d FROM $tableName"),
           Row(1, 3, 4, 2)
@@ -463,7 +494,7 @@ class InsertSuite extends QueryTest with TestHiveSingleton with BeforeAndAfter
         // columns `b` and `c` of the target table.
         val df = Seq((1, 2, 3, 4)).toDF("a", "b", "c", "d")
         df.select('a + 1, 'b + 1, 'c + 1, 'd + 1).write.insertInto(tableName)
-
+        assertFromResultsFile(1)
         checkAnswer(
           sql(s"SELECT a, b, c, d FROM $tableName"),
           Row(2, 4, 5, 3)
@@ -479,6 +510,8 @@ class InsertSuite extends QueryTest with TestHiveSingleton with BeforeAndAfter
         intercept[AnalysisException] {
           spark.table("t").write.insertInto(tableName)
         }
+        assertFromResultsFile(0)
+        this.disableInsertListener()
       }
   }
 
@@ -490,6 +523,8 @@ class InsertSuite extends QueryTest with TestHiveSingleton with BeforeAndAfter
         intercept[AnalysisException] {
           spark.table("t").write.insertInto(tableName)
         }
+        assertFromResultsFile(0)
+        this.disableInsertListener()
       }
   }
 
@@ -517,6 +552,7 @@ class InsertSuite extends QueryTest with TestHiveSingleton with BeforeAndAfter
     tableName =>
       withSQLConf("hive.enforce.bucketing" -> "false", "hive.enforce.sorting" -> "false") {
         sql(s"INSERT INTO TABLE $tableName SELECT 1, 4, 2 AS c, 3 AS b")
+        assertFromResultsFile(1)
         checkAnswer(sql(s"SELECT a, b, c, d FROM $tableName"), Row(1, 2, 3, 4))
       }
   }
@@ -527,17 +563,21 @@ class InsertSuite extends QueryTest with TestHiveSingleton with BeforeAndAfter
         intercept[AnalysisException] {
           sql(s"INSERT INTO TABLE $tableName SELECT 1, 2, 3, 4")
         }
+        this.assertFromResultsFile(0)
       }
       withSQLConf("hive.enforce.bucketing" -> "false", "hive.enforce.sorting" -> "true") {
         intercept[AnalysisException] {
           sql(s"INSERT INTO TABLE $tableName SELECT 1, 2, 3, 4")
         }
+        this.assertFromResultsFile(0)
       }
       withSQLConf("hive.enforce.bucketing" -> "true", "hive.enforce.sorting" -> "true") {
         intercept[AnalysisException] {
           sql(s"INSERT INTO TABLE $tableName SELECT 1, 2, 3, 4")
         }
+        this.assertFromResultsFile(0)
       }
+      this.disableInsertListener()
   }
 
   test("SPARK-20594: hive.exec.stagingdir was deleted by Hive") {
@@ -546,6 +586,7 @@ class InsertSuite extends QueryTest with TestHiveSingleton with BeforeAndAfter
       withTable("test_table") {
         sql("CREATE TABLE test_table (key int)")
         sql("INSERT OVERWRITE TABLE test_table SELECT 1")
+        assertFromResultsFile(1)
         checkAnswer(sql("SELECT * FROM test_table"), Row(1))
       }
     }
@@ -728,6 +769,8 @@ class InsertSuite extends QueryTest with TestHiveSingleton with BeforeAndAfter
       }.getMessage
 
       assert(e.contains("mismatched input 'ROW'"))
+      this.assertFromResultsFile(0)
+      this.disableInsertListener()
     }
   }
 
@@ -735,7 +778,8 @@ class InsertSuite extends QueryTest with TestHiveSingleton with BeforeAndAfter
     withSQLConf(("hive.exec.dynamic.partition.mode", "nonstrict")) {
       withTable("tab1", "tab2") {
         Seq(("a", "b", 3)).toDF("word", "first", "length").write.saveAsTable("tab1")
-
+        assertFromResultsFile(1)
+        // since create table will reset the test counter, assert on expected insert count as 1
         spark.sql(
           """
             |CREATE TABLE tab2 (word string, length int)
@@ -747,7 +791,7 @@ class InsertSuite extends QueryTest with TestHiveSingleton with BeforeAndAfter
             |INSERT INTO TABLE tab2 PARTITION(first)
             |SELECT word, length, cast(first as string) as first FROM tab1
           """.stripMargin)
-
+        assertFromResultsFile(1)
         checkAnswer(spark.table("tab2"), Row("a", 3, "b"))
       }
     }
@@ -758,7 +802,9 @@ class InsertSuite extends QueryTest with TestHiveSingleton with BeforeAndAfter
       withSQLConf("hive.exec.dynamic.partition.mode" -> "nonstrict") {
         val df = Seq(("a", 100)).toDF("part", "id")
         df.write.format("hive").partitionBy("part").mode("overwrite").saveAsTable("tab1")
+        assertFromResultsFile(1)
         df.write.format("hive").partitionBy("part").mode("append").saveAsTable("tab1")
+        assertFromResultsFile(2)
       }
     }
   }
@@ -808,5 +854,25 @@ class InsertSuite extends QueryTest with TestHiveSingleton with BeforeAndAfter
         )
       }
     }
+  }
+
+  private def format: String = "hive OPTIONS(fileFormat='parquet')"
+
+  private def assertFromResultsFile(expectedInsertEvents: Int): Unit = {
+    val reader = new BufferedReader(new InputStreamReader(new FileInputStream(
+      new File(scratchDir, InsertEventListener.resultFileName))))
+    val actualCount = Integer.parseInt(reader.readLine().trim())
+    assert(actualCount === expectedInsertEvents)
+  }
+
+
+  private def enableInsertListener(): Unit = withTable(InsertEventListener.enableListener) {
+    sql(s"CREATE TABLE ${InsertEventListener.enableListener} (key int, value string)" +
+      s" using $format")
+  }
+
+  private def disableInsertListener(): Unit = withTable(InsertEventListener.disableListener) {
+    sql(s"CREATE TABLE ${InsertEventListener.disableListener} (key int, value string)" +
+      s" using $format")
   }
 }

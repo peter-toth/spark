@@ -984,6 +984,12 @@ private[hive] class HiveClientImpl(
     shim.listFunctions(client, db, pattern)
   }
 
+  override def fireInsertEvent(tableDefinition: CatalogTable, isReplace: Boolean): Unit = {
+    withHiveState {
+      shim.fireInsertEvent(client, toHiveTable(tableDefinition), isReplace)
+    }
+  }
+
   def addJar(path: String): Unit = {
     val uri = new Path(path).toUri
     val jarURL = if (uri.getScheme == null) {

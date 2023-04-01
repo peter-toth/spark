@@ -195,7 +195,12 @@ case class CreateDataSourceTableAsSelectCommand(
         case _ =>
       }
     }
+    val catalogTableToUse = table.identifier.database.map(_ => table).getOrElse(
+      table.copy(
+        identifier = table.identifier.copy(
+          database = Option(sparkSession.sessionState.catalog.getCurrentDatabase))))
 
+    sessionState.catalog.fireInsertEvent(catalogTableToUse, isReplace = false)
     Seq.empty[Row]
   }
 

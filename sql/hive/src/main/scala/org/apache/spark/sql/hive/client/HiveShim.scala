@@ -93,6 +93,8 @@ private[client] sealed abstract class Shim {
 
   def alterPartitions(hive: Hive, tableName: String, newParts: JList[Partition]): Unit
 
+  def fireInsertEvent(hive: Hive, tableDefinition: Table, isReplace: Boolean): Unit
+
   def createPartitions(
       hive: Hive,
       db: String,
@@ -504,6 +506,8 @@ private[client] class Shim_v0_12 extends Shim with Logging {
       hivePart: Partition): Unit = {
     renamePartitionMethod.invoke(hive, hiveTable, oldSpec, hivePart)
   }
+
+  override def fireInsertEvent(hive: Hive, tableDefinition: Table, isReplace: Boolean): Unit = {}
 }
 
 private[client] class Shim_v0_13 extends Shim_v0_12 {
@@ -1656,4 +1660,8 @@ private[client] class Shim_cdpd extends Shim_v3_1 {
       inheritLocation, isSkewedStoreAsSubdir, isSrcLocal, isAcid, resetStatistics,
       writeIdInLoadTableOrPartition, stmtIdInLoadTableOrPartition, replace, isDirectInsert)
   }
+
+  override def fireInsertEvent(hive: Hive, tableDefinition: Table, isReplace: Boolean): Unit =
+    hive.fireInsertEvent(tableDefinition.getDbName, tableDefinition.getTableName, null,
+      isReplace, null)
 }

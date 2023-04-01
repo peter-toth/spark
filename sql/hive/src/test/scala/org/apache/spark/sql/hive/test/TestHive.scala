@@ -29,6 +29,7 @@ import org.apache.commons.lang3.{JavaVersion, SystemUtils}
 import org.apache.hadoop.conf.Configuration
 import org.apache.hadoop.fs.Path
 import org.apache.hadoop.hive.conf.HiveConf.ConfVars
+import org.apache.hadoop.hive.metastore.InsertEventListener
 import org.apache.hadoop.hive.ql.exec.FunctionRegistry
 import org.apache.hadoop.hive.serde2.`lazy`.LazySimpleSerDe
 
@@ -62,6 +63,9 @@ object TestHive
         // SPARK-8910
         .set("spark.ui.enabled", "false")
         .set("spark.unsafe.exceptionOnMemoryLeak", "true")
+        .set("hive.metastore.dml.events", "true")
+        .set(InsertEventListener.keyForResultFileName, InsertEventListener.resultFileName)
+        .set("hive.metastore.event.listeners", classOf[InsertEventListener].getName)
         // Hive changed the default of hive.metastore.disallow.incompatible.col.type.changes
         // from false to true. For details, see the JIRA HIVE-12320 and HIVE-17764.
         .set("spark.hadoop.hive.metastore.disallow.incompatible.col.type.changes", "false")

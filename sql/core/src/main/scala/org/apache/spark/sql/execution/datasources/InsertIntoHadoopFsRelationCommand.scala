@@ -133,7 +133,7 @@ case class InsertIntoHadoopFsRelationCommand(
 
     if (doInsertion) {
 
-      def refreshUpdatedPartitions(updatedPartitionPaths: Set[String]): Unit = {
+      def refreshUpdatedPartitions(updatedPartitionPaths: Set[String]): Boolean = {
         val updatedPartitions = updatedPartitionPaths.map(PartitioningUtils.parsePathFragment)
         if (partitionsTrackedByCatalog) {
           val newPartitions = updatedPartitions -- initialMatchingPartitions
@@ -153,6 +153,9 @@ case class InsertIntoHadoopFsRelationCommand(
                 retainData = true /* already deleted */).run(sparkSession)
             }
           }
+          newPartitions.nonEmpty
+        } else {
+          false
         }
       }
 
@@ -181,7 +184,7 @@ case class InsertIntoHadoopFsRelationCommand(
 
 
       // update metastore partition metadata
-      if (updatedPartitionPaths.isEmpty && staticPartitions.nonEmpty
+      val newPartitionsCreated = if (updatedPartitionPaths.isEmpty && staticPartitions.nonEmpty
         && partitionColumns.length == staticPartitions.size) {
         // Avoid empty static partition can't loaded to datasource table.
         val staticPathFragment =
@@ -198,8 +201,10 @@ case class InsertIntoHadoopFsRelationCommand(
 
       if (catalogTable.nonEmpty) {
         CommandUtils.updateTableStats(sparkSession, catalogTable.get)
+        if (!newPartitionsCreated) {
+          sparkSession.sessionState.catalog.fireInsertEvent(catalogTable.get, isReplace = false)
+        }
       }
-
     } else {
       logInfo("Skipping insertion into a relation that already exists.")
     }

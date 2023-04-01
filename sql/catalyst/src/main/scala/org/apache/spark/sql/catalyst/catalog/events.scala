@@ -146,6 +146,12 @@ case class AlterTableEvent(
     kind: String) extends TableEvent
 
 /**
+ * Event fired after rows are inserted in the table
+ */
+case class InsertEvent(database: String, table: String, isReplace: Boolean) extends
+  ExternalCatalogEvent
+
+/**
  * Event fired when a function is created, dropped, altered or renamed.
  */
 trait FunctionEvent extends DatabaseEvent {

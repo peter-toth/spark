@@ -1291,6 +1291,9 @@ private[spark] class HiveExternalCatalog(conf: SparkConf, hadoopConf: Configurat
     client.listFunctions(db, pattern)
   }
 
+  override def fireInsertEvent(tableDefinition: CatalogTable, isReplace: Boolean): Unit = {
+    client.fireInsertEvent(tableDefinition, isReplace)
+  }
 }
 
 object HiveExternalCatalog {

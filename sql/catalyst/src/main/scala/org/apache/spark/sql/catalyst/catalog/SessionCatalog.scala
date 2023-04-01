@@ -277,6 +277,10 @@ class SessionCatalog(
     new Path(new Path(conf.warehousePath), database + ".db").toUri
   }
 
+  def fireInsertEvent(table: CatalogTable, isReplace: Boolean): Unit = {
+    externalCatalog.fireInsertEvent(table, isReplace)
+  }
+
   // ----------------------------------------------------------------------------
   // Tables
   // ----------------------------------------------------------------------------

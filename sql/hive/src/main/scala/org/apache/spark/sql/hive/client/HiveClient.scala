@@ -296,4 +296,6 @@ private[hive] trait HiveClient {
 
   /** Returns the user name which is used as owner for Hive table. */
   def userName: String
+
+  def fireInsertEvent(tableDefinition: CatalogTable, isReplace: Boolean): Unit
 }

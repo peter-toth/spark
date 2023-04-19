@@ -20,7 +20,7 @@
   <!-- no parent declaration here, b/c for some reason that messes up the shading rules -->
   <groupId>org.apache.spark</groupId>
   <artifactId>spark-shaded-raz</artifactId>
-  <version>2.4.8.7.2.17.0-SNAPSHOT</version>
+  <version>2.4.8.7.2.18.0-SNAPSHOT</version>
   <packaging>jar</packaging>
   <name>Spark shaded raz directories</name>
   <description>
@@ -33,7 +33,7 @@
   <properties>
     <!-- Package to use when relocating shaded classes. -->
     <spark.shaded.raz.packageName>org.apache.ranger</spark.shaded.raz.packageName>
-    <ranger.version>2.3.0.7.2.17.0-SNAPSHOT</ranger.version>
+    <ranger.version>2.3.0.7.2.18.0-SNAPSHOT</ranger.version>
     <codehaus.jackson.version>1.9.13</codehaus.jackson.version>
   </properties>
 

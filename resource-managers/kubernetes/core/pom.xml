@@ -80,12 +80,12 @@
       <version>${fasterxml.jackson.version}</version>
     </dependency>
 
-    <!-- temporary workaround pinning snakeyaml to a version not vulnerable to CVE-2022-1471 -->
-    <!-- please remove when com.fasterxml.jackson.* gets updated to at least 2.15.0 -->
+    <!-- temporary workaround pinning snakeyaml to a version not vulnerable to CVE-2022-38752 -->
+    <!-- please remove when com.fasterxml.jackson.* gets updated to at least 2.14.0 -->
     <dependency>
       <groupId>org.yaml</groupId>
       <artifactId>snakeyaml</artifactId>
-      <version>2.0</version>
+      <version>1.32</version>
     </dependency>
 
     <!-- Explicitly depend on shaded dependencies from the parent, since shaded deps aren't transitive -->

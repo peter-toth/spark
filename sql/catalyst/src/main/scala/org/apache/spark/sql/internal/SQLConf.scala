@@ -4309,7 +4309,7 @@ object SQLConf {
       .doc(s"When set to true different filters can be propagated up to aggregates.")
       .version("4.0.0")
       .booleanConf
-      .createWithDefault(false)
+      .createWithDefault(true)
 
   val ERROR_MESSAGE_FORMAT = buildConf("spark.sql.error.messageFormat")
     .doc("When PRETTY, the error message consists of textual representation of error class, " +

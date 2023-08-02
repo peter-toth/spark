@@ -201,6 +201,7 @@ object MergeScalarSubqueries extends Rule[LogicalPlan] {
               } else {
                 header.attributes
               }
+              logError(s"Merged plan: $plan\nand header.plan: ${header.plan}\ninto: $mergedPlan")
               cache(subqueryIndex) =
                 Header(newHeaderAttributes, mergedPlan, true, header.references ++ references)
               subqueryIndex -> headerIndex

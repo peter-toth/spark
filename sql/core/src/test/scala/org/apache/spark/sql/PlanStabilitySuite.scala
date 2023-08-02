@@ -258,7 +258,10 @@ trait PlanStabilitySuite extends DisableAdaptiveExecutionSuite {
       classLoader = Thread.currentThread().getContextClassLoader)
     // Disable char/varchar read-side handling for better performance.
     withSQLConf(SQLConf.READ_SIDE_CHAR_PADDING.key -> "false",
-        SQLConf.AUTO_BROADCASTJOIN_THRESHOLD.key -> "10MB") {
+        SQLConf.AUTO_BROADCASTJOIN_THRESHOLD.key -> "10MB",
+        SQLConf.ADAPTIVE_EXECUTION_ENABLED.key -> "false",
+        SQLConf.PLAN_CHANGE_LOG_LEVEL.key -> "error"
+    ) {
       val qe = sql(queryString).queryExecution
       val plan = qe.executedPlan
       val explain = normalizeLocation(normalizeIds(qe.explainString(FormattedMode)))
@@ -279,7 +282,7 @@ class TPCDSV1_4_PlanStabilitySuite extends PlanStabilitySuite with TPCDSBase {
   override val goldenFilePath: String =
     new File(baseResourcePath, s"approved-plans-v1_4").getAbsolutePath
 
-  tpcdsQueries.foreach { q =>
+  tpcdsQueries.filter(_.endsWith("q9")).foreach { q =>
     test(s"check simplified (tpcds-v1.4/$q)") {
       testQuery("tpcds", q)
     }

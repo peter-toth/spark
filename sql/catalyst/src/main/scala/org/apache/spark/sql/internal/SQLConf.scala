@@ -4303,6 +4303,14 @@ object SQLConf {
       .booleanConf
       .createWithDefault(true)
 
+  val PLAN_MERGE_FILTER_PROPAGATION_ENABLED =
+    buildConf("spark.sql.planMerge.filterPropagation.enabled")
+      .internal()
+      .doc(s"When set to true different filters can be propagated up to aggregates.")
+      .version("4.0.0")
+      .booleanConf
+      .createWithDefault(false)
+
   val ERROR_MESSAGE_FORMAT = buildConf("spark.sql.error.messageFormat")
     .doc("When PRETTY, the error message consists of textual representation of error class, " +
       "message and query context. The MINIMAL and STANDARD formats are pretty JSON formats where " +

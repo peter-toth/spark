@@ -24,6 +24,7 @@ import org.apache.spark.sql.catalyst.expressions.aggregate.{CollectList, Collect
 import org.apache.spark.sql.catalyst.plans._
 import org.apache.spark.sql.catalyst.plans.logical._
 import org.apache.spark.sql.catalyst.rules._
+import org.apache.spark.sql.internal.SQLConf
 
 class MergeScalarSubqueriesSuite extends PlanTest {
 
@@ -574,5 +575,228 @@ class MergeScalarSubqueriesSuite extends PlanTest {
       Seq(definitionNode(analyzedMergedSubquery, 0)))
 
     comparePlans(Optimize.execute(originalQuery.analyze), correctAnswer.analyze)
+  }
+
+  test("Merging subqueries with different filters") {
+    withSQLConf(SQLConf.PLAN_MERGE_FILTER_PROPAGATION_ENABLED.key -> "true") {
+      val subquery1 = ScalarSubquery(testRelation.where('b > 0).groupBy()(max('a).as("max_a")))
+      val subquery2 = ScalarSubquery(testRelation.where('b < 0).groupBy()(sum('a).as("sum_a")))
+      val subquery3 = ScalarSubquery(testRelation.where('b === 0).groupBy()(avg('a).as("avg_a")))
+      val originalQuery = testRelation
+        .select(
+          subquery1,
+          subquery2,
+          subquery3)
+
+      val mergedSubquery = testRelation
+        .where('b > 0 || 'b < 0 || 'b === 0)
+        .groupBy()(
+          max('a, Some('b > 0)).as("max_a"),
+          sum('a, Some('b < 0)).as("sum_a"),
+          avg('a, Some('b === 0)).as("avg_a"))
+        .select(CreateNamedStruct(Seq(
+          Literal("max_a"), 'max_a,
+          Literal("sum_a"), 'sum_a,
+          Literal("avg_a"), 'avg_a
+        )).as("mergedValue"))
+      val analyzedMergedSubquery = mergedSubquery.analyze
+      val correctAnswer = WithCTE(
+        testRelation
+          .select(
+            extractorExpression(0, analyzedMergedSubquery.output, 0),
+            extractorExpression(0, analyzedMergedSubquery.output, 1),
+            extractorExpression(0, analyzedMergedSubquery.output, 2)),
+        Seq(definitionNode(analyzedMergedSubquery, 0)))
+
+      comparePlans(Optimize.execute(originalQuery.analyze), correctAnswer.analyze)
+    }
+  }
+
+  test("Merging subqueries with and without filters") {
+    withSQLConf(SQLConf.PLAN_MERGE_FILTER_PROPAGATION_ENABLED.key -> "true") {
+      val subquery1 = ScalarSubquery(testRelation.where('b > 0).groupBy()(max('a).as("max_a")))
+      val subquery2 = ScalarSubquery(testRelation.groupBy()(count('a).as("cnt_a")))
+      val originalQuery = testRelation
+        .select(
+          subquery1,
+          subquery2)
+
+      val mergedSubquery = testRelation
+        .groupBy()(
+          max('a, Some('b > 0)).as("max_a"),
+          count('a).as("cnt_a"))
+        .select(CreateNamedStruct(Seq(
+          Literal("max_a"), 'max_a,
+          Literal("cnt_a"), 'cnt_a
+        )).as("mergedValue"))
+      val analyzedMergedSubquery = mergedSubquery.analyze
+      val correctAnswer = WithCTE(
+        testRelation
+          .select(
+            extractorExpression(0, analyzedMergedSubquery.output, 0),
+            extractorExpression(0, analyzedMergedSubquery.output, 1)),
+        Seq(definitionNode(analyzedMergedSubquery, 0)))
+
+      comparePlans(Optimize.execute(originalQuery.analyze), correctAnswer.analyze)
+    }
+  }
+
+  test("Merging subqueries without and with filters") {
+    withSQLConf(SQLConf.PLAN_MERGE_FILTER_PROPAGATION_ENABLED.key -> "true") {
+      val subquery1 = ScalarSubquery(testRelation.groupBy()(count('a).as("cnt_a")))
+      val subquery2 = ScalarSubquery(testRelation.where('b > 0).groupBy()(max('a).as("max_a")))
+      val originalQuery = testRelation
+        .select(
+          subquery1,
+          subquery2)
+
+      val mergedSubquery = testRelation
+        .groupBy()(
+          count('a).as("cnt_a"),
+          max('a, Some('b > 0)).as("max_a"))
+        .select(CreateNamedStruct(Seq(
+          Literal("cnt_a"), 'cnt_a,
+          Literal("max_a"), 'max_a
+        )).as("mergedValue"))
+      val analyzedMergedSubquery = mergedSubquery.analyze
+      val correctAnswer = WithCTE(
+        testRelation
+          .select(
+            extractorExpression(0, analyzedMergedSubquery.output, 0),
+            extractorExpression(0, analyzedMergedSubquery.output, 1)),
+        Seq(definitionNode(analyzedMergedSubquery, 0)))
+
+      comparePlans(Optimize.execute(originalQuery.analyze), correctAnswer.analyze)
+    }
+  }
+
+  test("Merging subqueries with same condition in filter and in having") {
+    withSQLConf(SQLConf.PLAN_MERGE_FILTER_PROPAGATION_ENABLED.key -> "true") {
+      val subquery1 = ScalarSubquery(testRelation.where('b > 0).groupBy()(max('a).as("max_a")))
+      val subquery2 = ScalarSubquery(testRelation.groupBy()(max('a, Some('b > 0)).as("max_a_2")))
+      val originalQuery = testRelation
+        .select(
+          subquery1,
+          subquery2)
+
+      val mergedSubquery = testRelation
+        .groupBy()(
+          max('a, Some('b > 0)).as("max_a"))
+        .select(CreateNamedStruct(Seq(
+          Literal("max_a"), 'max_a)).as("mergedValue"))
+      val analyzedMergedSubquery = mergedSubquery.analyze
+      val correctAnswer = WithCTE(
+        testRelation
+          .select(
+            extractorExpression(0, analyzedMergedSubquery.output, 0),
+            extractorExpression(0, analyzedMergedSubquery.output, 0)),
+        Seq(definitionNode(analyzedMergedSubquery, 0)))
+
+      comparePlans(Optimize.execute(originalQuery.analyze), correctAnswer.analyze)
+    }
+  }
+
+  test("Merging subqueries with same condition in having and in filter") {
+    withSQLConf(SQLConf.PLAN_MERGE_FILTER_PROPAGATION_ENABLED.key -> "true") {
+      val subquery1 = ScalarSubquery(testRelation.groupBy()(max('a, Some('b > 0)).as("max_a")))
+      val subquery2 = ScalarSubquery(testRelation.where('b > 0).groupBy()(max('a).as("max_a_2")))
+      val originalQuery = testRelation
+        .select(
+          subquery1,
+          subquery2)
+
+      val mergedSubquery = testRelation
+        .groupBy()(
+          max('a, Some('b > 0)).as("max_a"))
+        .select(CreateNamedStruct(Seq(
+          Literal("max_a"), 'max_a)).as("mergedValue"))
+      val analyzedMergedSubquery = mergedSubquery.analyze
+      val correctAnswer = WithCTE(
+        testRelation
+          .select(
+            extractorExpression(0, analyzedMergedSubquery.output, 0),
+            extractorExpression(0, analyzedMergedSubquery.output, 0)),
+        Seq(definitionNode(analyzedMergedSubquery, 0)))
+
+      comparePlans(Optimize.execute(originalQuery.analyze), correctAnswer.analyze)
+    }
+  }
+
+  test("Merging subqueries with different filters, multiple filters propagated") {
+    withSQLConf(SQLConf.PLAN_MERGE_FILTER_PROPAGATION_ENABLED.key -> "true") {
+      val subquery1 =
+        ScalarSubquery(testRelation.where('b > 0).where('c === "a").groupBy()(max('a).as("max_a")))
+      val subquery2 =
+        ScalarSubquery(testRelation.where('b > 0).where('c === "b").groupBy()(avg('a).as("avg_a")))
+      val subquery3 = ScalarSubquery(
+        testRelation.where('b < 0).where('c === "c").groupBy()(count('a).as("cnt_a")))
+      val originalQuery = testRelation
+        .select(
+          subquery1,
+          subquery2,
+          subquery3)
+
+      val mergedSubquery = testRelation
+        .where('b > 0 || 'b < 0)
+        .where(('c === "a" || 'c === "b") && 'b > 0 || 'c === "c" && 'b < 0)
+        .groupBy()(
+          max('a, Some('c === "a" && 'b > 0)).as("max_a"),
+          avg('a, Some('c === "b" && 'b > 0)).as("avg_a"),
+          count('a, Some('c === "c" && 'b < 0)).as("cnt_a"))
+        .select(CreateNamedStruct(Seq(
+          Literal("max_a"), 'max_a,
+          Literal("avg_a"), 'avg_a,
+          Literal("cnt_a"), 'cnt_a
+        )).as("mergedValue"))
+      val analyzedMergedSubquery = mergedSubquery.analyze
+      val correctAnswer = WithCTE(
+        testRelation
+          .select(
+            extractorExpression(0, analyzedMergedSubquery.output, 0),
+            extractorExpression(0, analyzedMergedSubquery.output, 1),
+            extractorExpression(0, analyzedMergedSubquery.output, 2)),
+        Seq(definitionNode(analyzedMergedSubquery, 0)))
+
+      comparePlans(Optimize.execute(originalQuery.analyze), correctAnswer.analyze)
+    }
+  }
+
+  test("Merging subqueries with different filters, multiple filters propagated 2") {
+    withSQLConf(SQLConf.PLAN_MERGE_FILTER_PROPAGATION_ENABLED.key -> "true") {
+      val subquery1 =
+        ScalarSubquery(testRelation.where('c === "a").where('b > 0).groupBy()(max('a).as("max_a")))
+      val subquery2 =
+        ScalarSubquery(testRelation.where('c === "b").where('b > 0).groupBy()(avg('a).as("avg_a")))
+      val subquery3 = ScalarSubquery(
+        testRelation.where('c === "c").where('b < 0).groupBy()(count('a).as("cnt_a")))
+      val originalQuery = testRelation
+        .select(
+          subquery1,
+          subquery2,
+          subquery3)
+
+      val mergedSubquery = testRelation
+        .where('c === "a" || 'c === "b" || 'c === "c")
+        .where('b > 0 && ('c === "a" || 'c === "b") || 'b < 0 && 'c === "c")
+        .groupBy()(
+          max('a, Some('c === "a" && 'b > 0)).as("max_a"),
+          avg('a, Some('c === "b" && 'b > 0)).as("avg_a"),
+          count('a, Some('b < 0 && 'c === "c")).as("cnt_a"))
+        .select(CreateNamedStruct(Seq(
+          Literal("max_a"), 'max_a,
+          Literal("avg_a"), 'avg_a,
+          Literal("cnt_a"), 'cnt_a
+        )).as("mergedValue"))
+      val analyzedMergedSubquery = mergedSubquery.analyze
+      val correctAnswer = WithCTE(
+        testRelation
+          .select(
+            extractorExpression(0, analyzedMergedSubquery.output, 0),
+            extractorExpression(0, analyzedMergedSubquery.output, 1),
+            extractorExpression(0, analyzedMergedSubquery.output, 2)),
+        Seq(definitionNode(analyzedMergedSubquery, 0)))
+
+      comparePlans(Optimize.execute(originalQuery.analyze), correctAnswer.analyze)
+    }
   }
 }

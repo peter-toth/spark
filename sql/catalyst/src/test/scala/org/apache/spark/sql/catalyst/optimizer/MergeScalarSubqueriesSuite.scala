@@ -738,11 +738,11 @@ class MergeScalarSubqueriesSuite extends PlanTest {
 
       val mergedSubquery = testRelation
         .where('b > 0 || 'b < 0)
-        .where(('c === "a" || 'c === "b") && 'b > 0 || 'c === "c" && 'b < 0)
+        .where('b > 0 && ('c === "a" || 'c === "b") || 'b < 0 && 'c === "c")
         .groupBy()(
-          max('a, Some('c === "a" && 'b > 0)).as("max_a"),
-          avg('a, Some('c === "b" && 'b > 0)).as("avg_a"),
-          count('a, Some('c === "c" && 'b < 0)).as("cnt_a"))
+          max('a, Some('b > 0 && 'c === "a")).as("max_a"),
+          avg('a, Some('b > 0 && 'c === "b")).as("avg_a"),
+          count('a, Some('b < 0 && 'c === "c")).as("cnt_a"))
         .select(CreateNamedStruct(Seq(
           Literal("max_a"), 'max_a,
           Literal("avg_a"), 'avg_a,
@@ -777,11 +777,14 @@ class MergeScalarSubqueriesSuite extends PlanTest {
 
       val mergedSubquery = testRelation
         .where('c === "a" || 'c === "b" || 'c === "c")
-        .where('b > 0 && ('c === "a" || 'c === "b") || 'b < 0 && 'c === "c")
+        .where(('c === "a" || 'c === "b") && 'b > 0 || 'c === "c" && 'b < 0)
         .groupBy()(
-          max('a, Some('c === "a" && 'b > 0)).as("max_a"),
-          avg('a, Some('c === "b" && 'b > 0)).as("avg_a"),
-          count('a, Some('b < 0 && 'c === "c")).as("cnt_a"))
+          // Note: `b` related conditions are evaluated first despite `c` related ones are lower in
+          // the original plans. This is because `'b > 0` is the same in the first 2 original plans
+          // so it isn't propagated when we merge them. But later when we merge the 3rd plan, it is.
+          max('a, Some('b > 0 && 'c === "a")).as("max_a"),
+          avg('a, Some('b > 0 && 'c === "b")).as("avg_a"),
+          count('a, Some('c === "c" && 'b < 0)).as("cnt_a"))
         .select(CreateNamedStruct(Seq(
           Literal("max_a"), 'max_a,
           Literal("avg_a"), 'avg_a,

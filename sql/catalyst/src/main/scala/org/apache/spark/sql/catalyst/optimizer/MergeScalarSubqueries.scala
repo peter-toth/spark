@@ -225,6 +225,43 @@ object MergeScalarSubqueries extends Rule[LogicalPlan] {
     }
   }
 
+//  def propagateFilters(
+//      newFilter: Option[Expression],
+//      cachedFilter: Option[Expression],
+//      mergedChild: LogicalPlan,
+//      newChildFilter: Option[Expression],
+//      mergedChildFilter: Option[Expression]) = {
+//    val commonFilter: Option[Expression] = None
+//    val newPlanFilter = (newChildFilter.toSeq :+ newFilter.toSeq).reduceOption(And)
+//    val cachedPlanFilter = (mergedChildFilter.toSeq :+ cachedFilter.toSeq).reduceOption(And)
+//    val propagatedFilter =
+//      (cachedPlanFilter.toSeq ++ newPlanFilter.toSeq).reduceOption(Or).map(PropagatedFilter)
+//    val mergedFilter = (propagatedFilter.toSeq ++ commonFilter.toSeq).reduceOption(And)
+//    val mergedPlan = Filter(mergedFilter.get, mergedChild)
+//    // There might be `PropagatedFilter`s in the cached plan's `Filter` that we don't
+//    // need to re-propagate.
+//    val nonPropagatedCachedFilter = extractNonPropagatedFilter2(cachedFilter)
+//    val mergedPlanFilter =
+//      (mergedChildFilter.toSeq ++ nonPropagatedCachedFilter.toSeq).reduceOption(And)
+//    (mergedPlan, newPlanFilter, mergedPlanFilter)
+//  }
+//
+//  private def extractNonPropagatedFilter2(e: Option[Expression]) = {
+//    e match {
+//      case Some(And(_: PropagatedFilter, e)) => Some(e)
+//      case Some(_: PropagatedFilter) => None
+//      case o => o
+//    }
+//  }
+
+  def sumMergeCosts(filterPropagationSupported: Boolean, childMergeCosts: (Int, Int), mergeCosts: (Int, Int)) = {
+    if (filterPropagationSupported) {
+      (childMergeCosts._1 + mergeCosts._1, childMergeCosts._2 + mergeCosts._2)
+    } else {
+      childMergeCosts
+    }
+  }
+
   /**
    * Recursively traverse down and try merging 2 plans.
    *
@@ -236,6 +273,7 @@ object MergeScalarSubqueries extends Rule[LogicalPlan] {
    *                   merged version of 2 or more plans
    * @param filterPropagationSupported a boolean flag that we propagate down to signal we have seen
    *                                   an `Aggregate` node where propagated filters can be merged
+   * @param planCosts
    * @return A tuple of:
    *         - the merged plan,
    *         - the attribute mapping from the new to the merged version,
@@ -246,26 +284,29 @@ object MergeScalarSubqueries extends Rule[LogicalPlan] {
       newPlan: LogicalPlan,
       cachedPlan: LogicalPlan,
       filterPropagationSupported: Boolean):
-    Option[(LogicalPlan, AttributeMap[Attribute], Option[Expression], Option[Expression])] = {
+    Option[(LogicalPlan, AttributeMap[Attribute], Option[Expression], Option[Expression],
+        (Int, Int))] = {
     checkIdenticalPlans(newPlan, cachedPlan).map((cachedPlan, _, None, None)).orElse(
       (newPlan, cachedPlan) match {
         case (np: Project, cp: Project) =>
           tryMergePlans(np.child, cp.child, filterPropagationSupported).map {
-            case (mergedChild, outputMap, newChildFilter, mergedChildFilter) =>
-              val (mergedProjectList, newOutputMap, newPlanFilter, mergedPlanFilter) =
+            case (mergedChild, outputMap, newChildFilter, mergedChildFilter, childMergeCosts) =>
+              val (mergedProjectList, newOutputMap, newPlanFilter, mergedPlanFilter, mergeCosts) =
                 mergeNamedExpressions(np.projectList, outputMap, cp.projectList, newChildFilter,
-                  mergedChildFilter)
+                  mergedChildFilter, filterPropagationSupported)
               val mergedPlan = Project(mergedProjectList, mergedChild)
-              (mergedPlan, newOutputMap, newPlanFilter, mergedPlanFilter)
+              val newMergeCosts = sumMergeCosts(filterPropagationSupported, childMergeCosts, mergeCosts)
+              (mergedPlan, newOutputMap, newPlanFilter, mergedPlanFilter, newMergeCosts)
           }
         case (np, cp: Project) =>
           tryMergePlans(np, cp.child, filterPropagationSupported).map {
-            case (mergedChild, outputMap, newChildFilter, mergedChildFilter) =>
-              val (mergedProjectList, newOutputMap, newPlanFilter, mergedPlanFilter) =
+            case (mergedChild, outputMap, newChildFilter, mergedChildFilter, childMergeCosts) =>
+              val (mergedProjectList, newOutputMap, newPlanFilter, mergedPlanFilter, mergeCosts) =
                 mergeNamedExpressions(np.output, outputMap, cp.projectList, newChildFilter,
-                  mergedChildFilter)
+                  mergedChildFilter, filterPropagationSupported)
               val mergedPlan = Project(mergedProjectList, mergedChild)
-              (mergedPlan, newOutputMap, newPlanFilter, mergedPlanFilter)
+              val newMergeCosts = sumMergeCosts(filterPropagationSupported, childMergeCosts, mergeCosts)
+              (mergedPlan, newOutputMap, newPlanFilter, mergedPlanFilter, newMergeCosts)
           }
         case (np: Project, cp) =>
           tryMergePlans(np.child, cp, filterPropagationSupported).map {
@@ -281,7 +322,7 @@ object MergeScalarSubqueries extends Rule[LogicalPlan] {
             conf.getConf(SQLConf.PLAN_MERGE_FILTER_PROPAGATION_ENABLED) &&
               supportsFilterPropagation(np) && supportsFilterPropagation(cp)
           tryMergePlans(np.child, cp.child, filterPropagationSupported).flatMap {
-            case (mergedChild, outputMap, None, None) =>
+            case (mergedChild, outputMap, None, None, _) =>
               val mappedNewGroupingExpression =
                 np.groupingExpressions.map(mapAttributes(_, outputMap))
               // Order of grouping expression does matter as merging different grouping orders can
@@ -298,17 +339,17 @@ object MergeScalarSubqueries extends Rule[LogicalPlan] {
               } else {
                 None
               }
-            case (mergedChild, outputMap, newChildFilter, mergedChildFilter) =>
-              val (mergedAggregateExpressions, newOutputMap, _, _) =
+            case (mergedChild, outputMap, newChildFilter, mergedChildFilter, childMergeCosts) =>
+              val (mergedAggregateExpressions, newOutputMap, _, _, mergeCosts) =
                 mergeNamedExpressions(
                   filterAggregateExpressions(np.aggregateExpressions, newChildFilter),
                   outputMap,
                   filterAggregateExpressions(cp.aggregateExpressions, mergedChildFilter),
                   None,
-                  None)
-              val mergedPlan =
-                Aggregate(cp.groupingExpressions, mergedAggregateExpressions, mergedChild)
-              Some(mergedPlan, newOutputMap, None, None)
+                  None,
+                  filterPropagationSupported)
+              val mergedPlan = Aggregate(Seq.empty, mergedAggregateExpressions, mergedChild)
+              Some(mergedPlan, newOutputMap, None, None, (0, 0))
             case _ => None
           }
 
@@ -437,7 +478,9 @@ object MergeScalarSubqueries extends Rule[LogicalPlan] {
         //
         //   At the end of the rule we remove the `PropagatedFilter` wrappers.
         case (np: Filter, cp: Filter) =>
-          tryMergePlans(np.child, cp.child, filterPropagationSupported).flatMap {
+          val newPlanCosts =
+            calculatePlanCosts(filterPropagationSupported, planCosts, np.condition, cp.condition)
+          tryMergePlans(np.child, cp.child, filterPropagationSupported, newPlanCosts).flatMap {
             case (mergedChild, outputMap, newChildFilter, mergedChildFilter) =>
               val mappedNewCondition = mapAttributes(np.condition, outputMap)
               // Comparing the canonicalized form is required to ignore different forms of the same
@@ -572,9 +615,13 @@ object MergeScalarSubqueries extends Rule[LogicalPlan] {
       outputMap: AttributeMap[Attribute],
       cachedExpressions: Seq[NamedExpression],
       newChildFilter: Option[Expression],
-      mergedChildFilter: Option[Expression]):
-  (Seq[NamedExpression], AttributeMap[Attribute], Option[Attribute], Option[Attribute]) = {
+      mergedChildFilter: Option[Expression],
+      filterPropagationSupported: Boolean):
+  (Seq[NamedExpression], AttributeMap[Attribute], Option[Attribute], Option[Attribute],
+      (Int, Int)) = {
     val mergedExpressions = ArrayBuffer[NamedExpression](cachedExpressions: _*)
+    val usedCachedExpressions = mutable.Set.empty[NamedExpression]
+    var cachedPlanExtraCost = 0
     val newOutputMap = AttributeMap(newExpressions.map { ne =>
       val mapped = mapAttributes(ne, outputMap)
       val withoutAlias = mapped match {
@@ -584,8 +631,14 @@ object MergeScalarSubqueries extends Rule[LogicalPlan] {
       ne.toAttribute -> mergedExpressions.find {
         case Alias(child, _) => child semanticEquals withoutAlias
         case e => e semanticEquals withoutAlias
+      }.map { e =>
+        usedCachedExpressions += e
+        e
       }.getOrElse {
         mergedExpressions += mapped
+        if (filterPropagationSupported) {
+          cachedPlanExtraCost += calculateCost(withoutAlias)
+        }
         mapped
       }.toAttribute
     })
@@ -595,12 +648,18 @@ object MergeScalarSubqueries extends Rule[LogicalPlan] {
         mergedExpressions.find {
           case Alias(child, _) => child semanticEquals f
           case e => e semanticEquals f
+        }.map { e =>
+          usedCachedExpressions += e
+          e
         }.getOrElse {
           val named = f match {
             case ne: NamedExpression => ne
             case o => Alias(o, "propagatedFilter")()
           }
           mergedExpressions += named
+          if (filterPropagationSupported) {
+            cachedPlanExtraCost += calculateCost(named)
+          }
           named
         }.toAttribute
       }
@@ -609,8 +668,15 @@ object MergeScalarSubqueries extends Rule[LogicalPlan] {
     val mergedPlanFilter = mergeFilter(mergedChildFilter)
     val newPlanFilter = mergeFilter(newChildFilter)
 
-    (mergedExpressions.toSeq, newOutputMap, newPlanFilter, mergedPlanFilter)
+    val newPlanExtraCost = cachedExpressions.collect {
+      case e if !usedCachedExpressions.contains(e) => calculateCost(e)
+    }.sum
+
+    (mergedExpressions.toSeq, newOutputMap, newPlanFilter, mergedPlanFilter,
+        (newPlanExtraCost, cachedPlanExtraCost))
   }
+
+  private def calculateCost(e: Expression): Int = ???
 
   // Only allow aggregates of the same implementation because merging different implementations
   // could cause performance regression.

@@ -19,7 +19,7 @@ package org.apache.spark.sql.catalyst.optimizer
 
 import scala.collection.mutable
 
-import org.apache.spark.sql.catalyst.expressions.{Alias, CommonExpressionRef, Expression, With}
+import org.apache.spark.sql.catalyst.expressions.{Alias, CommonExpressionDef, CommonExpressionRef, Expression, With}
 import org.apache.spark.sql.catalyst.plans.logical.{LogicalPlan, Project}
 import org.apache.spark.sql.catalyst.rules.Rule
 import org.apache.spark.sql.catalyst.trees.TreePattern.{COMMON_EXPR_REF, WITH_EXPRESSION}
@@ -41,14 +41,14 @@ object RewriteWithExpression extends Rule[LogicalPlan] {
             val refToExpr = mutable.HashMap.empty[Long, Expression]
             val childProjections = Array.fill(newChildren.size)(mutable.ArrayBuffer.empty[Alias])
 
-            defs.foreach(commonExprDef =>
-              if (CollapseProject.isCheap(commonExprDef.child)) {
-                refToExpr(commonExprDef.id) = commonExprDef.child
+            defs.zipWithIndex.foreach { case (CommonExpressionDef(child, id), index) =>
+              if (CollapseProject.isCheap(child)) {
+                refToExpr(id) = child
               } else {
-                val index = newChildren.indexWhere(
-                  c => commonExprDef.child.references.subsetOf(c.outputSet)
+                val childProjectionIndex = newChildren.indexWhere(
+                  c => child.references.subsetOf(c.outputSet)
                 )
-                if (index == -1) {
+                if (childProjectionIndex == -1) {
                   // When we cannot rewrite the common expressions, force to inline them so that the
                   // query can still run. This can happen if the join condition contains `With` and
                   // the common expression references columns from both join sides.
@@ -57,14 +57,14 @@ object RewriteWithExpression extends Rule[LogicalPlan] {
                   //       `RuntimeReplaceable` did not use the `With` expression.
                   // TODO: we should calculate the ref count and also inline the common expression
                   //       if it's ref count is 1.
-                  refToExpr(commonExprDef.id) = commonExprDef.child
+                  refToExpr(id) = child
                 } else {
-                  val alias = Alias(commonExprDef.child, s"_common_expr_${commonExprDef.id}")()
-                  childProjections(index) += alias
-                  refToExpr(commonExprDef.id) = alias.toAttribute
+                  val alias = Alias(child, s"_common_expr_$index")()
+                  childProjections(childProjectionIndex) += alias
+                  refToExpr(id) = alias.toAttribute
                 }
               }
-            )
+            }
 
             newChildren = newChildren.zip(childProjections).map { case (child, projections) =>
               if (projections.nonEmpty) {

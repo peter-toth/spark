@@ -227,6 +227,9 @@ class Dataset[T] private[sql](
       dsIds.add(id)
       plan.setTagValue(Dataset.DATASET_ID_TAG, dsIds)
     }
+    if (plan.getTagValue(LogicalPlan.PLAN_ID_TAG).isEmpty) {
+      plan.setTagValue(LogicalPlan.PLAN_ID_TAG, id)
+    }
     plan
   }
 
@@ -1149,6 +1152,8 @@ class Dataset[T] private[sql](
       Join(logicalPlan, right.logicalPlan,
         JoinType(joinType), joinExprs.map(_.expr), JoinHint.NONE))
       .queryExecution.analyzed.asInstanceOf[Join]
+    // Remove temporary plan id
+    plan.unsetTagValue(LogicalPlan.PLAN_ID_TAG)
 
     // If auto self join alias is disabled, return the plan.
     if (!sparkSession.sessionState.conf.dataFrameSelfJoinAutoResolveAmbiguity) {
@@ -1302,14 +1307,26 @@ class Dataset[T] private[sql](
       direction: String): DataFrame = {
     val joined = resolveSelfJoinCondition(other, Option(joinExprs), joinType)
     val leftAsOfExpr = leftAsOf.expr.transformUp {
-      case a: AttributeReference if logicalPlan.outputSet.contains(a) =>
-        val index = logicalPlan.output.indexWhere(_.exprId == a.exprId)
-        joined.left.output(index)
+      case a: AttributeReference =>
+        if (logicalPlan.outputSet.contains(a)) {
+          val index = logicalPlan.output.indexWhere(_.exprId == a.exprId)
+          joined.left.output(index)
+        } else {
+          val ua = UnresolvedAttribute(Seq(a.name))
+          ua.copyTagsFrom(a)
+          ua
+        }
     }
     val rightAsOfExpr = rightAsOf.expr.transformUp {
-      case a: AttributeReference if other.logicalPlan.outputSet.contains(a) =>
-        val index = other.logicalPlan.output.indexWhere(_.exprId == a.exprId)
-        joined.right.output(index)
+      case a: AttributeReference =>
+        if (other.logicalPlan.outputSet.contains(a)) {
+          val index = other.logicalPlan.output.indexWhere(_.exprId == a.exprId)
+          joined.right.output(index)
+        } else {
+          val ua = UnresolvedAttribute(Seq(a.name))
+          ua.copyTagsFrom(a)
+          ua
+        }
     }
     withPlan {
       AsOfJoin(
@@ -1482,14 +1499,19 @@ class Dataset[T] private[sql](
   // `DetectAmbiguousSelfJoin` will remove it.
   private def addDataFrameIdToCol(expr: NamedExpression): NamedExpression = {
     val newExpr = expr transform {
-      case a: AttributeReference
-        if sparkSession.conf.get(SQLConf.FAIL_AMBIGUOUS_SELF_JOIN_ENABLED) =>
-        val metadata = new MetadataBuilder()
-          .withMetadata(a.metadata)
-          .putLong(Dataset.DATASET_ID_KEY, id)
-          .putLong(Dataset.COL_POS_KEY, logicalPlan.output.indexWhere(a.semanticEquals))
-          .build()
-        a.withMetadata(metadata)
+      case a: AttributeReference =>
+        val newA = if (sparkSession.conf.get(SQLConf.FAIL_AMBIGUOUS_SELF_JOIN_ENABLED)) {
+          val metadata = new MetadataBuilder()
+            .withMetadata(a.metadata)
+            .putLong(Dataset.DATASET_ID_KEY, id)
+            .putLong(Dataset.COL_POS_KEY, logicalPlan.output.indexWhere(a.semanticEquals))
+            .build()
+          a.withMetadata(metadata)
+        } else {
+          a
+        }
+        newA.setTagValue(LogicalPlan.PLAN_ID_TAG, id)
+        newA
     }
     newExpr.asInstanceOf[NamedExpression]
   }
@@ -1573,7 +1595,13 @@ class Dataset[T] private[sql](
 
       case other => other
     }
-    Project(untypedCols.map(_.named), logicalPlan)
+    val namedCols = untypedCols.map(_.named).map(_.transform {
+      case ar: AttributeReference if !logicalPlan.outputSet.contains(ar) =>
+        val ua = UnresolvedAttribute(Seq(ar.name))
+        ua.copyTagsFrom(ar)
+        ua
+    }.asInstanceOf[NamedExpression])
+    Project(namedCols, logicalPlan)
   }
 
   /**

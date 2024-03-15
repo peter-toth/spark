@@ -21,6 +21,7 @@ import scala.jdk.CollectionConverters._
 
 import org.apache.spark.sql.execution.adaptive.AdaptiveSparkPlanHelper
 import org.apache.spark.sql.functions._
+import org.apache.spark.sql.internal.SQLConf
 import org.apache.spark.sql.test.SharedSparkSession
 import org.apache.spark.sql.types._
 import org.apache.spark.tags.SlowSQLTest
@@ -171,6 +172,20 @@ class DataFrameAsOfJoinSuite extends QueryTest
         Row(5, "y", "b", 1, "x", "a"),
         Row(10, "z", "c", 5, "y", "b")
       )
+    )
+  }
+
+  test("SPARK-47217: DeduplicateRelations keeps original expressions if possible") {
+    Seq(true, false).foreach(fail =>
+        withSQLConf(SQLConf.FAIL_AMBIGUOUS_SELF_JOIN_ENABLED.key -> fail.toString) {
+        val (df1, df2) = prepareForAsOfJoin()
+        val join1 = df1.join(df2, df1.col("a") === df2.col("a")).select(df2.col("a"), df1.col("b"),
+          df2.col("b"), df1.col("a").as("aa"))
+        val asOfjoin2 = join1.joinAsOf(
+          df1, df1.col("a"), join1.col("a"), usingColumns = Seq.empty,
+          joinType = "left", tolerance = null, allowExactMatches = false, direction = "nearest")
+        checkAnswer(asOfjoin2, Row(1, "x", "v", 1, 5, "y", "b") :: Nil)
+      }
     )
   }
 }

@@ -2575,6 +2575,43 @@ class DataFrameSuite extends QueryTest
     val expected = getQueryResult(false).map(_.getTimestamp(0).toString).sorted
     assert(actual == expected)
   }
+
+  test("SPARK-47217: DeduplicateRelations keeps original expressions if possible") {
+    Seq(true, false).foreach(fail =>
+      withSQLConf(SQLConf.FAIL_AMBIGUOUS_SELF_JOIN_ENABLED.key -> fail.toString) {
+        val df = Seq((1, 2)).toDF("a", "b")
+        val df2 = df.select(df("a").as("aa"), df("b"))
+        val df3 = df2.join(df, df2("b") === df("b")).select(df2("aa"), df("a"))
+        checkAnswer(df3, Row(1, 1) :: Nil)
+      }
+    )
+  }
+
+  test("SPARK-47217: DeduplicateRelations keeps original expressions if possible 2") {
+    Seq(true, false).foreach(fail =>
+      withSQLConf(SQLConf.FAIL_AMBIGUOUS_SELF_JOIN_ENABLED.key -> fail.toString) {
+        val schema = StructType.fromDDL("a int, b int")
+        val rows = Seq(Row(1, 2))
+        val rdd = sparkContext.parallelize(rows)
+        val df = spark.createDataFrame(rdd, schema)
+        val df2 = df.select(df("a").as("aa"), df("b"))
+        val df3 = df2.join(df, df2("b") === df("b")).select(df2("aa"), df("a"))
+        checkAnswer(df3, Row(1, 1) :: Nil)
+      }
+    )
+  }
+
+  test("SPARK-47217: DeduplicateRelations keeps original expressions if possible 3") {
+    Seq(true, false).foreach(fail =>
+      withSQLConf(SQLConf.FAIL_AMBIGUOUS_SELF_JOIN_ENABLED.key -> fail.toString) {
+        val df = Seq((1, 2)).toDF("a", "b")
+        val df2 = Seq((1, 2)).toDF("c", "d")
+        val df3 = df.join(df2, df2("d") === df("b")).select(df("a").as("aa"), df2("c").as("cc"))
+        val df4 = df3.join(df, df("a") === df3("cc")).select(df3("aa"), df("a"))
+        checkAnswer(df4, Row(1, 1) :: Nil)
+      }
+    )
+  }
 }
 
 case class GroupByKey(a: Int, b: Int)

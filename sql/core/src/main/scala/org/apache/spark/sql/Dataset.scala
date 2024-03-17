@@ -1314,6 +1314,7 @@ class Dataset[T] private[sql](
         } else {
           val ua = UnresolvedAttribute(Seq(a.name))
           ua.copyTagsFrom(a)
+          ua.setTagValue(LogicalPlan.MAYBE_METADATA_COL, ())
           ua
         }
     }
@@ -1325,6 +1326,7 @@ class Dataset[T] private[sql](
         } else {
           val ua = UnresolvedAttribute(Seq(a.name))
           ua.copyTagsFrom(a)
+          ua.setTagValue(LogicalPlan.MAYBE_METADATA_COL, ())
           ua
         }
     }
@@ -1489,8 +1491,13 @@ class Dataset[T] private[sql](
    * @group untypedrel
    * @since 3.5.0
    */
-  def metadataColumn(colName: String): Column =
-    Column(queryExecution.analyzed.getMetadataAttributeByName(colName))
+  def metadataColumn(colName: String): Column = {
+    val a = queryExecution.analyzed.getMetadataAttributeByName(colName)
+    a.setTagValue(LogicalPlan.PLAN_ID_TAG,
+      logicalPlan.getTagValue(LogicalPlan.PLAN_ID_TAG).get)
+    a.setTagValue(LogicalPlan.IS_METADATA_COL, ())
+    Column(a)
+  }
 
   // Attach the dataset id and column position to the column reference, so that we can detect
   // ambiguous self-join correctly. See the rule `DetectAmbiguousSelfJoin`.

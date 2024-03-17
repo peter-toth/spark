@@ -2612,6 +2612,18 @@ class DataFrameSuite extends QueryTest
       }
     )
   }
+
+  test("SPARK-47217: DeduplicateRelations keeps original expressions if possible 4") {
+    Seq(true, false).foreach(fail =>
+      withSQLConf(SQLConf.FAIL_AMBIGUOUS_SELF_JOIN_ENABLED.key -> fail.toString) {
+        val df = Seq((1, 2)).toDF("a", "b")
+        val df2 = df.select(df("a").as("aa"), df("b").as("bb"))
+        val df3 = df.select(df("a"), df("b"))
+        val df4 = df2.join(df3, df2("bb") === df("b")).select(df2("aa"), df("a"))
+        checkAnswer(df4, Row(1, 1) :: Nil)
+      }
+    )
+  }
 }
 
 case class GroupByKey(a: Int, b: Int)

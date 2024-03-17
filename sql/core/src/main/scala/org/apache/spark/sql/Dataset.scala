@@ -227,6 +227,8 @@ class Dataset[T] private[sql](
       dsIds.add(id)
       plan.setTagValue(Dataset.DATASET_ID_TAG, dsIds)
     }
+    // A plan might get its PLAN_ID_TAG via connect or belong to multiple dataframes so only assign
+    // an id to a plan if it doesn't have any
     if (plan.getTagValue(LogicalPlan.PLAN_ID_TAG).isEmpty) {
       plan.setTagValue(LogicalPlan.PLAN_ID_TAG, id)
     }
@@ -1152,8 +1154,6 @@ class Dataset[T] private[sql](
       Join(logicalPlan, right.logicalPlan,
         JoinType(joinType), joinExprs.map(_.expr), JoinHint.NONE))
       .queryExecution.analyzed.asInstanceOf[Join]
-    // Remove temporary plan id
-    plan.unsetTagValue(LogicalPlan.PLAN_ID_TAG)
 
     // If auto self join alias is disabled, return the plan.
     if (!sparkSession.sessionState.conf.dataFrameSelfJoinAutoResolveAmbiguity) {
@@ -1510,7 +1510,8 @@ class Dataset[T] private[sql](
         } else {
           a
         }
-        newA.setTagValue(LogicalPlan.PLAN_ID_TAG, id)
+        newA.setTagValue(LogicalPlan.PLAN_ID_TAG,
+          logicalPlan.getTagValue(LogicalPlan.PLAN_ID_TAG).get)
         newA
     }
     newExpr.asInstanceOf[NamedExpression]
@@ -1599,6 +1600,7 @@ class Dataset[T] private[sql](
       case ar: AttributeReference if !logicalPlan.outputSet.contains(ar) =>
         val ua = UnresolvedAttribute(Seq(ar.name))
         ua.copyTagsFrom(ar)
+        ua.setTagValue(LogicalPlan.MAYBE_METADATA_COL, ())
         ua
     }.asInstanceOf[NamedExpression])
     Project(namedCols, logicalPlan)

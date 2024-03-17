@@ -527,7 +527,9 @@ trait ColumnResolutionHelper extends Logging with DataTypeErrorsBase {
     logDebug(s"Extract plan_id $planId from $u")
 
     val isMetadataAccess = u.getTagValue(LogicalPlan.IS_METADATA_COL).nonEmpty
-    val (resolved, matched) = resolveDataFrameColumnByPlanId(u, planId, isMetadataAccess, q)
+    val maybeMetadataAccess = u.getTagValue(LogicalPlan.MAYBE_METADATA_COL).nonEmpty
+    val (resolved, matched) =
+      resolveDataFrameColumnByPlanId(u, planId, isMetadataAccess, maybeMetadataAccess, q)
     if (!matched) {
       // Can not find the target plan node with plan id, e.g.
       //  df1 = spark.createDataFrame([Row(a = 1, b = 2, c = 3)]])
@@ -542,8 +544,10 @@ trait ColumnResolutionHelper extends Logging with DataTypeErrorsBase {
       u: UnresolvedAttribute,
       id: Long,
       isMetadataAccess: Boolean,
+      maybeMetadataAccess: Boolean,
       q: Seq[LogicalPlan]): (Option[NamedExpression], Boolean) = {
-    q.iterator.map(resolveDataFrameColumnRecursively(u, id, isMetadataAccess, _))
+    q.iterator
+      .map(resolveDataFrameColumnRecursively(u, id, isMetadataAccess, maybeMetadataAccess, _))
       .foldLeft((Option.empty[NamedExpression], false)) {
         case ((r1, m1), (r2, m2)) =>
           if (r1.nonEmpty && r2.nonEmpty) {
@@ -557,6 +561,7 @@ trait ColumnResolutionHelper extends Logging with DataTypeErrorsBase {
       u: UnresolvedAttribute,
       id: Long,
       isMetadataAccess: Boolean,
+      maybeMetadataAccess: Boolean,
       p: LogicalPlan): (Option[NamedExpression], Boolean) = {
     val (resolved, matched) = if (p.getTagValue(LogicalPlan.PLAN_ID_TAG).contains(id)) {
       val resolved = try {
@@ -574,7 +579,7 @@ trait ColumnResolutionHelper extends Logging with DataTypeErrorsBase {
       }
       (resolved, true)
     } else {
-      resolveDataFrameColumnByPlanId(u, id, isMetadataAccess, p.children)
+      resolveDataFrameColumnByPlanId(u, id, isMetadataAccess, maybeMetadataAccess, p.children)
     }
 
     // In self join case like:
@@ -603,7 +608,7 @@ trait ColumnResolutionHelper extends Logging with DataTypeErrorsBase {
     // returns None, the dataframe column will remain unresolved, and the analyzer
     // will try to resolve it without plan id later.
     val filtered = resolved.filter { r =>
-      if (isMetadataAccess) {
+      if (isMetadataAccess || maybeMetadataAccess) {
         r.references.subsetOf(AttributeSet(p.output ++ p.metadataOutput))
       } else {
         r.references.subsetOf(p.outputSet)

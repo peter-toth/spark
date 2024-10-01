@@ -100,7 +100,7 @@ case class InlineCTE(
             // Similarly, a CTE relation can reference CTE relations defined in the outer `WithCTE`.
             // Here we call the `collectCTERefs` function so that the outer CTE can also update the
             // out-going-ref-count if needed.
-            collectCTERefs(ref)
+            // collectCTERefs(ref)
           })
         }
         buildCTEMap(child, cteMap, collectCTERefs)

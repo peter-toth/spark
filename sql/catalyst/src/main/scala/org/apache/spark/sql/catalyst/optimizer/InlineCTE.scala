@@ -91,7 +91,7 @@ case class InlineCTE(
         cteDefs.foreach { cteDef =>
           buildCTEMap(cteDef, cteMap, Some(cteDef.id))
         }
-        buildCTEMap(child, cteMap, outerCTEId)
+        buildCTEMap(child, cteMap, None)
 
       case ref: CTERelationRef =>
         cteMap(ref.cteId) = cteMap(ref.cteId).withRefCountIncreased(1)

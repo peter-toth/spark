@@ -71,8 +71,12 @@ import org.apache.spark.sql.internal.SQLConf
  *                  Both anchor and recursion are marked with @transient annotation, so that they
  *                  are not serialized.
  * @param output The output attributes of this loop.
- * @param limit If defined, the total number of rows output by this operator will be bounded by
- *              limit.
+ * @param limit If defined, the total number of rows output by this operator will be bounded by this
+ *              soft limit. The initial limit is decreased by the number of rows returned in
+ *              previous iterations and applied as `LocalLimit` in each iteration. Therefore, the
+ *              number of rows in the last iteration and so the total number of rows returned by the
+ *              `UnionLoop` might exceed the limit, but the outer `GlobalLimit` can handle that.
+ *              This is similar to how `LocalLimit` pushdown works on `Union`s in `LimitPushdown`.
  *              Its value is pushed down to UnionLoop in Optimizer in case Limit node is present
  *              in the logical plan and then transferred to UnionLoopExec in SparkStrategies.
  *              Note here: limit can be applied in the main query calling the recursive CTE, and not
@@ -83,8 +87,7 @@ case class UnionLoopExec(
     @transient anchor: LogicalPlan,
     @transient recursion: LogicalPlan,
     override val output: Seq[Attribute],
-    localLimit: Option[Int] = None,
-    globalLimit: Option[Int] = None) extends LeafExecNode {
+    limit: Option[Int] = None) extends LeafExecNode {
 
   override def innerChildren: Seq[QueryPlan[_]] = Seq(anchor, recursion)
 
@@ -96,11 +99,10 @@ case class UnionLoopExec(
    * This function executes the plan (optionally with appended limit node) and caches the result,
    * with the caching mode specified in config.
    */
-  private def executeAndCacheAndCount(
-                                       plan: LogicalPlan, currentLimit: Int) = {
+  private def executeAndCacheAndCount(plan: LogicalPlan, currentLimit: Int) = {
     // In case limit is defined, we create a (local) limit node above the plan and execute
     // the newly created plan.
-    val planOrLimitedPlan = if (globalLimit.isDefined || localLimit.isDefined) {
+    val planOrLimitedPlan = if (limit.isDefined) {
       LocalLimit(Literal(currentLimit), plan)
     } else {
       plan
@@ -129,25 +131,17 @@ case class UnionLoopExec(
     // the number of rows generated in that step.
     // If limit is not passed down, currentLimit is set to be zero and won't be considered in the
     // condition of while loop down (limit.isEmpty will be true).
-    var currentLimit = {
-      if (globalLimit.isDefined) {
-        globalLimit.get
-      } else if (localLimit.isDefined) {
-        localLimit.get
-      }
-      else {
-        -1
-      }
-    }
+    var currentLimit = limit.getOrElse(-1)
 
     val unionChildren = mutable.ArrayBuffer.empty[LogicalRDD]
 
     var (prevDF, prevCount) = executeAndCacheAndCount(anchor, currentLimit)
 
     var currentLevel = 1
+    var limitReached = false
 
     // Main loop for obtaining the result of the recursive query.
-    while (prevCount > 0 && ((globalLimit.isEmpty && localLimit.isEmpty) || currentLimit > 0)) {
+    while (prevCount > 0 && !limitReached) {
 
       if (levelLimit != -1 && currentLevel > levelLimit) {
         throw new SparkException(
@@ -166,25 +160,30 @@ case class UnionLoopExec(
       numIterations += 1
       SQLMetrics.postDriverMetricUpdates(sparkContext, executionId, metrics.values.toSeq)
 
-      // the current plan is created by substituting UnionLoopRef node with the project node of
-      // the previous plan.
-      // This way we support only UNION ALL case. Additional case should be added for UNION case.
-      // One way of supporting UNION case can be seen at SPARK-24497 PR from Peter Toth.
-      val newRecursion = recursion.transform {
-        case r: UnionLoopRef =>
-          val prevPlanToRefMapping = prevPlan.output.zip(r.output).map {
-            case (fa, ta) => Alias(fa, ta.name)(ta.exprId)
-          }
-          Project(prevPlanToRefMapping, prevPlan)
+      if (limit.isDefined) {
+        currentLimit -= prevCount.toInt
+
+        limitReached = currentLimit <= 0;
       }
 
-      val (df, count) = executeAndCacheAndCount(newRecursion, currentLimit)
-      prevDF = df
-      prevCount = count
+      if (!limitReached) {
+        // the current plan is created by substituting UnionLoopRef node with the project node of
+        // the previous plan.
+        // This way we support only UNION ALL case. Additional case should be added for UNION case.
+        // One way of supporting UNION case can be seen at SPARK-24497 PR from Peter Toth.
+        val newRecursion = recursion.transform {
+          case r: UnionLoopRef =>
+            val prevPlanToRefMapping = prevPlan.output.zip(r.output).map {
+              case (fa, ta) => Alias(fa, ta.name)(ta.exprId)
+            }
+            Project(prevPlanToRefMapping, prevPlan)
+        }
 
-      currentLevel += 1
-      if (globalLimit.isDefined || localLimit.isDefined) {
-        currentLimit -= count.toInt
+        val (df, count) = executeAndCacheAndCount(newRecursion, currentLimit)
+        prevDF = df
+        prevCount = count
+
+        currentLevel += 1
       }
     }
 
@@ -198,14 +197,7 @@ case class UnionLoopExec(
           Dataset.ofRows(session, Union(unionChildren.toSeq))
         }
       }
-      val dfMaybeCoalesced = {
-        if (globalLimit.isEmpty && localLimit.isDefined) {
-          df.coalesce(1)
-        } else {
-          df
-        }
-      }
-      dfMaybeCoalesced.queryExecution.toRdd
+      df.queryExecution.toRdd
     }
   }
 
@@ -218,8 +210,7 @@ case class UnionLoopExec(
        |$formattedNodeName
        |Loop id: $loopId
        |${QueryPlan.generateFieldString("Output", output)}
-       |LocalLimit: $localLimit
-       |GlobalLimit: $globalLimit
+       |Limit: $limit
        |""".stripMargin
   }
 }

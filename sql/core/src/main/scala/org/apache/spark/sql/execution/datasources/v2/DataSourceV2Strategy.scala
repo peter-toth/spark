@@ -683,7 +683,7 @@ private[sql] object DataSourceV2Strategy extends Logging {
    * If the underlying subquery hasn't completed yet, this method will throw an exception.
    */
   protected[sql] def translateRuntimeFilterV2(expr: Expression): Option[Predicate] = expr match {
-    case in @ InSubqueryExec(PushableColumnAndNestedColumn(name), _, _, _, _, _) =>
+    case in @ InSubqueryExec(PushableColumnAndNestedColumn(name), _, _, _) =>
       val values = in.values().getOrElse {
         throw SparkException.internalError(
           s"Can't translate $in to v2 Predicate, no subquery result")

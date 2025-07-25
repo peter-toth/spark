@@ -154,7 +154,7 @@ class GroupBasedUpdateTableSuite extends UpdateTableSuiteBase {
             Nil
         }
         val isSubqueryReused = runtimePredicates.exists {
-          case InSubqueryExec(_, _: ReusedSubqueryExec, _, _, _, _) => true
+          case InSubqueryExec(_, _: ReusedSubqueryExec, _, _) => true
           case _ => false
         }
         assert(isSubqueryReused, "runtime filter subquery must be reused")

@@ -18,7 +18,6 @@
 package org.apache.spark.sql.execution
 
 import org.apache.spark.QueryContext
-import org.apache.spark.broadcast.Broadcast
 import org.apache.spark.sql.catalyst.{expressions, InternalRow}
 import org.apache.spark.sql.catalyst.expressions.{CreateNamedStruct, Expression, ExprId, InSet, ListQuery, Literal, PlanExpression, Predicate, SupportQueryContext}
 import org.apache.spark.sql.catalyst.expressions.codegen.{CodegenContext, ExprCode}
@@ -118,8 +117,6 @@ case class InSubqueryExec(
     child: Expression,
     plan: BaseSubqueryExec,
     exprId: ExprId,
-    isDynamicPruning: Boolean = true,
-    private var resultBroadcast: Broadcast[Array[Any]] = null,
     @transient private var result: Array[Any] = null)
   extends ExecSubqueryExpression with UnaryLike[Expression] with Predicate {
 
@@ -137,28 +134,17 @@ case class InSubqueryExec(
     } else {
       rows.map(_.get(0, child.dataType))
     }
-    if (!isDynamicPruning) {
-      resultBroadcast = plan.session.sparkContext.broadcast(result)
-    }
   }
 
   // This is used only by DPP where we don't need broadcast the result.
   def values(): Option[Array[Any]] = Option(result)
 
-  private def prepareResult(): Unit = {
-    require(result != null || resultBroadcast != null, s"$this has not finished")
-    if (result == null && resultBroadcast != null) {
-      result = resultBroadcast.value
-    }
-  }
 
   override def eval(input: InternalRow): Any = {
-    prepareResult()
     inSet.eval(input)
   }
 
   override def doGenCode(ctx: CodegenContext, ev: ExprCode): ExprCode = {
-    prepareResult()
     inSet.doGenCode(ctx, ev)
   }
 
@@ -167,7 +153,6 @@ case class InSubqueryExec(
       child = child.canonicalized,
       plan = plan.canonicalized.asInstanceOf[BaseSubqueryExec],
       exprId = ExprId(0),
-      resultBroadcast = null,
       result = null)
   }
 
@@ -198,8 +183,7 @@ case class PlanSubqueries(sparkSession: SparkSession) extends Rule[SparkPlan] {
           )
         }
         val executedPlan = QueryExecution.prepareExecutedPlan(sparkSession, query)
-        InSubqueryExec(expr, SubqueryExec(s"subquery#${exprId.id}", executedPlan),
-          exprId, isDynamicPruning = false)
+        InSubqueryExec(expr, SubqueryExec(s"subquery#${exprId.id}", executedPlan), exprId)
     }
   }
 }

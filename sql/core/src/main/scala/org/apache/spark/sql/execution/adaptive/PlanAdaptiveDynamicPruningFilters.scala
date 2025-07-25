@@ -44,7 +44,7 @@ case class PlanAdaptiveDynamicPruningFilters(
       _.containsAllPatterns(DYNAMIC_PRUNING_EXPRESSION, IN_SUBQUERY_EXEC)) {
       case DynamicPruningExpression(InSubqueryExec(
           value, SubqueryAdaptiveBroadcastExec(name, indices, onlyInBroadcast, buildPlan, buildKeys,
-          adaptivePlan: AdaptiveSparkPlanExec), exprId, _, _, _)) =>
+          adaptivePlan: AdaptiveSparkPlanExec), exprId, _)) =>
         val packedKeys = BindReferences.bindReferences(
           HashJoin.rewriteKeyExpr(buildKeys), adaptivePlan.executedPlan.output)
         val mode = HashedRelationBroadcastMode(packedKeys)

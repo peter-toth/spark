@@ -112,7 +112,7 @@ jobs:
       - name: Checkout Spark repository
         uses: actions/checkout@v4
         with:
-          repository: apache/spark
+          repository: peter-toth/spark
           ref: "${{ inputs.branch }}"
       - name: Release Apache Spark
         env:

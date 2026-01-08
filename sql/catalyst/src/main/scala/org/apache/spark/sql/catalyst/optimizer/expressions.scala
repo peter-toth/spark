@@ -506,12 +506,11 @@ object BooleanSimplification extends Rule[LogicalPlan] with PredicateHelper {
     case Not(a LessThan b) => GreaterThanOrEqual(a, b)
     case Not(a LessThanOrEqual b) => GreaterThan(a, b)
 
+    // Push `Not` expressions down
     case Not(a Or b) =>
-      And(transformNots.applyOrElse(Not(a), identity[Expression]),
-        transformNots.applyOrElse(Not(b), identity[Expression]))
+      And(Not(a), Not(b)).transformDownWithPruning(_.containsPattern(NOT), ruleId)(transformNots)
     case Not(a And b) =>
-      Or(transformNots.applyOrElse(Not(a), identity[Expression]),
-        transformNots.applyOrElse(Not(b), identity[Expression]))
+      Or(Not(a), Not(b)).transformDownWithPruning(_.containsPattern(NOT), ruleId)(transformNots)
 
     case Not(Not(e)) => e
 

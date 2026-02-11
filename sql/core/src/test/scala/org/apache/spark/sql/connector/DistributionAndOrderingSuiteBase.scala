@@ -22,7 +22,7 @@ import org.apache.spark.sql.QueryTest
 import org.apache.spark.sql.catalyst
 import org.apache.spark.sql.catalyst.analysis.Resolver
 import org.apache.spark.sql.catalyst.analysis.UnresolvedAttribute
-import org.apache.spark.sql.catalyst.expressions.SortOrder
+import org.apache.spark.sql.catalyst.expressions.{AttributeReference, SortOrder}
 import org.apache.spark.sql.catalyst.plans.QueryPlan
 import org.apache.spark.sql.catalyst.plans.physical
 import org.apache.spark.sql.catalyst.plans.physical._
@@ -51,9 +51,9 @@ abstract class DistributionAndOrderingSuiteBase
       plan: QueryPlan[T]): Partitioning = partitioning match {
     case HashPartitioning(exprs, numPartitions) =>
       HashPartitioning(exprs.map(resolveAttrs(_, plan)), numPartitions)
-    case KeyGroupedPartitioning(clustering, numPartitions, partValues, originalPartValues) =>
-      KeyGroupedPartitioning(clustering.map(resolveAttrs(_, plan)), numPartitions, partValues,
-        originalPartValues)
+    case KeyedPartitioning(expressions, partitionKeys, originalPartitionKeys) =>
+      KeyedPartitioning(expressions.map(resolveAttrs(_, plan)), partitionKeys,
+        originalPartitionKeys)
     case PartitioningCollection(partitionings) =>
       PartitioningCollection(partitionings.map(resolvePartitioning(_, plan)))
     case RangePartitioning(ordering, numPartitions) =>
@@ -86,6 +86,7 @@ abstract class DistributionAndOrderingSuiteBase
     expr.transform {
       case UnresolvedAttribute(Seq(attrName)) =>
         plan.output.find(attr => resolver(attr.name, attrName)).get
+          .asInstanceOf[AttributeReference].withQualifier(Seq.empty)
       case UnresolvedAttribute(nameParts) =>
         val attrName = nameParts.mkString(".")
         fail(s"cannot resolve a nested attr: $attrName")

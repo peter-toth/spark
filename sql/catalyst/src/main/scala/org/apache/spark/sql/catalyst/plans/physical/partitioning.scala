@@ -17,6 +17,8 @@
 
 package org.apache.spark.sql.catalyst.plans.physical
 
+import java.util.Objects
+
 import scala.annotation.tailrec
 import scala.collection.mutable
 
@@ -346,43 +348,85 @@ case class CoalescedHashPartitioning(from: HashPartitioning, partitions: Seq[Coa
 }
 
 /**
- * Represents a partitioning where rows are split across partitions based on transforms defined
- * by `expressions`. `partitionValues`, if defined, should contain value of partition key(s) in
- * ascending order, after evaluated by the transforms in `expressions`, for each input partition.
- * In addition, its length must be the same as the number of Spark partitions (and thus is a 1-1
- * mapping), and each row in `partitionValues` must be unique.
+ * Represents a partitioning where rows are split across partitions based on transforms defined by
+ * `expressions`. `partitionValues`, should contain value of partition key(s) in ascending order,
+ * after evaluated by the transforms in `expressions`, for each input partition.
+ * `partitionValues` might not be unique when this partitioning is returned from a data source, but
+ * the `GroupPartitionsExec` operator can group partitions with the same key and so make
+ * `partitionValues` unique.
  *
  * The `originalPartitionValues`, on the other hand, are partition values from the original input
  * splits returned by data sources. It may contain duplicated values.
  *
  * For example, if a data source reports partition transform expressions `[years(ts_col)]` with 4
  * input splits whose corresponding partition values are `[0, 1, 2, 2]`, then the `expressions`
- * in this case is `[years(ts_col)]`, while `partitionValues` is `[0, 1, 2]`, which
- * represents 3 input partitions with distinct partition values. All rows in each partition have
- * the same value for column `ts_col` (which is of timestamp type), after being applied by the
- * `years` transform. This is generated after combining the two splits with partition value `2`
- * into a single Spark partition.
+ * in this case is `[years(ts_col)]`, while both `partitionValues` and `originalPartitionValues`
+ * are `[0, 1, 2, 2]`.
+ * After placing a `GroupPartitionsExec` operator on top of the data source, `partitionValues`
+ * becomes `[0, 1, 2]` but `originalPartitionValues` remains `[0, 1, 2, 2]`.
  *
- * On the other hand, in this example `[0, 1, 2, 2]` is the value of `originalPartitionValues`
- * which is calculated from the original input splits.
- *
- * @param expressions partition expressions for the partitioning.
- * @param numPartitions the number of partitions
- * @param partitionValues the values for the final cluster keys (that is, after applying grouping
- *                        on the input splits according to `expressions`) of the distribution,
- *                        must be in ascending order, and must NOT contain duplicated values.
- * @param originalPartitionValues the original input partition values before any grouping has been
- *                                applied, must be in ascending order, and may contain duplicated
- *                                values
+ * @param expressions Partition expressions for the partitioning.
+ * @param partitionKeys The keys for the partitions, must be in ascending order.
+ * @param originalPartitionKeys The original partition keys before any grouping has been applied by
+ *                              a `GroupPartitionsExec` operator, must be in ascending.
  */
-case class KeyGroupedPartitioning(
+case class KeyedPartitioning(
     expressions: Seq[Expression],
-    numPartitions: Int,
-    partitionValues: Seq[InternalRow] = Seq.empty,
-    originalPartitionValues: Seq[InternalRow] = Seq.empty) extends HashPartitioningLike {
+    partitionKeys: Seq[InternalRow],
+    originalPartitionKeys: Seq[InternalRow]) extends Expression with Partitioning with Unevaluable {
+  override val numPartitions = partitionKeys.length
+
+  override def children: Seq[Expression] = expressions
+  override def nullable: Boolean = false
+  override def dataType: DataType = IntegerType
+
+  override protected def withNewChildrenInternal(
+      newChildren: IndexedSeq[Expression]): KeyedPartitioning =
+    copy(expressions = newChildren)
+
+  lazy val isGrouped: Boolean = {
+    val dataTypes = expressions.map(_.dataType)
+    val internalRowComparableWrapperFactory =
+      InternalRowComparableWrapper.getInternalRowComparableWrapperFactory(dataTypes)
+    partitionKeys.map(internalRowComparableWrapperFactory).distinct.size == partitionKeys.size
+  }
+
+  def toGrouped: KeyedPartitioning = {
+    val dataTypes = expressions.map(_.dataType)
+    val internalRowComparableWrapperFactory =
+      InternalRowComparableWrapper.getInternalRowComparableWrapperFactory(dataTypes)
+    val rowOrdering = RowOrdering.createNaturalAscendingOrdering(dataTypes)
+    val groupedPartitions = partitionKeys
+      .map(internalRowComparableWrapperFactory)
+      .distinct
+      .map(_.row)
+      .sorted(rowOrdering)
+
+    KeyedPartitioning(expressions, groupedPartitions, originalPartitionKeys)
+  }
+
+  def projectAndGroup(positions: Seq[Int]): KeyedPartitioning = {
+    val projectedExpressions = positions.map(expressions)
+    val projectedDataTypes = projectedExpressions.map(_.dataType)
+    val projectedPartitionKeys = partitionKeys.map(
+      KeyedPartitioning.projectKey(_, positions, projectedDataTypes)
+    )
+    val projectedOriginalPartitionKeys = originalPartitionKeys.map(
+      KeyedPartitioning.projectKey(_, positions, projectedDataTypes)
+    )
+    val internalRowComparableWrapperFactory =
+      InternalRowComparableWrapper.getInternalRowComparableWrapperFactory(projectedDataTypes)
+    val distinctPartitionKeys = projectedPartitionKeys
+      .map(internalRowComparableWrapperFactory)
+      .distinct
+      .map(_.row)
+
+    copy(expressions = projectedExpressions, partitionKeys = distinctPartitionKeys,
+      originalPartitionKeys = projectedOriginalPartitionKeys)
+  }
 
   override def satisfies0(required: Distribution): Boolean = {
-    super.satisfies0(required) || {
+    super.satisfies0(required) || isGrouped && {
       required match {
         case c @ ClusteredDistribution(requiredClustering, requireAllClusterKeys, _) =>
           if (requireAllClusterKeys) {
@@ -397,7 +441,7 @@ case class KeyGroupedPartitioning(
               // check that join keys (required clustering keys)
               // overlap with partition keys (KeyGroupedPartitioning attributes)
               requiredClustering.exists(x => attributes.exists(_.semanticEquals(x))) &&
-                  expressions.forall(_.collectLeaves().size == 1)
+                expressions.forall(_.collectLeaves().size == 1)
             } else {
               attributes.forall(x => requiredClustering.exists(_.semanticEquals(x)))
             }
@@ -419,60 +463,41 @@ case class KeyGroupedPartitioning(
       // `KeyGroupedPartitioning` here that is grouped on the join keys instead, and use that as
       // the returned shuffle spec.
       val joinKeyPositions = result.keyPositions.map(_.nonEmpty).zipWithIndex.filter(_._1).map(_._2)
-      val projectedPartitioning = KeyGroupedPartitioning(expressions, joinKeyPositions,
-          partitionValues, originalPartitionValues)
+      val projectedPartitioning = projectAndGroup(joinKeyPositions)
       result.copy(partitioning = projectedPartitioning, joinKeyPositions = Some(joinKeyPositions))
     } else {
       result
     }
   }
 
-  lazy val uniquePartitionValues: Seq[InternalRow] = {
-    val internalRowComparableFactory =
-      InternalRowComparableWrapper.getInternalRowComparableWrapperFactory(
-        expressions.map(_.dataType))
-    partitionValues
-        .map(internalRowComparableFactory)
-        .distinct
-        .map(_.row)
+  override def equals(that: Any): Boolean = that match {
+    case k: KeyedPartitioning if this.expressions == k.expressions =>
+      val dataTypes = expressions.map(_.dataType)
+      val internalRowComparableWrapperFactory =
+        InternalRowComparableWrapper.getInternalRowComparableWrapperFactory(dataTypes)
+
+      partitionKeys.size == k.partitionKeys.size &&
+        originalPartitionKeys.size == k.originalPartitionKeys.size &&
+        partitionKeys.zip(k.partitionKeys).forall { case (l, r) =>
+          internalRowComparableWrapperFactory(l).equals(internalRowComparableWrapperFactory(r))
+        } && originalPartitionKeys.zip(k.originalPartitionKeys).forall { case (l, r) =>
+          internalRowComparableWrapperFactory(l).equals(internalRowComparableWrapperFactory(r))
+        }
+
+    case _ => false
   }
 
-  override protected def withNewChildrenInternal(newChildren: IndexedSeq[Expression]): Expression =
-    copy(expressions = newChildren)
+  override def hashCode(): Int = {
+    val dataTypes = expressions.map(_.dataType)
+    val internalRowComparableWrapperFactory =
+      InternalRowComparableWrapper.getInternalRowComparableWrapperFactory(dataTypes)
+
+    Objects.hash(expressions, partitionKeys.map(internalRowComparableWrapperFactory),
+      originalPartitionKeys.map(internalRowComparableWrapperFactory))
+  }
 }
 
-object KeyGroupedPartitioning {
-  def apply(
-      expressions: Seq[Expression],
-      projectionPositions: Seq[Int],
-      partitionValues: Seq[InternalRow],
-      originalPartitionValues: Seq[InternalRow]): KeyGroupedPartitioning = {
-    val projectedExpressions = projectionPositions.map(expressions(_))
-    val projectedPartitionValues = partitionValues.map(project(expressions, projectionPositions, _))
-    val projectedOriginalPartitionValues =
-      originalPartitionValues.map(project(expressions, projectionPositions, _))
-    val internalRowComparableFactory =
-      InternalRowComparableWrapper.getInternalRowComparableWrapperFactory(
-        projectedExpressions.map(_.dataType))
-
-    val finalPartitionValues = projectedPartitionValues
-      .map(internalRowComparableFactory)
-      .distinct
-      .map(_.row)
-
-    KeyGroupedPartitioning(projectedExpressions, finalPartitionValues.length,
-      finalPartitionValues, projectedOriginalPartitionValues)
-  }
-
-  def project(
-      expressions: Seq[Expression],
-      positions: Seq[Int],
-      input: InternalRow): InternalRow = {
-    val projectedValues: Array[Any] = positions.map(i => input.get(i, expressions(i).dataType))
-      .toArray
-    new GenericInternalRow(projectedValues)
-  }
-
+object KeyedPartitioning {
   def supportsExpressions(expressions: Seq[Expression]): Boolean = {
     def isSupportedTransform(transform: TransformExpression): Boolean = {
       transform.children.size == 1 && isReference(transform.children.head)
@@ -490,6 +515,28 @@ object KeyGroupedPartitioning {
       case e: Expression if isReference(e) => true
       case _ => false
     }
+  }
+
+  def projectKey(
+      key: InternalRow,
+      positions: Seq[Int],
+      dataTypes: Seq[DataType]): InternalRow = {
+    val projectedKey = positions.zip(dataTypes).map {
+      case (position, dataType) => key.get(position, dataType)
+    }.toArray[Any]
+    new GenericInternalRow(projectedKey)
+  }
+
+  def reduceKey(
+      key: InternalRow,
+      reducers: Seq[Option[Reducer[_, _]]],
+      dataTypes: Seq[DataType]): InternalRow = {
+    val keyValues = key.toSeq(dataTypes)
+    val reducedKey = keyValues.zip(reducers).map{
+      case (v, Some(reducer: Reducer[Any, Any])) => reducer.reduce(v)
+      case (v, _) => v
+    }.toArray
+    new GenericInternalRow(reducedKey)
   }
 }
 
@@ -835,9 +882,11 @@ case class CoalescedHashShuffleSpec(
  *                         This is set if joining on a subset of cluster keys is allowed.
  */
 case class KeyGroupedShuffleSpec(
-    partitioning: KeyGroupedPartitioning,
+    partitioning: KeyedPartitioning,
     distribution: ClusteredDistribution,
     joinKeyPositions: Option[Seq[Int]] = None) extends ShuffleSpec {
+
+  assert(partitioning.isGrouped)
 
   /**
    * A sequence where each element is a set of positions of the partition expression to the cluster
@@ -878,7 +927,7 @@ case class KeyGroupedShuffleSpec(
           partitioning.expressions.map(_.dataType))
       distribution.clustering.length == otherDistribution.clustering.length &&
         numPartitions == other.numPartitions && areKeysCompatible(otherSpec) &&
-          partitioning.partitionValues.zip(otherPartitioning.partitionValues).forall {
+          partitioning.partitionKeys.zip(otherPartitioning.partitionKeys).forall {
             case (left, right) =>
               internalRowComparableFactory(left).equals(internalRowComparableFactory(right))
           }
@@ -959,9 +1008,8 @@ case class KeyGroupedShuffleSpec(
         te.copy(children = te.children.map(_ => clustering(positionSet.head)))
       case (_, positionSet) => clustering(positionSet.head)
     }
-    KeyGroupedPartitioning(newExpressions,
-      partitioning.numPartitions,
-      partitioning.partitionValues)
+    KeyedPartitioning(newExpressions, partitioning.partitionKeys,
+      partitioning.originalPartitionKeys)
   }
 }
 

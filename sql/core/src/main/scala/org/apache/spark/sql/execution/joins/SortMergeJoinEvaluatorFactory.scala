@@ -44,9 +44,6 @@ class SortMergeJoinEvaluatorFactory(
 
   private class SortMergeJoinEvaluator extends PartitionEvaluator[InternalRow, InternalRow] {
 
-    private def cleanupResources(): Unit = {
-      IndexedSeq(left, right).foreach(_.cleanupResources())
-    }
     private def createLeftKeyGenerator(): Projection =
       UnsafeProjection.create(leftKeys, left.output)
 
@@ -59,6 +56,15 @@ class SortMergeJoinEvaluatorFactory(
       assert(inputs.length == 2)
       val leftIter = inputs(0)
       val rightIter = inputs(1)
+
+      // Collect cleanup callbacks registered by child plans during execution of this partition
+      // (e.g. sorters created by SortExec nodes). Called here, after the input iterators are
+      // fully initialized, so all createSorter() calls have already run.
+      // cleanupResources() on each sorter is idempotent, so the task completion listener
+      // registered in SortExec.createSorter() makes this safe even on early termination.
+      val partitionCleanups =
+        left.collectPartitionCleanups() ++ right.collectPartitionCleanups()
+      def cleanupResources(): Unit = partitionCleanups.foreach(_())
 
       val boundCondition: InternalRow => Boolean = {
         condition.map { cond =>

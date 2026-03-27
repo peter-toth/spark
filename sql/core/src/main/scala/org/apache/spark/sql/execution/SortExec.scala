@@ -19,6 +19,8 @@ package org.apache.spark.sql.execution
 
 import java.util.concurrent.TimeUnit._
 
+import scala.collection.mutable.ArrayBuffer
+
 import org.apache.spark.{SparkEnv, TaskContext}
 import org.apache.spark.executor.TaskMetrics
 import org.apache.spark.rdd.RDD
@@ -62,13 +64,10 @@ case class SortExec(
     "peakMemory" -> SQLMetrics.createSizeMetric(sparkContext, "peak memory"),
     "spillSize" -> SQLMetrics.createSizeMetric(sparkContext, "spill size"))
 
-  // Each task thread has its own UnsafeExternalRowSorter instance stored here.
-  // Using a stable lazy val (rather than a reassigned var) ensures that the ThreadLocal
-  // object itself is never replaced: concurrent tasks on different threads each get their
-  // own independent slot in the same ThreadLocal, so one task can never observe or clobber
-  // another task's sorter reference.
-  @transient private[sql] lazy val rowSorter: ThreadLocal[UnsafeExternalRowSorter] =
-    new ThreadLocal[UnsafeExternalRowSorter]()
+  // Accumulates one cleanup closure per createSorter() call. Drained by
+  // collectPartitionCleanups() so the caller (e.g. SortMergeJoinEvaluatorFactory) can
+  // eagerly free each sorter as soon as its output partition is fully consumed.
+  @transient private val sorterCleanups = new ArrayBuffer[() => Unit]()
 
   /**
    * This method gets invoked only once for each SortExec instance to initialize an
@@ -107,8 +106,22 @@ case class SortExec(
     if (testSpillFrequency > 0) {
       newRowSorter.setTestSpillFrequency(testSpillFrequency)
     }
-    rowSorter.set(newRowSorter)
-    rowSorter.get()
+    // Register cleanup with the TaskContext so resources are freed when the task completes,
+    // including early termination. The listener captures newRowSorter directly, so it is
+    // correct even if createSorter() is called multiple times on the same plan instance
+    // (e.g. when SortedMergeCoalescedRDD opens multiple partitions in the same task).
+    TaskContext.get().addTaskCompletionListener[Unit](_ => newRowSorter.cleanupResources())
+    // Also register for eager cleanup: collectPartitionCleanups() is called by the parent
+    // (e.g. SortMergeJoinEvaluatorFactory) to free resources as soon as a partition is done,
+    // rather than waiting until task completion.
+    sorterCleanups += (() => newRowSorter.cleanupResources())
+    newRowSorter
+  }
+
+  override protected[sql] def collectPartitionCleanups(): Seq[() => Unit] = {
+    val callbacks = sorterCleanups.toSeq
+    sorterCleanups.clear()
+    callbacks ++ super.collectPartitionCleanups()
   }
 
   protected override def doExecute(): RDD[InternalRow] = {
@@ -195,19 +208,6 @@ case class SortExec(
        |${row.code}
        |$sorterVariable.insertRow((UnsafeRow)${row.value});
      """.stripMargin
-  }
-
-  /**
-   * In SortExec, we overwrite cleanupResources to close UnsafeExternalRowSorter.
-   * There's possible for rowSorter to be null here, for example, in the scenario of empty iterator
-   * in the current task, the downstream physical node (like SortMergeJoinExec) will trigger
-   * cleanupResources before rowSorter is initialized in createSorter.
-   */
-  override protected[sql] def cleanupResources(): Unit = {
-    if (rowSorter.get() != null) {
-      rowSorter.get().cleanupResources()
-    }
-    super.cleanupResources()
   }
 
   override protected def withNewChildInternal(newChild: SparkPlan): SortExec =

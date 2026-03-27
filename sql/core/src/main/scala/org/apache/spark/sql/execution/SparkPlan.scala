@@ -584,6 +584,21 @@ abstract class SparkPlan extends QueryPlan[SparkPlan] with Logging with Serializ
   protected[sql] def cleanupResources(): Unit = {
     children.foreach(_.cleanupResources())
   }
+
+  /**
+   * Collects and clears all per-partition cleanup callbacks registered by this plan node and
+   * its descendants during the current partition's execution. Callers (e.g.
+   * [[org.apache.spark.sql.execution.joins.SortMergeJoinEvaluatorFactory]]) invoke this after
+   * the input iterators have been computed but before scanning begins, then call the returned
+   * closures when they are done with the partition to eagerly free resources.
+   *
+   * The default implementation recurses through children so that intermediate operators
+   * (e.g. FilterExec, ProjectExec) propagate callbacks from their descendants automatically.
+   * Operators that allocate per-partition resources should override this method to prepend
+   * their own callbacks before delegating to `super.collectPartitionCleanups()`.
+   */
+  protected[sql] def collectPartitionCleanups(): Seq[() => Unit] =
+    children.flatMap(_.collectPartitionCleanups())
 }
 
 trait LeafExecNode extends SparkPlan with LeafLike[SparkPlan] {

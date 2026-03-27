@@ -447,6 +447,19 @@ case class SortMergeJoinExec(
     TaskContext.get()
   }
 
+  /**
+   * Collects per-partition cleanup closures from child plans and wraps them in a Runnable.
+   * Called from generated class initialization code (once per partition, before scanning begins),
+   * analogous to how SortMergeJoinEvaluatorFactory calls collectPartitionCleanups() at the start
+   * of eval(). The returned Runnable is stored as a mutable state in the generated class and
+   * invoked at partition exhaustion, keeping collection and invocation separate -- just like the
+   * non-codegen path. This is called by generated Java code, should be public.
+   */
+  def codegenCollectCleanups(): java.lang.Runnable = {
+    val cleanups = left.collectPartitionCleanups() ++ right.collectPartitionCleanups()
+    () => cleanups.foreach(_())
+  }
+
   override def doProduce(ctx: CodegenContext): String = {
     // Specialize `doProduce` code for full outer join, because full outer join needs to
     // buffer both sides of join.
@@ -563,7 +576,14 @@ case class SortMergeJoinExec(
        """.stripMargin
     val findNextJoinRows = s"$findNextJoinRowsFuncName($streamedInput, $bufferedInput)"
     val thisPlan = ctx.addReferenceObj("plan", this)
-    val eagerCleanup = s"$thisPlan.cleanupResources();"
+    // Collect cleanup closures from child plans at partition init time (before scanning begins),
+    // mirroring the non-codegen path in SortMergeJoinEvaluatorFactory where
+    // collectPartitionCleanups() is called at the start of eval(). The Runnable is stored in
+    // the generated class and .run() is called at exhaustion to free resources eagerly.
+    val cleanupRunnable = ctx.addMutableState("java.lang.Runnable",
+      ctx.freshName("cleanupRunnable"),
+      v => s"$v = $thisPlan.codegenCollectCleanups();", forceInline = true)
+    val eagerCleanup = s"$cleanupRunnable.run();"
 
     val doJoin = joinType match {
       case _: InnerLike =>

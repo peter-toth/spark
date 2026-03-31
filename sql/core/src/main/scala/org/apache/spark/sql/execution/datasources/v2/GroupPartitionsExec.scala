@@ -21,13 +21,14 @@ package org.apache.spark.sql.execution.datasources.v2
 import scala.collection.mutable.ArrayBuffer
 
 import org.apache.spark.{Partition, SparkException}
-import org.apache.spark.rdd.{CoalescedRDD, PartitionCoalescer, PartitionGroup, RDD}
+import org.apache.spark.rdd.{CoalescedRDD, PartitionCoalescer, PartitionGroup, RDD, SortedMergeCoalescedRDD}
 import org.apache.spark.sql.catalyst.InternalRow
 import org.apache.spark.sql.catalyst.expressions._
 import org.apache.spark.sql.catalyst.plans.physical.{KeyedPartitioning, Partitioning}
 import org.apache.spark.sql.catalyst.util.{truncatedString, InternalRowComparableWrapper}
 import org.apache.spark.sql.connector.catalog.functions.Reducer
-import org.apache.spark.sql.execution.{SparkPlan, UnaryExecNode}
+import org.apache.spark.sql.execution.{SafeForKWayMerge, SparkPlan, UnaryExecNode}
+import org.apache.spark.sql.internal.SQLConf
 import org.apache.spark.sql.types.DataType
 import org.apache.spark.sql.vectorized.ColumnarBatch
 
@@ -158,16 +159,91 @@ case class GroupPartitionsExec(
 
   @transient lazy val isGrouped: Boolean = groupedPartitionsTuple._2
 
+  // Whether the child subtree is safe to use with SortedMergeCoalescedRDD (k-way merge).
+  //
+  // --- The general problem ---
+  //
+  // Unlike a simple CoalescedRDD, which processes input partitions sequentially (open P0,
+  // exhaust P0, open P1, exhaust P1, ...), SortedMergeCoalescedRDD must perform a k-way merge:
+  // it opens *all* input partition iterators upfront and then interleaves reads across them to
+  // produce a globally sorted output partition. Crucially, all of this happens on a single JVM
+  // thread within a single Spark task.
+  //
+  // A SparkPlan object is shared across all partition computations of a task. When N partition
+  // iterators are live concurrently on the same thread, N independent "computations" are all
+  // operating through the same plan node instances. If any node in the subtree stores
+  // per-partition state in an instance field rather than as a local variable captured inside the
+  // partition's iterator closure, that field is aliased across all N concurrent computations.
+  // Whichever computation last wrote the field "wins", and any computation that then reads or
+  // frees it based on its own earlier write will operate on the wrong state.
+  //
+  // --- The correct pattern: PartitionEvaluatorFactory ---
+  //
+  // The PartitionEvaluatorFactory / PartitionEvaluator pattern is specifically designed to avoid
+  // this problem. The factory's createEvaluator() is called once per partition and returns a
+  // fresh PartitionEvaluator instance. All per-partition mutable state lives inside that
+  // evaluator instance, not on the shared plan node. Operators that follow this pattern
+  // exclusively (and hold no other mutable state on the plan node) are safe for k-way merge.
+  //
+  // --- Concrete example of an unsafe operator: SortExec + SortMergeJoinExec ---
+  //
+  // SortExec stores its active sorter in a plain var field (`rowSorter`) on the plan node.
+  // When the k-way merge initialises its N partition iterators, each one drives the same SortExec
+  // instance and calls createSorter(), which assigns rowSorter = newSorter -- overwriting the
+  // field each time. After all N iterators are initialised, rowSorter holds only the sorter
+  // created for the *last* partition.
+  //
+  // SortMergeJoinExec performs eager resource cleanup: when a join partition is exhausted it
+  // calls cleanupResources() on its children, which reaches SortExec.cleanupResources(). That
+  // method calls rowSorter.cleanupResources() -- but rowSorter now holds the last-created sorter,
+  // not the one belonging to the just-exhausted partition. If that last sorter is still being
+  // actively read by another partition in the k-way merge, freeing it causes a use-after-free.
+  //
+  // To be conservative, we use a whitelist: unknown node types fall through to unsafe, causing
+  // a fallback to simple sequential coalescing. Only node types explicitly confirmed to store no
+  // per-partition state in shared (plan node) instance fields are permitted.
+  @transient private lazy val childIsSafeForKWayMerge: Boolean =
+    !child.exists {
+      case _: SafeForKWayMerge => false
+      case _ => true
+    }
+
   override protected def doExecute(): RDD[InternalRow] = {
     if (groupedPartitions.isEmpty) {
       sparkContext.emptyRDD
+    } else if (SQLConf.get.v2BucketingPreserveOrderingOnCoalesceEnabled &&
+        child.outputOrdering.nonEmpty &&
+        childIsSafeForKWayMerge &&
+        groupedPartitions.exists(_._2.size > 1)) {
+      // Use sorted merge when:
+      // 1. Config is enabled
+      // 2. Child has ordering
+      // 3. Actually coalescing multiple partitions
+      // Convert SortOrder expressions to Ordering[InternalRow]
+      val partitionCoalescer = new GroupedPartitionCoalescer(groupedPartitions.map(_._2))
+      val rowOrdering = new InterpretedOrdering(child.outputOrdering, child.output)
+      new SortedMergeCoalescedRDD[InternalRow](
+        child.execute(),
+        groupedPartitions.size,
+        partitionCoalescer,
+        rowOrdering)
     } else {
       val partitionCoalescer = new GroupedPartitionCoalescer(groupedPartitions.map(_._2))
+      // Use simple coalescing when config is disabled, no ordering, or no actual coalescing
       new CoalescedRDD(child.execute(), groupedPartitions.size, Some(partitionCoalescer))
     }
   }
 
-  override def supportsColumnar: Boolean = child.supportsColumnar
+  override def supportsColumnar: Boolean = {
+    // Don't use columnar when sorted merge coalescing is needed, since we can't preserve
+    // ordering with sorted merge for columnar batches
+    val needsSortedMerge = SQLConf.get.v2BucketingPreserveOrderingOnCoalesceEnabled &&
+      child.outputOrdering.nonEmpty &&
+      childIsSafeForKWayMerge &&
+      groupedPartitions.exists(_._2.size > 1)
+
+    child.supportsColumnar && !needsSortedMerge
+  }
 
   override protected def doExecuteColumnar(): RDD[ColumnarBatch] = {
     if (groupedPartitions.isEmpty) {
@@ -188,6 +264,12 @@ case class GroupPartitionsExec(
       // No coalescing: each output partition is exactly one input partition. The child's
       // within-partition ordering is fully preserved (including any key-derived ordering that
       // `DataSourceV2ScanExecBase` already prepended).
+      child.outputOrdering
+    } else if (SQLConf.get.v2BucketingPreserveOrderingOnCoalesceEnabled &&
+        child.outputOrdering.nonEmpty &&
+        childIsSafeForKWayMerge) {
+      // Coalescing with sorted merge: SortedMergeCoalescedRDD performs a k-way merge using the
+      // child's ordering, so the full within-partition ordering is preserved end-to-end.
       child.outputOrdering
     } else {
       // Coalescing: multiple input partitions are merged into one output partition. The child's

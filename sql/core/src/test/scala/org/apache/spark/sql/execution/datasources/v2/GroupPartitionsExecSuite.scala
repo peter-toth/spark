@@ -21,6 +21,7 @@ import org.apache.spark.sql.catalyst.InternalRow
 import org.apache.spark.sql.catalyst.expressions.{Ascending, AttributeReference, SortOrder}
 import org.apache.spark.sql.catalyst.plans.physical.{KeyedPartitioning, PartitioningCollection}
 import org.apache.spark.sql.execution.DummySparkPlan
+import org.apache.spark.sql.internal.SQLConf
 import org.apache.spark.sql.test.SharedSparkSession
 import org.apache.spark.sql.types.IntegerType
 
@@ -55,11 +56,16 @@ class GroupPartitionsExecSuite extends SharedSparkSession {
     val gpe = GroupPartitionsExec(child)
 
     assert(!gpe.groupedPartitions.forall(_._2.size <= 1), "expected coalescing")
-    val ordering = gpe.outputOrdering
-    assert(ordering.length === 1)
-    assert(ordering.head.child === exprA)
-    assert(ordering.head.direction === Ascending)
-    assert(ordering.head.sameOrderExpressions.isEmpty)
+    // With the config disabled (default), key-expression filtering is skipped.
+    assert(gpe.outputOrdering === Nil)
+    // When enabled, the key-expression order is preserved through coalescing.
+    withSQLConf(SQLConf.V2_BUCKETING_PRESERVE_KEY_ORDERING_ON_COALESCE_ENABLED.key -> "true") {
+      val ordering = gpe.outputOrdering
+      assert(ordering.length === 1)
+      assert(ordering.head.child === exprA)
+      assert(ordering.head.direction === Ascending)
+      assert(ordering.head.sameOrderExpressions.isEmpty)
+    }
   }
 
   test("SPARK-56241: coalescing without reducers keeps one SortOrder per key expression") {
@@ -71,12 +77,15 @@ class GroupPartitionsExecSuite extends SharedSparkSession {
     val gpe = GroupPartitionsExec(child)
 
     assert(!gpe.groupedPartitions.forall(_._2.size <= 1), "expected coalescing")
-    val ordering = gpe.outputOrdering
-    assert(ordering.length === 2)
-    assert(ordering.head.child === exprA)
-    assert(ordering(1).child === exprB)
-    assert(ordering.head.sameOrderExpressions.isEmpty)
-    assert(ordering(1).sameOrderExpressions.isEmpty)
+    assert(gpe.outputOrdering === Nil)
+    withSQLConf(SQLConf.V2_BUCKETING_PRESERVE_KEY_ORDERING_ON_COALESCE_ENABLED.key -> "true") {
+      val ordering = gpe.outputOrdering
+      assert(ordering.length === 2)
+      assert(ordering.head.child === exprA)
+      assert(ordering(1).child === exprB)
+      assert(ordering.head.sameOrderExpressions.isEmpty)
+      assert(ordering(1).sameOrderExpressions.isEmpty)
+    }
   }
 
   test("SPARK-56241: coalescing join case preserves sameOrderExpressions from child") {
@@ -92,10 +101,13 @@ class GroupPartitionsExecSuite extends SharedSparkSession {
     val gpe = GroupPartitionsExec(child)
 
     assert(!gpe.groupedPartitions.forall(_._2.size <= 1), "expected coalescing")
-    val ordering = gpe.outputOrdering
-    assert(ordering.length === 1)
-    assert(ordering.head.child === exprA)
-    assert(ordering.head.sameOrderExpressions === Seq(exprB))
+    assert(gpe.outputOrdering === Nil)
+    withSQLConf(SQLConf.V2_BUCKETING_PRESERVE_KEY_ORDERING_ON_COALESCE_ENABLED.key -> "true") {
+      val ordering = gpe.outputOrdering
+      assert(ordering.length === 1)
+      assert(ordering.head.child === exprA)
+      assert(ordering.head.sameOrderExpressions === Seq(exprB))
+    }
   }
 
   test("SPARK-56241: coalescing drops non-key sort orders from child") {
@@ -109,9 +121,12 @@ class GroupPartitionsExecSuite extends SharedSparkSession {
     val gpe = GroupPartitionsExec(child)
 
     assert(!gpe.groupedPartitions.forall(_._2.size <= 1), "expected coalescing")
-    val ordering = gpe.outputOrdering
-    assert(ordering.length === 1)
-    assert(ordering.head.child === exprA)
+    assert(gpe.outputOrdering === Nil)
+    withSQLConf(SQLConf.V2_BUCKETING_PRESERVE_KEY_ORDERING_ON_COALESCE_ENABLED.key -> "true") {
+      val ordering = gpe.outputOrdering
+      assert(ordering.length === 1)
+      assert(ordering.head.child === exprA)
+    }
   }
 
   test("SPARK-56241: coalescing with reducers returns empty ordering") {

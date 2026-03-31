@@ -192,12 +192,13 @@ case class GroupPartitionsExec(
     } else {
       // Coalescing: multiple input partitions are merged into one output partition. The child's
       // within-partition ordering is lost due to concatenation -- for example, if two input
-      // partitions both belong to the same output group (same partition key value) and hold
-      // [1, 3] and [2, 5] respectively (each sorted ascending), concatenating them yields
-      // [1, 3, 2, 5] which is no longer sorted. Only sort orders over partition key expressions
-      // (which are constant across all merged partitions) remain valid.
+      // partitions both share key=A and hold rows (A,1),(A,3) and (A,2),(A,5) respectively (each
+      // sorted ascending by the data column), concatenating them yields (A,1),(A,3),(A,2),(A,5)
+      // which is no longer sorted by the data column. Only sort orders over partition key
+      // expressions remain valid -- they evaluate to the same value (A) in every merged partition.
       outputPartitioning match {
-        case p: Partitioning with Expression if reducers.isEmpty =>
+        case p: Partitioning with Expression
+            if reducers.isEmpty && conf.v2BucketingPreserveKeyOrderingOnCoalesceEnabled =>
           // Without reducers all merged partitions share the same original key value, so the key
           // expressions remain constant within the output partition. The child's outputOrdering
           // should already be in sync with the partitioning (either reported by the source or

@@ -3581,21 +3581,19 @@ class KeyGroupedPartitioningSuite extends DistributionAndOrderingSuiteBase with 
     val plan = df.queryExecution.executedPlan
     val scans = collectScans(plan)
     assert(scans.size === 1)
-    // The scan's outputOrdering should include an ascending sort on the partition key `id`,
-    // derived from the KeyedPartitioning - regardless of SupportsReportOrdering.
-    val ordering = scans.head.outputOrdering
-    assert(ordering.length === 1)
-    assert(ordering.head.direction === Ascending)
+    // With the config disabled (default), ordering derivation is suppressed.
+    assert(scans.head.outputOrdering.isEmpty)
+    // When enabled, the scan derives an ascending sort on the partition key `id`.
     // identity transforms are unwrapped to AttributeReferences by V2ExpressionUtils.
-    val keyExpr = ordering.head.child
-    assert(keyExpr.isInstanceOf[AttributeReference])
-    assert(keyExpr.asInstanceOf[AttributeReference].name === "id")
-
-    // With the config disabled the derivation is suppressed and ordering falls back to empty.
-    withSQLConf(V2_BUCKETING_PARTITION_KEY_ORDERING_ENABLED.key -> "false") {
-      val scansDisabled = collectScans(df.queryExecution.executedPlan)
-      assert(scansDisabled.size === 1)
-      assert(scansDisabled.head.outputOrdering.isEmpty)
+    withSQLConf(SQLConf.V2_BUCKETING_PARTITION_KEY_ORDERING_ENABLED.key -> "true") {
+      val scansEnabled = collectScans(df.queryExecution.executedPlan)
+      assert(scansEnabled.size === 1)
+      val ordering = scansEnabled.head.outputOrdering
+      assert(ordering.length === 1)
+      assert(ordering.head.direction === Ascending)
+      val keyExpr = ordering.head.child
+      assert(keyExpr.isInstanceOf[AttributeReference])
+      assert(keyExpr.asInstanceOf[AttributeReference].name === "id")
     }
   }
 
@@ -3616,29 +3614,31 @@ class KeyGroupedPartitioningSuite extends DistributionAndOrderingSuiteBase with 
       "(1, 100.0, cast('2021-01-01' as timestamp)), " +
       "(2, 200.0, cast('2021-01-01' as timestamp))")
 
-    val df = sql(
-      s"""
-         |${selectWithMergeJoinHint("i", "p")}
-         |i.id, i.name
-         |FROM testcat.ns.$items i JOIN testcat.ns.$purchases p ON p.item_id = i.id
-         |""".stripMargin)
-
-    checkAnswer(df, Seq(Row(1, "aa"), Row(2, "bb")))
-
-    val plan = df.queryExecution.executedPlan
-    val groupPartitions = collectGroupPartitions(plan)
-    assert(groupPartitions.nonEmpty, "expected GroupPartitionsExec in plan")
-    assert(groupPartitions.forall(_.groupedPartitions.forall(_._2.size <= 1)),
-      "expected non-coalescing GroupPartitionsExec")
     // GroupPartitionsExec passes through the child's key-derived outputOrdering.
     // EnsureRequirements checks outputOrdering directly so no SortExec should be inserted before
     // the SMJ.
-    val smjs = collect(plan) { case j: SortMergeJoinExec => j }
-    assert(smjs.nonEmpty, "expected SortMergeJoinExec in plan")
-    smjs.foreach { smj =>
-      val sorts = smj.children.flatMap(child => collect(child) { case s: SortExec => s })
-      assert(sorts.isEmpty, "should not add SortExec before SMJ when ordering passes through " +
-        "non-coalescing GroupPartitions")
+    withSQLConf(SQLConf.V2_BUCKETING_PARTITION_KEY_ORDERING_ENABLED.key -> "true") {
+      val df = sql(
+        s"""
+           |${selectWithMergeJoinHint("i", "p")}
+           |i.id, i.name
+           |FROM testcat.ns.$items i JOIN testcat.ns.$purchases p ON p.item_id = i.id
+           |""".stripMargin)
+
+      checkAnswer(df, Seq(Row(1, "aa"), Row(2, "bb")))
+
+      val plan = df.queryExecution.executedPlan
+      val groupPartitions = collectGroupPartitions(plan)
+      assert(groupPartitions.nonEmpty, "expected GroupPartitionsExec in plan")
+      assert(groupPartitions.forall(_.groupedPartitions.forall(_._2.size <= 1)),
+        "expected non-coalescing GroupPartitionsExec")
+      val smjs = collect(plan) { case j: SortMergeJoinExec => j }
+      assert(smjs.nonEmpty, "expected SortMergeJoinExec in plan")
+      smjs.foreach { smj =>
+        val sorts = smj.children.flatMap(child => collect(child) { case s: SortExec => s })
+        assert(sorts.isEmpty, "should not add SortExec before SMJ when ordering passes through " +
+          "non-coalescing GroupPartitions")
+      }
     }
   }
 
@@ -3659,31 +3659,35 @@ class KeyGroupedPartitioningSuite extends DistributionAndOrderingSuiteBase with 
       "(1, 110.0, cast('2021-06-01' as timestamp)), " +
       "(2, 200.0, cast('2021-01-01' as timestamp))")
 
-    val df = sql(
-      s"""
-         |${selectWithMergeJoinHint("i", "p")}
-         |i.id, i.name
-         |FROM testcat.ns.$items i JOIN testcat.ns.$purchases p ON p.item_id = i.id
-         |""".stripMargin)
-
-    checkAnswer(df, Seq(
-      Row(1, "aa"), Row(1, "aa"), Row(1, "ab"), Row(1, "ab"),
-      Row(2, "bb")))
-
-    val plan = df.queryExecution.executedPlan
-    val groupPartitions = collectGroupPartitions(plan)
-    assert(groupPartitions.nonEmpty, "expected GroupPartitionsExec in plan")
-    assert(groupPartitions.exists(_.groupedPartitions.exists(_._2.size > 1)),
-      "expected coalescing GroupPartitionsExec")
     // GroupPartitionsExec derives outputOrdering from the key expressions after coalescing.
     // EnsureRequirements checks outputOrdering directly so no SortExec should be inserted before
     // the SMJ.
-    val smjs = collect(plan) { case j: SortMergeJoinExec => j }
-    assert(smjs.nonEmpty, "expected SortMergeJoinExec in plan")
-    smjs.foreach { smj =>
-      val sorts = smj.children.flatMap(child => collect(child) { case s: SortExec => s })
-      assert(sorts.isEmpty, "should not add SortExec before SMJ when ordering is derived " +
-        "from coalesced partition key")
+    withSQLConf(
+      SQLConf.V2_BUCKETING_PARTITION_KEY_ORDERING_ENABLED.key -> "true",
+      SQLConf.V2_BUCKETING_PRESERVE_KEY_ORDERING_ON_COALESCE_ENABLED.key -> "true") {
+      val df = sql(
+        s"""
+           |${selectWithMergeJoinHint("i", "p")}
+           |i.id, i.name
+           |FROM testcat.ns.$items i JOIN testcat.ns.$purchases p ON p.item_id = i.id
+           |""".stripMargin)
+
+      checkAnswer(df, Seq(
+        Row(1, "aa"), Row(1, "aa"), Row(1, "ab"), Row(1, "ab"),
+        Row(2, "bb")))
+
+      val plan = df.queryExecution.executedPlan
+      val groupPartitions = collectGroupPartitions(plan)
+      assert(groupPartitions.nonEmpty, "expected GroupPartitionsExec in plan")
+      assert(groupPartitions.exists(_.groupedPartitions.exists(_._2.size > 1)),
+        "expected coalescing GroupPartitionsExec")
+      val smjs = collect(plan) { case j: SortMergeJoinExec => j }
+      assert(smjs.nonEmpty, "expected SortMergeJoinExec in plan")
+      smjs.foreach { smj =>
+        val sorts = smj.children.flatMap(child => collect(child) { case s: SortExec => s })
+        assert(sorts.isEmpty, "should not add SortExec before SMJ when ordering is derived " +
+          "from coalesced partition key")
+      }
     }
   }
 }

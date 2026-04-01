@@ -603,9 +603,6 @@ abstract class InMemoryBaseTable(
     }
   }
 
-  // Extends InMemoryBatchScan with SupportsReportOrdering. Only instantiated when the table has a
-  // non-empty ordering, so that V2ScanPartitioningAndOrdering only sets ordering = Some(...) on the
-  // logical plan when there is actual ordering to report.
   private class InMemoryBatchScanWithOrdering(
       data: Seq[InputPartition],
       readSchema: StructType,

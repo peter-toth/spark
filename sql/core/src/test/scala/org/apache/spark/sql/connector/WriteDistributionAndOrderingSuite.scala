@@ -1543,8 +1543,6 @@ class WriteDistributionAndOrderingSuite extends DistributionAndOrderingSuiteBase
     sql(s"INSERT INTO testcat.ns1.test_table VALUES (1, 'a', date '2021-01-01')")
 
     val df = sql("SELECT id, data FROM testcat.ns1.test_table")
-    // Without the fix, this would throw AnalysisException during planning because the bucket
-    // transform in the reported ordering could not be resolved without funCatalog.
     val scans = collect(df.queryExecution.executedPlan) { case s: BatchScanExec => s }
     assert(scans.size === 1)
     val ordering = scans.head.outputOrdering

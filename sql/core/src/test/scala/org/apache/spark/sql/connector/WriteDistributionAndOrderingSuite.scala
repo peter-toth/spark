@@ -1534,7 +1534,7 @@ class WriteDistributionAndOrderingSuite extends DistributionAndOrderingSuiteBase
     }
   }
 
-  test("SPARK-56321: Scan with SupportsReportOrdering and function-based sort resolves correctly") {
+  test("SPARK-56321: Scan with SupportsReportOrdering and function-based sort order") {
     val bucketById = bucket(4, "id")
     val tableOrdering = Array(sort(bucketById, SortDirection.ASCENDING, NullOrdering.NULLS_FIRST))
     catalog.createTable(ident, columns, Array(bucketById), emptyProps,

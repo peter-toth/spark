@@ -153,19 +153,19 @@ class GroupPartitionsExecSuite extends SharedSparkSession {
     val child = DummyLeafSparkPlan(
       outputPartitioning = KeyedPartitioning(Seq(exprA), partitionKeys),
       outputOrdering = childOrdering)
-    val gpe = GroupPartitionsExec(child)
 
-    assert(!gpe.groupedPartitions.forall(_._2.size <= 1), "expected coalescing")
+    assert(!GroupPartitionsExec(child).groupedPartitions.forall(_._2.size <= 1),
+      "expected coalescing")
     withSQLConf(SQLConf.V2_BUCKETING_PRESERVE_ORDERING_ON_COALESCE_ENABLED.key -> "true") {
       // Config enabled: k-way merge preserves full ordering including non-key exprC.
-      assert(gpe.outputOrdering === childOrdering)
+      assert(GroupPartitionsExec(child).outputOrdering === childOrdering)
     }
     withSQLConf(
         SQLConf.V2_BUCKETING_PRESERVE_ORDERING_ON_COALESCE_ENABLED.key -> "false",
         SQLConf.V2_BUCKETING_PRESERVE_KEY_ORDERING_ON_COALESCE_ENABLED.key -> "true") {
       // Sorted-merge config disabled, key-ordering config enabled: only key-expression orders
       // survive simple concatenation (non-key exprC is dropped).
-      val ordering = gpe.outputOrdering
+      val ordering = GroupPartitionsExec(child).outputOrdering
       assert(ordering.length === 1)
       assert(ordering.head.child === exprA)
     }

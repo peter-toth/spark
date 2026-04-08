@@ -131,8 +131,8 @@ private[spark] class SortedMergeIterator[T](
     iterators: Seq[Iterator[T]],
     ordering: Ordering[T]) extends Iterator[T] {
 
-  // Priority queue entry: (current element, iterator index)
-  private case class QueueEntry(element: T, iteratorIdx: Int)
+  // Priority queue entry: element paired with the iterator it came from
+  private case class QueueEntry(element: T, iter: Iterator[T])
 
   // Min-heap ordered by element according to the provided ordering
   private implicit val queueOrdering: Ordering[QueueEntry] = new Ordering[QueueEntry] {
@@ -144,29 +144,37 @@ private[spark] class SortedMergeIterator[T](
 
   private val queue = mutable.PriorityQueue.empty[QueueEntry]
 
+  // The iterator whose underlying reader must be advanced before the next queue operation.
+  // null means no advance is pending.
+  private var pendingIter: Iterator[T] = null
+
   // Initialize queue with first element from each non-empty iterator
-  iterators.zipWithIndex.foreach { case (iter, idx) =>
+  iterators.foreach { iter =>
     if (iter.hasNext) {
-      queue.enqueue(QueueEntry(iter.next(), idx))
+      queue.enqueue(QueueEntry(iter.next(), iter))
     }
   }
 
-  override def hasNext: Boolean = queue.nonEmpty
+  override def hasNext: Boolean = queue.nonEmpty || (pendingIter != null && pendingIter.hasNext)
 
   override def next(): T = {
-    if (!hasNext) {
+    // Advance the pending iterator now that the caller is done with the previously returned
+    // element. Deferred from the last next() call so the returned row's buffer (which may be reused
+    // in-place by the underlying reader) remained valid until this point.
+    if (pendingIter != null) {
+      if (pendingIter.hasNext) {
+        queue.enqueue(QueueEntry(pendingIter.next(), pendingIter))
+      }
+      pendingIter = null
+    }
+    if (queue.isEmpty) {
       throw new NoSuchElementException("next on empty iterator")
     }
 
     val entry = queue.dequeue()
-    val result = entry.element
-
-    // If the iterator has more elements, add the next one to the queue
-    val iter = iterators(entry.iteratorIdx)
-    if (iter.hasNext) {
-      queue.enqueue(QueueEntry(iter.next(), entry.iteratorIdx))
-    }
-
-    result
+    // Defer advancing this iterator until the next next() call so the returned element's buffer
+    // remains valid across any subsequent hasNext() calls.
+    pendingIter = entry.iter
+    entry.element
   }
 }

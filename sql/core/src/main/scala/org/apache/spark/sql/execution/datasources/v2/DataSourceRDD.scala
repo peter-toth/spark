@@ -230,7 +230,10 @@ private class PartitionIterator[T](
     reader = null
   }
 
-  def currentMetricsValues: Array[CustomTaskMetric] = reader.currentMetricsValues
+  def currentMetricsValues: Array[CustomTaskMetric] = {
+    require(!isClosed, "currentMetricsValues called on a closed PartitionIterator")
+    reader.currentMetricsValues
+  }
 
   override def hasNext: Boolean = {
     if (!valuePrepared && hasMoreInput) {

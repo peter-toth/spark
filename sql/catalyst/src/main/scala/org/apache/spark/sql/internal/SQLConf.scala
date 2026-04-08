@@ -2207,7 +2207,9 @@ object SQLConf {
         s"ordering (as opposed to the key-derived ordering preserved by " +
         s"${V2_BUCKETING_PRESERVE_KEY_ORDERING_ON_COALESCE_ENABLED.key}) when coalescing " +
         s"multiple partitions with the same key. This allows eliminating downstream sorts when " +
-        s"data is both partitioned and sorted. However, sorted merge uses more resources " +
+        s"data is both partitioned and sorted. When this config is enabled, the effect of " +
+        s"${V2_BUCKETING_PRESERVE_KEY_ORDERING_ON_COALESCE_ENABLED.key} is fully subsumed: " +
+        s"full ordering implies key-derived ordering. However, sorted merge uses more resources " +
         s"(priority queue, comparison overhead) than simple concatenation, especially when " +
         s"coalescing many partitions. When turned off, only key-derived ordering is preserved " +
         s"during coalescing. This config requires ${V2_BUCKETING_ENABLED.key} to be enabled.")

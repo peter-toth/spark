@@ -208,18 +208,15 @@ case class GroupPartitionsExec(
       case _ => true
     }
 
+  @transient private lazy val canUseSortedMerge: Boolean =
+    SQLConf.get.v2BucketingPreserveOrderingOnCoalesceEnabled &&
+      child.outputOrdering.nonEmpty &&
+      childIsSafeForKWayMerge
+
   override protected def doExecute(): RDD[InternalRow] = {
     if (groupedPartitions.isEmpty) {
       sparkContext.emptyRDD
-    } else if (SQLConf.get.v2BucketingPreserveOrderingOnCoalesceEnabled &&
-        child.outputOrdering.nonEmpty &&
-        childIsSafeForKWayMerge &&
-        groupedPartitions.exists(_._2.size > 1)) {
-      // Use sorted merge when:
-      // 1. Config is enabled
-      // 2. Child has ordering
-      // 3. Actually coalescing multiple partitions
-      // Convert SortOrder expressions to Ordering[InternalRow]
+    } else if (canUseSortedMerge && groupedPartitions.exists(_._2.size > 1)) {
       val partitionCoalescer = new GroupedPartitionCoalescer(groupedPartitions.map(_._2))
       val rowOrdering = new InterpretedOrdering(child.outputOrdering, child.output)
       new SortedMergeCoalescedRDD[InternalRow](
@@ -229,21 +226,12 @@ case class GroupPartitionsExec(
         rowOrdering)
     } else {
       val partitionCoalescer = new GroupedPartitionCoalescer(groupedPartitions.map(_._2))
-      // Use simple coalescing when config is disabled, no ordering, or no actual coalescing
       new CoalescedRDD(child.execute(), groupedPartitions.size, Some(partitionCoalescer))
     }
   }
 
-  override def supportsColumnar: Boolean = {
-    // Don't use columnar when sorted merge coalescing is needed, since we can't preserve
-    // ordering with sorted merge for columnar batches
-    val needsSortedMerge = SQLConf.get.v2BucketingPreserveOrderingOnCoalesceEnabled &&
-      child.outputOrdering.nonEmpty &&
-      childIsSafeForKWayMerge &&
-      groupedPartitions.exists(_._2.size > 1)
-
-    child.supportsColumnar && !needsSortedMerge
-  }
+  override def supportsColumnar: Boolean =
+    child.supportsColumnar && !(canUseSortedMerge && groupedPartitions.exists(_._2.size > 1))
 
   override protected def doExecuteColumnar(): RDD[ColumnarBatch] = {
     if (groupedPartitions.isEmpty) {
@@ -265,9 +253,7 @@ case class GroupPartitionsExec(
       // within-partition ordering is fully preserved (including any key-derived ordering that
       // `DataSourceV2ScanExecBase` already prepended).
       child.outputOrdering
-    } else if (SQLConf.get.v2BucketingPreserveOrderingOnCoalesceEnabled &&
-        child.outputOrdering.nonEmpty &&
-        childIsSafeForKWayMerge) {
+    } else if (canUseSortedMerge) {
       // Coalescing with sorted merge: SortedMergeCoalescedRDD performs a k-way merge using the
       // child's ordering, so the full within-partition ordering is preserved end-to-end.
       child.outputOrdering

@@ -24,6 +24,7 @@ import org.apache.spark.{Partition, SparkException}
 import org.apache.spark.rdd.{CoalescedRDD, PartitionCoalescer, PartitionGroup, RDD, SortedMergeCoalescedRDD}
 import org.apache.spark.sql.catalyst.InternalRow
 import org.apache.spark.sql.catalyst.expressions._
+import org.apache.spark.sql.catalyst.expressions.codegen.GenerateOrdering
 import org.apache.spark.sql.catalyst.plans.physical.{KeyedPartitioning, Partitioning}
 import org.apache.spark.sql.catalyst.util.{truncatedString, InternalRowComparableWrapper}
 import org.apache.spark.sql.connector.catalog.functions.Reducer
@@ -218,7 +219,7 @@ case class GroupPartitionsExec(
       sparkContext.emptyRDD
     } else if (canUseSortedMerge && groupedPartitions.exists(_._2.size > 1)) {
       val partitionCoalescer = new GroupedPartitionCoalescer(groupedPartitions.map(_._2))
-      val rowOrdering = new InterpretedOrdering(child.outputOrdering, child.output)
+      val rowOrdering = new LazyCodeGenOrdering(child.outputOrdering, child.output)
       new SortedMergeCoalescedRDD[InternalRow](
         child.execute(),
         groupedPartitions.size,
@@ -338,4 +339,18 @@ class GroupedPartitionCoalescer(
       partitionGroup
     }.toArray
   }
+}
+
+/**
+ * A serializable [[Ordering]] for [[InternalRow]] that generates code-compiled comparison logic
+ * lazily on first use. The [[SortOrder]] expressions and output schema are serialized with the
+ * RDD; the generated comparator is rebuilt on the executor on first comparison via
+ * [[GenerateOrdering]].
+ */
+private class LazyCodeGenOrdering(
+    sortOrders: Seq[SortOrder],
+    schema: Seq[Attribute]) extends Ordering[InternalRow] with Serializable {
+  @transient private lazy val generated: Ordering[InternalRow] =
+    GenerateOrdering.generate(sortOrders, schema)
+  override def compare(x: InternalRow, y: InternalRow): Int = generated.compare(x, y)
 }

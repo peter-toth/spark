@@ -56,7 +56,7 @@ public interface CustomTaskMetric {
    *
    * <p>The default implementation returns a new metric whose value is the sum of the two values,
    * which is correct for count-type metrics. Data sources with non-additive metrics (e.g., max,
-   * average) should override this method.
+   * average, last-value) must override this method to provide correct merge semantics.
    *
    * @param other another metric with the same name to merge with
    * @return a new metric representing the merged value

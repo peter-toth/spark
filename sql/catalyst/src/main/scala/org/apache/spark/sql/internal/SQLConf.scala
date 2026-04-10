@@ -6528,6 +6528,31 @@ object SQLConf {
       .booleanConf
       .createOptional
 
+  val PLAN_MERGE_FILTER_PROPAGATION_ENABLED =
+    buildConf("spark.sql.planMerge.filterPropagation.enabled")
+      .internal()
+      .doc("When set to true, subquery plans that differ only in their filter conditions can " +
+        "be merged by propagating filters up to enclosing non-grouping aggregates.")
+      .version("4.2.0")
+      .withBindingPolicy(ConfigBindingPolicy.SESSION)
+      .booleanConf
+      .createWithDefault(true)
+
+  val PLAN_MERGE_SYMMETRIC_FILTER_PROPAGATION_ENABLED =
+    buildConf("spark.sql.planMerge.symmetricFilterPropagation.enabled")
+      .doc("When set to true, two non-grouping aggregate subplans that both have filter " +
+        "conditions (but with different predicates) can be merged into a single scan using " +
+        "FILTER (WHERE ...) clauses on each aggregate expression. " +
+        "Merging two filtered scans broadens the combined filter to OR(f1, f2), which may " +
+        "reduce IO pruning (e.g. partition or file skipping) compared to the individual " +
+        "filters. In most cases the saving from a single scan outweighs this, but on highly " +
+        "partitioned or file-pruned tables disabling this option can improve performance. " +
+        s"Has no effect when ${PLAN_MERGE_FILTER_PROPAGATION_ENABLED.key} is false.")
+      .version("4.2.0")
+      .withBindingPolicy(ConfigBindingPolicy.SESSION)
+      .booleanConf
+      .createWithDefault(true)
+
   val ERROR_MESSAGE_FORMAT = buildConf("spark.sql.error.messageFormat")
     .doc("When PRETTY, the error message consists of textual representation of error class, " +
       "message and query context. Stack traces are only shown for internal errors " +

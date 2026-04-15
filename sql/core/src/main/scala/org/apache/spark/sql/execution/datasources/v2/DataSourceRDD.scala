@@ -70,8 +70,8 @@ class DataSourceRDDPartition(val index: Int, val inputPartition: Option[InputPar
  *       far.</li>
  *   <li><i>Concurrent k-way merge ({@link SortedMergeCoalescedRDD})</i>: all N iterators are
  *       opened upfront and interleaved on a single thread. All live readers' current metrics are
- *       merged together on each update, so none are lost. When individual readers exhaust their
- *       metrics are folded into {@code closedMetrics} for continued accounting.</li>
+ *       merged together on each update, so none are lost. When individual readers are exhausted,
+ *       their metrics are folded into {@code closedMetrics} for continued accounting.</li>
  * </ul>
  */
 private class TaskState(customMetrics: Map[String, SQLMetric]) {

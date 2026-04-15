@@ -203,6 +203,15 @@ case class GroupPartitionsExec(
   // To be conservative, we use a whitelist: unknown node types fall through to unsafe, causing
   // a fallback to simple sequential coalescing. Only node types explicitly confirmed to store no
   // per-partition state in shared (plan node) instance fields are permitted.
+  //
+  // --- Interaction with late plan-tree mutations ---
+  //
+  // `outputOrdering` is first evaluated during EnsureRequirements (which decides whether to
+  // add SortExec), but the child plan tree changes afterwards when
+  // ApplyColumnarRulesAndInsertTransitions and CollapseCodegenStages insert wrapper nodes. The
+  // correctness of this code relies on all such insertable nodes (WholeStageCodegenExec,
+  // InputAdapter, ColumnarToRowExec) being in the SafeForKWayMerge whitelist so the evaluation
+  // stays consistent.
   @transient private lazy val childIsSafeForKWayMerge: Boolean =
     !child.exists {
       case _: SafeForKWayMerge => false

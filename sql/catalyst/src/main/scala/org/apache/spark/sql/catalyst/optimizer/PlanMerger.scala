@@ -118,9 +118,9 @@ object PlanMerger {
  */
 class PlanMerger(
     filterPropagationEnabled: Boolean =
-      SQLConf.get.getConf(SQLConf.PLAN_MERGE_FILTER_PROPAGATION_ENABLED),
+      SQLConf.get.getConf(SQLConf.MERGE_SUBPLANS_FILTER_PROPAGATION_ENABLED),
     symmetricFilterPropagationEnabled: Boolean =
-      SQLConf.get.getConf(SQLConf.PLAN_MERGE_SYMMETRIC_FILTER_PROPAGATION_ENABLED)) {
+      SQLConf.get.getConf(SQLConf.MERGE_SUBPLANS_SYMMETRIC_FILTER_PROPAGATION_ENABLED)) {
   val cache = mutable.ArrayBuffer.empty[MergedPlan]
 
   /**
@@ -330,62 +330,67 @@ class PlanMerger(
                 Some(TryMergeResult(mergedPlan, npMapping, cpMapping, npFilter, cpFilter))
               } else if (filterPropagationSupported && symmetricFilterPropagationEnabled) {
                 if (cp.getTagValue(PlanMerger.MERGED_FILTER_TAG).isDefined) {
-                    // cp Filter is already a merged filter from a previous round: its condition
-                    // is OR(f0, f1, ...) and its child Project already contains aliases for those
-                    // attributes. Only create a new alias for the np side, and extend the OR
-                    // condition.
-                    val newNPCondition = npFilter.fold(mappedNPCondition) {
-                      case (f, _) => And(f, mappedNPCondition)
-                    }
-                    val childProject = mergedChild.asInstanceOf[Project]
-                    // If newNPCondition is already aliased in the child Project (e.g. a third
-                    // subplan whose filter matches one from a previous merge round), reuse the
-                    // existing attribute instead of creating a redundant alias.
-                    val existingNPFilter = childProject.projectList.collectFirst {
-                      case a: Alias if a.child.canonicalized == newNPCondition.canonicalized =>
-                        a.toAttribute
-                    }
-                    existingNPFilter match {
-                      case Some(reusedFilter) =>
-                        Some(TryMergeResult(cp, npMapping, cpMapping, Some((reusedFilter, false)),
-                          None))
-                      case None =>
-                        val newNPFilterAlias =
-                          Alias(newNPCondition, s"propagatedFilter_${PlanMerger.newId}")()
-                        val newNPFilter = newNPFilterAlias.toAttribute
-                        val newProject = childProject.copy(
-                          projectList = childProject.projectList ++ Seq(newNPFilterAlias))
-                        val newFilter = Filter(Or(mappedCPCondition, newNPFilter), newProject)
-                        newFilter.copyTagsFrom(cp)
-                        Some(TryMergeResult(newFilter, npMapping, cpMapping,
-                          Some((newNPFilter, true)), None))
-                    }
+                  // cp Filter is already a merged filter from a previous round: its condition
+                  // is OR(f0, f1, ...) and its child Project already contains aliases for those
+                  // attributes. Only create a new alias for the np side, and extend the OR
+                  // condition.
+                  val newNPCondition = npFilter.fold(mappedNPCondition) {
+                    case (f, _) => And(f, mappedNPCondition)
+                  }
+                  val childProject = mergedChild match {
+                    case p: Project => p
+                    case other => throw new IllegalStateException(
+                      "Expected Project child under MERGED_FILTER_TAG filter, got " +
+                        s"${other.getClass.getSimpleName}")
+                  }
+                  // If newNPCondition is already aliased in the child Project (e.g. a third
+                  // subplan whose filter matches one from a previous merge round), reuse the
+                  // existing attribute instead of creating a redundant alias.
+                  val existingNPFilter = childProject.projectList.collectFirst {
+                    case a: Alias if a.child.canonicalized == newNPCondition.canonicalized =>
+                      a.toAttribute
+                  }
+                  existingNPFilter match {
+                    case Some(reusedFilter) =>
+                      Some(TryMergeResult(cp, npMapping, cpMapping, Some((reusedFilter, false)),
+                        None))
+                    case None =>
+                      val newNPFilterAlias =
+                        Alias(newNPCondition, s"propagatedFilter_${PlanMerger.newId}")()
+                      val newNPFilter = newNPFilterAlias.toAttribute
+                      val newProject = childProject.copy(
+                        projectList = childProject.projectList ++ Seq(newNPFilterAlias))
+                      val newFilter = Filter(Or(mappedCPCondition, newNPFilter), newProject)
+                      newFilter.copyTagsFrom(cp)
+                      Some(TryMergeResult(newFilter, npMapping, cpMapping,
+                        Some((newNPFilter, true)), None))
+                  }
                 } else {
-                    // First-time filter propagation: alias both sides' conditions as boolean
-                    // attributes in a new Project below the Filter, and set the Filter condition
-                    // to OR(newNPFilter, newCPFilter).
-                    // Note: the new Project always uses mergedChild as its child (rather than
-                    // flattening into an existing Project below) because mergedChild.output may
-                    // contain previously-propagated filter attributes that newCPCondition
-                    // references.
-                    val newNPCondition = npFilter.fold(mappedNPCondition) {
-                      case (f, _) => And(f, mappedNPCondition)
-                    }
-                    val newCPCondition = cpFilter.fold(mappedCPCondition)(And(_, mappedCPCondition))
-                    val newNPFilterAlias =
-                      Alias(newNPCondition, s"propagatedFilter_${PlanMerger.newId}")()
-                    val newCPFilterAlias =
-                      Alias(newCPCondition, s"propagatedFilter_${PlanMerger.newId}")()
-                    val newNPFilter = newNPFilterAlias.toAttribute
-                    val newCPFilter = newCPFilterAlias.toAttribute
-                    val project = Project(
-                      mergedChild.output.toList ++ Seq(newNPFilterAlias, newCPFilterAlias),
-                      mergedChild)
-                    val newFilter = Filter(Or(newNPFilter, newCPFilter), project)
-                    newFilter.copyTagsFrom(cp)
-                    newFilter.setTagValue(PlanMerger.MERGED_FILTER_TAG, ())
-                    Some(TryMergeResult(newFilter, npMapping, cpMapping, Some((newNPFilter, true)),
-                      Some(newCPFilter)))
+                  // First-time filter propagation: alias both sides' conditions as boolean
+                  // attributes in a new Project below the Filter, and set the Filter condition
+                  // to OR(newNPFilter, newCPFilter).
+                  // Note: the new Project always uses mergedChild as its child (rather than
+                  // flattening into an existing Project below) because mergedChild.output may
+                  // contain previously-propagated filter attributes that newCPCondition
+                  // references.
+                  val newNPCondition = npFilter.fold(mappedNPCondition) {
+                    case (f, _) => And(f, mappedNPCondition)
+                  }
+                  val newCPCondition = cpFilter.fold(mappedCPCondition)(And(_, mappedCPCondition))
+                  val newNPFilterAlias =
+                    Alias(newNPCondition, s"propagatedFilter_${PlanMerger.newId}")()
+                  val newCPFilterAlias =
+                    Alias(newCPCondition, s"propagatedFilter_${PlanMerger.newId}")()
+                  val newNPFilter = newNPFilterAlias.toAttribute
+                  val newCPFilter = newCPFilterAlias.toAttribute
+                  val project = Project(
+                    mergedChild.output.toList ++ Seq(newNPFilterAlias, newCPFilterAlias),
+                    mergedChild)
+                  val newFilter = Filter(Or(newNPFilter, newCPFilter), project)
+                  newFilter.copyTagsFrom(cp)
+                  newFilter.setTagValue(PlanMerger.MERGED_FILTER_TAG, ())
+                  Some(TryMergeResult(newFilter, npMapping, cpMapping, Some((newNPFilter, true)),
+                    Some(newCPFilter)))
                 }
               } else {
                 None

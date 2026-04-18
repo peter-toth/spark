@@ -343,7 +343,8 @@ class PlanMergeSuite extends QueryTest
   test("SPARK-40193: Merge non-grouping scalar subqueries with different filter conditions") {
     Seq(false, true).foreach { enableAQE =>
       withSQLConf(
-        SQLConf.ADAPTIVE_EXECUTION_ENABLED.key -> enableAQE.toString) {
+        SQLConf.ADAPTIVE_EXECUTION_ENABLED.key -> enableAQE.toString,
+        SQLConf.MERGE_SUBPLANS_SYMMETRIC_FILTER_PROPAGATION_ENABLED.key -> "true") {
         val df = sql(
           """
             |SELECT

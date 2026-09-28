@@ -19,7 +19,7 @@ package org.apache.spark.sql.execution
 
 import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.catalyst.InternalRow
-import org.apache.spark.sql.catalyst.expressions.{Alias, Attribute, AttributeReference, Literal, TransformExpression}
+import org.apache.spark.sql.catalyst.expressions.{Alias, Ascending, Attribute, AttributeReference, ExpressionSet, Literal, SortOrder, TransformExpression}
 import org.apache.spark.sql.catalyst.plans.physical.{ClusteredDistribution, HashPartitioning, KeyedPartitioning, Partitioning, PartitioningCollection, UnknownPartitioning}
 import org.apache.spark.sql.connector.catalog.functions.{BucketFunction, YearsFunction}
 import org.apache.spark.sql.execution.adaptive.AdaptiveSparkPlanHelper
@@ -1010,6 +1010,23 @@ class ProjectedOrderingAndPartitioningSuite
           "the projected partitioning must still be SPJ-eligible")
       case other => fail(s"Expected KeyedPartitioning, got $other")
     }
+
+    // The ordering a scan derives from the same key expressions goes through the same aliasMap,
+    // so it has to survive the projection the same way, or the two fall out of sync and
+    // `GroupPartitionsExec.outputOrdering` drops the key-derived ordering when it coalesces.
+    val orderedChild = DummyLeafExecWithPartitioningAndOrdering(
+      output = Seq(id),
+      partitioning = KeyedPartitioning(Seq(bucketExpr), keys1d),
+      ordering = Seq(SortOrder(bucketExpr, Ascending)))
+    val orderedProject = ProjectExec(Seq(pk, w), orderedChild)
+    val projectedOrdering = orderedProject.outputOrdering
+    assert(projectedOrdering.size === 1)
+    assert(projectedOrdering.head.child.asInstanceOf[TransformExpression].children.head
+      === Literal(32),
+      "the literal parameter must survive the ordering projection too")
+    val projectedKp = orderedProject.outputPartitioning.asInstanceOf[KeyedPartitioning]
+    assert(ExpressionSet(projectedKp.expressions).contains(projectedOrdering.head.child),
+      "the projected ordering must stay in sync with the projected partitioning")
   }
 }
 
@@ -1019,6 +1036,16 @@ private case class DummyLeafExecWithPartitioning(
   ) extends LeafExecNode {
   override protected def doExecute(): RDD[InternalRow] = null
   override def outputPartitioning: Partitioning = partitioning
+}
+
+private case class DummyLeafExecWithPartitioningAndOrdering(
+    output: Seq[Attribute],
+    partitioning: Partitioning,
+    ordering: Seq[SortOrder]
+  ) extends LeafExecNode {
+  override protected def doExecute(): RDD[InternalRow] = null
+  override def outputPartitioning: Partitioning = partitioning
+  override def outputOrdering: Seq[SortOrder] = ordering
 }
 
 private case class DummyLeafPlanExec(output: Seq[Attribute]) extends LeafExecNode {

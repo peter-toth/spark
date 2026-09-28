@@ -20,7 +20,7 @@ package org.apache.spark.sql.catalyst.plans
 import scala.collection.mutable
 
 import org.apache.spark.sql.catalyst.SQLConfHelper
-import org.apache.spark.sql.catalyst.expressions.{Alias, Attribute, AttributeSet, Empty2Null, Expression, NamedExpression, SortOrder}
+import org.apache.spark.sql.catalyst.expressions.{Alias, Attribute, AttributeSet, Empty2Null, Expression, Literal, NamedExpression, SortOrder}
 import org.apache.spark.sql.internal.SQLConf
 
 /**
@@ -70,8 +70,11 @@ trait AliasAwareOutputExpression extends SQLConfHelper {
   protected def projectExpression(expr: Expression): LazyList[Expression] = {
     val outputSet = AttributeSet(outputExpressions.map(_.toAttribute))
     expr.multiTransformDown {
-      // Mapping with aliases
-      case e: Expression if aliasMap.contains(e.canonicalized) =>
+      // Mapping with aliases. A `Literal` is never substituted. An alias over a constant is not
+      // another name for the same value, it is a column that happens to hold it, and a partition
+      // transform's literal parameter -- `bucket(32, id)`, `truncate(data, 2)` -- would otherwise
+      // be replaced by that column, leaving a transform that is no longer the one reported.
+      case e: Expression if !e.isInstanceOf[Literal] && aliasMap.contains(e.canonicalized) =>
         aliasMap(e.canonicalized).toSeq ++ (if (e.containsChild.nonEmpty) Seq(e) else Seq.empty)
 
       // Prune if we encounter an attribute that we can't map and it is not in output set.

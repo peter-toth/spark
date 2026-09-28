@@ -17,7 +17,7 @@
 
 package org.apache.spark.sql.catalyst.expressions
 
-import org.apache.spark.{SparkException, SparkFunSuite}
+import org.apache.spark.SparkFunSuite
 import org.apache.spark.sql.connector.catalog.functions.{BoundFunction, ScalarFunction}
 import org.apache.spark.sql.types.{DataType, IntegerType, StructField, StructType}
 
@@ -172,11 +172,10 @@ class TransformExpressionSuite extends SparkFunSuite {
       TransformExpression(outer, Seq(Literal(4), TransformExpression(years, Seq(b))))),
       "the same nested function over a different column is still the same function")
 
-    // A non-reference slot is never "the same", even against an identical one: `c + 1` is not a
-    // partition transform argument SPJ can reason about.
+    // A non-reference slot is compared like any other slot: identity does not look inside it.
     val plusOne = TransformExpression(outer, Seq(Literal(4), Add(a, Literal(1))))
-    assert(!plusOne.isSameFunction(TransformExpression(outer, Seq(Literal(4), Add(a, Literal(1))))),
-      "a non-reference slot is not comparable, so not the same function")
+    assert(plusOne.isSameFunction(TransformExpression(outer, Seq(Literal(4), Add(a, Literal(1))))),
+      "identity is reflexive over a non-reference slot")
   }
 
   test("SPARK-50593: a retargeted struct-field column slot is not reducible, and does not throw") {
@@ -224,22 +223,23 @@ class TransformExpressionSuite extends SparkFunSuite {
       "the same nested transform over another column is the same key space")
   }
 
-  test("SPARK-50593: a transform with a non-reference argument has no identity") {
+  test("SPARK-50593: a non-parameter argument is a slot, whatever its shape") {
     val fn = new NamedFunction("test.bucket")
     val plusOne = TransformExpression(fn, Seq(Literal(4), Add(a, Literal(1))))
-    assert(plusOne.functionId.isEmpty)
-    assert(!plusOne.isSameFunction(plusOne), "never the same, not even as itself")
-    // Nesting one inside a transform takes the identity away from the outer one too.
+    assert(plusOne.isSameFunction(plusOne), "identity is reflexive")
+    // Which expression sits in the slot is not identity's business, the same way which column is
+    // not: `keyPositions` reconciles the slots, and `supportsExpressions` is the gate that decides
+    // whether SPJ may reason about the shape at all.
+    assert(plusOne.isSameFunction(bucket(fn, a, 4)))
     val nested = TransformExpression(fn, Seq(Literal(4), TransformExpression(fn, Seq(Add(a, a)))))
-    assert(nested.functionId.isEmpty)
+    assert(nested.isSameFunction(
+      TransformExpression(fn, Seq(Literal(4), TransformExpression(fn, Seq(b))))),
+      "a nested transform is compared by its own identity, whose argument is a slot too")
+    assert(!nested.isSameFunction(plusOne), "nested against flat is still different")
 
-    // Recording a reduce needs an identity on both sides: reducedWith stores the partner's, and
-    // silently skipping the mark would report reduced keys as raw. So it fails loudly.
+    // Recording a reduce always has an identity to store on both sides.
     val ok = bucket(fn, a, 8)
-    Seq(() => plusOne.reducedTogetherWith(ok), () => ok.reducedTogetherWith(plusOne)).foreach { f =>
-      val e = intercept[SparkException](f())
-      assert(e.getMessage.contains("without an identity"))
-    }
+    assert(plusOne.reducedTogetherWith(ok).hasSameReducedKeys(ok.reducedTogetherWith(plusOne)))
   }
 
   test("SPARK-50593: isSameFunction and hasSameReducedKeys agree on every pair") {
@@ -259,8 +259,8 @@ class TransformExpressionSuite extends SparkFunSuite {
       TransformExpression(bucketFn, Seq(Literal(4), GetStructField(s, 0))),
       TransformExpression(bucketFn, Seq(Literal(4), TransformExpression(years, Seq(a)))),
       TransformExpression(bucketFn, Seq(Literal(4), TransformExpression(days, Seq(b)))),
-      TransformExpression(years, Seq(a)), TransformExpression(days, Seq(a)))
-    assert(shapes.forall(_.functionId.isDefined), "the fixture needs identities throughout")
+      TransformExpression(years, Seq(a)), TransformExpression(days, Seq(a)),
+      TransformExpression(bucketFn, Seq(Literal(4), Add(a, Literal(1)))))
     val partner = bucket(bucketFn, a, 16)
     for (x <- shapes; y <- shapes) {
       val sameFunction = x.isSameFunction(y)

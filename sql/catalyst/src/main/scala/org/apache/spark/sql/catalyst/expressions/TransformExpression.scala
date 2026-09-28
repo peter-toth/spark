@@ -20,7 +20,6 @@ package org.apache.spark.sql.catalyst.expressions
 import scala.annotation.tailrec
 import scala.util.{Failure, Success, Try}
 
-import org.apache.spark.SparkException
 import org.apache.spark.internal.Logging
 import org.apache.spark.internal.LogKeys.FUNCTION_NAME
 import org.apache.spark.sql.catalyst.InternalRow
@@ -62,11 +61,11 @@ object TransformFunctionId {
     case class Nested(id: TransformFunctionId) extends ArgumentShape
 
     /**
-     * A plain column reference: an [[Attribute]] or a [[GetStructField]] chain. Which column is not
-     * part of the identity -- the two sides of a join reference different columns by construction,
-     * and `KeyedShuffleSpec.keyPositions` reconciles them separately.
+     * Any non-parameter argument: a column reference, a `GetStructField` chain, or anything else.
+     * Which column is not part of the identity -- the two sides of a join reference different
+     * columns by construction, and `KeyedShuffleSpec.keyPositions` reconciles them separately.
      */
-    case object Column extends ArgumentShape
+    case object Slot extends ArgumentShape
   }
 }
 
@@ -105,22 +104,17 @@ case class TransformExpression(
     children.collect { case l: Literal => l }
 
   /**
-   * This transform's identity, or None if some argument is not a literal, a nested transform or a
-   * column reference (e.g. `c + 1`); such a transform is not the same as any other.
+   * This transform's identity: its function, and one entry per argument in order. A non-parameter
+   * argument is a [[TransformFunctionId.ArgumentShape.Slot]] whatever its shape -- whether SPJ can
+   * reason about that shape is `KeyedPartitioning.supportsExpressions`' question, not identity's.
    */
-  lazy val functionId: Option[TransformFunctionId] = {
+  lazy val functionId: TransformFunctionId = {
     import TransformFunctionId.ArgumentShape
-    val shapes = children.map {
-      case l: Literal => Some(ArgumentShape.Param(l))
-      case t: TransformExpression => t.functionId.map(ArgumentShape.Nested(_))
-      case c if TransformExpression.isColumnRef(c) => Some(ArgumentShape.Column)
-      case _ => None
-    }
-    if (shapes.forall(_.isDefined)) {
-      Some(TransformFunctionId(function.canonicalName(), shapes.flatten))
-    } else {
-      None
-    }
+    TransformFunctionId(function.canonicalName(), children.map {
+      case l: Literal => ArgumentShape.Param(l)
+      case t: TransformExpression => ArgumentShape.Nested(t.functionId)
+      case _ => ArgumentShape.Slot
+    })
   }
 
   /**
@@ -156,8 +150,7 @@ case class TransformExpression(
    * @param other the transform expression to compare to
    * @return true if this and `other` has the same semantics w.r.t to transform, false otherwise.
    */
-  def isSameFunction(other: TransformExpression): Boolean =
-    functionId.isDefined && functionId == other.functionId
+  def isSameFunction(other: TransformExpression): Boolean = functionId == other.functionId
 
   /**
    * Whether this [[TransformExpression]]'s function is compatible with the `other`
@@ -362,7 +355,7 @@ case class TransformExpression(
    * carry the same pair.
    */
   private def reducedKeySpace: Option[Set[TransformFunctionId]] =
-    for (self <- functionId; partner <- reducedWith) yield Set(self, partner)
+    reducedWith.map(partner => Set(functionId, partner))
 
   /**
    * Whether this and `other` describe the same reduced key space, i.e. whether the same pair of
@@ -376,19 +369,9 @@ case class TransformExpression(
   def hasSameReducedKeys(other: TransformExpression): Boolean =
     reducedKeySpace.isDefined && reducedKeySpace == other.reducedKeySpace
 
-  /**
-   * Records that this expression's keys were reduced together with `other`'s. Both need an
-   * identity; this fails rather than leave reduced keys looking raw. Unreachable, since
-   * supportsExpressions admits only transforms that have one.
-   */
+  /** Records that this expression's keys were reduced together with `other`'s. */
   def reducedTogetherWith(other: TransformExpression): TransformExpression =
-    (functionId, other.functionId) match {
-      case (Some(_), Some(partner)) => copy(reducedWith = Some(partner))
-      case _ =>
-        throw SparkException.internalError(
-          s"Cannot record a reduce of $this with $other: a transform without an identity " +
-            "cannot be reduced, since KeyedPartitioning.supportsExpressions rejects it.")
-    }
+    copy(reducedWith = Some(other.functionId))
 
   override def dataType: DataType = function.resultType()
 

@@ -105,9 +105,10 @@ public class LateMaterializationParquetRecordReader extends VectorizedParquetRec
 
   /**
    * What one buffered variable-length value costs, as a multiple of its own bytes. The byte child
-   * holds a null byte per byte, and {@link WritableColumnVector#reserve} doubles it when it grows.
-   * It over-counts on purpose. That holds at the default growth. A {@code hugeVectorReserveRatio}
-   * above 2 makes it under-count past {@code hugeVectorThreshold}, which is off by default.
+   * holds a null byte per byte, and {@link WritableColumnVector#reserve} doubles it when it grows,
+   * so this is the most the value takes on heap, and what the task's memory manager is asked for.
+   * That holds at the default growth. A {@code hugeVectorReserveRatio} above 2 makes it
+   * under-count past {@code hugeVectorThreshold}, which is off by default.
    */
   private static final long VARIABLE_LENGTH_BYTES_FACTOR = 4L;
 
@@ -122,6 +123,13 @@ public class LateMaterializationParquetRecordReader extends VectorizedParquetRec
    * `WritableColumnVector.DEFAULT_ARRAY_LENGTH`.
    */
   private static final int DEFAULT_CHILD_BYTES_PER_ROW = 4;
+
+  /**
+   * The most the survivor buffer reserves beyond what it holds, see
+   * {@link #reserveSurvivorMemory}. The task's memory manager spills other consumers to grant a
+   * request in full, so an ask past what is free costs them that much.
+   */
+  private static final long SURVIVOR_MEMORY_STEP_BYTES = 1L << 20;
 
   /**
    * The filter this reader applies. {@link #keyColumns} is null for a file it is not applied to row
@@ -1025,17 +1033,23 @@ public class LateMaterializationParquetRecordReader extends VectorizedParquetRec
     rereadRemainingKeys = false;
     long remainingRows = loadedRowCount - rowsEmittedInRowGroup;
     if (remainingRows <= 0) return;
-    PrimitiveIterator.OfLong rows = loadedRanges.iterator();
-    for (long i = 0; i < rowsEmittedInRowGroup; i++) {
-      rows.nextLong();
-    }
+    // The ranges past the rows emitted, the one they end in cut there.
     RowRanges.Builder remaining = RowRanges.builder();
-    while (rows.hasNext()) {
-      remaining.addSelectedRow(rows.nextLong());
+    long toSkip = rowsEmittedInRowGroup;
+    for (RowRanges.Range range : loadedRanges.getRanges()) {
+      long count = range.to - range.from + 1;
+      if (toSkip >= count) {
+        toSkip -= count;
+      } else {
+        remaining.addSelectedRange(range.from + toSkip, range.to);
+        toSkip = 0;
+      }
     }
     RowRanges remainingRanges = remaining.build();
     fileReader.setRequestedSchema(keyOnlyColumns);
-    rereadKeyPages = fileReader.readFilteredRowGroup(loadedBlockIndex, remainingRanges);
+    // Still null here: a spill empties the queue, and a row group with an empty queue cannot be
+    // spilled again.
+    rereadKeyPages =fileReader.readFilteredRowGroup(loadedBlockIndex, remainingRanges);
     requireRowCount(rereadKeyPages, remainingRows, loadedBlockIndex);
     long blockRowCount = fileReader.getRowGroups().get(loadedBlockIndex).getRowCount();
     RowRanges readerRanges = readerRangesFor(remainingRanges, remainingRows, blockRowCount);
@@ -1059,14 +1073,16 @@ public class LateMaterializationParquetRecordReader extends VectorizedParquetRec
 
   /**
    * Grows the reservation to cover {@code held} bytes, asking for at least what it already holds,
-   * so a growing buffer asks only a few times. False when it is denied.
+   * up to {@link #SURVIVOR_MEMORY_STEP_BYTES}, so a growing buffer asks only a few times. False
+   * when it is denied.
    */
   private boolean reserveSurvivorMemory(long held) {
     if (survivorMemory == null) return true;
     long used = survivorMemory.getUsed();
     long missing = held - used;
     if (missing <= 0) return true;
-    long granted = survivorMemory.acquireMemory(Math.max(missing, used));
+    long granted = survivorMemory.acquireMemory(
+        Math.max(missing, Math.min(used, SURVIVOR_MEMORY_STEP_BYTES)));
     if (granted >= missing) return true;
     survivorMemory.freeMemory(granted);
     return false;
@@ -1097,7 +1113,9 @@ public class LateMaterializationParquetRecordReader extends VectorizedParquetRec
 
   /**
    * The survivor buffer's account with the task's memory manager, so other consumers see what it
-   * holds. A spill can free the survivors not yet emitted, see {@link #spillQueuedSurvivors}.
+   * holds. A spill can free the survivors not yet emitted, see {@link #spillQueuedSurvivors}, of a
+   * row group phase 2 reads in part. One read whole holds its keys until they are emitted, since
+   * the re-read after a spill needs its offset indexes, which a read of every row never checks.
    * ON_HEAP whatever the reader's memory mode, since off-heap vectors allocate native memory
    * outside the Tungsten off-heap pool. With them only the row ranges, which are always on heap,
    * are accounted, and a spill frees nothing. The task's memory manager keeps every consumer until
@@ -1121,8 +1139,11 @@ public class LateMaterializationParquetRecordReader extends VectorizedParquetRec
     }
   }
 
-  /** One batch's survivor vectors, indexed like {@link #keyColumns}, and what they are charged. */
-  private record SurvivorBatch(WritableColumnVector[] vectors, long charge) {}
+  /**
+   * One batch's survivor vectors, indexed like {@link #keyColumns}, and what they are charged.
+   * Package-private for {@code ParquetTestAccess}.
+   */
+  record SurvivorBatch(WritableColumnVector[] vectors, long charge) {}
 
   /** One key column this file has, as init resolves it. */
   private record KeyColumn(

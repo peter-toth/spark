@@ -2257,19 +2257,34 @@ class ParquetStorageFilterSuite extends QueryTest with SharedSparkSession
   }
 
   test("the survivor buffer asks for little more memory than it holds") {
-    // Another consumer holds all but 10,000 bytes, and the buffer never holds more than 220. A
-    // reservation asking for more than is free would spill that consumer.
-    withTempDir { dir =>
-      val path = twoRowGroupsOf20(dir)
+    // Another consumer holds all but what the buffer needs plus a margin. The task's memory manager
+    // spills that consumer to grant a reservation past what is free, so the buffer must not ask
+    // for more than its margin: as much again as it holds while small, and 1MB once it is past
+    // that.
+    def reads(path: String, rows: Long, margin: Long): Unit = {
       val memoryManager = new TestMemoryManager(spark.sparkContext.conf)
       val held = 1000000L
-      memoryManager.limit(held + 10000L)
+      memoryManager.limit(held + margin)
       val context = memoryTask(memoryManager)
       val other = new TestMemoryConsumer(context.taskMemoryManager)
       other.use(held)
-      val rows = readInTask(path, context)(_ => ())
-      assert(rows == marked(10L until 40L, checked = true), s"got $rows")
-      assert(other.getUsed == held, "the read must not spill another consumer")
+      val read = readInTask(path, context, batchSize = 4096)(_ => ())
+      assert(read == marked(10L until rows, checked = true),
+        s"$rows rows with a margin of $margin: got ${read.size} rows")
+      assert(other.getUsed == held,
+        s"$rows rows with a margin of $margin: the read must not spill another consumer")
+    }
+    withTempDir { dir =>
+      // The buffer never holds more than 220 bytes, so it may ask for up to 440.
+      reads(twoRowGroupsOf20(dir), rows = 40L, margin = 10000L)
+      // One row group whose 399,990 survivors hold 3,599,950 bytes, so the buffer may ask for up
+      // to 1MB past that. Asking for as much again as it holds would spill the other consumer.
+      val rows = 400000L
+      val path = writeSingleParquetFile(dir,
+        (0L until rows).map(i => (i, i.toString)).toDF("k", "v"),
+        rowGroupSize = ParquetWriter.DEFAULT_BLOCK_SIZE)
+      assert(footerOf(path).getBlocks.size == 1, "the fixture must be one row group")
+      reads(path, rows, margin = (rows - 10L) * 9L + 40L + (1L << 20) + 10000L)
     }
   }
 
